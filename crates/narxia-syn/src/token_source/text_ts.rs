@@ -218,7 +218,7 @@ impl<'text> CharTokenParser<'text> {
                         break self.chars.offset();
                     };
                     if c == '"' && !escaped {
-                        break next;
+                        break next + 1;
                     }
                     if c == '\\' {
                         escaped = !escaped;

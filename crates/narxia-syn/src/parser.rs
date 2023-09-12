@@ -63,6 +63,7 @@ impl<'a> Parser<'a> {
     }
 
     fn err_unexpected(&mut self) {
+        self.dbg();
         let k = self.ts.lookahead(0).map(|tok| tok.kind()).unwrap();
         self.err(ParseErrorInfo::UnexpectedToken { got: k });
     }
@@ -446,7 +447,7 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
 #[parse_fn]
 fn parse_stmt(p: &mut Parser) -> CompletedMarker {
     let m = p.ev.begin();
-    if p.at(T![ident]) {
+    if p.at(T![ident]) || p.at(T![string]) {
         parse_expr_potential_assignment(p);
     // } else if p.at(T![let]) {
     //     parse_let_stmt(p);
@@ -472,6 +473,8 @@ fn parse_expr_atom(p: &mut Parser) -> CompletedMarker {
     let m = p.ev.begin();
     if p.at(T![ident]) {
         p.expect(T![ident]);
+    } else if p.at(T![string]) {
+        p.expect(T![string]);
     } else {
         p.err_unexpected();
     }
