@@ -1,0 +1,7 @@
+[workspace]
+members = ["crates/*"]
+
+[workspace.dependencies]
+narxia = {path = "crates/narxia"}
+narxia-syn = {path = "crates/narxia-syn"}
+narxia-syn-helpers = {path = "crates/narxia-syn-helpers"}

@@ -1,0 +1,13 @@
+[package]
+name = "narxia-syn"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rowan = "0.15.11"
+drop_bomb = "0.1.5"
+smallvec = "1.10.0"
+
+narxia-syn-helpers.workspace = true
