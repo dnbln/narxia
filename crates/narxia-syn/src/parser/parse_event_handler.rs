@@ -205,6 +205,7 @@ impl<'a> ParseEventHandler<'a> {
     }
 
     #[cfg(debug_assertions)]
+    #[track_caller]
     fn assert_safe_rollback(&self, pos: &ParseEventHandlerPos) {
         let mut stk = Vec::new();
         for ev in &self.events[pos.0..] {
@@ -227,6 +228,7 @@ impl<'a> ParseEventHandler<'a> {
         assert!(stk.is_empty(), "Begin / Precede after pos not finished.");
     }
 
+    #[track_caller]
     pub fn rollback(&mut self, pos: ParseEventHandlerPos) {
         #[cfg(debug_assertions)]
         self.assert_safe_rollback(&pos);
