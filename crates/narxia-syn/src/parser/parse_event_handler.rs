@@ -223,8 +223,8 @@ impl<'a> ParseEventHandler<'a> {
                 ParseEvent::Error(..) => {}
                 ParseEvent::Tombstone => {}
             }
-            assert!(stk.is_empty(), "Begin / Precede after pos not finished.");
         }
+        assert!(stk.is_empty(), "Begin / Precede after pos not finished.");
     }
 
     pub fn rollback(&mut self, pos: ParseEventHandlerPos) {
