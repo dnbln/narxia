@@ -39,6 +39,8 @@ pub enum SyntaxKind {
     TRUE_KW,
     #[T(false)]
     FALSE_KW,
+    #[T(in)]
+    IN_KW,
     // Punctuation
     #[T('(')]
     L_PAREN,
@@ -145,6 +147,15 @@ pub enum SyntaxKind {
     GenericTyParamName,
     GenericTyParamBoundList,
     GenericTyParamDefault,
+
+    WhileStmt,
+    WhileCondition,
+
+    ForStmt,
+    ForPat,
+    ForInExpr,
+
+    LoopExpr,
 
     #[doc(hidden)]
     __TOMBSTONE,

@@ -162,6 +162,8 @@ impl<'text> CharTokenParser<'text> {
                     "else" => SyntaxKind::ELSE_KW,
                     "while" => SyntaxKind::WHILE_KW,
                     "loop" => SyntaxKind::LOOP_KW,
+                    "for" => SyntaxKind::FOR_KW,
+                    "in" => SyntaxKind::IN_KW,
                     "break" => SyntaxKind::BREAK_KW,
                     "continue" => SyntaxKind::CONTINUE_KW,
                     "return" => SyntaxKind::RETURN_KW,

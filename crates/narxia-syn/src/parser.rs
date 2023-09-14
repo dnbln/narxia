@@ -650,13 +650,11 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
 parse_fn_decl! {
     parse_stmt: Stmt ::=
         $/match {
-            [ident] [string] [if] ['{'] => {$parse_expr_potential_assignment()}
+            [ident] [string] [if] [loop] ['{'] => {$parse_expr_potential_assignment()}
             [let] => {$parse_let_stmt()}
+            [while] => {$parse_while_stmt()}
+            [for] => {$parse_for_stmt()}
         }
-    // } else if p.at(T![while]) {
-    //     parse_while_stmt(p);
-    // } else if p.at(T![for]) {
-    //     parse_for_stmt(p);
     // } else if p.at(T![return]) {
     //     parse_return_stmt(p);
     // } else if p.at(T![continue]) {
@@ -664,6 +662,57 @@ parse_fn_decl! {
     // } else if p.at(T![break]) {
     //     parse_break_stmt(p);
     // }
+}
+
+parse_fn_decl! {
+    parse_for_stmt: ForStmt ::=
+        $![for]
+        $/ws:wcn
+        $!['(']
+        $/ws:wcn
+        $parse_for_pat()
+        $/ws:wcn
+        $![in]
+        $/ws:wcn
+        $parse_for_in_expr()
+        $/ws:wcn
+        $![')']
+        $/ws:wcn
+        $parse_block()
+}
+
+parse_fn_decl! {
+    parse_for_pat: ForPat ::= $parse_pat()
+}
+
+
+parse_fn_decl! {
+    parse_for_in_expr: ForInExpr ::= $parse_expr()
+}
+
+parse_fn_decl! {
+    parse_while_stmt: WhileStmt ::=
+        $![while]
+        $/ws:wcn
+        $parse_while_condition()
+        $/ws:wcn
+        $parse_block()
+}
+
+parse_fn_decl! {
+    parse_while_condition: WhileCondition ::=
+        $!['(']
+        $/ws:wcn
+        $parse_expr()
+        $/ws:wcn
+        $![')']
+}
+
+parse_fn_decl! {
+    parse_loop_expr: LoopExpr ::=
+        $![loop]
+        $/ws:wcn
+        $parse_block()
 }
 
 parse_fn_decl! {
@@ -695,6 +744,7 @@ parse_fn_decl! {
             [string]!
             [number]!
             [if] => {$parse_if_expr()}
+            [loop] => {$parse_loop_expr()}
             ['{'] => {$parse_block_expr()}
         }
 }
