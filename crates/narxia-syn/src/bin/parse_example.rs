@@ -2,7 +2,8 @@ use narxia_syn::syntree::SynTree;
 use narxia_syn::token_source::text_ts::TextTokenSource;
 
 fn main() {
-    let mut ts = TextTokenSource::new(r#"fn main(v: T) {
+    let mut ts = TextTokenSource::new(r#"
+    fn main<const X: usize, T, U: L + V, X = L, V: H = I>(v: T) {
         {
             if (it) c else if (it2) c2 else c3
 

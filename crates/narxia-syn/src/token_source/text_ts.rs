@@ -167,6 +167,7 @@ impl<'text> CharTokenParser<'text> {
                     "return" => SyntaxKind::RETURN_KW,
                     "true" => SyntaxKind::TRUE_KW,
                     "false" => SyntaxKind::FALSE_KW,
+                    "const" => SyntaxKind::CONST_KW,
                     _ => SyntaxKind::IDENT,
                 };
                 r(kind, start, end)

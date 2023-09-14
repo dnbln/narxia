@@ -171,6 +171,9 @@ impl<'a> Parser<'a> {
                 T![whitespace] => {
                     self.skip_ws();
                 }
+                T![newline] => {
+                    self.expect(T![newline]);
+                }
                 _ => {}
             }
         }
@@ -221,7 +224,6 @@ parse_fn_decl! {
     parse_fn_def: FnDef ::=
         $parse_fn_head()
         $/ws:wcn
-        $/eof:early_ret+err(ExpectedKind(T!['{']))
         $parse_block()
 }
 
@@ -231,11 +233,198 @@ parse_fn_decl! {
         $/ws:wcn
         $parse_fn_name()
         $/ws:wcn
+        $/if at[<] {
+            $parse_ty_param_list()
+            $/ws:wcn
+        }
         $parse_fn_param_list()
 }
 
 parse_fn_decl! {
+    parse_ty_param_list: TyParamList ::=
+        $parse_list_simple2(
+            T![<],
+            parse_generic_param,
+            T![,],
+            T![>],
+            AttemptRecoveryLevel::Shallow,
+        )
+}
+
+parse_fn_decl! {
+    parse_generic_param: GenericParam ::=
+        $/match {
+            [const] => {$parse_generic_const_param()}
+            [ident] => {$parse_generic_ty_param()}
+        }
+}
+
+parse_fn_decl! {
+    parse_generic_const_param: GenericConstParam ::=
+        $![const]
+        $/ws:wcn
+        $parse_generic_const_param_name()
+        $/ws:wcn
+        $![:]
+        $/ws:wcn
+        $parse_ty_ref()
+        $/state:s1
+        $/ws:wcn
+        $/if at[=] {
+            $parse_generic_const_param_default()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+parse_fn_decl! {
+    parse_generic_const_param_name: GenericConstParamName ::=
+        $![ident]
+}
+
+parse_fn_decl! {
+    parse_generic_const_param_default: GenericConstParamDefault ::=
+        $![=]
+        $/ws:wcn
+        $parse_expr()
+}
+
+parse_fn_decl! {
     parse_fn_name: FnName ::=
+        $![ident]
+}
+
+parse_fn_decl! {
+    parse_generic_ty_param: GenericTyParam ::=
+        $parse_generic_ty_param_name()
+        $/state:s1
+        $/ws:wcn
+        $/if at[:] {
+            $![:]
+            $/ws:wcn
+            $parse_generic_ty_param_bound_list()
+
+            $/state:s2
+            $/ws:wcn
+            $/if at[=] {
+                $parse_generic_ty_param_default()
+            }
+            $/else {
+                $/restore_state:s2
+            }
+        }
+        $/else if at[=] {
+            $parse_generic_ty_param_default()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+parse_fn_decl! {
+    parse_generic_ty_param_bound_list: GenericTyParamBoundList ::=
+        $parse_list_rep_simple2(
+            T![+],
+            parse_ty_ref,
+            AttemptRecoveryLevel::Shallow,
+        )
+}
+
+fn parse_list_rep<E: NotAttemptingRecovery>(
+    p: &mut Parser,
+    sep: SyntaxKind,
+    mut parse: impl FnMut(&mut Parser) -> Result<(), E>,
+    recovery: AttemptRecoveryLevel,
+) -> Result<(), E> {
+    parse(p)?;
+    p.skip_ws();
+
+    'recovered: {
+        if p.is_recovering() {
+            match recovery {
+                AttemptRecoveryLevel::None => return Err(E::not_attempting_recovery()),
+                AttemptRecoveryLevel::Shallow => {
+                    if p.at(sep) {
+                        p.recovered();
+                        break 'recovered;
+                    }
+                }
+                AttemptRecoveryLevel::Deep => {
+                    if p.bump_until(sep) {
+                        p.recovered();
+                        break 'recovered;
+                    }
+                }
+            }
+            return Ok(());
+        }
+    }
+
+    'outer: {
+        while p.at(sep) {
+            p.expect(sep);
+            p.skip_ws();
+            parse(p)?;
+            p.skip_ws();
+
+            'recovered: {
+                if p.is_recovering() {
+                    match recovery {
+                        AttemptRecoveryLevel::None => return Err(E::not_attempting_recovery()),
+                        AttemptRecoveryLevel::Shallow => {
+                            if p.at(sep) {
+                                p.recovered();
+                                break 'recovered;
+                            }
+                            break 'outer;
+                        }
+                        AttemptRecoveryLevel::Deep => {
+                            if p.bump_until(sep) {
+                                p.recovered();
+                                break 'recovered;
+                            }
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_list_rep_simple<T>(
+    p: &mut Parser,
+    sep: SyntaxKind,
+    mut parse: impl FnMut(&mut Parser) -> T,
+    recovery: AttemptRecoveryLevel,
+) -> Result<(), ()> {
+    parse_list_rep(p, sep, |p| {
+        parse(p);
+        Ok(())
+    }, recovery)
+}
+
+fn parse_list_rep_simple2<T>(
+    p: &mut Parser,
+    sep: SyntaxKind,
+    parse: impl FnMut(&mut Parser) -> T,
+    recovery: AttemptRecoveryLevel,
+) {
+    let _r = parse_list_rep_simple(p, sep, parse, recovery);
+}
+
+parse_fn_decl! {
+    parse_generic_ty_param_default: GenericTyParamDefault ::=
+        $![=]
+        $/ws:wcn
+        $parse_ty_ref()
+}
+
+parse_fn_decl! {
+    parse_generic_ty_param_name: GenericTyParamName ::=
         $![ident]
 }
 
@@ -460,11 +649,9 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
 
 parse_fn_decl! {
     parse_stmt: Stmt ::=
-        $/if ||(at(ident), at(string), at(if), at('{')) {
-            $parse_expr_potential_assignment()
-        }
-        $/else if at(let) {
-            $parse_let_stmt()
+        $/match {
+            [ident] [string] [if] ['{'] => {$parse_expr_potential_assignment()}
+            [let] => {$parse_let_stmt()}
         }
     // } else if p.at(T![while]) {
     //     parse_while_stmt(p);
@@ -477,9 +664,6 @@ parse_fn_decl! {
     // } else if p.at(T![break]) {
     //     parse_break_stmt(p);
     // }
-        $/else {
-            $/err_unexpected
-        }
 }
 
 parse_fn_decl! {
@@ -488,7 +672,7 @@ parse_fn_decl! {
         $/ws:wcn
         $parse_pat()
         $/ws:wcn
-        $/if at(:) {
+        $/if at[:] {
             $![:]
             $/ws:wcn
             $parse_ty_ref()
@@ -506,20 +690,12 @@ parse_fn_decl! {
 
 parse_fn_decl! {
     parse_expr_atom: ExprAtom ::=
-        $/if at(ident) {
-            $![ident]
-        }
-        $/else if at(string) {
-            $![string]
-        }
-        $/else if at(if) {
-            $parse_if_expr()
-        }
-        $/else if at('{') {
-            $parse_block_expr()
-        }
-        $/else {
-            $/err_unexpected
+        $/match {
+            [ident]!
+            [string]!
+            [number]!
+            [if] => {$parse_if_expr()}
+            ['{'] => {$parse_block_expr()}
         }
 }
 
@@ -548,7 +724,7 @@ parse_fn_decl! {
         $parse_then_clause()
         $/state:s1
         $/ws:wcn
-        $/if at(else) {
+        $/if at[else] {
             $parse_else_clause()
         }
         $/else {

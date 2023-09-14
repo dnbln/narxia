@@ -1,17 +1,27 @@
-use proc_macro2::extra::DelimSpan;
-use proc_macro2::{Delimiter, Ident, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::parse::discouraged::{AnyDelimiter, Speculative};
-use syn::parse::{Parse, ParseStream};
+use syn::{
+    Block, braced, bracketed, Data, DataEnum, DeriveInput, Expr, ExprCall,
+    ExprIf, FnArg, MetaList, parenthesized, parse_quote, parse_quote_spanned, token, Token,
+};
+use syn::parse::{Parse, ParseStream, Peek};
+use syn::parse::discouraged::Speculative;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::{parse_quote, Data, DataEnum, DeriveInput, Expr, ExprCall, FnArg, MetaList, Token};
+use syn::token::Comma;
 
 #[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
-    let DeriveInput {ident, data: Data::Enum(data), .. } = input else {
-        return syn::Error::new_spanned(input, "expected struct").to_compile_error().into();
+    let DeriveInput {
+        ident,
+        data: Data::Enum(data),
+        ..
+    } = input
+    else {
+        return syn::Error::new_spanned(input, "expected struct")
+            .to_compile_error()
+            .into();
     };
     if ident != "SyntaxKind" {
         return syn::Error::new_spanned(ident, "expected struct SyntaxKind")
@@ -120,34 +130,17 @@ struct ParserSpecRule {
 }
 
 struct ParserFnArgs {
-    args: Vec<FnArg>,
-}
-
-impl ParserFnArgs {
-    fn none_if_empty(self) -> Option<Self> {
-        if self.args.is_empty() {
-            None
-        } else {
-            Some(self)
-        }
-    }
+    paren: token::Paren,
+    args: Punctuated<FnArg, Comma>,
 }
 
 impl Parse for ParserFnArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut args = Vec::new();
-        let fork = input.fork();
-        let Ok((_, _, inside)) = input.parse_any_delimiter() else {
-            input.advance_to(&fork);
-            return Ok(Self {
-                args,
-            });
-        };
-        inside
-            .parse_terminated(FnArg::parse, Token![,])
-            .map(|args| Self {
-                args: args.into_iter().collect(),
-            })
+        let paren;
+        Ok(Self {
+            paren: parenthesized!(paren in input),
+            args: paren.parse_terminated(FnArg::parse, Token![,])?,
+        })
     }
 }
 
@@ -178,7 +171,7 @@ impl Parse for ParserInstructionSet {
 
 enum ParserSpecInstruction {
     ParseCall(Token![$], ExprCall),
-    Token(Token![$], Token![!], Delimiter, DelimSpan, TokenStream),
+    Token(Token![$], Token![!], token::Bracket, TokenStream),
     ParseStmtExtra(Token![$], Token![/], ParseStmtExtra),
 }
 
@@ -190,10 +183,13 @@ impl Parse for ParserSpecInstruction {
             let extra = input.parse()?;
             Ok(Self::ParseStmtExtra(dollar_sign, slash, extra))
         } else if input.peek(Token![!]) {
-            let exclamation = input.parse()?;
-            let (delim, delim_span, pb) = input.parse_any_delimiter()?;
-            let ts = pb.parse()?;
-            Ok(Self::Token(dollar_sign, exclamation, delim, delim_span, ts))
+            let ts;
+            Ok(Self::Token(
+                dollar_sign,
+                input.parse()?,
+                bracketed!(ts in input),
+                ts.parse()?,
+            ))
         } else {
             let call = input.parse()?;
             Ok(Self::ParseCall(dollar_sign, call))
@@ -209,6 +205,7 @@ enum ParseStmtExtra {
     RestoreState(Ident, Token![:], Ident),
     ErrUnexpected(Ident),
     If(IfExtra),
+    Match(MatchExtra),
 }
 
 impl Parse for ParseStmtExtra {
@@ -216,6 +213,9 @@ impl Parse for ParseStmtExtra {
         if input.peek(Token![if]) {
             let if_extra = input.parse::<IfExtra>()?;
             return Ok(Self::If(if_extra));
+        } else if input.peek(Token![match]) {
+            let match_extra = input.parse::<MatchExtra>()?;
+            return Ok(Self::Match(match_extra));
         }
 
         let ident = input.parse::<Ident>()?;
@@ -247,7 +247,10 @@ impl Parse for ParseStmtExtra {
         } else if name == "err_unexpected" {
             Ok(Self::ErrUnexpected(ident))
         } else {
-            Err(syn::Error::new(ident.span(), "expected ws, eof, if, state, restore_state, or err_unexpected"))
+            Err(syn::Error::new(
+                ident.span(),
+                "expected ws, eof, if, match, state, restore_state, or err_unexpected",
+            ))
         }
     }
 }
@@ -356,7 +359,11 @@ impl Parse for ParserSeparator {
 impl Parse for ParserSpecRule {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name = input.parse()?;
-        let args = input.parse::<ParserFnArgs>()?.none_if_empty();
+        let args = if input.peek(token::Paren) {
+            Some(input.parse::<ParserFnArgs>()?)
+        } else {
+            None
+        };
         let colon = input.parse()?;
         let syntax_kind = input.parse()?;
         let sep = input.parse()?;
@@ -382,7 +389,7 @@ fn expand_fn_decl(p: ParserSpecRule) -> TokenStream {
         || quote! {},
         |args| {
             let a = &args.args;
-            quote! { #(#a,)* }
+            quote! { #a }
         },
     );
     let mut body = TokenStream::new();
@@ -417,7 +424,7 @@ fn expand_parser_spec_instruction_set(
                     #recovery_check_and_return
                 });
             }
-            ParserSpecInstruction::Token(_, _, _, _, ts) => {
+            ParserSpecInstruction::Token(_, _, _, ts) => {
                 to.extend(quote_spanned! {ts.span()=>p.expect(T![#ts]);#recovery_check_and_return});
             }
             ParserSpecInstruction::ParseStmtExtra(_, _, extra) => match extra {
@@ -449,6 +456,9 @@ fn expand_parser_spec_instruction_set(
                 }
                 ParseStmtExtra::If(if_extra) => {
                     expand_if_extra(if_extra, end_expr, to);
+                }
+                ParseStmtExtra::Match(match_extra) => {
+                    expand_match(match_extra, end_expr, to);
                 }
             },
         }
@@ -493,28 +503,28 @@ fn expand_eof_behavior(eof_extra: &EofExtra, end_expr: &TokenStream, to: &mut To
 enum IfCondition {
     At {
         at_token: Ident,
-        delimiter: (Delimiter, DelimSpan),
+        bracket: token::Bracket,
         at_token_tt: TokenStream,
     },
-    Either(Token![||], Delimiter, DelimSpan, Vec<IfCondition>),
+    Either(Token![||], token::Paren, Punctuated<IfCondition, Token![,]>),
 }
 
 impl Parse for IfCondition {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         if input.peek(Token![||]) {
-            let pipe2 = input.parse()?;
-            let (delimiter, delim_span, conditions) = input.parse_any_delimiter()?;
-            let conditions = conditions
-                .parse_terminated(IfCondition::parse, Token![,])
-                .map(|conditions| conditions.into_iter().collect())?;
-            Ok(Self::Either(pipe2, delimiter, delim_span, conditions))
+            let conditions;
+            Ok(Self::Either(
+                input.parse()?,
+                parenthesized!(conditions in input),
+                conditions.parse_terminated(IfCondition::parse, Token![,])?,
+            ))
         } else {
             let ident = input.parse::<Ident>()?;
             if ident == "at" {
-                let (delimiter, delim_span, at_token_tt) = input.parse_any_delimiter()?;
+                let at_token_tt;
                 Ok(Self::At {
                     at_token: ident,
-                    delimiter: (delimiter, delim_span),
+                    bracket: bracketed!(at_token_tt in input),
                     at_token_tt: at_token_tt.parse()?,
                 })
             } else {
@@ -528,14 +538,14 @@ fn expand_condition_eval(condition: &IfCondition, ts: &mut TokenStream) {
     match condition {
         IfCondition::At {
             at_token,
-            delimiter: _,
+            bracket: _,
             at_token_tt,
         } => {
             ts.extend(quote_spanned! {at_token.span()=>
                 p.#at_token (T![#at_token_tt])
             });
         }
-        IfCondition::Either(oror, delim, delim_span, conditions) => {
+        IfCondition::Either(oror, paren, conditions) => {
             for (idx, condition) in conditions.iter().enumerate() {
                 if idx > 0 {
                     ts.extend(quote_spanned! {oror.span()=>
@@ -551,7 +561,7 @@ fn expand_condition_eval(condition: &IfCondition, ts: &mut TokenStream) {
 struct IfExtra {
     if_token: Token![if],
     condition_expr: IfCondition,
-    then_block: IfInstrBlock,
+    then_block: InstrBlock,
     else_ifs: Vec<IfExtraElseIf>,
     else_clause: Option<IfExtraElseClause>,
 }
@@ -585,21 +595,17 @@ impl Parse for IfExtra {
     }
 }
 
-struct IfInstrBlock {
-    delimiter: (Delimiter, DelimSpan),
+struct InstrBlock {
+    delimiter: token::Brace,
     instructions: ParserInstructionSet,
 }
 
-impl Parse for IfInstrBlock {
+impl Parse for InstrBlock {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let (delimiter, delim_span, instructions) = input.parse_any_delimiter()?;
-        if !matches!(delimiter, Delimiter::Brace) {
-            return Err(syn::Error::new(delim_span.span(), "expected block"));
-        }
-        let instructions = instructions.parse()?;
+        let instructions;
         Ok(Self {
-            delimiter: (delimiter, delim_span),
-            instructions,
+            delimiter: braced!(instructions in input),
+            instructions: instructions.parse()?,
         })
     }
 }
@@ -610,7 +616,7 @@ struct IfExtraElseIf {
     else_token: Token![else],
     if_token: Token![if],
     condition: IfCondition,
-    then_block: IfInstrBlock,
+    then_block: InstrBlock,
 }
 
 impl Parse for IfExtraElseIf {
@@ -636,7 +642,7 @@ struct IfExtraElseClause {
     dollar_sign: Token![$],
     slash: Token![/],
     else_token: Token![else],
-    else_block: IfInstrBlock,
+    else_block: InstrBlock,
 }
 
 impl Parse for IfExtraElseClause {
@@ -698,5 +704,200 @@ fn expand_if_extra(if_extra: &IfExtra, end_expr: &TokenStream, to: &mut TokenStr
                 #else_clause_true
             }
         });
+    }
+}
+
+struct IfChain {
+    ifs: Vec<ExprIf>,
+    else_clause: Option<Block>,
+}
+
+impl IfChain {
+    fn new() -> Self {
+        Self {
+            ifs: Vec::new(),
+            else_clause: None,
+        }
+    }
+
+    #[track_caller]
+    fn add_if(&mut self, if_: ExprIf) {
+        assert!(if_.else_branch.is_none());
+        self.ifs.push(if_);
+    }
+
+    fn add_else_branch(&mut self, else_branch: Block) {
+        assert!(self.else_clause.is_none());
+        self.else_clause = Some(else_branch);
+    }
+
+    fn compile(&self, ts: &mut TokenStream) {
+        for (idx, if_) in self.ifs.iter().enumerate() {
+            if idx == 0 {
+                ts.extend(quote_spanned! {if_.if_token.span()=>
+                    #if_
+                });
+            } else {
+                ts.extend(quote_spanned! {if_.if_token.span()=>
+                    else #if_
+                });
+            }
+        }
+        if let Some(else_clause) = &self.else_clause {
+            ts.extend(quote_spanned! {else_clause.brace_token.span=>
+                else #else_clause
+            });
+        }
+    }
+}
+
+fn expand_match(extra: &MatchExtra, end_expr: &TokenStream, to: &mut TokenStream) {
+    let mut if_chain = IfChain::new();
+    for arm in &extra.arms {
+        expand_match_arm(arm, end_expr, &mut if_chain);
+    }
+
+    if_chain.add_else_branch(parse_quote_spanned! {extra.delimiter.span.span()=>
+        {p.err_unexpected();}
+    });
+
+    if_chain.compile(to);
+}
+
+fn expand_match_arm(arm: &MatchExtraArm, end_expr: &TokenStream, if_chain: &mut IfChain) {
+    match &arm.arm_code {
+        MatchExtraArmCode::ImmediateExpect(_) => {
+            for pat in &arm.pat.pat {
+                match pat {
+                    MatchExtraArmSelector { delimiter: _, tt } => {
+                        if_chain.add_if(parse_quote_spanned! {tt.span()=>
+                            if p.at(T![#tt]) {
+                                p.expect(T![#tt]);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        MatchExtraArmCode::InstrBlock(MatchExtraArmCodeInstrBlock {
+            arrow,
+            instructions,
+        }) => {
+            let mut ins = TokenStream::new();
+            expand_parser_spec_instruction_set(&instructions.instructions, end_expr, &mut ins);
+            let pats = arm.pat.pat.iter().map(|it| &it.tt);
+
+            if_chain.add_if(parse_quote_spanned! {arrow.span()=>
+                if #( p.at(T![#pats]) )||* {
+                    #ins
+                }
+            });
+        }
+    }
+}
+
+struct MatchExtra {
+    match_token: Token![match],
+    delimiter: token::Brace,
+    arms: Vec<MatchExtraArm>,
+}
+
+impl Parse for MatchExtra {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let arms_buffer;
+        Ok(Self {
+            match_token: input.parse()?,
+            delimiter: braced!(arms_buffer in input),
+            arms: arms_buffer.parse::<VecParser<MatchExtraArm>>()?.0,
+        })
+    }
+}
+
+struct MatchExtraArm {
+    pat: MatchExtraArmPat,
+    arm_code: MatchExtraArmCode,
+}
+
+impl Parse for MatchExtraArm {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let pat = input.parse()?;
+        let arm_code = input.parse()?;
+        Ok(Self { pat, arm_code })
+    }
+}
+
+enum MatchExtraArmCode {
+    ImmediateExpect(Token![!]),
+    InstrBlock(MatchExtraArmCodeInstrBlock),
+}
+
+impl Parse for MatchExtraArmCode {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(Token![!]) {
+            let exclamation = input.parse()?;
+            Ok(Self::ImmediateExpect(exclamation))
+        } else if input.peek(Token![=>]) {
+            let instr_block = input.parse()?;
+            Ok(Self::InstrBlock(instr_block))
+        } else {
+            Err(syn::Error::new(input.span(), "expected ! or =>"))
+        }
+    }
+}
+
+struct MatchExtraArmCodeInstrBlock {
+    arrow: Token![=>],
+    instructions: InstrBlock,
+}
+
+impl Parse for MatchExtraArmCodeInstrBlock {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let arrow = input.parse()?;
+        let instructions = input.parse()?;
+        Ok(Self {
+            arrow,
+            instructions,
+        })
+    }
+}
+
+struct MatchExtraArmPat {
+    pat: Vec<MatchExtraArmSelector>,
+}
+
+impl Parse for MatchExtraArmPat {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let pat = input.parse::<VecParser<MatchExtraArmSelector>>()?.0;
+        Ok(Self { pat })
+    }
+}
+
+struct VecParser<T>(Vec<T>);
+
+impl<T: Parse> Parse for VecParser<T> {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let mut vec = Vec::new();
+        let mut fork = input.fork();
+        while let Ok(t) = input.parse::<T>() {
+            vec.push(t);
+            fork = input.fork();
+        }
+        input.advance_to(&fork);
+        Ok(Self(vec))
+    }
+}
+
+struct MatchExtraArmSelector {
+    delimiter: token::Bracket,
+    tt: TokenStream,
+}
+
+impl Parse for MatchExtraArmSelector {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let tt;
+        Ok(Self {
+            delimiter: bracketed!(tt in input),
+            tt: tt.parse()?,
+        })
     }
 }

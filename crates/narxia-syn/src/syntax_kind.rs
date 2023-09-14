@@ -119,7 +119,6 @@ pub enum SyntaxKind {
     FnParamList,
     FnParam,
     FnParamName,
-    TyRef,
     Block,
     Stmt,
 
@@ -133,6 +132,19 @@ pub enum SyntaxKind {
 
     LetStmt,
     Pat,
+
+    TyRef,
+    TyParamList,
+    GenericParam,
+
+    GenericConstParam,
+    GenericConstParamName,
+    GenericConstParamDefault,
+
+    GenericTyParam,
+    GenericTyParamName,
+    GenericTyParamBoundList,
+    GenericTyParamDefault,
 
     #[doc(hidden)]
     __TOMBSTONE,
