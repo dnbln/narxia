@@ -1,7 +1,8 @@
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
 
 use crate::parser::parse_event_handler::{
-    CompletedMarker, GreenTreeBuilder, ParseError, ParseErrorInfo, ParseEventHandler, TreeBuilder,
+    CompletedMarker, GreenTreeBuilder, ParseError, ParseErrorInfo, ParseEventHandler,
+    ParseEventHandlerPos, TreeBuilder,
 };
 use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
 use crate::syntax_kind::{SyntaxKind, T};
@@ -11,14 +12,17 @@ use crate::token_source::TokenSource;
 mod parse_event_handler;
 mod parse_stack;
 
+struct ParserState {
+    ts_pos: usize,
+    ev_pos: ParseEventHandlerPos,
+}
+
 pub struct Parser<'a> {
     ts: &'a mut dyn TokenSource<'a>,
     ev: ParseEventHandler<'a>,
     pstk: ParseStack,
     recovering: Option<ParserRecoveringInfo>,
 }
-
-impl<'a> Parser<'a> {}
 
 struct ParserRecoveringInfo {
     choked_syntax_kind: SyntaxKind,
@@ -145,6 +149,17 @@ impl<'a> Parser<'a> {
         false
     }
 
+    fn state(&mut self) -> ParserState {
+        let ts_pos = self.ts.current_pos();
+        let ev_pos = self.ev.state();
+        ParserState { ts_pos, ev_pos }
+    }
+
+    fn restore_state(&mut self, state: ParserState) {
+        self.ts.restore_pos(state.ts_pos);
+        self.ev.rollback(state.ev_pos);
+    }
+
     pub fn parse(&mut self) {
         let _guard = self.guard("parse", &[]);
         let m = self.ev.begin();
@@ -204,7 +219,6 @@ impl<'a> Parser<'a> {
 
 parse_fn_decl! {
     parse_fn_def: FnDef ::=
-        $/dbg
         $parse_fn_head()
         $/ws:wcn
         $/eof:early_ret+err(ExpectedKind(T!['{']))
@@ -408,7 +422,7 @@ parse_fn_decl! {
 
 parse_fn_decl! {
     parse_fn_param_name: FnParamName ::=
-        $![ident]
+        $parse_pat()
 }
 
 parse_fn_decl! {
@@ -444,15 +458,14 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
     p.ev.end(m, SyntaxKind::Block)
 }
 
-#[parse_fn]
-fn parse_stmt(p: &mut Parser) -> CompletedMarker {
-    let m = p.ev.begin();
-    if p.at(T![ident]) || p.at(T![string]) {
-        parse_expr_potential_assignment(p);
-    // } else if p.at(T![let]) {
-    //     parse_let_stmt(p);
-    // } else if p.at(T![if]) {
-    //     parse_if_stmt(p);
+parse_fn_decl! {
+    parse_stmt: Stmt ::=
+        $/if ||(at(ident), at(string), at(if), at('{')) {
+            $parse_expr_potential_assignment()
+        }
+        $/else if at(let) {
+            $parse_let_stmt()
+        }
     // } else if p.at(T![while]) {
     //     parse_while_stmt(p);
     // } else if p.at(T![for]) {
@@ -463,22 +476,56 @@ fn parse_stmt(p: &mut Parser) -> CompletedMarker {
     //     parse_continue_stmt(p);
     // } else if p.at(T![break]) {
     //     parse_break_stmt(p);
-    } else {
-        p.err_unexpected();
-    }
-    p.ev.end(m, SyntaxKind::Stmt)
+    // }
+        $/else {
+            $/err_unexpected
+        }
 }
 
-fn parse_expr_atom(p: &mut Parser) -> CompletedMarker {
-    let m = p.ev.begin();
-    if p.at(T![ident]) {
-        p.expect(T![ident]);
-    } else if p.at(T![string]) {
-        p.expect(T![string]);
-    } else {
-        p.err_unexpected();
-    }
-    p.ev.end(m, SyntaxKind::ExprAtom)
+parse_fn_decl! {
+    parse_let_stmt: LetStmt ::=
+        $![let]
+        $/ws:wcn
+        $parse_pat()
+        $/ws:wcn
+        $/if at(:) {
+            $![:]
+            $/ws:wcn
+            $parse_ty_ref()
+            $/ws:wcn
+        }
+        $![=]
+        $/ws:wcn
+        $parse_expr()
+}
+
+parse_fn_decl! {
+    parse_pat: Pat ::=
+        $![ident]
+}
+
+parse_fn_decl! {
+    parse_expr_atom: ExprAtom ::=
+        $/if at(ident) {
+            $![ident]
+        }
+        $/else if at(string) {
+            $![string]
+        }
+        $/else if at(if) {
+            $parse_if_expr()
+        }
+        $/else if at('{') {
+            $parse_block_expr()
+        }
+        $/else {
+            $/err_unexpected
+        }
+}
+
+parse_fn_decl! {
+    parse_block_expr: BlockExpr ::=
+        $parse_block()
 }
 
 fn parse_expr(p: &mut Parser) -> CompletedMarker {
@@ -490,4 +537,42 @@ fn parse_expr(p: &mut Parser) -> CompletedMarker {
 #[parse_fn]
 fn parse_expr_potential_assignment(p: &mut Parser) {
     parse_expr(p);
+}
+
+parse_fn_decl! {
+    parse_if_expr: IfExpr ::=
+        $![if]
+        $/ws:wcn
+        $parse_if_condition()
+        $/ws:wcn
+        $parse_then_clause()
+        $/state:s1
+        $/ws:wcn
+        $/if at(else) {
+            $parse_else_clause()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+parse_fn_decl! {
+    parse_then_clause: IfThenClause ::=
+        $parse_expr()
+}
+
+parse_fn_decl! {
+    parse_else_clause: ElseClause ::=
+            $![else]
+            $/ws:wcn
+            $parse_expr()
+}
+
+parse_fn_decl! {
+    parse_if_condition: IfCondition ::=
+        $!['(']
+        $/ws:wcn
+        $parse_expr()
+        $/ws:wcn
+        $![')']
 }

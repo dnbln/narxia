@@ -1,0 +1,18 @@
+fn main(args: Args) {
+    let arg1 = args[1]
+    println("Arg1 is $arg1")
+
+    let f1 = f(1)
+    println("f(1) = $f1")
+
+    let f1_2 = call_fn(1, f)
+    let f1_3 = call_fn(1) { it -> f(it) }
+}
+
+fn f(num: i32) -> i32 {
+    return num + 1
+}
+
+fn call_fn(num: i32, call: fn(i32) -> i32) -> i32 {
+    return call(num)
+}

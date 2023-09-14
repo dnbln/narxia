@@ -69,6 +69,11 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
     fn eof_span(&self) -> TextSpan {
         TextSpan::new(self.text.len(), self.text.len())
     }
+
+    fn restore_pos(&mut self, pos: usize) {
+        self.pos = pos;
+        self.buffer.clear();
+    }
 }
 
 struct CharTokenParser<'text> {

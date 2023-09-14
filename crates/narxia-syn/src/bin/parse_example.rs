@@ -3,10 +3,12 @@ use narxia_syn::token_source::text_ts::TextTokenSource;
 
 fn main() {
     let mut ts = TextTokenSource::new(r#"fn main(v: T) {
-    x
-    y
-    z
-    "x"
+        {
+            if (it) c else if (it2) c2 else c3
+
+            let x = "abc"
+            x
+        }
     }"#);
     let mut parser = narxia_syn::parser::Parser::new(&mut ts);
     parser.parse();

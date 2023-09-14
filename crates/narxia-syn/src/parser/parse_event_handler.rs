@@ -7,6 +7,8 @@ use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
 use crate::text_span::TextSpan;
 
+pub struct ParseEventHandlerPos(usize);
+
 #[derive(Debug)]
 pub struct ParseEventHandler<'a> {
     events: Vec<ParseEvent<'a>>,
@@ -196,6 +198,40 @@ impl<'a> ParseEventHandler<'a> {
                 }
             }
         }
+    }
+
+    pub fn state(&self) -> ParseEventHandlerPos {
+        ParseEventHandlerPos(self.events.len())
+    }
+
+    #[cfg(debug_assertions)]
+    fn assert_safe_rollback(&self, pos: &ParseEventHandlerPos) {
+        let mut stk = Vec::new();
+        for ev in &self.events[pos.0..] {
+            match ev {
+                ParseEvent::Begin => {
+                    stk.push(());
+                }
+                ParseEvent::End { .. } => {
+                    assert!(!stk.is_empty(), "End after pos to Begin event before pos.");
+                    stk.pop().unwrap();
+                }
+                ParseEvent::Precede { .. } => {
+                    stk.push(());
+                }
+                ParseEvent::Token { .. } => {}
+                ParseEvent::Error(..) => {}
+                ParseEvent::Tombstone => {}
+            }
+            assert!(stk.is_empty(), "Begin / Precede after pos not finished.");
+        }
+    }
+
+    pub fn rollback(&mut self, pos: ParseEventHandlerPos) {
+        #[cfg(debug_assertions)]
+        self.assert_safe_rollback(&pos);
+
+        self.events.truncate(pos.0);
     }
 }
 

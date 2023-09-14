@@ -125,6 +125,14 @@ pub enum SyntaxKind {
 
     ExprAtom,
     Expr,
+    IfExpr,
+    IfCondition,
+    IfThenClause,
+    ElseClause,
+    BlockExpr,
+
+    LetStmt,
+    Pat,
 
     #[doc(hidden)]
     __TOMBSTONE,

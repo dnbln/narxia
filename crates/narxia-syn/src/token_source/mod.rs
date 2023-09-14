@@ -85,6 +85,7 @@ pub trait TokenSource<'l> {
     fn current_pos(&mut self) -> usize {
         self.current_token_span().start
     }
+    fn restore_pos(&mut self, pos: usize);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
