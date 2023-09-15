@@ -218,6 +218,9 @@ impl<'text> CharTokenParser<'text> {
             ':' => r1(SyntaxKind::COLON, start),
             ',' => r1(SyntaxKind::COMMA, start),
             '.' => r1(SyntaxKind::DOT, start),
+            '&' => r1(SyntaxKind::AMP, start),
+            '|' => r1(SyntaxKind::PIPE, start),
+            '^' => r1(SyntaxKind::CARET, start),
             '"' => {
                 let mut escaped = false;
                 let end = loop {

@@ -95,6 +95,8 @@ pub enum SyntaxKind {
     AMP,
     #[T(|)]
     PIPE,
+    #[T(^)]
+    CARET,
     #[T(!)]
     BANG,
     #[T(&&)]
@@ -126,6 +128,17 @@ pub enum SyntaxKind {
 
     ExprAtom,
     Expr,
+    BinaryOpExpr,
+    IndexExpr,
+    IndexExprIndex,
+    CallExpr,
+    CallExprArgs,
+    CustomInfixExpr,
+    CustomInfixExprInfixArg,
+    MethodCall,
+    FieldAccess,
+    UnaryOpExpr,
+    UnaryPrefixOp,
     IfExpr,
     IfCondition,
     IfThenClause,

@@ -48,11 +48,17 @@ impl<'a> ParseEventHandler<'a> {
         self.events.push(ParseEvent::Token { kind, text });
     }
 
-    pub fn present(&self, offset: usize, count: usize) -> RecentEventPresenter {
+    pub fn present(
+        &self,
+        offset: usize,
+        count: usize,
+        add_absolute_positions: bool,
+    ) -> RecentEventPresenter {
         RecentEventPresenter {
             internal: self,
             offset,
             count,
+            add_absolute_positions,
         }
     }
 
@@ -71,9 +77,13 @@ impl<'a> ParseEventHandler<'a> {
         marker.1.defuse();
     }
 
-    pub fn undo_complete(&mut self, marker: CompletedMarker) -> Marker {
+    pub fn undo_complete(&mut self, marker: CompletedMarker) -> (Marker, SyntaxKind) {
+        let old_kind = match self.events[marker.idx_end] {
+            ParseEvent::End { kind } => kind,
+            _ => unreachable!(),
+        };
         self.events[marker.idx_end] = ParseEvent::Tombstone;
-        Marker::new(marker.idx)
+        (Marker::new(marker.idx), old_kind)
     }
 
     pub fn abandon_complete(&mut self, marker: CompletedMarker) {
@@ -84,6 +94,12 @@ impl<'a> ParseEventHandler<'a> {
     pub fn precede(&mut self, marker: &Marker) -> Marker {
         let idx = self.events.len();
         self.events.push(ParseEvent::Precede { idx: marker.0 });
+        Marker::new(idx)
+    }
+
+    pub fn precede_completed(&mut self, marker: &CompletedMarker) -> Marker {
+        let idx = self.events.len();
+        self.events.push(ParseEvent::Precede { idx: marker.idx });
         Marker::new(idx)
     }
 
@@ -98,7 +114,7 @@ impl<'a> ParseEventHandler<'a> {
             Begin {
                 kind: SyntaxKind,
                 precede: Vec<usize>,
-                preceded: bool,
+                preceding: bool,
             },
             Token(SyntaxKind, &'a str),
             Error(ParseError),
@@ -114,7 +130,7 @@ impl<'a> ParseEventHandler<'a> {
                     compiled_events.push(CompiledParseEvent::Begin {
                         kind: SyntaxKind::__TOMBSTONE,
                         precede: Vec::new(),
-                        preceded: false,
+                        preceding: false,
                     });
                 }
                 ParseEvent::Token { kind, text } => {
@@ -122,7 +138,8 @@ impl<'a> ParseEventHandler<'a> {
                 }
                 ParseEvent::End { kind } => {
                     let start = stack.pop().unwrap();
-                    let CompiledParseEvent::Begin {kind: k, ..} = &mut compiled_events[start] else {
+                    let CompiledParseEvent::Begin { kind: k, .. } = &mut compiled_events[start]
+                    else {
                         unreachable!();
                     };
                     *k = kind;
@@ -130,17 +147,24 @@ impl<'a> ParseEventHandler<'a> {
                 }
                 ParseEvent::Precede { idx } => {
                     let ptr = compiled_events.len();
-                    let CompiledParseEvent::Begin {precede, preceded, ..} = &mut compiled_events[idx] else {
+                    let CompiledParseEvent::Begin { precede, .. } = &mut compiled_events[idx]
+                    else {
                         unreachable!();
                     };
                     precede.push(ptr);
-                    *preceded = true;
                     compiled_events.push(CompiledParseEvent::Begin {
                         kind: SyntaxKind::__TOMBSTONE,
                         precede: Vec::new(),
-                        preceded: false,
+                        preceding: true,
                     });
-                    stack.insert(idx, ptr);
+                    if let Some(p) = stack.iter().position(|p| *p == idx) {
+                        // we are preceding a node that is already on the stack (normal precede).
+                        stack.insert(p, ptr);
+                    } else {
+                        // we are preceding a node that is not already on the stack
+                        // (it was completed, see precede_completed).
+                        stack.push(ptr);
+                    }
                 }
                 ParseEvent::Error(error) => {
                     compiled_events.push(CompiledParseEvent::Error(error));
@@ -159,11 +183,7 @@ impl<'a> ParseEventHandler<'a> {
         ) {
             for &idx in precede {
                 match &compiled_events[idx] {
-                    CompiledParseEvent::Begin {
-                        kind,
-                        precede,
-                        ..
-                    } => {
+                    CompiledParseEvent::Begin { kind, precede, .. } => {
                         handle_precede(tb, *kind, precede, compiled_events);
                     }
                     CompiledParseEvent::Token(..) => {}
@@ -179,9 +199,9 @@ impl<'a> ParseEventHandler<'a> {
                 CompiledParseEvent::Begin {
                     kind,
                     precede,
-                    preceded,
+                    preceding,
                 } => {
-                    if *preceded {
+                    if *preceding {
                         continue;
                     }
 
@@ -295,9 +315,7 @@ impl ParseError {
 #[derive(Debug, Clone)]
 pub enum ParseErrorInfo {
     ExpectedKind(SyntaxKind),
-    UnexpectedToken {
-        got: SyntaxKind,
-    }
+    UnexpectedToken { got: SyntaxKind },
 }
 
 #[derive(Debug)]
@@ -327,6 +345,7 @@ pub struct RecentEventPresenter<'a> {
     internal: &'a ParseEventHandler<'a>,
     offset: usize,
     count: usize,
+    add_absolute_positions: bool,
 }
 
 impl<'a> fmt::Display for RecentEventPresenter<'a> {
@@ -341,8 +360,13 @@ impl<'a> fmt::Display for RecentEventPresenter<'a> {
         for (index, event) in self.internal.events[start..end].iter().enumerate() {
             writeln!(
                 f,
-                "{:offset$}[-{:3}] {}",
+                "{:offset$}{}[-{:3}] {}",
                 "",
+                if self.add_absolute_positions {
+                    format!("@{:3} ", start + index)
+                } else {
+                    "".to_owned()
+                },
                 actual_count - index - 1,
                 event,
                 offset = self.offset

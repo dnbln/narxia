@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
         self.pstk.present(4, |presenter| eprint!("{presenter}"));
 
         eprintln!("  Recent events:");
-        eprint!("{}", self.ev.present(4, 20));
+        eprint!("{}", self.ev.present(4, 30, true));
     }
 }
 
@@ -401,10 +401,15 @@ fn parse_list_rep_simple<T>(
     mut parse: impl FnMut(&mut Parser) -> T,
     recovery: AttemptRecoveryLevel,
 ) -> Result<(), ()> {
-    parse_list_rep(p, sep, |p| {
-        parse(p);
-        Ok(())
-    }, recovery)
+    parse_list_rep(
+        p,
+        sep,
+        |p| {
+            parse(p);
+            Ok(())
+        },
+        recovery,
+    )
 }
 
 fn parse_list_rep_simple2<T>(
@@ -685,7 +690,6 @@ parse_fn_decl! {
     parse_for_pat: ForPat ::= $parse_pat()
 }
 
-
 parse_fn_decl! {
     parse_for_in_expr: ForInExpr ::= $parse_expr()
 }
@@ -720,16 +724,32 @@ parse_fn_decl! {
         $![let]
         $/ws:wcn
         $parse_pat()
+        $/state:s1
         $/ws:wcn
         $/if at[:] {
             $![:]
             $/ws:wcn
             $parse_ty_ref()
+            $/state:s2
             $/ws:wcn
+
+            $/if at[=] {
+                $![=]
+                $/ws:wcn
+                $parse_expr()
+            }
+            $/else {
+                $/restore_state:s2
+            }
         }
-        $![=]
-        $/ws:wcn
-        $parse_expr()
+        $/else if at[=] {
+            $![=]
+            $/ws:wcn
+            $parse_expr()
+        }
+        $/else {
+            $/restore_state:s1
+        }
 }
 
 parse_fn_decl! {
@@ -754,9 +774,197 @@ parse_fn_decl! {
         $parse_block()
 }
 
+fn infix_binary_op(
+    p: &mut Parser,
+    mut lower: impl FnMut(&mut Parser) -> CompletedMarker,
+    mut handle_operator: impl FnMut(&mut Parser) -> bool,
+) -> CompletedMarker {
+    let mut m = lower(p);
+    if p.is_recovering() {
+        return m;
+    }
+    loop {
+        let s = p.state();
+        p.skip_ws();
+        if !handle_operator(p) {
+            p.restore_state(s);
+            break m;
+        }
+        if p.is_recovering() {
+            return m;
+        }
+        p.skip_ws();
+        let m0 = p.ev.precede_completed(&m);
+        lower(p);
+        m = p.ev.end(m0, SyntaxKind::BinaryOpExpr);
+        if p.is_recovering() {
+            return m;
+        }
+    }
+}
+
+fn infix_binary_op_simple<const N: usize>(
+    p: &mut Parser,
+    lower: impl FnMut(&mut Parser) -> CompletedMarker,
+    operators: [SyntaxKind; N],
+) -> CompletedMarker {
+    infix_binary_op(p, lower, |p| {
+        for op in &operators {
+            if p.at(*op) {
+                p.expect(*op);
+                return true;
+            }
+        }
+        false
+    })
+}
+
+fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
+    let mut m = parse_expr_atom(p);
+    if p.is_recovering() {
+        return m;
+    }
+
+    loop {
+        let s = p.state();
+        p.skip_ws();
+        if p.at_eof() {
+            p.restore_state(s);
+            break m;
+        }
+        if p.at(T!['[']) {
+            let m0 = p.ev.precede_completed(&m);
+            parse_index_expr_index(p);
+            m = p.ev.end(m0, SyntaxKind::IndexExpr);
+            if p.is_recovering() {
+                return m;
+            }
+        } else if p.at(T!['(']) {
+            let m0 = p.ev.precede_completed(&m);
+            parse_call_expr_args(p);
+            m = p.ev.end(m0, SyntaxKind::CallExpr);
+            if p.is_recovering() {
+                return m;
+            }
+        } else if p.at(T![.]) {
+            let m0 = p.ev.precede_completed(&m);
+            p.expect(T![.]);
+            p.skip_ws();
+            p.expect(T![ident]);
+            let s = p.state();
+            p.skip_ws();
+            if p.at(T!['(']) {
+                parse_call_expr_args(p);
+                m = p.ev.end(m0, SyntaxKind::MethodCall);
+            } else {
+                p.restore_state(s);
+                m = p.ev.end(m0, SyntaxKind::FieldAccess);
+            }
+            if p.is_recovering() {
+                return m;
+            }
+        } else if p.at(T![ident]) {
+            let m0 = p.ev.precede_completed(&m);
+            parse_custom_infix_expr_infix_arg(p);
+            m = p.ev.end(m0, SyntaxKind::CustomInfixExpr);
+            if p.is_recovering() {
+                return m;
+            }
+        } else {
+            p.restore_state(s);
+            return m;
+        }
+    }
+}
+
+parse_fn_decl! {
+    parse_index_expr_index: IndexExprIndex ::=
+        $!['[']
+        $/ws:wcn
+        $parse_expr()
+        $/ws:wcn
+        $![']']
+}
+
+parse_fn_decl! {
+    parse_call_expr_args: CallExprArgs ::=
+        $parse_list_simple2(
+            T!['('],
+            parse_expr,
+            T![,],
+            T![')'],
+            AttemptRecoveryLevel::Shallow,
+        )
+}
+
+parse_fn_decl! {
+    parse_custom_infix_expr_infix_arg: CustomInfixExprInfixArg ::=
+        $![ident]
+        $/ws:wcn
+        $parse_expr()
+}
+
+fn parse_precedence_2_expr(p: &mut Parser) -> CompletedMarker {
+    if p.at(T![+]) || p.at(T![-]) || p.at(T![!]) || p.at(T![*]) {
+        let m = p.ev.begin();
+        parse_prefix_unary_op(p);
+        p.skip_ws();
+        parse_precedence_2_expr(p);
+        p.ev.end(m, SyntaxKind::UnaryOpExpr)
+    } else {
+        parse_precedence_1_expr(p)
+    }
+}
+
+parse_fn_decl! {
+    parse_prefix_unary_op: UnaryPrefixOp ::=
+        $/match {
+            [+]!
+            [-]!
+            [!]!
+            [*]!
+        }
+}
+
+fn parse_precedence_3_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_2_expr, [T![*], T![/], T![%]])
+}
+
+fn parse_precedence_4_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_3_expr, [T![+], T![-]])
+}
+
+fn parse_precedence_5_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_4_expr, [T![<], T![>], T![<=], T![>=]])
+}
+
+fn parse_precedence_6_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_5_expr, [T![==], T![!=]])
+}
+
+fn parse_precedence_7_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_6_expr, [T![&]])
+}
+
+fn parse_precedence_8_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_7_expr, [T![^]])
+}
+
+fn parse_precedence_9_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_8_expr, [T![|]])
+}
+
+fn parse_precedence_10_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_9_expr, [T![&&]])
+}
+
+fn parse_precedence_11_expr(p: &mut Parser) -> CompletedMarker {
+    infix_binary_op_simple(p, parse_precedence_10_expr, [T![||]])
+}
+
 fn parse_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.ev.begin();
-    parse_expr_atom(p);
+    parse_precedence_11_expr(p);
     p.ev.end(m, SyntaxKind::Expr)
 }
 
