@@ -4,7 +4,7 @@ use narxia_syn::token_source::text_ts::TextTokenSource;
 fn main() {
     let mut ts = TextTokenSource::new(r#"
     fn main(args: Args) {
-        let x: A = a + b
+        let x: A = a + b x c
     }"#);
     let mut parser = narxia_syn::parser::Parser::new(&mut ts);
     parser.parse();
