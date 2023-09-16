@@ -2,10 +2,10 @@ use std::fmt;
 
 use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+use crate::parse_error::{ParseError, ParseErrorInfo};
 
 use crate::parser::parse_event_handler::{
-    CompletedMarker, GreenTreeBuilder, ParseError, ParseErrorInfo, ParseEventHandler,
-    ParseEventHandlerPos, TreeBuilder,
+    CompletedMarker, GreenTreeBuilder, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
 };
 use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
 use crate::syntax_kind::{SyntaxKind, T};

@@ -3,6 +3,7 @@ use std::fmt;
 use rowan::Language;
 
 use crate::language::NarxiaLanguage;
+use crate::parse_error::ParseError;
 use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
@@ -301,24 +302,6 @@ impl<'a> TreeBuilder<'a> for GreenTreeBuilder<'a> {
     fn error(&mut self, error: ParseError) {
         self.parse_errors.push(error);
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct ParseError {
-    info: ParseErrorInfo,
-    at: TextSpan,
-}
-
-impl ParseError {
-    pub(crate) fn new(info: ParseErrorInfo, at: TextSpan) -> Self {
-        Self { info, at }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum ParseErrorInfo {
-    ExpectedKind(SyntaxKind),
-    UnexpectedToken { got: SyntaxKind },
 }
 
 #[derive(Debug)]

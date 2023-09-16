@@ -174,8 +174,8 @@ impl<'text> CharTokenParser<'text> {
                 };
                 r(kind, start, end)
             }
-            ' ' | '\t' => {
-                let end = self.consume_all([' ', '\t'], []);
+            ' ' | '\t' | '\r' => {
+                let end = self.consume_all([' ', '\t', '\r'], []);
                 r(SyntaxKind::WHITESPACE, start, end)
             }
             '\n' => r1(SyntaxKind::NEWLINE, start),

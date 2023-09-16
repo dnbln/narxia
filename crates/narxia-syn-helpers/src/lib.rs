@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports, unused_variables)] // FIXME: fix
+
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::parse::discouraged::Speculative;

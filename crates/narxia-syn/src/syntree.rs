@@ -1,9 +1,11 @@
 use std::fmt;
 use std::fmt::Formatter;
 
+use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::syntree_node;
 
 use crate::language::NarxiaLanguage;
+use crate::parser::ColorizeProcedure;
 use crate::syntax_kind::{SyntaxKind, T};
 use crate::text_span::TextSpan;
 
@@ -12,6 +14,7 @@ pub type Token = rowan::SyntaxToken<NarxiaLanguage>;
 pub type SyntaxElement = rowan::SyntaxElement<NarxiaLanguage>;
 pub type SyntaxElementRef<'a> = rowan::NodeOrToken<&'a Node, &'a Token>;
 
+#[derive(Clone, PartialEq, Eq)]
 pub struct SynTree {
     root: Node,
 }
@@ -21,6 +24,7 @@ impl fmt::Debug for SynTree {
         TreePresenter {
             root: SyntaxElementRef::Node(&self.root),
             offset: 0,
+            style: Default::default(),
         }
         .fmt_node(f)
     }
@@ -36,26 +40,60 @@ impl GreenTree {
     }
 }
 
+#[derive(Debug, Clone, Copy, Hash)]
+pub struct TreePresenterStyle {
+    pub node_name: fn(ColoredString) -> ColoredString,
+    pub node_span: fn(ColoredString) -> ColoredString,
+    pub token_name: fn(ColoredString) -> ColoredString,
+    pub token_span: fn(ColoredString) -> ColoredString,
+    pub token_text: fn(ColoredString) -> ColoredString,
+}
+
+impl Default for TreePresenterStyle {
+    fn default() -> Self {
+        Self {
+            node_name: |s| s.bright_cyan().bold(),
+            node_span: |s| s.bright_purple(),
+            token_name: |s| s.bright_blue().dimmed(),
+            token_span: |s| s.bright_purple(),
+            token_text: |s| s.bright_green(),
+        }
+    }
+}
+
 pub struct TreePresenter<'a> {
     root: SyntaxElementRef<'a>,
     offset: usize,
+    style: TreePresenterStyle,
 }
 
 impl<'a> TreePresenter<'a> {
-    pub fn __private_new(root: SyntaxElementRef<'a>, offset: usize) -> Self {
-        Self { root, offset }
+    pub fn __private_new(
+        root: SyntaxElementRef<'a>,
+        offset: usize,
+        style: TreePresenterStyle,
+    ) -> Self {
+        Self {
+            root,
+            offset,
+            style,
+        }
     }
 
-    pub fn __private_new_at_node(n: &'a Node, offset: usize) -> Self {
-        Self::__private_new(SyntaxElementRef::Node(n), offset)
+    pub fn __private_new_at_node(n: &'a Node, offset: usize, style: TreePresenterStyle) -> Self {
+        Self::__private_new(SyntaxElementRef::Node(n), offset, style)
     }
 
-    pub fn __private_new_at_node_struct(n: &'a (impl TreeNode + 'static), offset: usize) -> Self {
-        Self::__private_new_at_node(n.get_node(), offset)
+    pub fn __private_new_at_node_struct(
+        n: &'a (impl TreeNode + 'static),
+        offset: usize,
+        style: TreePresenterStyle,
+    ) -> Self {
+        Self::__private_new_at_node(n.get_node(), offset, style)
     }
 
-    pub fn __private_new_at_token(t: &'a Token, offset: usize) -> Self {
-        Self::__private_new(SyntaxElementRef::Token(t), offset)
+    pub fn __private_new_at_token(t: &'a Token, offset: usize, style: TreePresenterStyle) -> Self {
+        Self::__private_new(SyntaxElementRef::Token(t), offset, style)
     }
 
     fn fmt_node(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -63,16 +101,21 @@ impl<'a> TreePresenter<'a> {
             SyntaxElementRef::Node(n) => {
                 writeln!(
                     f,
-                    "{:width$}{:?}@{}",
+                    "{:width$}{}@{}",
                     "",
-                    n.kind(),
-                    TextSpan::of_node(n),
+                    self.style
+                        .node_name
+                        .colorize(format_args!("{:?}", n.kind())),
+                    self.style
+                        .node_span
+                        .colorize(format_args!("{}", TextSpan::of_node(n))),
                     width = self.offset
                 )?;
                 for child in n.children_with_tokens() {
                     TreePresenter {
                         root: as_ref(&child),
                         offset: self.offset + 2,
+                        style: self.style,
                     }
                     .fmt_node(f)?;
                 }
@@ -80,11 +123,15 @@ impl<'a> TreePresenter<'a> {
             SyntaxElementRef::Token(t) => {
                 writeln!(
                     f,
-                    "{:width$}{:?}@{} {:?}",
+                    "{:width$}{}@{} {}",
                     "",
-                    t.kind(),
-                    TextSpan::of(t),
-                    t.text(),
+                    self.style
+                        .token_name
+                        .colorize(format_args!("{:?}", t.kind())),
+                    self.style
+                        .token_span
+                        .colorize(format_args!("{}", TextSpan::of(t))),
+                    self.style.token_text.colorize(format_args!("{:?}", t.text())),
                     width = self.offset
                 )?;
             }
@@ -363,6 +410,13 @@ macro_rules! dbg_node {
     };
     ($node:expr, >>> $offset:expr) => {{
         let _guard = $crate::narxia_log::span!($crate::narxia_log::Level::DEBUG, "dbg_node").entered();
-        $crate::narxia_log::debug!("{:?}", $crate::syntree::TreePresenter::__private_new_at_node_struct(&$node, $offset));
+        $crate::narxia_log::debug!(
+            "{:?}",
+            $crate::syntree::TreePresenter::__private_new_at_node_struct(
+                &$node,
+                $offset,
+                $crate::syntree::TreePresenterStyle::default()
+            )
+        );
     }};
 }

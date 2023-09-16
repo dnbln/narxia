@@ -12,19 +12,21 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
 
 struct NarxiaLayerConfig {
-    min_level: tracing::Level,
-    max_level: tracing::Level,
+    min_level: Level,
+    max_level: Level,
+    ignore_outside_logging: bool,
 }
 
 impl Default for NarxiaLayerConfig {
     fn default() -> Self {
         Self {
             max_level: if cfg!(debug_assertions) {
-                tracing::Level::DEBUG
+                Level::TRACE
             } else {
-                tracing::Level::INFO
+                Level::INFO
             },
-            min_level: tracing::Level::ERROR,
+            min_level: Level::ERROR,
+            ignore_outside_logging: true,
         }
     }
 }
@@ -43,6 +45,9 @@ enum MetadataKind {
     Span,
     Event,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct PrintExtra(bool);
 
 impl<W> NarxiaLayer<'static, W>
 where
@@ -101,11 +106,13 @@ where
                 })?;
             }
             MetadataKind::Event => {
-                self.style_field(w, "in", |w| {
-                    write!(w, "{}", md.module_path().unwrap().blue())
-                })?;
+                if let Some(mod_path) = md.module_path() {
+                    self.style_field(w, "in", |w| write!(w, "{}", mod_path.blue()))?;
+                }
             }
         }
+
+        const IGNORED_PREFIXES: &[&str] = &[".cargo/registry/src", "/rustc"];
 
         if let Some(file_path) = md.file() {
             self.style_field(w, "at", |w| {
@@ -120,13 +127,36 @@ where
         Ok(())
     }
 
-    fn format_event_data(&self, w: &mut impl io::Write, event: &Event<'_>) -> io::Result<()> {
+    fn format_event_data(
+        &self,
+        w: &mut impl io::Write,
+        event: &Event<'_>,
+    ) -> io::Result<PrintExtra> {
+        if self.cfg.ignore_outside_logging
+            && event.metadata().file().is_none()
+            && event.metadata().module_path().is_none()
+        {
+            return Ok(PrintExtra(false));
+        }
+
         struct Visitor {
             message: Option<String>,
+            short: bool,
         }
-        let mut vis = Visitor { message: None };
+        let mut vis = Visitor {
+            message: None,
+            short: false,
+        };
 
         impl Visit for Visitor {
+            fn record_bool(&mut self, field: &Field, value: bool) {
+                match field.name() {
+                    "short" => {
+                        self.short = value;
+                    }
+                    _ => {}
+                }
+            }
             fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
                 match field.name() {
                     "message" => {
@@ -138,7 +168,7 @@ where
         }
 
         event.record(&mut vis);
-        let Visitor { message } = vis;
+        let Visitor { message, short } = vis;
 
         let level = event.metadata().level();
 
@@ -150,17 +180,24 @@ where
             &Level::ERROR => ("ERROR", |s| s.red()),
         };
 
-        writeln!(w, ">>> {}:", style_color(name.to_owned()).bold())?;
+        write!(w, ">>> {}:", style_color(name.to_owned()).bold())?;
 
         if let Some(message) = message {
+            if message.contains('\n') {
+                writeln!(w)?; // put it on a new line
+            } else {
+                write!(w, " ")?;
+            }
             write!(w, "{}", style_color(message))?;
         }
 
         writeln!(w)?;
 
-        self.format_metadata(w, MetadataKind::Event, event.metadata())?;
+        if !short {
+            self.format_metadata(w, MetadataKind::Event, event.metadata())?;
+        }
 
-        Ok(())
+        Ok(PrintExtra(!short))
     }
 
     fn format_span_line<'scope, S>(
@@ -185,11 +222,12 @@ where
         let w = self.make_writer.make_writer();
         let mut writer = io::BufWriter::with_capacity(4096, w);
 
-        self.format_event_data(&mut writer, event)?;
-
-        let scope = ctx.event_scope(event).unwrap();
-        for span in scope {
-            self.format_span_line(&mut writer, span)?;
+        let print_extra = self.format_event_data(&mut writer, event)?;
+        if print_extra.0 {
+            let scope = ctx.event_scope(event).unwrap();
+            for span in scope {
+                self.format_span_line(&mut writer, span)?;
+            }
         }
 
         Ok(())
@@ -217,7 +255,7 @@ where
 
 pub fn init() {
     tracing_subscriber::Registry::default()
-        .with(NarxiaLayer::new(io::stdout, NarxiaLayerConfig::default()))
+        .with(NarxiaLayer::new(io::stderr, NarxiaLayerConfig::default()))
         // .with(
         //     tracing_subscriber::fmt::layer()
         //         .pretty()

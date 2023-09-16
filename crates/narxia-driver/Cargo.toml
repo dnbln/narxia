@@ -1,0 +1,18 @@
+[package]
+name = "narxia-driver"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap.workspace = true
+colored.workspace = true
+miette.workspace = true
+salsa.workspace = true
+
+narxia-log.workspace = true
+narxia-log-impl.workspace = true
+narxia-src-db.workspace = true
+narxia-syn.workspace = true
+narxia-syn-db.workspace = true

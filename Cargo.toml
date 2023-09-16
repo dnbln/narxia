@@ -1,14 +1,22 @@
 [workspace]
 members = ["crates/*"]
+default-members = ["crates/narxia-driver"]
+resolver = "2"
 
 [workspace.dependencies]
-narxia = {path = "crates/narxia"}
-narxia-syn = {path = "crates/narxia-syn"}
-narxia-syn-helpers = {path = "crates/narxia-syn-helpers"}
-narxia-log = {path = "crates/narxia-log"}
-narxia-log-impl = {path = "crates/narxia-log-impl"}
+narxia-driver = { path = "crates/narxia-driver" }
+narxia-hir = { path = "crates/narxia-hir" }
+narxia-log = { path = "crates/narxia-log" }
+narxia-log-impl = { path = "crates/narxia-log-impl" }
+narxia-src-db = { path = "crates/narxia-src-db" }
+narxia-syn = { path = "crates/narxia-syn" }
+narxia-syn-db = { path = "crates/narxia-syn-db" }
+narxia-syn-helpers = { path = "crates/narxia-syn-helpers" }
 
+clap = { version = "4.4.3", features = ["derive"] }
 colored = "2.0.4"
-
+miette = { version = "5.10.0", features = ["fancy"] }
+path-absolutize = "3.1.1"
+salsa = { path = "crates/narxia-salsa" }
 tracing = "0.1.37"
 tracing-subscriber = "0.3.17"
