@@ -2,8 +2,8 @@ use std::fmt;
 
 use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
-use crate::parse_error::{ParseError, ParseErrorInfo};
 
+use crate::parse_error::{ParseError, ParseErrorInfo};
 use crate::parser::parse_event_handler::{
     CompletedMarker, GreenTreeBuilder, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
 };
@@ -225,7 +225,16 @@ impl<'a> Parser<'a> {
         let m = self.ev.begin();
         while let Some(token) = self.ts.lookahead(0) {
             match token.kind() {
-                T![fn] | T![const] => {
+                T![fn]
+                | T![const]
+                | T![let]
+                | T![ident]
+                | T![+]
+                | T![-]
+                | T![!]
+                | T![*]
+                | T![string]
+                | T![number] => {
                     parse_item(self);
                 }
                 T![whitespace] => {
@@ -321,6 +330,8 @@ parse_fn_decl! {
     parse_item: Item ::=
         $/match {
             [fn] => {$parse_fn_def()}
+            [let] => {$parse_let_stmt()}
+            [ident] [+] [-] [!] [*] [string] [number] [if] [loop] => {$parse_expr_potential_assignment()}
         }
 }
 
@@ -780,7 +791,7 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
 parse_fn_decl! {
     parse_stmt: Stmt ::=
         $/match {
-            [ident] [string] [if] [loop] ['{'] => {$parse_expr_potential_assignment()}
+            [ident] [+] [-] [!] [*] [string] [if] [loop] ['{'] => {$parse_expr_potential_assignment()}
             [let] => {$parse_let_stmt()}
             [while] => {$parse_while_stmt()}
             [for] => {$parse_for_stmt()}
