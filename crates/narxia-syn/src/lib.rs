@@ -1,5 +1,7 @@
 #![feature(char_indices_offset)]
 
+pub extern crate narxia_log;
+
 pub mod language;
 pub mod syntax_kind;
 pub mod syntree;

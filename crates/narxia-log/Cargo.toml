@@ -1,16 +1,9 @@
 [package]
-name = "narxia-syn-helpers"
+name = "narxia-log"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-proc-macro = true
-
 [dependencies]
-syn = { version = "2", features = ["full"] }
-quote = "1"
-proc-macro2 = "1"
-heck = "0.5.0-rc.1"
-
+tracing.workspace = true

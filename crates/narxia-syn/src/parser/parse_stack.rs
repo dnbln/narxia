@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 
+use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 use crate::syntax_kind::SyntaxKind;
 
 type ParseStackInternalRef = Rc<RefCell<ParseStackInternal>>;
@@ -22,7 +23,7 @@ impl Drop for ParseStackGuard {
                 self.pos,
                 stack_internal.items.len() - 1,
                 self.call_at,
-                stack_internal.present(2)
+                stack_internal.present(2, ParserDbgStyling::default())
             );
         }
         stack_internal.items.truncate(self.pos);
@@ -41,9 +42,10 @@ struct ParseStackInternal {
 }
 
 impl ParseStackInternal {
-    fn present(&self, offset: usize) -> ParseStackPresenter<'_> {
+    fn present(&self, offset: usize, parser_styling: ParserDbgStyling) -> ParseStackPresenter<'_> {
         ParseStackPresenter {
             internal: self,
+            parser_styling,
             offset,
         }
     }
@@ -52,6 +54,7 @@ impl ParseStackInternal {
 pub struct ParseStackPresenter<'a> {
     internal: &'a ParseStackInternal,
     offset: usize,
+    parser_styling: ParserDbgStyling,
 }
 
 impl<'a> fmt::Display for ParseStackPresenter<'a> {
@@ -59,11 +62,11 @@ impl<'a> fmt::Display for ParseStackPresenter<'a> {
         for (index, item) in self.internal.items.iter().rev().enumerate() {
             writeln!(
                 f,
-                "{:offset$}[-{:3}] {} (@{})",
+                "{:offset$}{} {} (@{})",
                 "",
-                index,
-                item.name,
-                item.text_pos,
+                self.parser_styling.stack_offset.colorize(format!("[-{index:3}]")),
+                self.parser_styling.stack_fn_name.colorize(item.name),
+                self.parser_styling.token_stream_position.colorize(format!("{}", item.text_pos)),
                 offset = self.offset
             )?;
         }
@@ -93,10 +96,11 @@ impl ParseStack {
         let internal = self.internal.clone();
         let pos = internal.borrow().items.len();
         let call_at = std::panic::Location::caller();
-        internal
-            .borrow_mut()
-            .items
-            .push(ParseStackItem { name, can_recover, text_pos });
+        internal.borrow_mut().items.push(ParseStackItem {
+            name,
+            can_recover,
+            text_pos,
+        });
         ParseStackGuard {
             internal,
             pos,
@@ -108,7 +112,12 @@ impl ParseStack {
         self.internal.borrow().items.last().copied()
     }
 
-    pub fn present<T>(&self, offset: usize, f: impl FnOnce(ParseStackPresenter<'_>) -> T) -> T {
-        f(self.internal.borrow().present(offset))
+    pub fn present<T>(
+        &self,
+        offset: usize,
+        parser_styling: ParserDbgStyling,
+        f: impl FnOnce(ParseStackPresenter<'_>) -> T,
+    ) -> T {
+        f(self.internal.borrow().present(offset, parser_styling))
     }
 }

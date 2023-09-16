@@ -1,14 +1,14 @@
 use proc_macro2::{Ident, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
-use syn::{
-    Block, braced, bracketed, Data, DataEnum, DeriveInput, Expr, ExprCall,
-    ExprIf, FnArg, MetaList, parenthesized, parse_quote, parse_quote_spanned, token, Token,
-};
-use syn::parse::{Parse, ParseStream, Peek};
+use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::parse::discouraged::Speculative;
+use syn::parse::{Parse, ParseStream, Peek};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::{
+    braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data,
+    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Token,
+};
 
 #[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -899,5 +899,457 @@ impl Parse for MatchExtraArmSelector {
             delimiter: bracketed!(tt in input),
             tt: tt.parse()?,
         })
+    }
+}
+
+#[proc_macro]
+pub fn syntree_node(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    syn::parse_macro_input!(input as SyntreeNodeDef)
+        .expand()
+        .into()
+}
+
+struct SyntreeNodeDef {
+    name: Ident,
+    kind_name: Option<SyntreeNodeKindName>,
+    children_info: ChildrenInfo,
+}
+
+enum ChildrenInfo {
+    Some {
+        eq: Token![=],
+        children_def: SyntreeNodeChildrenDef,
+    },
+    None {
+        not: Token![!],
+    },
+}
+
+impl Parse for ChildrenInfo {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(Token![=]) {
+            let eq = input.parse()?;
+            let children_def = input.parse()?;
+            Ok(Self::Some { eq, children_def })
+        } else if input.peek(Token![!]) {
+            let not = input.parse()?;
+            Ok(Self::None { not })
+        } else {
+            Err(input.error("expected = or !"))
+        }
+    }
+}
+
+impl SyntreeNodeDef {
+    fn expand(&self) -> TokenStream {
+        self.expand_true()
+            .unwrap_or_else(syn::Error::into_compile_error)
+    }
+
+    fn expand_true(&self) -> syn::Result<TokenStream> {
+        let name = &self.name;
+        let sk_name = self
+            .kind_name
+            .as_ref()
+            .map(|it| &it.kind_name)
+            .unwrap_or(name);
+
+        let mut expanded = quote! {
+            pub struct #name {
+                pub(crate) node: Node,
+            }
+
+            impl TreeNode for #name {
+                fn from(n: Node) -> Option<Self> {
+                    if n.kind() == SyntaxKind::#sk_name {
+                        Some(Self { node: n })
+                    } else {
+                        None
+                    }
+                }
+
+                fn get_syntax_kind(&self) -> SyntaxKind {
+                    self.node.kind()
+                }
+
+                fn get_node(&self) -> &Node {
+                    &self.node
+                }
+            }
+        };
+
+        if let ChildrenInfo::Some { children_def, .. } = &self.children_info {
+            let mut accessors = Vec::new();
+            let mut token_accessors = Vec::new();
+            children_def
+                .child_ref_expr
+                .compile(&mut accessors, &mut token_accessors);
+            let mut accessors_ts = TokenStream::new();
+            for accessor in accessors {
+                accessors_ts.extend(accessor.expand());
+            }
+            for token_accessor in token_accessors {
+                accessors_ts.extend(token_accessor.expand());
+            }
+            expanded.extend(quote! {
+                impl #name {
+                    #accessors_ts
+                }
+            })
+        }
+        Ok(expanded)
+    }
+}
+
+impl Parse for SyntreeNodeDef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = input.parse()?;
+        let kind_name = if input.peek(Token![:]) {
+            Some(input.parse()?)
+        } else {
+            None
+        };
+        let children_info = input.parse()?;
+        Ok(Self {
+            name,
+            kind_name,
+            children_info,
+        })
+    }
+}
+
+struct SyntreeNodeKindName {
+    colon: Token![:],
+    kind_name: Ident,
+}
+
+impl Parse for SyntreeNodeKindName {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let colon = input.parse()?;
+        let kind_name = input.parse()?;
+        Ok(Self { colon, kind_name })
+    }
+}
+
+struct SyntreeNodeChildrenDef {
+    child_ref_expr: SyntreeNodeChildrenRefExpr,
+}
+
+impl Parse for SyntreeNodeChildrenDef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            child_ref_expr: input.parse()?,
+        })
+    }
+}
+
+struct SyntreeNodeChildrenRefExprSet {
+    set: Vec<SyntreeNodeChildrenRefExpr>,
+}
+
+impl Parse for SyntreeNodeChildrenRefExprSet {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            set: input.parse::<VecParser<_>>()?.0,
+        })
+    }
+}
+
+enum SyntreeNodeChildrenRefExpr {
+    SelfRef,
+    Name(Ident),
+    NamedRef(Ident, Token![:], Ident),
+    Token(Ident, Token![!], token::Bracket, TokenStream),
+    Repeat(Token![*], Box<SyntreeNodeChildrenRefExpr>),
+    Maybe(Token![?], Box<SyntreeNodeChildrenRefExpr>),
+    ParenSet(token::Paren, SyntreeNodeChildrenRefExprSet),
+    Either(
+        Token![|],
+        token::Bracket,
+        Punctuated<SyntreeNodeChildrenRefExpr, Comma>,
+    ),
+}
+
+impl Parse for SyntreeNodeChildrenRefExpr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(Token![|]) {
+            let either;
+            Ok(Self::Either(
+                input.parse()?,
+                bracketed!(either in input),
+                either.parse_terminated(Self::parse, Token![,])?,
+            ))
+        } else if input.peek(Token![*]) {
+            let star = input.parse()?;
+            let expr = input.parse()?;
+            Ok(Self::Repeat(star, Box::new(expr)))
+        } else if input.peek(Token![?]) {
+            let question = input.parse()?;
+            let expr = input.parse()?;
+            Ok(Self::Maybe(question, Box::new(expr)))
+        } else if input.peek(token::Paren) {
+            let paren;
+            Ok(Self::ParenSet(
+                parenthesized!(paren in input),
+                paren.parse()?,
+            ))
+        } else if input.peek(Token![self]) {
+            Ok(Self::SelfRef)
+        } else {
+            let Ok(id) = input.parse::<Ident>() else {
+                return Err(input.error("expected |, *, ?, (, self, or identifier"));
+            };
+
+            if input.peek(Token![:]) {
+                let colon = input.parse()?;
+                let refr = input.parse()?;
+                Ok(Self::NamedRef(id, colon, refr))
+            } else if input.peek(Token![!]) {
+                let exclamation = input.parse()?;
+                let tt;
+                let bracket = bracketed!(tt in input);
+                let tt = tt.parse()?;
+                Ok(Self::Token(id, exclamation, bracket, tt))
+            } else {
+                Ok(Self::Name(id))
+            }
+        }
+    }
+}
+
+struct CompileConfig {
+    either_passed: bool,
+    rep_passed: bool,
+    maybe_passed: bool,
+    is_at_beginning: bool,
+}
+
+impl SyntreeNodeChildrenRefExpr {
+    fn compile(&self, accessors: &mut Vec<Accessor>, token_accessors: &mut Vec<TokenAccessor>) {
+        self.compile_impl(
+            accessors,
+            token_accessors,
+            CompileConfig {
+                either_passed: false,
+                rep_passed: false,
+                maybe_passed: false,
+                is_at_beginning: true,
+            },
+        )
+    }
+
+    fn compile_impl(
+        &self,
+        accessors: &mut Vec<Accessor>,
+        token_accessors: &mut Vec<TokenAccessor>,
+        compile_config: CompileConfig,
+    ) {
+        match self {
+            SyntreeNodeChildrenRefExpr::SelfRef => {
+                let kind = if compile_config.rep_passed {
+                    AccessorKind::List
+                } else if compile_config.either_passed
+                    || compile_config.maybe_passed
+                    || !compile_config.is_at_beginning
+                {
+                    AccessorKind::Opt
+                } else {
+                    AccessorKind::FirstGuaranteed
+                };
+
+                accessors.push(Accessor {
+                    name: parse_quote! {self_},
+                    kind,
+                    target_ty: parse_quote! {Self},
+                });
+            }
+            SyntreeNodeChildrenRefExpr::Name(name) => {
+                let kind = if compile_config.rep_passed {
+                    AccessorKind::List
+                } else if compile_config.either_passed
+                    || compile_config.maybe_passed
+                    || !compile_config.is_at_beginning
+                {
+                    AccessorKind::Opt
+                } else {
+                    AccessorKind::FirstGuaranteed
+                };
+
+                let is_list = matches!(kind, AccessorKind::List);
+
+                let n = heck::AsSnakeCase(name.to_string());
+                let accessor_name = match is_list {
+                    false => format_ident!("get_{n}"),
+                    true => format_ident!("get_{n}_list"),
+                };
+
+                accessors.push(Accessor {
+                    name: accessor_name,
+                    kind,
+                    target_ty: name.clone(),
+                });
+            }
+            SyntreeNodeChildrenRefExpr::NamedRef(name, _, target_ty) => {
+                let kind = if compile_config.rep_passed {
+                    AccessorKind::List
+                } else if compile_config.either_passed
+                    || compile_config.maybe_passed
+                    || !compile_config.is_at_beginning
+                {
+                    AccessorKind::Opt
+                } else {
+                    AccessorKind::FirstGuaranteed
+                };
+
+                accessors.push(Accessor {
+                    name: format_ident!("get_{name}"),
+                    kind,
+                    target_ty: target_ty.clone(),
+                });
+            }
+            SyntreeNodeChildrenRefExpr::Token(name, _, _, token) => {
+                let kind = if compile_config.rep_passed {
+                    AccessorKind::List
+                } else if compile_config.either_passed
+                    || compile_config.maybe_passed
+                    || !compile_config.is_at_beginning
+                {
+                    AccessorKind::Opt
+                } else {
+                    AccessorKind::FirstGuaranteed
+                };
+
+                token_accessors.push(TokenAccessor {
+                    name: format_ident!("get_{name}"),
+                    token: token.clone(),
+                    kind,
+                });
+            }
+            SyntreeNodeChildrenRefExpr::Repeat(_, r) => {
+                r.compile_impl(
+                    accessors,
+                    token_accessors,
+                    CompileConfig {
+                        is_at_beginning: false,
+                        rep_passed: true,
+                        ..compile_config
+                    },
+                );
+            }
+            SyntreeNodeChildrenRefExpr::Maybe(_, r) => {
+                r.compile_impl(
+                    accessors,
+                    token_accessors,
+                    CompileConfig {
+                        is_at_beginning: false,
+                        maybe_passed: true,
+                        ..compile_config
+                    },
+                );
+            }
+            SyntreeNodeChildrenRefExpr::ParenSet(_, s) => {
+                let mut is_at_beginning = compile_config.is_at_beginning;
+                for expr in &s.set {
+                    expr.compile_impl(
+                        accessors,
+                        token_accessors,
+                        CompileConfig {
+                            is_at_beginning,
+                            ..compile_config
+                        },
+                    );
+                    is_at_beginning = false;
+                }
+            }
+            SyntreeNodeChildrenRefExpr::Either(_, _, exprs) => {
+                for expr in exprs {
+                    expr.compile_impl(
+                        accessors,
+                        token_accessors,
+                        CompileConfig {
+                            either_passed: true,
+                            ..compile_config
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+struct Accessor {
+    name: Ident,
+    kind: AccessorKind,
+    target_ty: Ident,
+}
+
+impl Accessor {
+    fn expand(&self) -> TokenStream {
+        let name = &self.name;
+        let (target_ty, accessor) = match self.kind {
+            AccessorKind::FirstGuaranteed => {
+                let target_ty = &self.target_ty;
+                (
+                    quote! {#target_ty},
+                    quote! {get_child::<#target_ty>(&self.node)},
+                )
+            }
+            AccessorKind::List => {
+                let target_ty = &self.target_ty;
+                (
+                    quote! {impl Iterator<Item=#target_ty> + 'a},
+                    quote! {get_children::<#target_ty>(&self.node)},
+                )
+            }
+            AccessorKind::Opt => {
+                let target_ty = &self.target_ty;
+                (
+                    quote! {Option<#target_ty>},
+                    quote! {get_child_opt::<#target_ty>(&self.node)},
+                )
+            }
+        };
+        quote! {
+            pub fn #name<'a>(&'a self) -> #target_ty {
+                #accessor
+            }
+        }
+    }
+}
+
+enum AccessorKind {
+    FirstGuaranteed,
+    List,
+    Opt,
+}
+
+struct TokenAccessor {
+    name: Ident,
+    token: TokenStream,
+    kind: AccessorKind,
+}
+
+impl TokenAccessor {
+    fn expand(&self) -> TokenStream {
+        let name = &self.name;
+        let token = &self.token;
+        let (target_ty, accessor) = match self.kind {
+            AccessorKind::FirstGuaranteed => {
+                (quote! {Token}, quote! {get_token(&self.node, T![#token])})
+            }
+            AccessorKind::List => (
+                quote! {impl Iterator<Item=Token> + 'a},
+                quote! {get_token_list(&self.node, T![#token])},
+            ),
+            AccessorKind::Opt => (
+                quote! {Option<Token>},
+                quote! {get_token_opt(&self.node, T![#token])},
+            ),
+        };
+        quote! {
+            pub fn #name<'a>(&'a self) -> #target_ty {
+                #accessor
+            }
+        }
     }
 }

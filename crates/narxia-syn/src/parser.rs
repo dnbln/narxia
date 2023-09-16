@@ -1,3 +1,6 @@
+use std::fmt;
+
+use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
 
 use crate::parser::parse_event_handler::{
@@ -15,6 +18,63 @@ mod parse_stack;
 struct ParserState {
     ts_pos: usize,
     ev_pos: ParseEventHandlerPos,
+}
+
+pub(crate) trait ColorizeProcedure {
+    fn colorize<T: fmt::Display>(&self, v: T) -> ColoredString;
+}
+
+impl ColorizeProcedure for fn(ColoredString) -> ColoredString {
+    fn colorize<T: fmt::Display>(&self, v: T) -> ColoredString {
+        (*self)(ColoredString::from(v.to_string().as_str()))
+    }
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct ParserDbgStyling {
+    pub(crate) top_name: fn() -> ColoredString,
+    pub(crate) region_name: fn(ColoredString) -> ColoredString,
+    pub(crate) top_stack_name: fn(ColoredString) -> ColoredString,
+
+    pub(crate) token_offset: fn(ColoredString) -> ColoredString,
+    pub(crate) token_kind: fn(ColoredString) -> ColoredString,
+    pub(crate) token_span: fn(ColoredString) -> ColoredString,
+    pub(crate) token_text: fn(ColoredString) -> ColoredString,
+
+    pub(crate) stack_offset: fn(ColoredString) -> ColoredString,
+    pub(crate) stack_fn_name: fn(ColoredString) -> ColoredString,
+    pub(crate) token_stream_position: fn(ColoredString) -> ColoredString,
+
+    pub(crate) recent_event_absolute_position: fn(ColoredString) -> ColoredString,
+    pub(crate) recent_event_relative_position: fn(ColoredString) -> ColoredString,
+    pub(crate) recent_event_kind: fn(ColoredString) -> ColoredString,
+}
+
+impl Default for ParserDbgStyling {
+    fn default() -> Self {
+        Self {
+            top_name: || {
+                ColoredString::from(
+                    format!("{}::{}", "Parser".blue().bold(), "dbg".blue().bold()).as_str(),
+                )
+            },
+            region_name: |s| s.bold().red(),
+            top_stack_name: |s| s.bright_red().bold(),
+
+            token_offset: |s| s.bright_blue(),
+            token_kind: |s| s.green().bold(),
+            token_span: |s| s.bright_purple().bold(),
+            token_text: |s| s.bright_blue(),
+
+            stack_offset: |s| s.bright_blue(),
+            stack_fn_name: |s| s.bright_green().bold(),
+            token_stream_position: |s| s.bright_purple().bold(),
+
+            recent_event_absolute_position: |s| s.bright_purple().bold(),
+            recent_event_relative_position: |s| s.bright_blue().bold(),
+            recent_event_kind: |s| s.bright_cyan().bold(),
+        }
+    }
 }
 
 pub struct Parser<'a> {
@@ -165,8 +225,8 @@ impl<'a> Parser<'a> {
         let m = self.ev.begin();
         while let Some(token) = self.ts.lookahead(0) {
             match token.kind() {
-                T![fn] => {
-                    parse_fn_def(self);
+                T![fn] | T![const] => {
+                    parse_item(self);
                 }
                 T![whitespace] => {
                     self.skip_ws();
@@ -192,16 +252,35 @@ impl<'a> Parser<'a> {
     }
 
     #[track_caller]
-    fn dbg(&mut self) {
-        eprintln!(
-            "dbg[in {}, at {}]:",
-            self.pstk.top_item().unwrap().name,
-            std::panic::Location::caller()
-        );
-        eprintln!("  Tokens:");
+    fn __private_dbg_log<W>(&mut self, w: &mut W, styling: ParserDbgStyling) -> std::fmt::Result
+    where
+        W: std::fmt::Write,
+    {
+        let mut region =
+            |w: &mut W, name: &str| writeln!(w, "  {}:", styling.region_name.colorize(name));
+
+        writeln!(
+            w,
+            "{} in {}",
+            (styling.top_name)(),
+            styling
+                .top_stack_name
+                .colorize(self.pstk.top_item().unwrap().name),
+        )?;
+        writeln!(w, "    at {}", std::panic::Location::caller(),)?;
+
+        region(w, "Tokens")?;
         let mut i = 0;
         while let Some(tok) = self.ts.lookahead(i) {
-            eprintln!("    +{i}  {} {:?}", tok, self.ts.get_token_text(&tok));
+            writeln!(
+                w,
+                "    {}  {} {}",
+                styling.token_offset.colorize(format!("+{i}")),
+                tok.dbg_fmt_colorized(styling),
+                styling
+                    .token_text
+                    .colorize(format!("{:?}", self.ts.get_token_text(&tok))),
+            )?;
             i += 1;
             if i > 3 {
                 break;
@@ -209,19 +288,45 @@ impl<'a> Parser<'a> {
         }
 
         if i == 0 {
-            eprintln!("    +0  <EOF>");
+            writeln!(
+                w,
+                "    {}  {}",
+                styling.token_offset.colorize("+0"),
+                styling.token_kind.colorize("<EOF>")
+            )?;
         }
 
-        eprintln!("  Current stack:");
-        self.pstk.present(4, |presenter| eprint!("{presenter}"));
+        region(w, "Current stack")?;
 
-        eprintln!("  Recent events:");
-        eprint!("{}", self.ev.present(4, 30, true));
+        self.pstk
+            .present(4, styling, |presenter| write!(w, "{presenter}"))?;
+
+        region(w, "Recent events")?;
+        write!(w, "{}", self.ev.present(4, 30, true, styling))?;
+
+        Ok(())
+    }
+
+    #[track_caller]
+    fn dbg(&mut self) {
+        let styling = ParserDbgStyling::default();
+        let _span = narxia_log::span!(narxia_log::Level::DEBUG, "Parser::dbg").entered();
+        let mut log = String::new();
+        self.__private_dbg_log(&mut log, styling).unwrap();
+        narxia_log::debug!("{log}");
     }
 }
 
 parse_fn_decl! {
+    parse_item: Item ::=
+        $/match {
+            [fn] => {$parse_fn_def()}
+        }
+}
+
+parse_fn_decl! {
     parse_fn_def: FnDef ::=
+        $/dbg
         $parse_fn_head()
         $/ws:wcn
         $parse_block()
@@ -611,12 +716,32 @@ parse_fn_decl! {
         $/ws:wcn
         $![:]
         $/ws:wcn
-        $parse_ty_ref()
+        $parse_fn_param_ty()
+        $/state:s1
+        $/ws:wcn
+        $/if at[=] {
+            $parse_fn_param_default()
+        }
+        $/else {
+            $/restore_state:s1
+        }
 }
 
 parse_fn_decl! {
     parse_fn_param_name: FnParamName ::=
         $parse_pat()
+}
+
+parse_fn_decl! {
+    parse_fn_param_ty: FnParamTy ::=
+        $parse_ty_ref()
+}
+
+parse_fn_decl! {
+    parse_fn_param_default: FnParamDefault ::=
+        $![=]
+        $/ws:wcn
+        $parse_expr()
 }
 
 parse_fn_decl! {
@@ -811,7 +936,9 @@ fn infix_binary_op_simple<const N: usize>(
     infix_binary_op(p, lower, |p| {
         for op in &operators {
             if p.at(*op) {
+                let m = p.ev.begin();
                 p.expect(*op);
+                p.ev.end(m, SyntaxKind::BinaryOpExprOp);
                 return true;
             }
         }
@@ -865,7 +992,7 @@ fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
             }
         } else if p.at(T![ident]) {
             let m0 = p.ev.precede_completed(&m);
-            parse_custom_infix_expr_infix_arg(p);
+            parse_custom_infix_expr_infix(p);
             m = p.ev.end(m0, SyntaxKind::CustomInfixExpr);
             if p.is_recovering() {
                 return m;
@@ -898,9 +1025,14 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
-    parse_custom_infix_expr_infix_arg: CustomInfixExprInfixArg ::=
+    parse_custom_infix_expr_infix: CustomInfixExprInfix ::=
         $![ident]
         $/ws:wcn
+        $parse_custom_infix_expr_infix_arg()
+}
+
+parse_fn_decl! {
+    parse_custom_infix_expr_infix_arg: CustomInfixExprInfixArg ::=
         $parse_expr()
 }
 

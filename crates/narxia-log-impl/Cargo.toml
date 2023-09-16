@@ -1,5 +1,5 @@
 [package]
-name = "narxia-syn"
+name = "narxia-log-impl"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,5 @@ edition = "2021"
 
 [dependencies]
 colored.workspace = true
-rowan = "0.15.11"
-drop_bomb = "0.1.5"
-smallvec = "1.10.0"
-
-narxia-syn-helpers.workspace = true
-narxia-log.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

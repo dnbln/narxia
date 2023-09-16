@@ -5,3 +5,10 @@ members = ["crates/*"]
 narxia = {path = "crates/narxia"}
 narxia-syn = {path = "crates/narxia-syn"}
 narxia-syn-helpers = {path = "crates/narxia-syn-helpers"}
+narxia-log = {path = "crates/narxia-log"}
+narxia-log-impl = {path = "crates/narxia-log-impl"}
+
+colored = "2.0.4"
+
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"

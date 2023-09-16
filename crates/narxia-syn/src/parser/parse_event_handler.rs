@@ -3,6 +3,7 @@ use std::fmt;
 use rowan::Language;
 
 use crate::language::NarxiaLanguage;
+use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
 use crate::text_span::TextSpan;
@@ -53,12 +54,14 @@ impl<'a> ParseEventHandler<'a> {
         offset: usize,
         count: usize,
         add_absolute_positions: bool,
+        styling: ParserDbgStyling,
     ) -> RecentEventPresenter {
         RecentEventPresenter {
             internal: self,
             offset,
             count,
             add_absolute_positions,
+            styling,
         }
     }
 
@@ -346,6 +349,7 @@ pub struct RecentEventPresenter<'a> {
     offset: usize,
     count: usize,
     add_absolute_positions: bool,
+    styling: ParserDbgStyling,
 }
 
 impl<'a> fmt::Display for RecentEventPresenter<'a> {
@@ -363,12 +367,19 @@ impl<'a> fmt::Display for RecentEventPresenter<'a> {
                 "{:offset$}{}[-{:3}] {}",
                 "",
                 if self.add_absolute_positions {
-                    format!("@{:3} ", start + index)
+                    format!(
+                        "@{} ",
+                        self.styling
+                            .recent_event_absolute_position
+                            .colorize(format!("{:3}", start + index))
+                    )
                 } else {
                     "".to_owned()
                 },
-                actual_count - index - 1,
-                event,
+                self.styling
+                    .recent_event_relative_position
+                    .colorize(format!("{}", actual_count - index - 1)),
+                self.styling.recent_event_kind.colorize(format!("{event}")),
                 offset = self.offset
             )?;
         }

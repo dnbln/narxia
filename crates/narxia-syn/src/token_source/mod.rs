@@ -1,5 +1,9 @@
 use std::fmt;
 use std::fmt::Formatter;
+
+use colored::Colorize;
+use crate::parser::{ColorizeProcedure, ParserDbgStyling};
+
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 
@@ -42,6 +46,23 @@ impl Token {
             span: TextSpan::new(self.span.start, other.span.end),
         }
     }
+
+    pub(crate) fn dbg_fmt_colorized(&self, styling: ParserDbgStyling) -> DbgFmtColorizedToken<'_> {
+        DbgFmtColorizedToken(self, styling)
+    }
+}
+
+pub(crate) struct DbgFmtColorizedToken<'a>(&'a Token, ParserDbgStyling);
+
+impl<'a> fmt::Display for DbgFmtColorizedToken<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}@{}",
+            self.1.token_kind.colorize(format_args!("{:?}", self.0.kind)),
+            self.1.token_span.colorize(self.0.span),
+        )
+    }
 }
 
 pub trait TokenSource<'l> {
@@ -79,7 +100,9 @@ pub trait TokenSource<'l> {
         None
     }
     fn current_token_span(&mut self) -> TextSpan {
-        self.lookahead(0).map(|tok| tok.span()).unwrap_or_else(|| self.eof_span())
+        self.lookahead(0)
+            .map(|tok| tok.span())
+            .unwrap_or_else(|| self.eof_span())
     }
     fn eof_span(&self) -> TextSpan;
     fn current_pos(&mut self) -> usize {
