@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use colored::Colorize;
 use miette::IntoDiagnostic;
-
+use narxia_driver::DriverCtx;
 use salsa::storage::HasJarsDyn;
 
 #[derive(Parser, Debug)]
@@ -18,22 +18,11 @@ pub struct NarxiaDriverParseCommand {
     file: PathBuf,
 }
 
-#[salsa::db(narxia_src_db::Jar, narxia_syn_db::Jar)]
-#[derive(Default)]
-struct Database {
-    storage: salsa::Storage<Self>,
-}
-
-impl salsa::Database for Database {
-    fn salsa_event(&self, event: salsa::Event) {}
-}
-
 fn main() -> miette::Result<()> {
-    narxia_log_impl::init();
-
     let _span = narxia_log::span!(narxia_log::Level::INFO, "main").entered();
 
-    let db = Database::default();
+    let ctx = DriverCtx::initialize();
+    ctx.init_log();
 
     let cmd = NarxiaDriverCommand::parse();
     match cmd {
@@ -41,17 +30,17 @@ fn main() -> miette::Result<()> {
             narxia_log::i!("Parse command: {parse_cmd:?}");
 
             let file = parse_cmd.file;
-            let file = narxia_src_db::load_from_disk(&db, file).into_diagnostic()?;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
 
             narxia_log::t!(
                 "File contents:\n{}\n{}\n{}",
                 ">>>>".bright_blue(),
-                file.text(&db).bright_white().bold(),
+                file.text(&ctx.db).bright_white().bold(),
                 "<<<<".bright_blue(),
             );
 
-            let tree = narxia_syn_db::parse_file_and_assert_no_errors(&db, file);
-            println!("{:?}", tree.tree(&db));
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+            println!("{:?}", tree.tree(&ctx.db));
         }
     }
 

@@ -1,7 +1,6 @@
 use std::fmt;
 use std::fmt::Formatter;
 
-use colored::Colorize;
 use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 
 use crate::syntax_kind::SyntaxKind;

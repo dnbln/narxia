@@ -331,7 +331,7 @@ parse_fn_decl! {
         $/match {
             [fn] => {$parse_fn_def()}
             [let] => {$parse_let_stmt()}
-            [ident] [+] [-] [!] [*] [string] [number] [if] [loop] => {$parse_expr_potential_assignment()}
+            [ident] [+] [-] [!] [*] [string] [number] [if] [loop] ['{'] => {$parse_expr_potential_assignment()}
         }
 }
 
@@ -946,6 +946,11 @@ fn infix_binary_op_simple<const N: usize>(
 ) -> CompletedMarker {
     infix_binary_op(p, lower, |p| {
         for op in &operators {
+            // we need a special case for && and || because they have higher precedence than & and |
+            // otherwise the parser will choke trying to parse the rhs beginning with & or |
+            if *op == T![&] && p.at(T![&&]) || *op == T![|] && p.at(T![||]) {
+                return false;
+            }
             if p.at(*op) {
                 let m = p.ev.begin();
                 p.expect(*op);
@@ -1082,7 +1087,7 @@ fn parse_precedence_4_expr(p: &mut Parser) -> CompletedMarker {
 
 #[parse_fn]
 fn parse_precedence_5_expr(p: &mut Parser) -> CompletedMarker {
-    infix_binary_op_simple(p, parse_precedence_4_expr, [T![<], T![>], T![<=], T![>=]])
+    infix_binary_op_simple(p, parse_precedence_4_expr, [T![<=], T![>=], T![<], T![>]])
 }
 
 #[parse_fn]

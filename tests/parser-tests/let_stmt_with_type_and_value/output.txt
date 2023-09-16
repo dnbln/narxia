@@ -1,0 +1,17 @@
+Root@0..14
+  Item@0..14
+    LetStmt@0..14
+      LET_KW@0..3 "let"
+      WHITESPACE@3..4 " "
+      Pat@4..5
+        IDENT@4..5 "x"
+      COLON@5..6 ":"
+      WHITESPACE@6..7 " "
+      TyRef@7..10
+        IDENT@7..10 "i32"
+      WHITESPACE@10..11 " "
+      EQ@11..12 "="
+      WHITESPACE@12..13 " "
+      Expr@13..14
+        ExprAtom@13..14
+          IDENT@13..14 "a"

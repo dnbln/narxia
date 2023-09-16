@@ -25,10 +25,10 @@ use narxia_syn::parse_error::ParseError;
 pub use Jar as SynDbJar;
 
 #[salsa::accumulator]
-struct ParsingErrors(Vec<ParseError>);
+pub struct ParsingErrors(Vec<ParseError>);
 
 impl ParsingErrors {
-    fn get(db: &dyn SynDb, file: SrcFile) -> Option<Vec<ParseError>> {
+    pub fn get(db: &dyn SynDb, file: SrcFile) -> Option<Vec<ParseError>> {
         parse_file::accumulated::<Self>(db, file).into_iter().next()
     }
 }

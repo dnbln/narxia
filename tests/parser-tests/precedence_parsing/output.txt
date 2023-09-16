@@ -1,0 +1,192 @@
+Root@0..115
+  Item@0..113
+    LetStmt@0..113
+      LET_KW@0..3 "let"
+      WHITESPACE@3..4 " "
+      Pat@4..5
+        IDENT@4..5 "x"
+      WHITESPACE@5..6 " "
+      EQ@6..7 "="
+      WHITESPACE@7..8 " "
+      Expr@8..113
+        BinaryOpExpr@8..113
+          BinaryOpExpr@8..108
+            BinaryOpExpr@8..103
+              BinaryOpExpr@8..95
+                BinaryOpExpr@8..91
+                  BinaryOpExpr@8..26
+                    BinaryOpExpr@8..21
+                      ExprAtom@8..9
+                        IDENT@8..9 "a"
+                      WHITESPACE@9..10 " "
+                      BinaryOpExprOp@10..11
+                        PLUS@10..11 "+"
+                      WHITESPACE@11..12 " "
+                      BinaryOpExpr@12..21
+                        BinaryOpExpr@12..17
+                          ExprAtom@12..13
+                            IDENT@12..13 "b"
+                          WHITESPACE@13..14 " "
+                          BinaryOpExprOp@14..15
+                            ASTERISK@14..15 "*"
+                          WHITESPACE@15..16 " "
+                          ExprAtom@16..17
+                            IDENT@16..17 "c"
+                        WHITESPACE@17..18 " "
+                        BinaryOpExprOp@18..19
+                          SLASH@18..19 "/"
+                        WHITESPACE@19..20 " "
+                        ExprAtom@20..21
+                          IDENT@20..21 "d"
+                    WHITESPACE@21..22 " "
+                    BinaryOpExprOp@22..24
+                      EQ2@22..24 "=="
+                    WHITESPACE@24..25 " "
+                    ExprAtom@25..26
+                      IDENT@25..26 "e"
+                  WHITESPACE@26..27 " "
+                  BinaryOpExprOp@27..29
+                    NEQ@27..29 "!="
+                  WHITESPACE@29..30 " "
+                  BinaryOpExpr@30..91
+                    BinaryOpExpr@30..69
+                      BinaryOpExpr@30..48
+                        ExprAtom@30..31
+                          IDENT@30..31 "f"
+                        WHITESPACE@31..32 " "
+                        BinaryOpExprOp@32..34
+                          GE@32..34 ">="
+                        WHITESPACE@34..35 " "
+                        BinaryOpExpr@35..48
+                          FieldAccess@35..38
+                            ExprAtom@35..36
+                              IDENT@35..36 "g"
+                            DOT@36..37 "."
+                            IDENT@37..38 "h"
+                          WHITESPACE@38..39 " "
+                          BinaryOpExprOp@39..40
+                            ASTERISK@39..40 "*"
+                          WHITESPACE@40..41 " "
+                          IndexExpr@41..48
+                            ExprAtom@41..42
+                              IDENT@41..42 "i"
+                            IndexExprIndex@42..48
+                              L_BRACK@42..43 "["
+                              Expr@43..47
+                                IndexExpr@43..47
+                                  ExprAtom@43..44
+                                    IDENT@43..44 "j"
+                                  IndexExprIndex@44..47
+                                    L_BRACK@44..45 "["
+                                    Expr@45..46
+                                      ExprAtom@45..46
+                                        IDENT@45..46 "k"
+                                    R_BRACK@46..47 "]"
+                              R_BRACK@47..48 "]"
+                      WHITESPACE@48..49 " "
+                      BinaryOpExprOp@49..51
+                        LE@49..51 "<="
+                      WHITESPACE@51..52 " "
+                      BinaryOpExpr@52..69
+                        IndexExpr@52..58
+                          FieldAccess@52..55
+                            ExprAtom@52..53
+                              IDENT@52..53 "l"
+                            DOT@53..54 "."
+                            IDENT@54..55 "m"
+                          IndexExprIndex@55..58
+                            L_BRACK@55..56 "["
+                            Expr@56..57
+                              ExprAtom@56..57
+                                IDENT@56..57 "n"
+                            R_BRACK@57..58 "]"
+                        WHITESPACE@58..59 " "
+                        BinaryOpExprOp@59..60
+                          SLASH@59..60 "/"
+                        WHITESPACE@60..61 " "
+                        IndexExpr@61..69
+                          FieldAccess@61..66
+                            FieldAccess@61..64
+                              ExprAtom@61..62
+                                IDENT@61..62 "o"
+                              DOT@62..63 "."
+                              IDENT@63..64 "p"
+                            DOT@64..65 "."
+                            IDENT@65..66 "q"
+                          IndexExprIndex@66..69
+                            L_BRACK@66..67 "["
+                            Expr@67..68
+                              ExprAtom@67..68
+                                IDENT@67..68 "r"
+                            R_BRACK@68..69 "]"
+                    WHITESPACE@69..70 " "
+                    BinaryOpExprOp@70..71
+                      GT@70..71 ">"
+                    WHITESPACE@71..72 " "
+                    CallExpr@72..91
+                      ExprAtom@72..73
+                        IDENT@72..73 "s"
+                      CallExprArgs@73..91
+                        L_PAREN@73..74 "("
+                        Expr@74..90
+                          BinaryOpExpr@74..90
+                            ExprAtom@74..75
+                              IDENT@74..75 "t"
+                            WHITESPACE@75..76 " "
+                            BinaryOpExprOp@76..77
+                              LT@76..77 "<"
+                            WHITESPACE@77..78 " "
+                            MethodCall@78..90
+                              ExprAtom@78..79
+                                IDENT@78..79 "u"
+                              DOT@79..80 "."
+                              IDENT@80..81 "v"
+                              CallExprArgs@81..90
+                                L_PAREN@81..82 "("
+                                Expr@82..89
+                                  FieldAccess@82..89
+                                    FieldAccess@82..87
+                                      FieldAccess@82..85
+                                        ExprAtom@82..83
+                                          IDENT@82..83 "w"
+                                        DOT@83..84 "."
+                                        IDENT@84..85 "x"
+                                      DOT@85..86 "."
+                                      IDENT@86..87 "y"
+                                    DOT@87..88 "."
+                                    IDENT@88..89 "z"
+                                R_PAREN@89..90 ")"
+                        R_PAREN@90..91 ")"
+                WHITESPACE@91..92 " "
+                BinaryOpExprOp@92..93
+                  AMP@92..93 "&"
+                WHITESPACE@93..94 " "
+                ExprAtom@94..95
+                  IDENT@94..95 "a"
+              WHITESPACE@95..96 " "
+              BinaryOpExprOp@96..97
+                PIPE@96..97 "|"
+              WHITESPACE@97..98 " "
+              BinaryOpExpr@98..103
+                ExprAtom@98..99
+                  IDENT@98..99 "b"
+                WHITESPACE@99..100 " "
+                BinaryOpExprOp@100..101
+                  CARET@100..101 "^"
+                WHITESPACE@101..102 " "
+                ExprAtom@102..103
+                  IDENT@102..103 "c"
+            WHITESPACE@103..104 " "
+            BinaryOpExprOp@104..106
+              AMP2@104..106 "&&"
+            WHITESPACE@106..107 " "
+            ExprAtom@107..108
+              IDENT@107..108 "d"
+          WHITESPACE@108..109 " "
+          BinaryOpExprOp@109..111
+            PIPE2@109..111 "||"
+          WHITESPACE@111..112 " "
+          ExprAtom@112..113
+            IDENT@112..113 "e"
+  WHITESPACE@113..114 "\r"
+  NEWLINE@114..115 "\n"

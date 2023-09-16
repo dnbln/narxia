@@ -49,6 +49,18 @@ pub struct TreePresenterStyle {
     pub token_text: fn(ColoredString) -> ColoredString,
 }
 
+impl TreePresenterStyle {
+    pub fn plain() -> Self {
+        Self {
+            node_name: |s| s,
+            node_span: |s| s,
+            token_name: |s| s,
+            token_span: |s| s,
+            token_text: |s| s,
+        }
+    }
+}
+
 impl Default for TreePresenterStyle {
     fn default() -> Self {
         Self {
@@ -131,7 +143,9 @@ impl<'a> TreePresenter<'a> {
                     self.style
                         .token_span
                         .colorize(format_args!("{}", TextSpan::of(t))),
-                    self.style.token_text.colorize(format_args!("{:?}", t.text())),
+                    self.style
+                        .token_text
+                        .colorize(format_args!("{:?}", t.text())),
                     width = self.offset
                 )?;
             }
@@ -166,6 +180,14 @@ impl SynTree {
 
     pub fn get_root(&self) -> Root {
         <Root as TreeNode>::from(self.root.clone()).unwrap()
+    }
+
+    pub fn present_with_style<T>(
+        &self,
+        style: TreePresenterStyle,
+        f: impl FnOnce(TreePresenter) -> T,
+    ) -> T {
+        f(TreePresenter::__private_new_at_node(&self.root, 0, style))
     }
 }
 

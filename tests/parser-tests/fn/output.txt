@@ -1,0 +1,17 @@
+Root@0..14
+  Item@0..14
+    FnDef@0..14
+      FnHead@0..9
+        FN_KW@0..2 "fn"
+        WHITESPACE@2..3 " "
+        FnName@3..7
+          IDENT@3..7 "main"
+        FnParamList@7..9
+          L_PAREN@7..8 "("
+          R_PAREN@8..9 ")"
+      WHITESPACE@9..10 " "
+      Block@10..14
+        L_BRACE@10..11 "{"
+        WHITESPACE@11..12 "\r"
+        NEWLINE@12..13 "\n"
+        R_BRACE@13..14 "}"

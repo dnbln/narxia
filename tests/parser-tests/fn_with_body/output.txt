@@ -1,0 +1,47 @@
+Root@0..44
+  Item@0..44
+    FnDef@0..44
+      FnHead@0..9
+        FN_KW@0..2 "fn"
+        WHITESPACE@2..3 " "
+        FnName@3..7
+          IDENT@3..7 "main"
+        FnParamList@7..9
+          L_PAREN@7..8 "("
+          R_PAREN@8..9 ")"
+      WHITESPACE@9..10 " "
+      Block@10..44
+        L_BRACE@10..11 "{"
+        WHITESPACE@11..12 "\r"
+        NEWLINE@12..13 "\n"
+        WHITESPACE@13..17 "    "
+        Stmt@17..26
+          LetStmt@17..26
+            LET_KW@17..20 "let"
+            WHITESPACE@20..21 " "
+            Pat@21..22
+              IDENT@21..22 "x"
+            WHITESPACE@22..23 " "
+            EQ@23..24 "="
+            WHITESPACE@24..25 " "
+            Expr@25..26
+              ExprAtom@25..26
+                IDENT@25..26 "a"
+        WHITESPACE@26..27 "\r"
+        NEWLINE@27..28 "\n"
+        WHITESPACE@28..32 "    "
+        Stmt@32..41
+          LetStmt@32..41
+            LET_KW@32..35 "let"
+            WHITESPACE@35..36 " "
+            Pat@36..37
+              IDENT@36..37 "y"
+            WHITESPACE@37..38 " "
+            EQ@38..39 "="
+            WHITESPACE@39..40 " "
+            Expr@40..41
+              ExprAtom@40..41
+                IDENT@40..41 "b"
+        WHITESPACE@41..42 "\r"
+        NEWLINE@42..43 "\n"
+        R_BRACE@43..44 "}"

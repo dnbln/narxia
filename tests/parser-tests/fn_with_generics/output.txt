@@ -1,0 +1,33 @@
+Root@0..18
+  Item@0..18
+    FnDef@0..18
+      FnHead@0..13
+        FN_KW@0..2 "fn"
+        WHITESPACE@2..3 " "
+        FnName@3..4
+          IDENT@3..4 "f"
+        TyParamList@4..7
+          LT@4..5 "<"
+          GenericParam@5..6
+            GenericTyParam@5..6
+              GenericTyParamName@5..6
+                IDENT@5..6 "T"
+          GT@6..7 ">"
+        FnParamList@7..13
+          L_PAREN@7..8 "("
+          FnParam@8..12
+            FnParamName@8..9
+              Pat@8..9
+                IDENT@8..9 "v"
+            COLON@9..10 ":"
+            WHITESPACE@10..11 " "
+            FnParamTy@11..12
+              TyRef@11..12
+                IDENT@11..12 "T"
+          R_PAREN@12..13 ")"
+      WHITESPACE@13..14 " "
+      Block@14..18
+        L_BRACE@14..15 "{"
+        WHITESPACE@15..16 "\r"
+        NEWLINE@16..17 "\n"
+        R_BRACE@17..18 "}"
