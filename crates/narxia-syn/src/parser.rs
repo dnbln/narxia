@@ -320,7 +320,7 @@ impl<'a> Parser<'a> {
             .present(4, styling, |presenter| write!(w, "{presenter}"))?;
 
         region(w, "Recent events")?;
-        write!(w, "{}", self.ev.present(4, 30, true, styling))?;
+        write!(w, "{}", self.ev.present(4, 100, true, styling))?;
 
         Ok(())
     }
@@ -1145,7 +1145,22 @@ fn parse_expr(p: &mut Parser) -> CompletedMarker {
 
 #[parse_fn]
 fn parse_expr_potential_assignment(p: &mut Parser) {
-    parse_expr(p);
+    let expr = parse_expr(p);
+    let s = p.state();
+    let lhs = p.ev.precede_completed(&expr);
+    let lhs = p.ev.end(lhs, SyntaxKind::AssignmentLhs);
+    p.skip_ws();
+    if p.at(T![=]) {
+        let m = p.ev.precede_completed(&lhs);
+        parse_assignment_eq_rhs_expr(p);
+        p.ev.end(m, SyntaxKind::AssignmentStmt);
+    } else {
+        p.restore_state(s);
+    }
+}
+
+parse_fn_decl! {
+    parse_assignment_eq_rhs_expr: AssignmentEqRhs ::= $![=] $/ws:wcn $parse_expr()
 }
 
 parse_fn_decl! {

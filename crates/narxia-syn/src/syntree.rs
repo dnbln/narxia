@@ -323,7 +323,19 @@ syntree_node! {
 }
 
 syntree_node! {
-    Item = |[FnDef, LetStmt, ForStmt, WhileStmt, ExprNode]
+    Item = |[FnDef, LetStmt, ForStmt, WhileStmt, AssignmentStmt, ExprNode]
+}
+
+syntree_node! {
+    AssignmentStmt = (AssignmentLhs AssignmentEqRhs)
+}
+
+syntree_node! {
+    AssignmentLhs = ExprNode
+}
+
+syntree_node! {
+    AssignmentEqRhs = (eq![=] ExprNode)
 }
 
 syntree_node! {
@@ -724,12 +736,7 @@ syntree_node! {
 }
 
 fn get_children<'a, T: TreeNode + 'static>(n: &'a Node) -> impl Iterator<Item = T> + 'a {
-    n.children().filter_map(|n| {
-        T::can_cast_from_syntax_kind(n.kind()).then(|| unsafe {
-            // Safety: T::can_cast_from_syntax_kind(n.kind()) == true
-            T::cast_from_node_raw(n)
-        })
-    })
+    n.children().filter_map(T::try_cast)
 }
 
 fn get_child_opt<T: TreeNode + 'static>(n: &Node) -> Option<T> {

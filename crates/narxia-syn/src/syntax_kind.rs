@@ -177,6 +177,10 @@ pub enum SyntaxKind {
 
     LoopExpr,
 
+    AssignmentStmt,
+    AssignmentLhs,
+    AssignmentEqRhs,
+
     #[doc(hidden)]
     __TOMBSTONE,
     #[doc(hidden)]
