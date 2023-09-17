@@ -1,4 +1,4 @@
-Root@0..51
+Root@0..89
   Item@0..18
     FnDef@0..18
       FnHead@0..13
@@ -6,7 +6,7 @@ Root@0..51
         WHITESPACE@2..3 " "
         FnName@3..4
           IDENT@3..4 "f"
-        TyParamList@4..7
+        GenericParamList@4..7
           LT@4..5 "<"
           GenericParam@5..6
             GenericTyParam@5..6
@@ -42,7 +42,7 @@ Root@0..51
         WHITESPACE@24..25 " "
         FnName@25..26
           IDENT@25..26 "f"
-        TyParamList@26..32
+        GenericParamList@26..32
           LT@26..27 "<"
           GenericParam@27..28
             GenericTyParam@27..28
@@ -86,3 +86,53 @@ Root@0..51
         R_BRACE@48..49 "}"
   WHITESPACE@49..50 "\r"
   NEWLINE@50..51 "\n"
+  WHITESPACE@51..52 "\r"
+  NEWLINE@52..53 "\n"
+  Item@53..89
+    FnDef@53..89
+      FnHead@53..84
+        FN_KW@53..55 "fn"
+        WHITESPACE@55..56 " "
+        FnName@56..57
+          IDENT@56..57 "f"
+        GenericParamList@57..78
+          LT@57..58 "<"
+          GenericParam@58..77
+            GenericTyParam@58..77
+              GenericTyParamName@58..59
+                IDENT@58..59 "T"
+              COLON@59..60 ":"
+              WHITESPACE@60..61 " "
+              GenericTyParamBoundList@61..72
+                GenericTyParamBound@61..65
+                  TyRef@61..65
+                    IDENT@61..65 "Copy"
+                PLUS@65..66 "+"
+                GenericTyParamBound@66..71
+                  TyRef@66..71
+                    IDENT@66..71 "Clone"
+                WHITESPACE@71..72 " "
+              GenericTyParamDefault@72..77
+                EQ@72..73 "="
+                WHITESPACE@73..74 " "
+                TyRef@74..77
+                  IDENT@74..77 "i32"
+          GT@77..78 ">"
+        FnParamList@78..84
+          L_PAREN@78..79 "("
+          FnParam@79..83
+            FnParamName@79..80
+              Pat@79..80
+                IDENT@79..80 "v"
+            COLON@80..81 ":"
+            WHITESPACE@81..82 " "
+            FnParamTy@82..83
+              TyRef@82..83
+                IDENT@82..83 "T"
+          R_PAREN@83..84 ")"
+      WHITESPACE@84..85 " "
+      Block@85..89
+        L_BRACE@85..86 "{"
+        WHITESPACE@86..87 "\r"
+        NEWLINE@87..88 "\n"
+        R_BRACE@88..89 "}"

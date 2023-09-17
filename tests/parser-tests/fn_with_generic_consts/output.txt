@@ -6,7 +6,7 @@ Root@0..30
         WHITESPACE@2..3 " "
         FnName@3..4
           IDENT@3..4 "f"
-        TyParamList@4..17
+        GenericParamList@4..17
           LT@4..5 "<"
           GenericParam@5..16
             GenericConstParam@5..16

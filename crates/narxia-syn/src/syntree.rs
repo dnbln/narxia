@@ -331,7 +331,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnHead = (fn_kw![fn] FnName ?TyParamList FnParamList)
+    FnHead = (fn_kw![fn] FnName ?GenericParamList FnParamList)
 }
 
 syntree_node! {
@@ -339,7 +339,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    TyParamList = (langle![<] *|[GenericParam, comma![,]] rangle![>])
+    GenericParamList = (langle![<] *|[GenericParam, comma![,]] rangle![>])
 }
 
 syntree_node! {
@@ -355,11 +355,23 @@ syntree_node! {
 }
 
 syntree_node! {
-    GenericTyParam = (GenericTyParamName)
+    GenericTyParam = (GenericTyParamName ?(colon![:] GenericTyParamBoundList) ?GenericTyParamDefault)
 }
 
 syntree_node! {
     GenericTyParamName = ident![ident]
+}
+
+syntree_node! {
+    GenericTyParamBoundList = *|[GenericTyParamBound, plus![+]]
+}
+
+syntree_node! {
+    GenericTyParamBound = TyRef
+}
+
+syntree_node! {
+    GenericTyParamDefault = (eq![=] TyRef)
 }
 
 syntree_node! {

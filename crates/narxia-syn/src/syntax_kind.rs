@@ -155,7 +155,7 @@ pub enum SyntaxKind {
     Pat,
 
     TyRef,
-    TyParamList,
+    GenericParamList,
     GenericParam,
 
     GenericConstParam,
@@ -165,6 +165,7 @@ pub enum SyntaxKind {
     GenericTyParam,
     GenericTyParamName,
     GenericTyParamBoundList,
+    GenericTyParamBound,
     GenericTyParamDefault,
 
     WhileStmt,

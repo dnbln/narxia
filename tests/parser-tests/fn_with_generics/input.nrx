@@ -3,3 +3,6 @@ fn f<T>(v: T) {
 
 fn f<T, U>(v: T, w: U) {
 }
+
+fn f<T: Copy+Clone = i32>(v: T) {
+}

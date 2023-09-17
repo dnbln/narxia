@@ -357,14 +357,14 @@ parse_fn_decl! {
         $parse_fn_name()
         $/ws:wcn
         $/if at[<] {
-            $parse_ty_param_list()
+            $parse_generic_param_list()
             $/ws:wcn
         }
         $parse_fn_param_list()
 }
 
 parse_fn_decl! {
-    parse_ty_param_list: TyParamList ::=
+    parse_generic_param_list: GenericParamList ::=
         $parse_list_simple2(
             T![<],
             parse_generic_param,
@@ -449,9 +449,14 @@ parse_fn_decl! {
     parse_generic_ty_param_bound_list: GenericTyParamBoundList ::=
         $parse_list_rep_simple2(
             T![+],
-            parse_ty_ref,
+            parse_generic_ty_param_bound,
             AttemptRecoveryLevel::Shallow,
         )
+}
+
+parse_fn_decl! {
+    parse_generic_ty_param_bound: GenericTyParamBound ::=
+        $parse_ty_ref()
 }
 
 fn parse_list_rep<E: NotAttemptingRecovery>(
