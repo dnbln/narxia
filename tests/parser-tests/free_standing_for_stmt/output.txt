@@ -1,0 +1,21 @@
+Root@0..15
+  Item@0..15
+    ForStmt@0..15
+      FOR_KW@0..3 "for"
+      WHITESPACE@3..4 " "
+      L_PAREN@4..5 "("
+      ForPat@5..6
+        Pat@5..6
+          IDENT@5..6 "i"
+      WHITESPACE@6..7 " "
+      IN_KW@7..9 "in"
+      WHITESPACE@9..10 " "
+      ForInExpr@10..11
+        Expr@10..11
+          ExprAtom@10..11
+            IDENT@10..11 "j"
+      R_PAREN@11..12 ")"
+      WHITESPACE@12..13 " "
+      Block@13..15
+        L_BRACE@13..14 "{"
+        R_BRACE@14..15 "}"

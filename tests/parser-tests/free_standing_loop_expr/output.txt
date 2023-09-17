@@ -1,0 +1,10 @@
+Root@0..7
+  Item@0..7
+    Expr@0..7
+      ExprAtom@0..7
+        LoopExpr@0..7
+          LOOP_KW@0..4 "loop"
+          WHITESPACE@4..5 " "
+          Block@5..7
+            L_BRACE@5..6 "{"
+            R_BRACE@6..7 "}"

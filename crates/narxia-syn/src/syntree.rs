@@ -300,7 +300,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    Item = |[FnDef, LetStmt, ExprNode]
+    Item = |[FnDef, LetStmt, ForStmt, WhileStmt, ExprNode]
 }
 
 syntree_node! {
