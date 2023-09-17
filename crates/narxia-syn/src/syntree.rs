@@ -2,7 +2,7 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 
 use colored::{ColoredString, Colorize};
-use narxia_syn_helpers::syntree_node;
+use narxia_syn_helpers::{syntree_enum, syntree_node};
 
 use crate::language::NarxiaLanguage;
 use crate::parser::ColorizeProcedure;
@@ -16,10 +16,11 @@ pub type SyntaxElementRef<'a> = rowan::NodeOrToken<&'a Node, &'a Token>;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SynTree {
+    // invariant: root.kind() == SyntaxKind::Root
     root: Node,
 }
 
-impl fmt::Debug for SynTree {
+impl Debug for SynTree {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         TreePresenter {
             root: SyntaxElementRef::Node(&self.root),
@@ -257,7 +258,7 @@ fn as_ref(e: &SyntaxElement) -> SyntaxElementRef {
     }
 }
 
-impl<'a> fmt::Debug for TreePresenter<'a> {
+impl<'a> Debug for TreePresenter<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_node(f)
     }
@@ -265,7 +266,7 @@ impl<'a> fmt::Debug for TreePresenter<'a> {
 
 impl SynTree {
     pub fn new(root: GreenTree) -> Self {
-        debug_assert_eq!(
+        assert_eq!(
             <NarxiaLanguage as rowan::Language>::kind_from_raw(root.root.kind()),
             SyntaxKind::Root
         );
@@ -275,7 +276,9 @@ impl SynTree {
     }
 
     pub fn get_root(&self) -> Root {
-        <Root as TreeNode>::from_node(self.root.clone()).unwrap()
+        // Safety: The following must hold before calling this.
+        // self.root.kind() == SyntaxKind::Root
+        unsafe { <Root as TreeNode>::cast_from_node_raw(self.root.clone()) }
     }
 
     pub fn present_with_style<T>(
@@ -288,7 +291,27 @@ impl SynTree {
 }
 
 pub trait TreeNode: Sized {
-    fn from_node(n: Node) -> Option<Self>;
+    fn try_cast(n: Node) -> Option<Self> {
+        if Self::can_cast_from_syntax_kind(n.kind()) {
+            // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
+            Some(unsafe { Self::cast_from_node_raw(n) })
+        } else {
+            None
+        }
+    }
+
+    fn try_cast_ref(n: &Node) -> Option<Self> {
+        if Self::can_cast_from_syntax_kind(n.kind()) {
+            // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
+            Some(unsafe { Self::cast_from_node_raw(n.clone()) })
+        } else {
+            None
+        }
+    }
+
+    unsafe fn cast_from_node_raw(n: Node) -> Self; // Invariant: The following must hold before calling this.
+                                                   // Self::can_cast_from_syntax_kind(n.kind()) == true
+    fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool;
     fn get_syntax_kind(&self) -> SyntaxKind {
         self.get_node().kind()
     }
@@ -340,7 +363,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnParamList = (lparen!['('] *(FnParam comma![,]) rparen![')'])
+    FnParamList = (lparen!['('] *|[FnParam, comma![,]] rparen![')'])
 }
 
 syntree_node! {
@@ -379,81 +402,8 @@ syntree_node! {
     ForInExpr = ExprNode
 }
 
-pub enum Expr {
-    Root(ExprNode),
-    ExprAtom(ExprAtom),
-    BinaryOpExpr(BinaryOpExpr),
-    CallExpr(CallExpr),
-    IndexExpr(IndexExpr),
-    FieldAccessExpr(FieldAccess),
-    MethodCallExpr(MethodCall),
-    Block(Block),
-}
-
-impl TreeNode for Expr {
-    fn from_node(n: Node) -> Option<Self> {
-        if let Some(expr_atom) = ExprAtom::from_node(n.clone()) {
-            Some(Self::ExprAtom(expr_atom))
-        } else if let Some(binary_op_expr) = BinaryOpExpr::from_node(n.clone()) {
-            Some(Self::BinaryOpExpr(binary_op_expr))
-        } else if let Some(call_expr) = CallExpr::from_node(n.clone()) {
-            Some(Self::CallExpr(call_expr))
-        } else if let Some(index_expr) = IndexExpr::from_node(n.clone()) {
-            Some(Self::IndexExpr(index_expr))
-        } else if let Some(field_access) = FieldAccess::from_node(n.clone()) {
-            Some(Self::FieldAccessExpr(field_access))
-        } else if let Some(method_call) = MethodCall::from_node(n.clone()) {
-            Some(Self::MethodCallExpr(method_call))
-        } else if let Some(block) = Block::from_node(n.clone()) {
-            Some(Self::Block(block))
-        } else {
-            None
-        }
-    }
-
-    fn get_node(&self) -> &Node {
-        match self {
-            Self::Root(n) => n.get_node(),
-            Self::ExprAtom(n) => n.get_node(),
-            Self::BinaryOpExpr(n) => n.get_node(),
-            Self::CallExpr(n) => n.get_node(),
-            Self::IndexExpr(n) => n.get_node(),
-            Self::FieldAccessExpr(n) => n.get_node(),
-            Self::MethodCallExpr(n) => n.get_node(),
-            Self::Block(n) => n.get_node(),
-        }
-    }
-}
-
-impl Expr {
-    fn call_accessors(&self, tests_data: &mut tests_data::AccessorCalledDataList) {
-        match self {
-            Self::Root(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::ExprAtom(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::BinaryOpExpr(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::CallExpr(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::IndexExpr(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::FieldAccessExpr(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::MethodCallExpr(n) => {
-                n.call_accessors(tests_data);
-            }
-            Self::Block(n) => {
-                n.call_accessors(tests_data);
-            }
-        }
-    }
+syntree_enum! {
+    Expr = ExprNode | ExprAtom | BinaryOpExpr | CallExpr | IndexExpr | FieldAccess | MethodCall | Block
 }
 
 syntree_node! {
@@ -762,7 +712,12 @@ syntree_node! {
 }
 
 fn get_children<'a, T: TreeNode + 'static>(n: &'a Node) -> impl Iterator<Item = T> + 'a {
-    n.children().filter_map(T::from_node)
+    n.children().filter_map(|n| {
+        T::can_cast_from_syntax_kind(n.kind()).then(|| unsafe {
+            // Safety: T::can_cast_from_syntax_kind(n.kind()) == true
+            T::cast_from_node_raw(n)
+        })
+    })
 }
 
 fn get_child_opt<T: TreeNode + 'static>(n: &Node) -> Option<T> {

@@ -112,8 +112,6 @@ where
             }
         }
 
-        const IGNORED_PREFIXES: &[&str] = &[".cargo/registry/src", "/rustc"];
-
         if let Some(file_path) = md.file() {
             self.style_field(w, "at", |w| {
                 write!(w, "{}", file_path.dimmed().bright_white())?;

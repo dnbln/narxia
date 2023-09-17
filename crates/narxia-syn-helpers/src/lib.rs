@@ -7,7 +7,10 @@ use syn::parse::{Parse, ParseStream, Peek};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data, DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Token, Path};
+use syn::{
+    braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data,
+    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Path, Token,
+};
 
 #[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -37,7 +40,8 @@ pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
         Ok(p) => p,
         Err(e) => return e.to_compile_error().into(),
     };
-    let expanded = expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into());
+    let expanded =
+        expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into());
     expanded
 }
 
@@ -969,12 +973,13 @@ impl SyntreeNodeDef {
             }
 
             impl TreeNode for #name {
-                fn from_node(n: Node) -> Option<Self> {
-                    if n.kind() == SyntaxKind::#sk_name {
-                        Some(Self { node: n })
-                    } else {
-                        None
-                    }
+                unsafe fn cast_from_node_raw(n: Node) -> Self {
+                    debug_assert!(Self::can_cast_from_syntax_kind(n.kind()));
+                    Self { node: n }
+                }
+
+                fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool {
+                    kind == SyntaxKind::#sk_name
                 }
 
                 fn get_syntax_kind(&self) -> SyntaxKind {
@@ -1500,5 +1505,93 @@ impl TokenAccessor {
             },
             accessor_calls,
         )
+    }
+}
+
+#[proc_macro]
+pub fn syntree_enum(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    syn::parse_macro_input!(input as SyntreeEnumDef)
+        .expand()
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+struct SyntreeEnumDef {
+    name: Ident,
+    eq: Token![=],
+    variants: Punctuated<Ident, Token![|]>,
+}
+
+impl Parse for SyntreeEnumDef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = input.parse()?;
+        let eq = input.parse()?;
+        let punct = input.parse_terminated(Ident::parse, Token![|])?;
+        Ok(Self { name, eq, variants: punct })
+    }
+}
+
+impl SyntreeEnumDef {
+    pub fn expand(&self) -> syn::Result<TokenStream> {
+        let name = &self.name;
+        let variants = &self.variants;
+
+        let cast_expr = {
+            let mut if_chain = IfChain::new();
+            for name in variants {
+                if_chain.add_if(parse_quote_spanned! {name.span()=>
+                    if #name::can_cast_from_syntax_kind(kind) {
+                        Self::#name(TreeNode::cast_from_node_raw(n))
+                    }
+                });
+            }
+
+            if_chain.add_else_branch(parse_quote_spanned! {self.eq.span()=>
+                {unreachable!("invalid syntax kind: {:?}", kind);}
+            });
+
+            let mut ts = TokenStream::new();
+            if_chain.compile(&mut ts);
+            ts
+        };
+
+        let v_iter_1 = variants.iter();
+        let v_iter_2 = variants.iter();
+        let v_iter_3 = variants.iter();
+        let v_iter_4 = variants.iter();
+
+        let expanded = quote! {
+            pub enum #name {
+                #(#v_iter_1(#v_iter_1),)*
+            }
+
+            impl TreeNode for #name {
+                unsafe fn cast_from_node_raw(n: Node) -> Self {
+                    let kind = n.kind();
+                    #cast_expr
+                }
+
+                fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool {
+                    #(
+                        #v_iter_2::can_cast_from_syntax_kind(kind)
+                    )||*
+                }
+
+                fn get_node(&self) -> &Node {
+                    match self {
+                        #(Self::#v_iter_3(n) => n.get_node(),)*
+                    }
+                }
+            }
+
+            impl #name {
+                pub fn call_accessors(&self, tests_data: &mut tests_data::AccessorCalledDataList) {
+                    match self {
+                        #(Self::#v_iter_4(n) => n.call_accessors(tests_data),)*
+                    }
+                }
+            }
+        };
+        Ok(expanded)
     }
 }
