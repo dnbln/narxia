@@ -248,7 +248,11 @@ impl<'a> Parser<'a> {
                 T![newline] => {
                     self.expect(T![newline]);
                 }
-                _ => {}
+                t => {
+                    narxia_log::e!("Parser is stuck on a {t:?} token");
+                    self.err_unexpected();
+                    break;
+                }
             }
         }
         self.ev.end(m, SyntaxKind::Root);
