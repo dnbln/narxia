@@ -1,5 +1,5 @@
 use std::fmt;
-use std::fmt::Formatter;
+use std::fmt::{Debug, Formatter};
 
 use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::syntree_node;
@@ -108,7 +108,7 @@ impl<'a> TreePresenter<'a> {
         Self::__private_new(SyntaxElementRef::Token(t), offset, style)
     }
 
-    fn fmt_node(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt_node_info(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.root {
             SyntaxElementRef::Node(n) => {
                 writeln!(
@@ -123,14 +123,6 @@ impl<'a> TreePresenter<'a> {
                         .colorize(format_args!("{}", TextSpan::of_node(n))),
                     width = self.offset
                 )?;
-                for child in n.children_with_tokens() {
-                    TreePresenter {
-                        root: as_ref(&child),
-                        offset: self.offset + 2,
-                        style: self.style,
-                    }
-                    .fmt_node(f)?;
-                }
             }
             SyntaxElementRef::Token(t) => {
                 writeln!(
@@ -150,7 +142,111 @@ impl<'a> TreePresenter<'a> {
                 )?;
             }
         }
+
         Ok(())
+    }
+
+    fn fmt_node(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.fmt_node_info(f)?;
+
+        if let SyntaxElementRef::Node(n) = self.root {
+            for child in n.children_with_tokens() {
+                TreePresenter {
+                    root: as_ref(&child),
+                    offset: self.offset + 2,
+                    style: self.style,
+                }
+                .fmt_node(f)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Offset(pub usize);
+
+impl Offset {
+    pub fn new(offset: usize) -> Self {
+        Self(offset)
+    }
+
+    pub fn add(&self, other: usize) -> Self {
+        Self(self.0 + other)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CustomTreePresenter<'a> {
+    elem: SyntaxElementRef<'a>,
+    offset: Offset,
+    offset_increment: usize,
+    fmt_node: &'a dyn Fn(&mut Formatter<'_>, Offset, &Node) -> fmt::Result,
+    fmt_token: &'a dyn Fn(&mut Formatter<'_>, Offset, &Token) -> fmt::Result,
+}
+
+impl<'a> CustomTreePresenter<'a> {
+    pub fn new_default_at_node(n: &'a Node) -> Self {
+        Self::new(
+            SyntaxElementRef::Node(n),
+            Offset::new(0),
+            2,
+            &|f, offset, n| {
+                TreePresenter {
+                    root: SyntaxElementRef::Node(n),
+                    offset: offset.0,
+                    style: Default::default(),
+                }
+                .fmt_node_info(f)
+            },
+            &|f, offset, t| {
+                TreePresenter {
+                    root: SyntaxElementRef::Token(t),
+                    offset: offset.0,
+                    style: Default::default(),
+                }
+                .fmt_node_info(f)
+            },
+        )
+    }
+
+    pub fn new(
+        elem: SyntaxElementRef<'a>,
+        offset: Offset,
+        offset_increment: usize,
+        fmt_node: &'a dyn Fn(&mut Formatter<'_>, Offset, &Node) -> fmt::Result,
+        fmt_token: &'a dyn Fn(&mut Formatter<'_>, Offset, &Token) -> fmt::Result,
+    ) -> Self {
+        Self {
+            elem,
+            offset,
+            offset_increment,
+            fmt_node,
+            fmt_token,
+        }
+    }
+}
+
+impl<'a> Debug for CustomTreePresenter<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.elem {
+            SyntaxElementRef::Node(n) => {
+                (self.fmt_node)(f, self.offset, n)?;
+
+                for child in n.children_with_tokens() {
+                    CustomTreePresenter {
+                        elem: as_ref(&child),
+                        offset: self.offset.add(self.offset_increment),
+                        ..*self
+                    }
+                    .fmt(f)?;
+                }
+
+                Ok(())
+            }
+            SyntaxElementRef::Token(t) => (self.fmt_token)(f, self.offset, t),
+        }
     }
 }
 
@@ -179,7 +275,7 @@ impl SynTree {
     }
 
     pub fn get_root(&self) -> Root {
-        <Root as TreeNode>::from(self.root.clone()).unwrap()
+        <Root as TreeNode>::from_node(self.root.clone()).unwrap()
     }
 
     pub fn present_with_style<T>(
@@ -192,17 +288,19 @@ impl SynTree {
 }
 
 pub trait TreeNode: Sized {
-    fn from(n: Node) -> Option<Self>;
-    fn get_syntax_kind(&self) -> SyntaxKind;
+    fn from_node(n: Node) -> Option<Self>;
+    fn get_syntax_kind(&self) -> SyntaxKind {
+        self.get_node().kind()
+    }
     fn get_node(&self) -> &Node;
 }
 
 syntree_node! {
-    Root = *Item
+    Root = *|[Item, newline![newline]]
 }
 
 syntree_node! {
-    Item = |[FnDef]
+    Item = |[FnDef, LetStmt, ExprNode]
 }
 
 syntree_node! {
@@ -210,7 +308,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnHead = (fn_kw![fn] FnName FnParamList)
+    FnHead = (fn_kw![fn] FnName ?TyParamList FnParamList)
 }
 
 syntree_node! {
@@ -218,7 +316,31 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnParamList = (lparen!['('] *FnParam rparen![')'])
+    TyParamList = (langle![<] *|[GenericParam, comma![,]] rangle![>])
+}
+
+syntree_node! {
+    GenericParam = |[GenericConstParam, GenericTyParam]
+}
+
+syntree_node! {
+    GenericConstParam = (const_kw![const] GenericConstParamName colon![:] TyRef)
+}
+
+syntree_node! {
+    GenericConstParamName = ident![ident]
+}
+
+syntree_node! {
+    GenericTyParam = (GenericTyParamName)
+}
+
+syntree_node! {
+    GenericTyParamName = ident![ident]
+}
+
+syntree_node! {
+    FnParamList = (lparen!['('] *(FnParam comma![,]) rparen![')'])
 }
 
 syntree_node! {
@@ -226,7 +348,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnParamName = ident![ident]
+    FnParamName = Pat
 }
 
 syntree_node! {
@@ -234,7 +356,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnParamDefault = (eq![=] Expr)
+    FnParamDefault = (eq![=] ExprNode)
 }
 
 syntree_node! {
@@ -242,11 +364,104 @@ syntree_node! {
 }
 
 syntree_node! {
-    Expr = |[ExprAtom, BinaryOpExpr]
+    ExprNode: Expr = Expr
 }
 
 syntree_node! {
-    ExprAtom = |[ident![ident], str![string]]
+    ForStmt = (for_kw![for] lparen!['('] ForPat in_kw![in] ForInExpr rparen![')'] Block)
+}
+
+syntree_node! {
+    ForPat = Pat
+}
+
+syntree_node! {
+    ForInExpr = ExprNode
+}
+
+pub enum Expr {
+    Root(ExprNode),
+    ExprAtom(ExprAtom),
+    BinaryOpExpr(BinaryOpExpr),
+    CallExpr(CallExpr),
+    IndexExpr(IndexExpr),
+    FieldAccessExpr(FieldAccess),
+    MethodCallExpr(MethodCall),
+    Block(Block),
+}
+
+impl TreeNode for Expr {
+    fn from_node(n: Node) -> Option<Self> {
+        if let Some(expr_atom) = ExprAtom::from_node(n.clone()) {
+            Some(Self::ExprAtom(expr_atom))
+        } else if let Some(binary_op_expr) = BinaryOpExpr::from_node(n.clone()) {
+            Some(Self::BinaryOpExpr(binary_op_expr))
+        } else if let Some(call_expr) = CallExpr::from_node(n.clone()) {
+            Some(Self::CallExpr(call_expr))
+        } else if let Some(index_expr) = IndexExpr::from_node(n.clone()) {
+            Some(Self::IndexExpr(index_expr))
+        } else if let Some(field_access) = FieldAccess::from_node(n.clone()) {
+            Some(Self::FieldAccessExpr(field_access))
+        } else if let Some(method_call) = MethodCall::from_node(n.clone()) {
+            Some(Self::MethodCallExpr(method_call))
+        } else if let Some(block) = Block::from_node(n.clone()) {
+            Some(Self::Block(block))
+        } else {
+            None
+        }
+    }
+
+    fn get_node(&self) -> &Node {
+        match self {
+            Self::Root(n) => n.get_node(),
+            Self::ExprAtom(n) => n.get_node(),
+            Self::BinaryOpExpr(n) => n.get_node(),
+            Self::CallExpr(n) => n.get_node(),
+            Self::IndexExpr(n) => n.get_node(),
+            Self::FieldAccessExpr(n) => n.get_node(),
+            Self::MethodCallExpr(n) => n.get_node(),
+            Self::Block(n) => n.get_node(),
+        }
+    }
+}
+
+impl Expr {
+    fn call_accessors(&self, tests_data: &mut tests_data::AccessorCalledDataList) {
+        match self {
+            Self::Root(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::ExprAtom(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::BinaryOpExpr(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::CallExpr(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::IndexExpr(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::FieldAccessExpr(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::MethodCallExpr(n) => {
+                n.call_accessors(tests_data);
+            }
+            Self::Block(n) => {
+                n.call_accessors(tests_data);
+            }
+        }
+    }
+}
+
+syntree_node! {
+    ExprAtom = |[ident![ident], str![string], LoopExpr, IfExpr, BlockExpr]
+}
+
+syntree_node! {
+    BlockExpr = Block
 }
 
 syntree_node! {
@@ -262,9 +477,22 @@ impl BinaryOpExpr {
         self.get_children_exprs().1
     }
 
+    pub fn get_ws(&self) -> impl Iterator<Item = Token> + '_ {
+        get_token_list(&self.node, T![whitespace])
+    }
+
     pub fn get_children_exprs(&self) -> (Expr, Option<Expr>) {
         let mut children = get_children(&self.node);
-        let left = children.next().unwrap();
+        let left = match children.next() {
+            Some(child) => child,
+            None => {
+                eprintln!(
+                    "{:?}",
+                    TreePresenter::__private_new_at_node(&self.node, 0, Default::default())
+                );
+                panic!("BinaryOpExpr has no children")
+            }
+        };
         let right = children.next();
         (left, right)
     }
@@ -289,10 +517,78 @@ impl BinaryOpExpr {
         assert!(right.is_some());
         (left, op, right.unwrap())
     }
+
+    fn call_accessors(&self, tests_data: &mut tests_data::AccessorCalledDataList) {
+        let (left, _op, right) = self.lower2();
+        tests_data.push(
+            tests_data::ElemRef::from(self),
+            "BinaryOpExpr",
+            "get_left",
+            tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&left)),
+        );
+        left.call_accessors(tests_data);
+        if let Some(right) = right {
+            right.call_accessors(tests_data);
+            tests_data.push(
+                tests_data::ElemRef::from(self),
+                "BinaryOpExpr",
+                "get_right",
+                tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&right)),
+            );
+        } else {
+            tests_data.push(
+                tests_data::ElemRef::from(self),
+                "BinaryOpExpr",
+                "get_right",
+                tests_data::AccessorCalledDataReturned::Nothing,
+            );
+        }
+
+        let _op = self.get_op();
+        tests_data.push(
+            tests_data::ElemRef::from(self),
+            "BinaryOpExpr",
+            "get_op",
+            tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&_op)),
+        );
+        _op.call_accessors(tests_data);
+
+        let _ws = self.get_ws();
+        let _ws = _ws
+            .map(|it| tests_data::ElemRef::from(&it))
+            .collect::<Vec<_>>();
+        tests_data.push(
+            tests_data::ElemRef::from(self),
+            "BinaryOpExpr",
+            "get_ws",
+            if _ws.is_empty() {
+                tests_data::AccessorCalledDataReturned::EmptyAllowed
+            } else {
+                tests_data::AccessorCalledDataReturned::ReturnedList(_ws)
+            },
+        );
+    }
 }
 
 syntree_node! {
-    BinaryOpExprOp = |[plus![+], minus![-], star![*], slash![/], percent![%], eqeq![==], neq![!=], lt![<], gt![>], lteq![<=], gteq![>=], and![&&], or![||]]
+    BinaryOpExprOp = |[
+        plus![+],
+        minus![-],
+        star![*],
+        slash![/],
+        percent![%],
+        eqeq![==],
+        neq![!=],
+        lt![<],
+        gt![>],
+        lteq![<=],
+        gteq![>=],
+        and![&&],
+        or![||],
+        bit_and![&],
+        bit_or![|],
+        xor![^]
+    ]
 }
 
 pub enum BinOp {
@@ -309,6 +605,9 @@ pub enum BinOp {
     GtEq(Token),
     And(Token),
     Or(Token),
+    BitAnd(Token),
+    BitOr(Token),
+    Xor(Token),
 }
 
 impl BinOp {
@@ -327,6 +626,9 @@ impl BinOp {
             T![>=] => Some(Self::GtEq(t)),
             T![&&] => Some(Self::And(t)),
             T![||] => Some(Self::Or(t)),
+            T![&] => Some(Self::BitAnd(t)),
+            T![|] => Some(Self::BitOr(t)),
+            T![^] => Some(Self::Xor(t)),
             _ => None,
         }
     }
@@ -346,6 +648,9 @@ impl BinOp {
             Self::GtEq(t) => t,
             Self::And(t) => t,
             Self::Or(t) => t,
+            Self::BitAnd(t) => t,
+            Self::BitOr(t) => t,
+            Self::Xor(t) => t,
         }
     }
 
@@ -376,6 +681,12 @@ impl BinOp {
             Self::And(t)
         } else if let Some(t) = bin_expr_op.get_or() {
             Self::Or(t)
+        } else if let Some(t) = bin_expr_op.get_bit_and() {
+            Self::BitAnd(t)
+        } else if let Some(t) = bin_expr_op.get_bit_or() {
+            Self::BitOr(t)
+        } else if let Some(t) = bin_expr_op.get_xor() {
+            Self::Xor(t)
         } else {
             unreachable!()
         }
@@ -383,23 +694,75 @@ impl BinOp {
 }
 
 syntree_node! {
-    Block = (lbrace!['{'] *Stmt rbrace!['}'])
+    CallExpr = (Expr CallExprArgs)
 }
 
 syntree_node! {
-    Stmt = |[Expr, LetStmt]
+    CallExprArgs = (lparen!['('] *ExprNode rparen![')'])
 }
 
 syntree_node! {
-    LetStmt = (let_kw![let] Pat ?(colon![:] TyRef) ?(eq![=] Expr))
+    IndexExpr = (Expr IndexExprIndex)
+}
+
+syntree_node! {
+    IndexExprIndex = (lbracket!['['] ExprNode rbracket![']'])
+}
+
+syntree_node! {
+    FieldAccess = (Expr dot![.] field_name![ident])
+}
+
+syntree_node! {
+    MethodCall = (Expr dot![.] method_name![ident] CallExprArgs)
+}
+
+syntree_node! {
+    Block = (lbrace!['{'] *|[Stmt, semi![;], newline![newline]] rbrace!['}'])
+}
+
+syntree_node! {
+    Stmt = |[ExprNode, LetStmt, ForStmt, WhileStmt]
+}
+
+syntree_node! {
+    LetStmt = (let_kw![let] Pat ?(colon![:] TyRef) ?(eq![=] ExprNode))
 }
 
 syntree_node! {
     Pat = ident![ident]
 }
 
+syntree_node! {
+    LoopExpr = (loop_kw![loop] Block)
+}
+
+syntree_node! {
+    IfExpr = (if_kw![if] IfCondition IfThenClause ?ElseClause)
+}
+
+syntree_node! {
+    IfCondition = (lparen!['('] ExprNode rparen![')'])
+}
+
+syntree_node! {
+    IfThenClause = ExprNode
+}
+
+syntree_node! {
+    ElseClause = (else_kw![else] ExprNode)
+}
+
+syntree_node! {
+    WhileStmt = (while_kw![while] WhileCondition Block)
+}
+
+syntree_node! {
+    WhileCondition = (lparen!['('] ExprNode rparen![')'])
+}
+
 fn get_children<'a, T: TreeNode + 'static>(n: &'a Node) -> impl Iterator<Item = T> + 'a {
-    n.children().filter_map(T::from)
+    n.children().filter_map(T::from_node)
 }
 
 fn get_child_opt<T: TreeNode + 'static>(n: &Node) -> Option<T> {
@@ -407,7 +770,19 @@ fn get_child_opt<T: TreeNode + 'static>(n: &Node) -> Option<T> {
 }
 
 fn get_child<T: TreeNode + 'static>(n: &Node) -> T {
-    get_child_opt(n).unwrap()
+    match get_child_opt(n) {
+        Some(child) => child,
+        None => {
+            eprintln!(
+                "{:?}",
+                TreePresenter::__private_new_at_node(n, 0, Default::default())
+            );
+            panic!(
+                "Node has no children of type {:?}",
+                std::any::type_name::<T>()
+            )
+        }
+    }
 }
 
 fn get_token_list<'a>(n: &'a Node, kind: SyntaxKind) -> impl Iterator<Item = Token> + 'a {
@@ -441,4 +816,81 @@ macro_rules! dbg_node {
             )
         );
     }};
+}
+
+pub mod tests_data {
+    use crate::syntax_kind::SyntaxKind;
+    use crate::syntree::{Token, TreeNode};
+    use crate::text_span::TextSpan;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub struct AccessorInfo {
+        pub ty_name: &'static str,
+        pub accessor_name: &'static str,
+    }
+
+    pub struct AccessorCalledData {
+        pub accessor_info: AccessorInfo,
+        pub called_at: ElemRef,
+        pub returned: AccessorCalledDataReturned,
+    }
+
+    pub struct ElemRef {
+        pub kind: SyntaxKind,
+        pub span: TextSpan,
+    }
+
+    impl<T: TreeNode> From<&T> for ElemRef {
+        fn from(value: &T) -> Self {
+            Self {
+                kind: value.get_syntax_kind(),
+                span: TextSpan::of_node(value.get_node()),
+            }
+        }
+    }
+
+    impl From<&Token> for ElemRef {
+        fn from(value: &Token) -> Self {
+            Self {
+                kind: value.kind(),
+                span: TextSpan::of(value),
+            }
+        }
+    }
+
+    pub enum AccessorCalledDataReturned {
+        Returned(ElemRef),
+        ReturnedList(Vec<ElemRef>),
+        Nothing,
+        EmptyAllowed,
+    }
+
+    pub struct AccessorCalledDataList {
+        pub accessors: Vec<AccessorCalledData>,
+    }
+
+    impl AccessorCalledDataList {
+        pub fn new() -> Self {
+            Self {
+                accessors: Vec::new(),
+            }
+        }
+
+        pub fn push(
+            &mut self,
+            called_at: ElemRef,
+            ty_name: &'static str,
+            accessor_name: &'static str,
+            returned: AccessorCalledDataReturned,
+        ) {
+            self.accessors.push(AccessorCalledData {
+                accessor_info: AccessorInfo {
+                    ty_name,
+                    accessor_name,
+                },
+                called_at,
+                returned,
+            });
+        }
+    }
 }

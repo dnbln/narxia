@@ -8,6 +8,7 @@ edition = "2021"
 [dev-dependencies]
 libtest-mimic = "0.6.1"
 miette.workspace = true
+colored.workspace = true
 
 narxia-driver.workspace = true
 narxia-syn.workspace = true
@@ -15,4 +16,13 @@ narxia-syn.workspace = true
 [[test]]
 name = "parsing_tests"
 path = "tests/parsing_tests.rs"
+harness = false
+
+[[test]]
+name = "syntree_correctness"
+path = "tests/syntree_correctness.rs"
+
+[[test]]
+name = "syntree_completeness"
+path = "tests/syntree_completeness.rs"
 harness = false

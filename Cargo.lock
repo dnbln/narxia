@@ -596,6 +596,7 @@ dependencies = [
 name = "narxia-test-runner"
 version = "0.1.0"
 dependencies = [
+ "colored",
  "libtest-mimic",
  "miette",
  "narxia-driver",

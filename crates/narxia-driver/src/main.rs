@@ -4,7 +4,6 @@ use clap::Parser;
 use colored::Colorize;
 use miette::IntoDiagnostic;
 use narxia_driver::DriverCtx;
-use salsa::storage::HasJarsDyn;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

@@ -31,7 +31,11 @@ pub struct Jar(SrcFile);
 
 pub fn load_from_disk(db: &dyn Db, path: PathBuf) -> io::Result<SrcFile> {
     let text = std::fs::read_to_string(&path)?;
+    Ok(load_from_memory(db, path, text))
+}
+
+pub fn load_from_memory(db: &dyn Db, path: PathBuf, contents: String) -> SrcFile {
     let short_path = path.clone();
-    let full_path = path.absolutize()?.into_owned();
-    Ok(SrcFile::new(db, Some(short_path), full_path, text))
+    let full_path = path.absolutize().unwrap().into_owned();
+    SrcFile::new(db, Some(short_path), full_path, contents)
 }

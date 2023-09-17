@@ -1,2 +1,5 @@
 fn f<T>(v: T) {
 }
+
+fn f<T, U>(v: T, w: U) {
+}

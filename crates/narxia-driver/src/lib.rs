@@ -39,6 +39,10 @@ pub fn parse_file(ctx: &DriverCtx, file: SrcFile) -> SynFile {
     parse_file_with_diagnostics(ctx, file).0
 }
 
+pub fn load_file(ctx: &DriverCtx, p: PathBuf, contents: String) -> SrcFile {
+    narxia_src_db::load_from_memory(&ctx.db, p, contents)
+}
+
 pub fn parse_file_with_diagnostics(ctx: &DriverCtx, file: SrcFile) -> (SynFile, Vec<ParseError>) {
     let syn_file = narxia_syn_db::parse_file(&ctx.db, file);
     let errors = narxia_syn_db::ParsingErrors::get(&ctx.db, file);

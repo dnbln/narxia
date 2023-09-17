@@ -962,7 +962,7 @@ impl SyntreeNodeDef {
             }
 
             impl TreeNode for #name {
-                fn from(n: Node) -> Option<Self> {
+                fn from_node(n: Node) -> Option<Self> {
                     if n.kind() == SyntaxKind::#sk_name {
                         Some(Self { node: n })
                     } else {
@@ -986,16 +986,40 @@ impl SyntreeNodeDef {
             children_def
                 .child_ref_expr
                 .compile(&mut accessors, &mut token_accessors);
+
+            let add_ws_accessor =
+                // if the node only consists of just one token, then there won't be any whitespace.
+                !matches!(&children_def.child_ref_expr,SyntreeNodeChildrenRefExpr::Token(..));
+
+            if add_ws_accessor {
+                token_accessors.push(TokenAccessor {
+                    name: format_ident!("get_ws"),
+                    kind: AccessorKind::List,
+                    token: quote! {whitespace},
+                    allow_empty: true,
+                });
+            }
+
             let mut accessors_ts = TokenStream::new();
+            let mut accessor_calls = TokenStream::new();
+
             for accessor in accessors {
-                accessors_ts.extend(accessor.expand());
+                let (accessor, accessor_call_list) = accessor.expand(name);
+                accessors_ts.extend(accessor);
+                accessor_calls.extend(accessor_call_list);
             }
             for token_accessor in token_accessors {
-                accessors_ts.extend(token_accessor.expand());
+                let (accessor, accessor_call_list) = token_accessor.expand(name);
+                accessors_ts.extend(accessor);
+                accessor_calls.extend(accessor_call_list);
             }
             expanded.extend(quote! {
                 impl #name {
                     #accessors_ts
+
+                    pub fn call_accessors(&self, tests_data: &mut tests_data::AccessorCalledDataList) {
+                        #accessor_calls
+                    }
                 }
             })
         }
@@ -1221,10 +1245,17 @@ impl SyntreeNodeChildrenRefExpr {
                     AccessorKind::FirstGuaranteed
                 };
 
+                let getter_name = if let AccessorKind::List = kind {
+                    format_ident!("get_{name}_list", name = name)
+                } else {
+                    format_ident!("get_{name}", name = name)
+                };
+
                 token_accessors.push(TokenAccessor {
-                    name: format_ident!("get_{name}"),
+                    name: getter_name,
                     token: token.clone(),
                     kind,
+                    allow_empty: false,
                 });
             }
             SyntreeNodeChildrenRefExpr::Repeat(_, r) => {
@@ -1286,14 +1317,24 @@ struct Accessor {
 }
 
 impl Accessor {
-    fn expand(&self) -> TokenStream {
+    fn expand(&self, node_name: &Ident) -> (TokenStream, TokenStream) {
         let name = &self.name;
-        let (target_ty, accessor) = match self.kind {
+        let (target_ty, accessor, accessor_calls) = match self.kind {
             AccessorKind::FirstGuaranteed => {
                 let target_ty = &self.target_ty;
                 (
                     quote! {#target_ty},
                     quote! {get_child::<#target_ty>(&self.node)},
+                    quote! {{
+                        let _node = self.#name();
+                        tests_data.push(
+                            tests_data::ElemRef::from(self),
+                            stringify!(#node_name),
+                            stringify!(#name),
+                            tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&_node))
+                        );
+                        _node.call_accessors(tests_data);
+                    }},
                 )
             }
             AccessorKind::List => {
@@ -1301,6 +1342,23 @@ impl Accessor {
                 (
                     quote! {impl Iterator<Item=#target_ty> + 'a},
                     quote! {get_children::<#target_ty>(&self.node)},
+                    quote! {{
+                        let _nodes = self.#name();
+                        let mut list = Vec::new();
+                        for _node in _nodes {
+                            _node.call_accessors(tests_data);
+                            list.push(tests_data::ElemRef::from(&_node));
+                        }
+                        tests_data.push(
+                            tests_data::ElemRef::from(self),
+                            stringify!(#node_name), stringify!(#name),
+                            if list.is_empty() {
+                                tests_data::AccessorCalledDataReturned::Nothing
+                            } else {
+                                tests_data::AccessorCalledDataReturned::ReturnedList(list)
+                            }
+                        );
+                    }},
                 )
             }
             AccessorKind::Opt => {
@@ -1308,14 +1366,39 @@ impl Accessor {
                 (
                     quote! {Option<#target_ty>},
                     quote! {get_child_opt::<#target_ty>(&self.node)},
+                    quote! {{
+                        let _node = self.#name();
+                        match _node {
+                            Some(_node) => {
+                                tests_data.push(
+                                    tests_data::ElemRef::from(self),
+                                    stringify!(#node_name),
+                                    stringify!(#name),
+                                    tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&_node))
+                                );
+                                _node.call_accessors(tests_data);
+                            }
+                            None => {
+                                tests_data.push(
+                                    tests_data::ElemRef::from(self),
+                                    stringify!(#node_name),
+                                    stringify!(#name),
+                                    tests_data::AccessorCalledDataReturned::Nothing
+                                );
+                            }
+                        }
+                    }},
                 )
             }
         };
-        quote! {
-            pub fn #name<'a>(&'a self) -> #target_ty {
-                #accessor
-            }
-        }
+        (
+            quote! {
+                pub fn #name<'a>(&'a self) -> #target_ty {
+                    #accessor
+                }
+            },
+            accessor_calls,
+        )
     }
 }
 
@@ -1329,29 +1412,86 @@ struct TokenAccessor {
     name: Ident,
     token: TokenStream,
     kind: AccessorKind,
+    allow_empty: bool,
 }
 
 impl TokenAccessor {
-    fn expand(&self) -> TokenStream {
+    fn expand(&self, node_name: &Ident) -> (TokenStream, TokenStream) {
         let name = &self.name;
         let token = &self.token;
-        let (target_ty, accessor) = match self.kind {
-            AccessorKind::FirstGuaranteed => {
-                (quote! {Token}, quote! {get_token(&self.node, T![#token])})
-            }
+        let allow_empty = self.allow_empty;
+        let (target_ty, accessor, accessor_calls) = match self.kind {
+            AccessorKind::FirstGuaranteed => (
+                quote! {Token},
+                quote! {get_token(&self.node, T![#token])},
+                quote! {{
+                    let _t = self.#name();
+                    tests_data.push(
+                        tests_data::ElemRef::from(self),
+                        stringify!(#node_name),
+                        stringify!(#name),
+                        tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&_t))
+                    );
+                }},
+            ),
             AccessorKind::List => (
                 quote! {impl Iterator<Item=Token> + 'a},
                 quote! {get_token_list(&self.node, T![#token])},
+                quote! {{
+                    let _ts = self.#name();
+                    let mut list = Vec::new();
+                    for _t in _ts {
+                        list.push(tests_data::ElemRef::from(&_t));
+                    }
+                    tests_data.push(
+                        tests_data::ElemRef::from(self),
+                        stringify!(#node_name),
+                        stringify!(#name),
+                        if list.is_empty() {
+                            if #allow_empty {
+                                tests_data::AccessorCalledDataReturned::EmptyAllowed
+                            } else {
+                                tests_data::AccessorCalledDataReturned::Nothing
+                            }
+                        } else {
+                            tests_data::AccessorCalledDataReturned::ReturnedList(list)
+                        }
+                    );
+                }},
             ),
             AccessorKind::Opt => (
                 quote! {Option<Token>},
                 quote! {get_token_opt(&self.node, T![#token])},
+                quote! {{
+                    let _t = self.#name();
+                    match _t {
+                        Some(_t) => {
+                            tests_data.push(
+                                tests_data::ElemRef::from(self),
+                                stringify!(#node_name),
+                                stringify!(#name),
+                                tests_data::AccessorCalledDataReturned::Returned(tests_data::ElemRef::from(&_t))
+                            );
+                        }
+                        None => {
+                            tests_data.push(
+                                tests_data::ElemRef::from(self),
+                                stringify!(#node_name),
+                                stringify!(#name),
+                                tests_data::AccessorCalledDataReturned::Nothing
+                            );
+                        }
+                    }
+                }},
             ),
         };
-        quote! {
-            pub fn #name<'a>(&'a self) -> #target_ty {
-                #accessor
-            }
-        }
+        (
+            quote! {
+                pub fn #name<'a>(&'a self) -> #target_ty {
+                    #accessor
+                }
+            },
+            accessor_calls,
+        )
     }
 }

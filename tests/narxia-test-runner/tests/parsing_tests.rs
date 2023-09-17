@@ -3,11 +3,7 @@ use std::path::PathBuf;
 use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, Context, IntoDiagnostic};
 use narxia_syn::syntree::TreePresenterStyle;
-use narxia_test_runner::ws_root;
-
-fn parser_tests_dir() -> PathBuf {
-    dbg!(ws_root().join("tests/parser-tests"))
-}
+use narxia_test_runner::parser_tests::parser_tests_dir;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {
@@ -25,13 +21,12 @@ impl TestMode {
     }
 }
 
-const INPUT_FILE_NAME: &str = "input.nrx";
-const OUTPUT_FILE_NAME: &str = "output.txt";
-
 fn run_test_impl(path: PathBuf, test_mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
-    let syn_file =
-        narxia_driver::parse_file_at_path_and_assert_no_errors(&ctx, path.join(INPUT_FILE_NAME));
+    let syn_file = narxia_driver::parse_file_at_path_and_assert_no_errors(
+        &ctx,
+        path.join(narxia_test_runner::parser_tests::INPUT_FILE_NAME),
+    );
     let tree = syn_file.tree(&ctx.db);
 
     let tree_str = tree.present_with_style(TreePresenterStyle::plain(), |p| format!("{p:?}"));
@@ -39,14 +34,19 @@ fn run_test_impl(path: PathBuf, test_mode: TestMode) -> miette::Result<()> {
 
     match test_mode {
         TestMode::Overwrite => {
-            std::fs::write(path.join(OUTPUT_FILE_NAME), tree_str)
-                .into_diagnostic()
-                .context("Cannot write expected tree")?;
+            std::fs::write(
+                path.join(narxia_test_runner::parser_tests::OUTPUT_FILE_NAME),
+                tree_str,
+            )
+            .into_diagnostic()
+            .context("Cannot write expected tree")?;
         }
         TestMode::Compare => {
-            let expected = std::fs::read_to_string(path.join(OUTPUT_FILE_NAME))
-                .into_diagnostic()
-                .context("Cannot read expected tree")?;
+            let expected = std::fs::read_to_string(
+                path.join(narxia_test_runner::parser_tests::OUTPUT_FILE_NAME),
+            )
+            .into_diagnostic()
+            .context("Cannot read expected tree")?;
             if tree_str != expected {
                 bail!(
                     "Tree does not match expected output.\nExpected:\n{}\nActual:\n{}",

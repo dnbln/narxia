@@ -1,4 +1,4 @@
-Root@0..18
+Root@0..51
   Item@0..18
     FnDef@0..18
       FnHead@0..13
@@ -31,3 +31,58 @@ Root@0..18
         WHITESPACE@15..16 "\r"
         NEWLINE@16..17 "\n"
         R_BRACE@17..18 "}"
+  WHITESPACE@18..19 "\r"
+  NEWLINE@19..20 "\n"
+  WHITESPACE@20..21 "\r"
+  NEWLINE@21..22 "\n"
+  Item@22..49
+    FnDef@22..49
+      FnHead@22..44
+        FN_KW@22..24 "fn"
+        WHITESPACE@24..25 " "
+        FnName@25..26
+          IDENT@25..26 "f"
+        TyParamList@26..32
+          LT@26..27 "<"
+          GenericParam@27..28
+            GenericTyParam@27..28
+              GenericTyParamName@27..28
+                IDENT@27..28 "T"
+          COMMA@28..29 ","
+          WHITESPACE@29..30 " "
+          GenericParam@30..31
+            GenericTyParam@30..31
+              GenericTyParamName@30..31
+                IDENT@30..31 "U"
+          GT@31..32 ">"
+        FnParamList@32..44
+          L_PAREN@32..33 "("
+          FnParam@33..37
+            FnParamName@33..34
+              Pat@33..34
+                IDENT@33..34 "v"
+            COLON@34..35 ":"
+            WHITESPACE@35..36 " "
+            FnParamTy@36..37
+              TyRef@36..37
+                IDENT@36..37 "T"
+          COMMA@37..38 ","
+          WHITESPACE@38..39 " "
+          FnParam@39..43
+            FnParamName@39..40
+              Pat@39..40
+                IDENT@39..40 "w"
+            COLON@40..41 ":"
+            WHITESPACE@41..42 " "
+            FnParamTy@42..43
+              TyRef@42..43
+                IDENT@42..43 "U"
+          R_PAREN@43..44 ")"
+      WHITESPACE@44..45 " "
+      Block@45..49
+        L_BRACE@45..46 "{"
+        WHITESPACE@46..47 "\r"
+        NEWLINE@47..48 "\n"
+        R_BRACE@48..49 "}"
+  WHITESPACE@49..50 "\r"
+  NEWLINE@50..51 "\n"

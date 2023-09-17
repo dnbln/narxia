@@ -234,7 +234,12 @@ impl<'a> Parser<'a> {
                 | T![!]
                 | T![*]
                 | T![string]
-                | T![number] => {
+                | T![number]
+                | T!['{']
+                | T![loop]
+                | T![while]
+                | T![for]
+                | T![if] => {
                     parse_item(self);
                 }
                 T![whitespace] => {
@@ -331,6 +336,8 @@ parse_fn_decl! {
         $/match {
             [fn] => {$parse_fn_def()}
             [let] => {$parse_let_stmt()}
+            [while] => {$parse_while_stmt()}
+            [for] => {$parse_for_stmt()}
             [ident] [+] [-] [!] [*] [string] [number] [if] [loop] ['{'] => {$parse_expr_potential_assignment()}
         }
 }

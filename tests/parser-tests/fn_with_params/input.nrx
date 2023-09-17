@@ -1,2 +1,5 @@
 fn input(a0: A0, a1: A1) {
 }
+
+fn input_with_defaults(a0: A0, a1: A1 = A1()) {
+}
