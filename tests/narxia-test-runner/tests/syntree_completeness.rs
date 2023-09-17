@@ -14,18 +14,17 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
-use std::path::PathBuf;
-
 use colored::{ColoredString, Colorize};
 use libtest_mimic::{Arguments, Failed, Trial};
-use miette::{bail, Context, IntoDiagnostic};
+use miette::bail;
+
 use narxia_syn::syntax_kind::SyntaxKind;
+use narxia_syn::syntree::{Node, Token, TreeNode};
 use narxia_syn::syntree::tests_data::{
     AccessorCalledDataList, AccessorCalledDataReturned, ElemRef,
 };
-use narxia_syn::syntree::{Node, Token, TreeNode};
 use narxia_syn::text_span::TextSpan;
-use narxia_test_runner::parser_tests::parser_tests_dir;
+use narxia_test_runner::parser_tests::ParserTest;
 
 fn node_chk(node: &Node) -> impl Fn(&ElemRef) -> bool + '_ {
     |e| e.kind == node.kind() && e.span == TextSpan::of_node(node)
@@ -58,12 +57,10 @@ fn acdl_contains(acdl: &AccessorCalledDataList, chk: impl Fn(&ElemRef) -> bool) 
     false
 }
 
-fn run_test_for_path(path: PathBuf) -> miette::Result<()> {
+fn run_for_test(test: ParserTest) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
-    let syn_file = narxia_driver::parse_file_at_path_and_assert_no_errors(
-        &ctx,
-        path.join(narxia_test_runner::parser_tests::INPUT_FILE_NAME),
-    );
+    let syn_file =
+        narxia_driver::parse_file_at_path_and_assert_no_errors(&ctx, test.input_file_path());
 
     let tree = syn_file.tree(&ctx.db);
     let mut acdl = AccessorCalledDataList::new();
@@ -146,18 +143,14 @@ fn run_test_for_path(path: PathBuf) -> miette::Result<()> {
 }
 
 fn collect_trials() -> miette::Result<Vec<Trial>> {
-    let p = parser_tests_dir();
-    let mut trials = Vec::new();
-    for entry in p.read_dir().into_diagnostic().context("read_dir")? {
-        let entry = entry.into_diagnostic().context("read_dir")?;
-        let path = entry.path();
-        if path.is_dir() {
-            trials.push(Trial::test(
-                path.file_name().unwrap().to_str().unwrap().to_owned(),
-                move || run_test_for_path(path).map_err(Failed::from),
-            ));
-        }
-    }
+    let trials = narxia_test_runner::parser_tests::collect_parser_tests()?
+        .into_iter()
+        .map(|test| {
+            Trial::test(test.name.clone(), move || {
+                run_for_test(test).map_err(Failed::from)
+            })
+        })
+        .collect();
 
     Ok(trials)
 }

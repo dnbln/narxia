@@ -13,12 +13,10 @@
 // - Compare: The parser will compare the pretty-printed version of the parse tree with the
 //   contents of the `output.txt` file. If they don't match, the test fails.
 
-use std::path::PathBuf;
-
 use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, Context, IntoDiagnostic};
 use narxia_syn::syntree::TreePresenterStyle;
-use narxia_test_runner::parser_tests::parser_tests_dir;
+use narxia_test_runner::parser_tests::ParserTest;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {
@@ -36,12 +34,10 @@ impl TestMode {
     }
 }
 
-fn run_test_impl(path: PathBuf, test_mode: TestMode) -> miette::Result<()> {
+fn run_test_impl(test: ParserTest, test_mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
-    let syn_file = narxia_driver::parse_file_at_path_and_assert_no_errors(
-        &ctx,
-        path.join(narxia_test_runner::parser_tests::INPUT_FILE_NAME),
-    );
+    let syn_file =
+        narxia_driver::parse_file_at_path_and_assert_no_errors(&ctx, test.input_file_path());
     let tree = syn_file.tree(&ctx.db);
 
     let tree_str = tree.present_with_style(TreePresenterStyle::plain(), |p| format!("{p:?}"));
@@ -49,19 +45,14 @@ fn run_test_impl(path: PathBuf, test_mode: TestMode) -> miette::Result<()> {
 
     match test_mode {
         TestMode::Overwrite => {
-            std::fs::write(
-                path.join(narxia_test_runner::parser_tests::OUTPUT_FILE_NAME),
-                tree_str,
-            )
-            .into_diagnostic()
-            .context("Cannot write expected tree")?;
+            std::fs::write(test.output_file_path(), tree_str)
+                .into_diagnostic()
+                .context("Cannot write expected tree")?;
         }
         TestMode::Compare => {
-            let expected = std::fs::read_to_string(
-                path.join(narxia_test_runner::parser_tests::OUTPUT_FILE_NAME),
-            )
-            .into_diagnostic()
-            .context("Cannot read expected tree")?;
+            let expected = std::fs::read_to_string(test.output_file_path())
+                .into_diagnostic()
+                .context("Cannot read expected tree")?;
             if tree_str != expected {
                 bail!(
                     "Tree does not match expected output.\nExpected:\n{}\nActual:\n{}",
@@ -75,24 +66,16 @@ fn run_test_impl(path: PathBuf, test_mode: TestMode) -> miette::Result<()> {
     Ok(())
 }
 
-fn run_test_for_path(path: PathBuf, test_mode: TestMode) -> Result<(), Failed> {
-    run_test_impl(path, test_mode).map_err(Failed::from)
+fn run_test(test: ParserTest, test_mode: TestMode) -> Result<(), Failed> {
+    run_test_impl(test, test_mode).map_err(Failed::from)
 }
 
 fn collect_trials() -> miette::Result<Vec<Trial>> {
-    let p = parser_tests_dir();
     let test_mode = TestMode::get_behavior();
-    let mut trials = Vec::new();
-    for entry in p.read_dir().into_diagnostic().context("read_dir")? {
-        let entry = entry.into_diagnostic().context("read_dir")?;
-        let path = entry.path();
-        if path.is_dir() {
-            trials.push(Trial::test(
-                path.file_name().unwrap().to_str().unwrap().to_owned(),
-                move || run_test_for_path(path, test_mode),
-            ));
-        }
-    }
+    let trials = narxia_test_runner::parser_tests::collect_parser_tests()?
+        .into_iter()
+        .map(|test| Trial::test(test.name.clone(), move || run_test(test, test_mode)))
+        .collect();
 
     Ok(trials)
 }

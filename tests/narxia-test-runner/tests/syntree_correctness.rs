@@ -28,10 +28,10 @@ use std::path::PathBuf;
 
 use colored::Colorize;
 use miette::{bail, Context, IntoDiagnostic};
+
 use narxia_syn::syntree::tests_data::{
     AccessorCalledDataList, AccessorCalledDataReturned, AccessorInfo, ElemRef,
 };
-use narxia_test_runner::parser_tests::parser_tests_dir;
 
 struct InputFile {
     path: PathBuf,
@@ -169,18 +169,13 @@ no guarantee now that the parse tree matches our syn models.
 }
 
 fn run() -> miette::Result<()> {
-    let p = parser_tests_dir();
     let mut input_files = Vec::new();
-    for entry in p.read_dir().into_diagnostic().context("read_dir")? {
-        let entry = entry.into_diagnostic().context("read_dir")?;
-        let path = entry.path();
-        if path.is_dir() {
-            let p = path.join(narxia_test_runner::parser_tests::INPUT_FILE_NAME);
-            let contents = std::fs::read_to_string(&p)
-                .into_diagnostic()
-                .with_context(|| format!("Cannot read input file at {p:?}"))?;
-            input_files.push(InputFile { path: p, contents });
-        }
+    for test in narxia_test_runner::parser_tests::collect_parser_tests()? {
+        let p = test.input_file_path();
+        let contents = std::fs::read_to_string(&p)
+            .into_diagnostic()
+            .with_context(|| format!("Cannot read input file at {p:?}"))?;
+        input_files.push(InputFile { path: p, contents });
     }
 
     if input_files.is_empty() {
