@@ -11,6 +11,13 @@ impl ParseError {
     pub(crate) fn new(info: ParseErrorInfo, at: TextSpan) -> Self {
         Self { info, at }
     }
+    pub fn get_info(&self) -> &ParseErrorInfo {
+        &self.info
+    }
+
+    pub fn get_at(&self) -> TextSpan {
+        self.at
+    }
 }
 
 #[derive(Debug, Clone)]

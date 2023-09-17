@@ -1,16 +1,13 @@
 #![allow(dead_code, unused_imports, unused_variables)] // FIXME: fix
 
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::parse::discouraged::Speculative;
 use syn::parse::{Parse, ParseStream, Peek};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
-use syn::{
-    braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data,
-    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Token,
-};
+use syn::{braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data, DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Token, Path};
 
 #[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -18,23 +15,33 @@ pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput {
         ident,
         data: Data::Enum(data),
+        attrs,
         ..
     } = input
     else {
-        return syn::Error::new_spanned(input, "expected struct")
+        return syn::Error::new_spanned(input, "expected enum")
             .to_compile_error()
             .into();
     };
     if ident != "SyntaxKind" {
-        return syn::Error::new_spanned(ident, "expected struct SyntaxKind")
+        return syn::Error::new_spanned(ident, "expected enum SyntaxKind")
             .to_compile_error()
             .into();
     }
-    let expanded = expand_t(ident, data).map_or_else(|e| e.to_compile_error().into(), |t| t.into());
+    let Some(sk_path) = attrs.iter().find(|it| it.path().is_ident("T")) else {
+        return syn::Error::new(Span::call_site(), "expected #[T(...)]")
+            .to_compile_error()
+            .into();
+    };
+    let sk_path = match sk_path.parse_args::<Path>() {
+        Ok(p) => p,
+        Err(e) => return e.to_compile_error().into(),
+    };
+    let expanded = expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into());
     expanded
 }
 
-fn expand_t(ident: Ident, data: DataEnum) -> syn::Result<TokenStream> {
+fn expand_t(ident: Ident, data: DataEnum, sk_path: Path) -> syn::Result<TokenStream> {
     let mut variants = Vec::new();
     for variant in &data.variants {
         let variant_name = &variant.ident;
@@ -47,7 +54,7 @@ fn expand_t(ident: Ident, data: DataEnum) -> syn::Result<TokenStream> {
         };
         let value = attr.parse_args::<TokenStream>()?;
         variants.push(quote! {
-            (#value) => {$crate::#ident::#variant_name};
+            (#value) => {$crate::#sk_path::#variant_name};
         });
     }
 

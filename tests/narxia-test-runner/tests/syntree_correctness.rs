@@ -1,3 +1,27 @@
+// This file tests that all accessors return something.
+//
+// The idea is that we want to make sure that all accessors return something,
+// because if they don't, then we do not know if the parse tree actually matches
+// our model of it in the syntree.
+//
+// This test uses the following approach:
+// 1. The narxia_syn_helper::syntree_node macro generates a "call_accessors" method,
+//    which calls all accessors on the node and collects the results in a list.
+// 2. We look at the results in the list and check that for each accessor, at least
+//    one of the calls returned something (among the many parser tests).
+// 3. If an accessor is called but it doesn't return anything, over *ALL* the parser
+//    tests, then we fail this test.
+//
+// This test is not perfect, because it doesn't check that the returned values are
+// indeed correct, but it tests that they return something.
+//
+// Once an accessor doesn't return anything anymore, over all the parse tests,
+// then we can remove it from the syntree, and modify all the code that used it.
+//
+// This test is meant to be used in conjunction with
+// the syntree_completeness test, to prove that our model of the syntree
+// matches what the parser produces.
+
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;

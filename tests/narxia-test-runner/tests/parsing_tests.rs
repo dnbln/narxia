@@ -1,3 +1,18 @@
+// Tests for the parser.
+//
+// This file is responsible for running the parser tests.
+//
+// The parser tests are located in the `tests/parser-tests` directory.
+// Each of them is a directory with an `input.nrx` file and an `output.txt` file.
+// The `input.nrx` file contains the source code to parse, and the `output.txt` file
+// contains a pretty-printed version of the resulting parse tree.
+//
+// The parser tests are run in two modes:
+// - Overwrite: The parser will overwrite the `output.txt` file with new the pretty-printed
+//   version of the parse tree.
+// - Compare: The parser will compare the pretty-printed version of the parse tree with the
+//   contents of the `output.txt` file. If they don't match, the test fails.
+
 use std::path::PathBuf;
 
 use libtest_mimic::{Arguments, Failed, Trial};

@@ -110,8 +110,7 @@ impl<'text> CharTokenParser<'text> {
         chars: [char; NC],
         ranges: [RangeInclusive<char>; NR],
     ) -> usize {
-        let initial = self.chars.offset();
-        let mut end = initial;
+        let end;
 
         loop {
             let Some((next, c)) = self.chars.next() else {
@@ -132,8 +131,7 @@ impl<'text> CharTokenParser<'text> {
         chars: [char; NC],
         ranges: [RangeInclusive<char>; NR],
     ) -> usize {
-        let initial = self.chars.offset();
-        let mut end = initial;
+        let end;
 
         loop {
             let Some((next, c)) = self.chars.next() else {

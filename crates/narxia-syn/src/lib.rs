@@ -9,5 +9,3 @@ pub mod syntax_kind;
 pub mod syntree;
 pub mod text_span;
 pub mod token_source;
-
-pub(crate) use syntax_kind::SyntaxKind;

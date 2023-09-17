@@ -2,6 +2,7 @@
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, narxia_syn_helpers::DeriveT)]
 #[repr(u16)]
+#[T(syntax_kind::SyntaxKind)]
 pub enum SyntaxKind {
     // Tokens
     #[T(ident)]

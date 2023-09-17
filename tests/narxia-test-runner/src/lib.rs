@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn ws_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -10,6 +10,7 @@ pub fn ws_root() -> &'static Path {
 
 pub mod parser_tests {
     use std::path::PathBuf;
+
     use crate::ws_root;
 
     pub fn parser_tests_dir() -> PathBuf {

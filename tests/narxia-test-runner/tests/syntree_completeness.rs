@@ -1,3 +1,19 @@
+// Checks for the completeness of the syntree models.
+//
+// This test checks that there is a sequence of accessors
+// that we can call to reach any node or token in the tree.
+//
+// This test uses the following approach:
+// 1. The narxia_syn_helper::syntree_node macro generates a "call_accessors" method,
+//    which calls all accessors on the node and collects the results in a list.
+// 2. We look at the results in the list and check that all the nodes and tokens
+//    are reachable.
+// 3. If there is a node or token that is not reachable, then we fail this test.
+//
+// This test is meant to be used in conjunction with
+// the syntree_correctness test, to prove that our model of the syntree
+// matches what the parser produces.
+
 use std::path::PathBuf;
 
 use colored::{ColoredString, Colorize};

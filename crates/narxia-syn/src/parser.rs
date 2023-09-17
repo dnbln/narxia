@@ -266,11 +266,11 @@ impl<'a> Parser<'a> {
     }
 
     #[track_caller]
-    fn __private_dbg_log<W>(&mut self, w: &mut W, styling: ParserDbgStyling) -> std::fmt::Result
+    fn __private_dbg_log<W>(&mut self, w: &mut W, styling: ParserDbgStyling) -> fmt::Result
     where
-        W: std::fmt::Write,
+        W: fmt::Write,
     {
-        let mut region =
+        let region =
             |w: &mut W, name: &str| writeln!(w, "  {}:", styling.region_name.colorize(name));
 
         writeln!(

@@ -7,7 +7,6 @@ use crate::parse_error::ParseError;
 use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
-use crate::text_span::TextSpan;
 
 pub struct ParseEventHandlerPos(usize);
 
@@ -191,7 +190,7 @@ impl<'a> ParseEventHandler<'a> {
                         handle_precede(tb, *kind, precede, compiled_events);
                     }
                     CompiledParseEvent::Token(..) => {}
-                    CompiledParseEvent::Error(error) => {}
+                    CompiledParseEvent::Error(_error) => {}
                     CompiledParseEvent::End => {}
                 }
             }
