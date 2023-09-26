@@ -1,0 +1,17 @@
+f { it + a }
+f { it -> it + a }
+f { it + a }
+f { it -> it + a }
+f { it ->
+    call();
+    call2();
+    it
+}
+f { it: i32 -> it + a }
+f { it: i32, it2: i32 -> it + it2 }
+f { it: i32, it2: i32, it3: i32 -> it + it2 + it3 }
+f() { it + a }
+f() { it -> it + a }
+f(a) { it -> it + b }
+a.f { it + a }
+a.f(a) { it + b }

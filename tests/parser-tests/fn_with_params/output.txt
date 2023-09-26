@@ -77,8 +77,9 @@ Root@0..83
                   ExprAtom@73..75
                     IDENT@73..75 "A1"
                   CallExprArgs@75..77
-                    L_PAREN@75..76 "("
-                    R_PAREN@76..77 ")"
+                    CallExprArgsList@75..77
+                      L_PAREN@75..76 "("
+                      R_PAREN@76..77 ")"
           R_PAREN@77..78 ")"
       WHITESPACE@78..79 " "
       Block@79..83

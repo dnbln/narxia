@@ -18,10 +18,10 @@ pub struct NarxiaDriverParseCommand {
 }
 
 fn main() -> miette::Result<()> {
-    let _span = narxia_log::span!(narxia_log::Level::INFO, "main").entered();
-
     let ctx = DriverCtx::initialize();
     ctx.init_log();
+
+    let _span = narxia_log::span!(narxia_log::Level::INFO, "main").entered();
 
     let cmd = NarxiaDriverCommand::parse();
     match cmd {

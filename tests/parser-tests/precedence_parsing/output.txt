@@ -141,36 +141,38 @@ Root@0..123
                       ExprAtom@80..81
                         IDENT@80..81 "s"
                       CallExprArgs@81..99
-                        L_PAREN@81..82 "("
-                        Expr@82..98
-                          BinaryOpExpr@82..98
-                            ExprAtom@82..83
-                              IDENT@82..83 "t"
-                            WHITESPACE@83..84 " "
-                            BinaryOpExprOp@84..85
-                              LT@84..85 "<"
-                            WHITESPACE@85..86 " "
-                            MethodCall@86..98
-                              ExprAtom@86..87
-                                IDENT@86..87 "u"
-                              DOT@87..88 "."
-                              IDENT@88..89 "v"
-                              CallExprArgs@89..98
-                                L_PAREN@89..90 "("
-                                Expr@90..97
-                                  FieldAccess@90..97
-                                    FieldAccess@90..95
-                                      FieldAccess@90..93
-                                        ExprAtom@90..91
-                                          IDENT@90..91 "w"
-                                        DOT@91..92 "."
-                                        IDENT@92..93 "x"
-                                      DOT@93..94 "."
-                                      IDENT@94..95 "y"
-                                    DOT@95..96 "."
-                                    IDENT@96..97 "z"
-                                R_PAREN@97..98 ")"
-                        R_PAREN@98..99 ")"
+                        CallExprArgsList@81..99
+                          L_PAREN@81..82 "("
+                          Expr@82..98
+                            BinaryOpExpr@82..98
+                              ExprAtom@82..83
+                                IDENT@82..83 "t"
+                              WHITESPACE@83..84 " "
+                              BinaryOpExprOp@84..85
+                                LT@84..85 "<"
+                              WHITESPACE@85..86 " "
+                              MethodCall@86..98
+                                ExprAtom@86..87
+                                  IDENT@86..87 "u"
+                                DOT@87..88 "."
+                                IDENT@88..89 "v"
+                                CallExprArgs@89..98
+                                  CallExprArgsList@89..98
+                                    L_PAREN@89..90 "("
+                                    Expr@90..97
+                                      FieldAccess@90..97
+                                        FieldAccess@90..95
+                                          FieldAccess@90..93
+                                            ExprAtom@90..91
+                                              IDENT@90..91 "w"
+                                            DOT@91..92 "."
+                                            IDENT@92..93 "x"
+                                          DOT@93..94 "."
+                                          IDENT@94..95 "y"
+                                        DOT@95..96 "."
+                                        IDENT@96..97 "z"
+                                    R_PAREN@97..98 ")"
+                          R_PAREN@98..99 ")"
                 WHITESPACE@99..100 " "
                 BinaryOpExprOp@100..101
                   AMP@100..101 "&"

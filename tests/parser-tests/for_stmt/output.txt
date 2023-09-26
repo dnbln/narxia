@@ -32,8 +32,9 @@ Root@0..43
                   ExprAtom@27..28
                     IDENT@27..28 "f"
                   CallExprArgs@28..30
-                    L_PAREN@28..29 "("
-                    R_PAREN@29..30 ")"
+                    CallExprArgsList@28..30
+                      L_PAREN@28..29 "("
+                      R_PAREN@29..30 ")"
             R_PAREN@30..31 ")"
             WHITESPACE@31..32 " "
             Block@32..40

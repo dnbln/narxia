@@ -755,6 +755,21 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    parse_lambda_param: LambdaParam ::=
+        $parse_fn_param_name()
+        $/state:s1
+        $/ws:wcn
+        $/if at[:] {
+            $![:]
+            $/ws:wcn
+            $parse_fn_param_ty()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+parse_fn_decl! {
     parse_fn_param_name: FnParamName ::=
         $parse_pat()
 }
@@ -777,9 +792,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_block(p: &mut Parser) -> CompletedMarker {
-    let m = p.ev.begin();
-    p.expect(T!['{']);
+fn parse_block_insides(p: &mut Parser) {
     p.skip_ws();
     if !p.at(T!['}']) {
         loop {
@@ -800,6 +813,13 @@ fn parse_block(p: &mut Parser) -> CompletedMarker {
             parse_stmt(p);
         }
     }
+}
+
+#[parse_fn]
+fn parse_block(p: &mut Parser) -> CompletedMarker {
+    let m = p.ev.begin();
+    p.expect(T!['{']);
+    parse_block_insides(p);
     p.expect(T!['}']);
     p.ev.end(m, SyntaxKind::Block)
 }
@@ -998,7 +1018,7 @@ fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
             if p.is_recovering() {
                 return m;
             }
-        } else if p.at(T!['(']) {
+        } else if p.at(T!['(']) || p.at(T!['{']) {
             let m0 = p.ev.precede_completed(&m);
             parse_call_expr_args(p);
             m = p.ev.end(m0, SyntaxKind::CallExpr);
@@ -1047,6 +1067,26 @@ parse_fn_decl! {
 
 parse_fn_decl! {
     parse_call_expr_args: CallExprArgs ::=
+        $/match {
+            ['('] => {
+                $parse_call_expr_args_list()
+                $/state:s1
+                $/ws:wcn
+                $/if at['{'] {
+                    $parse_call_expr_args_trailing_block()
+                }
+                $/else {
+                    $/restore_state:s1
+                }
+            }
+            ['{'] => {
+                $parse_call_expr_args_trailing_block()
+            }
+        }
+}
+
+parse_fn_decl! {
+    parse_call_expr_args_list: CallExprArgsList ::=
         $parse_list_simple2(
             T!['('],
             parse_expr,
@@ -1054,6 +1094,40 @@ parse_fn_decl! {
             T![')'],
             AttemptRecoveryLevel::Shallow,
         )
+}
+
+parse_fn_decl! {
+    parse_call_expr_args_trailing_block: CallExprArgLambda ::=
+        $parse_lambda_expr()
+}
+
+fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
+    let m = p.ev.begin();
+    p.expect(T!['{']);
+    if p.is_recovering() {
+        return p.ev.end(m, SyntaxKind::LambdaExpr);
+    }
+    p.skip_ws();
+
+    let s = p.state();
+    // attempt to parse list of args if there
+    parse_lambda_param_list(p);
+    if p.is_recovering() {
+        p.recovered();
+        p.restore_state(s);
+    }
+
+    parse_block_insides(p);
+    p.expect(T!['}']);
+
+    p.ev.end(m, SyntaxKind::LambdaExpr)
+}
+
+parse_fn_decl! {
+    parse_lambda_param_list: LambdaParamList ::=
+        $parse_list_rep_simple2(T![,], parse_lambda_param, AttemptRecoveryLevel::Shallow)
+        $/ws:wcn
+        $![->]
 }
 
 parse_fn_decl! {

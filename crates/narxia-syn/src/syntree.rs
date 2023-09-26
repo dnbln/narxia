@@ -672,7 +672,27 @@ syntree_node! {
 }
 
 syntree_node! {
-    CallExprArgs = (lparen!['('] *ExprNode rparen![')'])
+    CallExprArgs = (?CallExprArgsList ?CallExprArgLambda)
+}
+
+syntree_node! {
+    CallExprArgsList = ?(lparen!['('] *ExprNode rparen![')'])
+}
+
+syntree_node! {
+    CallExprArgLambda = LambdaExpr
+}
+
+syntree_node! {
+    LambdaExpr = (lbrace!['{'] ?LambdaParamList *|[Stmt, semi![;], newline![newline]] rbrace!['}'])
+}
+
+syntree_node! {
+    LambdaParamList = (*|[LambdaParam, comma![,]] rarrow![->])
+}
+
+syntree_node! {
+    LambdaParam = (FnParamName ?(colon![:] FnParamTy))
 }
 
 syntree_node! {

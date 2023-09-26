@@ -5,8 +5,9 @@ Root@0..23
         ExprAtom@0..7
           IDENT@0..7 "println"
         CallExprArgs@7..23
-          L_PAREN@7..8 "("
-          Expr@8..22
-            ExprAtom@8..22
-              STRING@8..22 "\"Hello world!\""
-          R_PAREN@22..23 ")"
+          CallExprArgsList@7..23
+            L_PAREN@7..8 "("
+            Expr@8..22
+              ExprAtom@8..22
+                STRING@8..22 "\"Hello world!\""
+            R_PAREN@22..23 ")"

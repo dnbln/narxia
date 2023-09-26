@@ -138,6 +138,8 @@ pub enum SyntaxKind {
     IndexExprIndex,
     CallExpr,
     CallExprArgs,
+    CallExprArgsList,
+    CallExprArgLambda,
     CustomInfixExpr,
     CustomInfixExprInfix,
     CustomInfixExprInfixArg,
@@ -150,6 +152,9 @@ pub enum SyntaxKind {
     IfThenClause,
     ElseClause,
     BlockExpr,
+    LambdaExpr,
+    LambdaParamList,
+    LambdaParam,
 
     LetStmt,
     Pat,
