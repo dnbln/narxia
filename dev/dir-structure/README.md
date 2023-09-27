@@ -29,5 +29,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         input: "Hello, world!".to_string(),
         output: "Hello, world!".to_string(),
     }.write(path)?;
+    
+    Ok(())
 }
 ```
+
+[This blog post][blog post] goes a bit more in-depth about
+the more advanced features of the library:
+
+[blog post]: https://blog.dnbln.dev/dir-structure/
