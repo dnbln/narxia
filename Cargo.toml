@@ -13,8 +13,8 @@ narxia-syn = { path = "crates/narxia-syn" }
 narxia-syn-db = { path = "crates/narxia-syn-db" }
 narxia-syn-helpers = { path = "crates/narxia-syn-helpers" }
 
-dir-structure-macros = { path = "dev/dir-structure-macros", version = "0.1.1" }
-dir-structure = { path = "dev/dir-structure", version = "0.1.1" }
+dir-structure-macros = { path = "dev/dir-structure-macros", version = "0.1.2" }
+dir-structure = { path = "dev/dir-structure", version = "0.1.2" }
 
 clap = { version = "4.4.3", features = ["derive"] }
 colored = "2.0.4"
