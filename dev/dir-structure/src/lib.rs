@@ -1,3 +1,96 @@
+//! A library for reading and writing directory structures.
+//!
+//! This library provides a macro for defining directory structures, and a
+//! trait for reading and writing those structures to / from disk.
+//!
+//! # Example
+//!
+//! ## Writing a structure to disk
+//! ```
+//! use std::path::Path;
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     use dir_structure::DirStructureItem;
+//!     #[derive(dir_structure::DirStructure)]
+//!     struct Dir {
+//!         #[dir_structure(path = "f1.txt")]
+//!         f1: String,
+//!         #[dir_structure(path = "subdir/f2.txt")]
+//!         f2: String,
+//!         // default path is just a file name from the field's name.
+//!         f3: String,
+//!         // also works with nested structures
+//!         #[dir_structure(path = "subdir2")]
+//!         subdir: Subdir,
+//!     }
+//!     #[derive(dir_structure::DirStructure)]
+//!     struct Subdir {
+//!         #[dir_structure(path = "f4.txt")]
+//!         f4: String,
+//!     }
+//!
+//!     let d = Path::new("dir");
+//!     Dir {
+//!         f1: "f1".to_owned(),
+//!         f2: "f2".to_owned(),
+//!         f3: "f3".to_owned(),
+//!         subdir: Subdir {
+//!             f4: "f4".to_owned(),
+//!         },
+//!     }.write(&d)?;
+//!     assert_eq!(std::fs::read_to_string(d.join("f1.txt"))?, "f1");
+//!     assert_eq!(std::fs::read_to_string(d.join("subdir/f2.txt"))?, "f2");
+//!     assert_eq!(std::fs::read_to_string(d.join("f3"))?, "f3");
+//!     assert_eq!(std::fs::read_to_string(d.join("subdir2/f4.txt"))?, "f4");
+//!
+//!     # std::fs::remove_dir_all(&d)?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Reading a structure from disk
+//!
+//! ```
+//! use std::path::Path;
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     use dir_structure::DirStructureItem;
+//!     #[derive(dir_structure::DirStructure)]
+//!     struct Dir {
+//!         #[dir_structure(path = "f1.txt")]
+//!         f1: String,
+//!         #[dir_structure(path = "subdir/f2.txt")]
+//!         f2: String,
+//!         // default path is just a file name from the field's name.
+//!         f3: String,
+//!         // also works with nested structures
+//!         #[dir_structure(path = "subdir2")]
+//!         subdir: Subdir,
+//!     }
+//!     #[derive(dir_structure::DirStructure)]
+//!     struct Subdir {
+//!         #[dir_structure(path = "f4.txt")]
+//!         f4: String,
+//!     }
+//!     let d = Path::new("dir");
+//!     std::fs::create_dir_all(&d)?;
+//!     std::fs::create_dir_all(d.join("subdir"))?;
+//!     std::fs::create_dir_all(d.join("subdir2"))?;
+//!     std::fs::write(d.join("f1.txt"), "f1")?;
+//!     std::fs::write(d.join("subdir/f2.txt"), "f2")?;
+//!     std::fs::write(d.join("f3"), "f3")?;
+//!     std::fs::write(d.join("subdir2/f4.txt"), "f4")?;
+//!     let dir = Dir::read(&d)?;
+//!     assert_eq!(dir.f1, "f1");
+//!     assert_eq!(dir.f2, "f2");
+//!     assert_eq!(dir.f3, "f3");
+//!     assert_eq!(dir.subdir.f4, "f4");
+//!
+//!     # std::fs::remove_dir_all(&d)?;
+//!
+//!     Ok(())
+//! }
+//! ```
+
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
@@ -12,7 +105,7 @@ pub enum Error {
     Parse(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
-pub trait WrapIoError: Sized {
+trait WrapIoError: Sized {
     type Output;
 
     fn wrap_io_error(self, get_path: impl FnOnce() -> PathBuf) -> Result<Self::Output>;
@@ -32,50 +125,114 @@ impl<T> WrapIoError for std::io::Result<T> {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// The main trait. This is implemented for
+/// all directory structures by the derive macro.
+///
+/// This trait doesn't have any methods, just a supertype:
+/// [`DirStructureItem`].
 pub trait DirStructure: DirStructureItem {}
 
+/// Helper trait, implemented for all types that have a [`ReadFrom`]
+/// and [`WriteTo`] implementation.
 pub trait DirStructureItem: ReadFrom + WriteTo {
+    /// Uses the [`ReadFrom`] implementation to read the structure from
+    /// disk, from the specified path.
     fn read(path: impl AsRef<Path>) -> Result<Self>
     where
         Self: Sized,
     {
         Self::read_from(path.as_ref())
     }
+
+    /// Uses the [`WriteTo`] implementation to write the structure
+    /// to disk at the specified path.
     fn write(&self, path: impl AsRef<Path>) -> Result<()> {
         self.write_to(path.as_ref())
     }
 }
 
+// Blanket impl.
 impl<T> DirStructureItem for T where T: ReadFrom + WriteTo {}
 
+/// Trait for types / structures that can be
+/// read from disk, either from a file or a directory.
 pub trait ReadFrom {
+    /// Reads the structure from the specified path, which
+    /// can be either a file or a directory.
     fn read_from(path: &Path) -> Result<Self>
     where
         Self: Sized;
 }
 
+/// Trait for types / structures that can be
+/// written to disk. All types in the library that
+/// write to files first check that the parent
+/// directories exist, so implementations of
+/// this that create the whole directory are
+/// not necessary (unless used empty children
+/// directories, in which case no directories will
+/// really be created).
 pub trait WriteTo {
+    /// Writes the structure to the specified path.
     fn write_to(&self, path: &Path) -> Result<()>;
 }
 
+/// Trait to use when using the `with_newtype` attribute.
+///
+/// This is used to convert a reference to a normal type
+/// (like `String`, `Vec<u8>` etc. into a type that is a
+/// reference to them, like `&str`, `&[u8]` etc.), so that
+/// the `WriteTo` implementation can be written only for the
+/// reference types, and all the other [`WriteTo`] impls will
+/// only cast what they have to write to those reference types
+/// (via the function below), and then call the [`WriteTo::write_to`]
+/// method on that reference.
 pub trait FromRefForWriter<'a> {
+    /// The inner type to cast.
     type Inner: ?Sized;
+    /// The reference type to cast to.
     type Wr: WriteTo + 'a;
 
+    /// Casts the reference to the inner type to a [`WriteTo`]
+    /// reference type.
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr;
 }
 
+/// Trait to use when using the `with_newtype` attribute.
+///
+/// This is used to convert a newtype to its inner type.
+/// We are using this because we cannot make blanket impls with
+/// [`From`] due to the orphan rules.
 pub trait NewtypeToInner {
+    /// The inner type.
     type Inner;
 
+    /// Converts the newtype to its inner type.
     fn into_inner(self) -> Self::Inner;
 }
 
+/// A directory structure where we don't know the names of the folders at compile-time,
+/// and as such we cannot use the derive macro.
+///
+/// Instead we know that all the entries in the directory are folders,
+/// and that they all have the same structure inside (defined by the [`T`] type parameter),
+/// or they are all files (which can be read with [`DirChildren`]<[`String`]> for example).
+///
+/// In either case, [`<T as ReadFrom>::read_from`] must be able to read all the entries in
+/// the directory.
+///
+/// The [`WriteTo`] implementation will directly write the children to the directory it
+/// is passed, with no regards to the path stored in `self_path`.
 pub struct DirChildren<T>
 where
     T: DirStructureItem,
 {
+    /// The path to the root directory.
+    ///
+    /// This path doesn't influence writing in any way, it is only to
+    /// point out the directory after it has been read and parsed.
     pub self_path: PathBuf,
+    /// The children of the root directory.
     pub children: Vec<DirChild<T>>,
 }
 
@@ -83,13 +240,15 @@ impl<T> DirChildren<T>
 where
     T: DirStructureItem,
 {
-    pub fn new(self_path: impl Into<PathBuf>) -> Self {
+    /// Creates an empty [`DirChildren`], with no children.
+    pub fn new() -> Self {
         Self {
-            self_path: self_path.into(),
+            self_path: PathBuf::new(),
             children: Vec::new(),
         }
     }
 
+    /// Creates a [`DirChildren`] with the given path and children.
     pub fn with_children_from_iter(
         self_path: impl Into<PathBuf>,
         children: impl IntoIterator<Item = DirChild<T>>,
@@ -100,22 +259,26 @@ where
         }
     }
 
+    /// Returns the number of children.
     pub fn len(&self) -> usize {
         self.children.len()
     }
 
+    /// Gets the child at the specified index.
     pub fn get(&self, index: usize) -> Option<&DirChild<T>> {
         self.children.get(index)
     }
 
+    /// Gets the child with the specified "file" name (last segment of path).
     pub fn get_name(&self, name: impl AsRef<OsStr>) -> Option<&DirChild<T>> {
         self.children
             .iter()
             .find(|child| child.file_name == name.as_ref())
     }
 
-    pub fn iter(&self) -> DirStructureIter<'_, T> {
-        DirStructureIter(self.children.iter())
+    /// Returns an iterator over the children.
+    pub fn iter(&self) -> DirChildrenIter<'_, T> {
+        DirChildrenIter(self.children.iter())
     }
 }
 
@@ -156,11 +319,14 @@ where
     }
 }
 
+/// A single child of a [`DirChildren`] structure.
 pub struct DirChild<T>
 where
     T: DirStructureItem,
 {
+    /// The file name of the child.
     file_name: OsString,
+    /// The parsed value of the child.
     value: T,
 }
 
@@ -168,6 +334,7 @@ impl<T> DirChild<T>
 where
     T: DirStructureItem,
 {
+    /// Creates a new [`DirChild`] with the specified file name and value.
     pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
         Self {
             file_name: file_name.into(),
@@ -175,18 +342,30 @@ where
         }
     }
 
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
     pub fn file_name(&self) -> &OsString {
         &self.file_name
     }
 
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    ///
+    /// Mutable reference version of [`Self::file_name`].
     pub fn file_name_mut(&mut self) -> &mut OsString {
         &mut self.file_name
     }
 
+    /// Gets the value of the child.
+    ///
+    /// This is the parsed value of the file / directory.
     pub fn value(&self) -> &T {
         &self.value
     }
 
+    /// Gets the value of the child.
+    ///
+    /// This is the parsed value of the file / directory.
+    ///
+    /// Mutable reference version of [`Self::value`].
     pub fn value_mut(&mut self) -> &mut T {
         &mut self.value
     }
@@ -204,19 +383,36 @@ where
     }
 }
 
-pub struct DirStructureIter<'a, T: DirStructureItem>(std::slice::Iter<'a, DirChild<T>>);
+/// A [`DirChildren`] iterator. It iterates over the children of a
+/// [`DirChildren`] structure.
+pub struct DirChildrenIter<'a, T: DirStructureItem>(std::slice::Iter<'a, DirChild<T>>);
 
-impl<'a, T> Iterator for DirStructureIter<'a, T>
+impl<'a, T> Iterator for DirChildrenIter<'a, T>
 where
     T: DirStructureItem,
 {
-    type Item = (&'a OsString, &'a T);
+    type Item = &'a DirChild<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|child| (&child.file_name, &child.value))
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
+impl<'a, T> ExactSizeIterator for DirChildrenIter<'a, T>
+where
+    T: DirStructureItem,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// A simple macro that generates a DirChildren<T> newtype, together with
+/// a few impls to make it easy to use.
 #[macro_export]
 macro_rules! dir_children_wrapper {
     ($vis:vis $name:ident $ty:ty) => {
@@ -266,10 +462,20 @@ pub use dir_structure_macros::DirStructure;
 
 #[cfg(feature = "json")]
 pub mod json {
+    //! With the `json` feature, this module provides the [`Json`] type,
+    //!
+    //! This allows us to read and parse json files to some `serde::Deserialize` type,
+    //! and write them back to disk.
     use std::fmt;
     use std::fmt::Formatter;
+    use std::path::Path;
     use std::str::FromStr;
 
+    use crate::{FromRefForWriter, ReadFrom, WriteTo};
+
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to json when we read / write a
+    /// directory structure.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
     #[serde(transparent)]
     pub struct Json<T>(#[serde(bound = "")] pub T)
@@ -296,8 +502,30 @@ pub mod json {
             write!(f, "{}", s)
         }
     }
+
+    impl<T> ReadFrom for Json<T>
+    where
+        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+    {
+        fn read_from(path: &Path) -> crate::Result<Self> {
+            let contents = crate::FileString::read_from(path)?.0;
+            let v = serde_json::from_str::<Self>(&contents)
+                .map_err(|e| crate::Error::Parse(path.to_path_buf(), e.into()))?;
+            Ok(v)
+        }
+    }
+
+    impl<T> WriteTo for Json<T> where T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static {
+        fn write_to(&self, path: &Path) -> crate::Result<()> {
+            crate::FileString::from_ref_for_writer(&self.to_string()).write_to(path)
+        }
+    }
 }
 
+/// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
+/// for serialization / deserialization.
+///
+/// For example: u8, i8, i16, u16, all integer types... bool etc.
 pub struct FmtWrapper<T>(pub T);
 
 impl<T> NewtypeToInner for FmtWrapper<T> {
@@ -346,6 +574,8 @@ where
     }
 }
 
+/// A [`WriteTo`] wrapper around a reference to a type which will use the [`Display`]
+/// implementation to write the value.
 pub struct FmtWrapperRefWr<'a, T: ?Sized>(pub &'a T);
 
 impl<'a, T> WriteTo for FmtWrapperRefWr<'a, T>
@@ -361,10 +591,12 @@ where
     }
 }
 
+/// A newtype around a [`Vec`]<[`u8`]>.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileBytes(pub Vec<u8>);
 
 impl FileBytes {
+    /// Creates a new [`FileBytes`] from the specified [`Vec`]<[`u8`]>.
     pub fn new(v: impl Into<Vec<u8>>) -> Self {
         Self(v.into())
     }
@@ -408,6 +640,7 @@ impl<'a> FromRefForWriter<'a> for FileBytes {
     }
 }
 
+/// The [`WriteTo`] wrapper around a reference to a `[u8]`.
 pub struct FileBytesRefWr<'a>(&'a [u8]);
 
 impl<'a> WriteTo for FileBytesRefWr<'a> {
@@ -418,10 +651,12 @@ impl<'a> WriteTo for FileBytesRefWr<'a> {
     }
 }
 
+/// A newtype around a [`String`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileString(pub String);
 
 impl FileString {
+    /// Creates a new [`FileString`] from the specified [`String`].
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
@@ -467,6 +702,7 @@ impl<'a> FromRefForWriter<'a> for FileString {
     }
 }
 
+/// The [`WriteTo`] wrapper around a reference to a [`str`].
 pub struct FileStrWr<'a>(&'a str);
 
 impl WriteTo for FileStrWr<'_> {
@@ -504,6 +740,7 @@ where
     }
 }
 
+/// A wrapper that defers the reading of a file until it is actually needed.
 #[derive(Debug, Clone, Hash)]
 pub struct DeferredRead<T>(pub PathBuf, std::marker::PhantomData<T>)
 where
@@ -525,6 +762,7 @@ impl<T> DeferredRead<T>
 where
     T: ReadFrom,
 {
+    /// Performs the read and returns the value.
     pub fn perform_read(&self) -> Result<T> {
         T::read_from(&self.0)
     }
@@ -540,6 +778,9 @@ where
     }
 }
 
+/// A wrapper that defers the reading of a file until it is actually needed.
+///
+/// It can also store the value.
 #[derive(Debug, Clone, Hash)]
 pub enum DeferredReadOrOwn<T>
 where
@@ -553,6 +794,7 @@ impl<T> DeferredReadOrOwn<T>
 where
     T: ReadFrom,
 {
+    /// Gets the value. If it is not already read, it will read it, but without saving it.
     pub fn get(&self) -> Result<T>
     where
         T: Clone,
@@ -563,6 +805,8 @@ where
         }
     }
 
+    /// Performs the read and stores the value. If the value is already read, it will
+    /// just return a reference to it.
     pub fn perform_and_store_read(&mut self) -> Result<&T> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
@@ -601,6 +845,8 @@ where
         }
     }
 }
+
+// Impls for std types.
 
 impl ReadFrom for String {
     fn read_from(path: &Path) -> Result<Self>
