@@ -29,7 +29,13 @@ fn expand_dir_structure_for_field(
 
     let field_ty = &field.ty;
 
-    let mut path = None::<String>;
+    enum PathData {
+        SelfPath,
+        Path(String),
+        None,
+    }
+
+    let mut path = PathData::None;
     let mut self_path = field_name == "self_path";
     let mut with_newtype = None::<Type>;
 
@@ -41,8 +47,18 @@ fn expand_dir_structure_for_field(
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("path") {
                 let _eq = meta.input.parse::<Token![=]>()?;
-                let s = meta.input.parse::<syn::LitStr>()?;
-                path = Some(s.value());
+                if meta.input.peek(syn::LitStr) {
+                    let s = meta.input.parse::<syn::LitStr>()?;
+                    path = PathData::Path(s.value());
+                } else if meta.input.peek(Token![self]) {
+                    let _self = meta.input.parse::<Token![self]>()?;
+                    path = PathData::SelfPath;
+                } else {
+                    return Err(syn::Error::new_spanned(
+                        meta.path,
+                        "Expected a string literal or `self`",
+                    ));
+                }
             } else if meta.path.is_ident("self_path") {
                 self_path = true;
             } else if meta.path.is_ident("with_newtype") {
@@ -60,7 +76,14 @@ fn expand_dir_structure_for_field(
         })?;
     }
 
-    let actual_path = path.unwrap_or_else(|| field_name.to_string());
+    let actual_path_expr = match path {
+        PathData::Path(p) => quote! {#path_param_name.join(#p)},
+        PathData::SelfPath => quote! { #path_param_name },
+        PathData::None => {
+            let name = field_name.to_string();
+            quote! {#path_param_name.join(#name)}
+        }
+    };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
     let read_code = if self_path {
         quote! {
@@ -78,7 +101,7 @@ fn expand_dir_structure_for_field(
         };
 
         quote! {{
-            let __translated__path = #path_param_name.join(#actual_path);
+            let __translated__path = #actual_path_expr;
             let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFrom>::read_from(&__translated__path)?;
             #end_expr
         }}
@@ -94,7 +117,7 @@ fn expand_dir_structure_for_field(
             None => quote! { &self.#field_name },
         };
         quote! {
-            let __translated_path = #path_param_name.join(#actual_path);
+            let __translated_path = #actual_path_expr;
             ::dir_structure::WriteTo::write_to(#writer, &__translated_path)?;
         }
     };

@@ -312,3 +312,27 @@ fn write_subdirectory_children() {
 
     assert_eq!(len, 3, "Subdirectory should have 3 files");
 }
+
+#[test]
+fn parse_dirs_inner_with_self_path() {
+    #[derive(dir_structure::DirStructure)]
+    struct Dir {
+        #[dir_structure(path = self)]
+        subdirs: DirChildren<InnerDir>,
+    }
+
+    #[derive(dir_structure::DirStructure)]
+    struct InnerDir {
+        #[dir_structure(path = "f.txt")]
+        f: String,
+    }
+
+    let p = test_dir("parse_dirs_inner_with_self_path");
+    let d = p.join("dir");
+    let subdir = d.join("subdir");
+    std::fs::create_dir_all(&subdir).unwrap();
+    std::fs::write(subdir.join("f.txt"), "f").unwrap();
+    let dir = Dir::read_from(&d).unwrap();
+    assert_eq!(dir.subdirs.len(), 1);
+    assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
+}
