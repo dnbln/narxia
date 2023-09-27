@@ -16,7 +16,7 @@
 use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, Context, IntoDiagnostic};
 use narxia_syn::syntree::TreePresenterStyle;
-use narxia_test_runner::parser_tests::ParserTest;
+use narxia_test_runner::parser_tests::ParserTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {
@@ -34,10 +34,11 @@ impl TestMode {
     }
 }
 
-fn run_test_impl(test: ParserTest, test_mode: TestMode) -> miette::Result<()> {
+fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
-    let syn_file =
-        narxia_driver::parse_file_at_path_and_assert_no_errors(&ctx, test.input_file_path());
+    let input = test.input.perform_read().into_diagnostic()?;
+    let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), input.0);
+    let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
     let tree = syn_file.tree(&ctx.db);
 
     let tree_str = tree.present_with_style(TreePresenterStyle::plain(), |p| format!("{p:?}"));
@@ -66,16 +67,21 @@ fn run_test_impl(test: ParserTest, test_mode: TestMode) -> miette::Result<()> {
     Ok(())
 }
 
-fn run_test(test: ParserTest, test_mode: TestMode) -> Result<(), Failed> {
+fn run_test(test: ParserTestSingleFolder, test_mode: TestMode) -> Result<(), Failed> {
     run_test_impl(test, test_mode).map_err(Failed::from)
 }
 
 fn collect_trials() -> miette::Result<Vec<Trial>> {
     let test_mode = TestMode::get_behavior();
-    let trials = narxia_test_runner::parser_tests::collect_parser_tests()?
-        .into_iter()
-        .map(|test| Trial::test(test.name.clone(), move || run_test(test, test_mode)))
-        .collect();
+    let mut trials = Vec::new();
+
+    narxia_test_runner::for_each_parser_test! {
+        |test| {
+            let name = test.file_name().clone().into_string().unwrap();
+            let folder = test.value().clone();
+            trials.push(Trial::test(name, move || run_test(folder, test_mode)));
+        }
+    }
 
     Ok(trials)
 }

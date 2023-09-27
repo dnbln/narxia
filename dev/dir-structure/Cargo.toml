@@ -1,0 +1,15 @@
+[package]
+name = "dir-structure"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+json = ["serde", "serde_json"]
+
+[dependencies]
+dir-structure-macros.workspace = true
+thiserror.workspace = true
+serde = { version = "1.0", optional = true, features = ["derive"] }
+serde_json = { version = "1.0", optional = true }

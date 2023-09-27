@@ -27,8 +27,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use colored::Colorize;
-use miette::{bail, Context, IntoDiagnostic};
-
+use miette::{bail, IntoDiagnostic};
 use narxia_syn::syntree::tests_data::{
     AccessorCalledDataList, AccessorCalledDataReturned, AccessorInfo, ElemRef,
 };
@@ -170,12 +169,13 @@ no guarantee now that the parse tree matches our syn models.
 
 fn run() -> miette::Result<()> {
     let mut input_files = Vec::new();
-    for test in narxia_test_runner::parser_tests::collect_parser_tests()? {
-        let p = test.input_file_path();
-        let contents = std::fs::read_to_string(&p)
-            .into_diagnostic()
-            .with_context(|| format!("Cannot read input file at {p:?}"))?;
-        input_files.push(InputFile { path: p, contents });
+
+    narxia_test_runner::for_each_parser_test! {
+        |test| {
+            let path = test.value().input_file_path();
+            let contents = test.value().input.perform_read().into_diagnostic()?.0;
+            input_files.push(InputFile { path, contents });
+        }
     }
 
     if input_files.is_empty() {
