@@ -1,10 +1,10 @@
 [package]
 name = "dir-structure-macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "dir-structure: proc-macros"
-repository = "https://github.com/dnbln/narxia"
+repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure-macros"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
