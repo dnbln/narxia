@@ -16,3 +16,4 @@ narxia-log-impl.workspace = true
 narxia-src-db.workspace = true
 narxia-syn.workspace = true
 narxia-syn-db.workspace = true
+narxia-hir-db.workspace = true

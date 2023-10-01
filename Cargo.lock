@@ -549,6 +549,7 @@ dependencies = [
  "clap",
  "colored",
  "miette",
+ "narxia-hir-db",
  "narxia-log",
  "narxia-log-impl",
  "narxia-src-db",
@@ -562,6 +563,15 @@ name = "narxia-hir"
 version = "0.1.0"
 dependencies = [
  "narxia-syn",
+]
+
+[[package]]
+name = "narxia-hir-db"
+version = "0.1.0"
+dependencies = [
+ "narxia-hir",
+ "narxia-syn-db",
+ "salsa",
 ]
 
 [[package]]

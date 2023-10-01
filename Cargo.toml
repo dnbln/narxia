@@ -6,6 +6,7 @@ resolver = "2"
 [workspace.dependencies]
 narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
+narxia-hir-db = { path = "crates/narxia-hir-db" }
 narxia-log = { path = "crates/narxia-log" }
 narxia-log-impl = { path = "crates/narxia-log-impl" }
 narxia-src-db = { path = "crates/narxia-src-db" }

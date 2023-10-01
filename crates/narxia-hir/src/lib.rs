@@ -1,6 +1,7 @@
 use narxia_syn::syntree::{self, Token};
 use narxia_syn::text_span::TextSpan;
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct HirSpan {
     span: TextSpan,
 }
@@ -19,30 +20,40 @@ impl HirSpan {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct ModDef {
     items: Vec<Item>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Item {
     FnDef(FnDef),
+    Expr(Expr),
+    LetStmt(LetStmt),
+    ForStmt(ForStmt),
+    WhileStmt(WhileStmt),
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Ident {
     span: HirSpan,
     text: String,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct FnDef {
     name: Ident,
     params: Vec<FnParam>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct FnParam {
     pat: Pat,
     ty: TyRef,
     default: Option<Expr>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Expr {
     Atom(ExprAtom),
     Binary {
@@ -56,46 +67,55 @@ pub enum Expr {
     MethodCall(MethodCall),
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct CallExpr {
     callee: Box<Expr>,
     args: CallExprArgs,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct CallExprArgs {
     args: Vec<Expr>,
     trailing_lambda: Option<LambdaExpr>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct IndexExpr {
     base: Box<Expr>,
     index: Box<Expr>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct FieldAccess {
     base: Box<Expr>,
     field: Ident,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct MethodCall {
     base: Box<Expr>,
     method: Ident,
     args: CallExprArgs,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct LambdaExpr {
     lambda_param_list: Option<LambdaParamList>,
     body: Vec<Stmt>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct LambdaParamList {
     params: Vec<LambdaParam>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct LambdaParam {
     pat: Pat,
     ty: Option<TyRef>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add(HirSpan),
     Sub(HirSpan),
@@ -136,6 +156,7 @@ fn lower_binop(binop: &syntree::BinOp) -> BinOp {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum ExprAtom {
     Ident(Ident),
     Str(StrLiteral),
@@ -144,29 +165,35 @@ pub enum ExprAtom {
     BlockExpr(BlockExpr),
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct IfExpr {
     cond: Expr,
     then: Expr,
     else_: Option<Expr>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct StrLiteral {
     span: HirSpan,
     text: String,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct LoopExpr {
     body: Block,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct BlockExpr {
     block: Block,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct Block {
     stmts: Vec<Stmt>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Stmt {
     ExprStmt(Expr),
     LetStmt(LetStmt),
@@ -174,27 +201,32 @@ pub enum Stmt {
     WhileStmt(WhileStmt),
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct LetStmt {
     pat: Pat,
     ty: Option<TyRef>,
     init: Option<Expr>,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct ForStmt {
     pat: Pat,
     iter: Expr,
     body: Block,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct WhileStmt {
     expr: Expr,
     body: Block,
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum Pat {
     Name(Ident),
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub enum TyRef {
     Name(Ident),
 }
@@ -207,6 +239,14 @@ pub fn lower_mod_def(root: syntree::Root) -> ModDef {
 fn lower_item(item: syntree::Item) -> Item {
     if let Some(fn_def) = item.get_fn_def() {
         Item::FnDef(lower_fn_def(fn_def))
+    } else if let Some(expr_node) = item.get_expr_node() {
+        Item::Expr(lower_expr_node(&expr_node))
+    } else if let Some(let_stmt) = item.get_let_stmt() {
+        Item::LetStmt(lower_let_stmt(&let_stmt))
+    } else if let Some(while_stmt) = item.get_while_stmt() {
+        Item::WhileStmt(lower_while_stmt(&while_stmt))
+    } else if let Some(for_stmt) = item.get_for_stmt() {
+        Item::ForStmt(lower_for_stmt(&for_stmt))
     } else {
         unreachable!()
     }
@@ -466,3 +506,4 @@ fn lower_ident(ident: &Token) -> Ident {
     Ident { span, text }
 }
 
+// TODO: nice display of HIR
