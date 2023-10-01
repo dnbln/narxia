@@ -773,6 +773,17 @@ where
     T: ReadFrom + WriteTo,
 {
     fn write_to(&self, path: &Path) -> Result<()> {
+        if path == self.0 {
+            // Optimization: We were asked to write to the same path
+            // we are supposed to read from. We can just ignore it, since
+            // the file / directory should already be in the given state.
+
+            // If T doesn't have non-trivial ReadFrom / WriteTo implementations,
+            // this should not be a problem, but if it is, a custom DeferredRead
+            // implementation should be written for it.
+            return Ok(());
+        }
+
         let r = self.perform_read()?;
         r.write_to(path)
     }
