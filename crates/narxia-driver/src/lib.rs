@@ -36,6 +36,7 @@ impl DriverCtx {
         DisplayFile(&self.db, file)
     }
 
+    #[track_caller]
     pub fn trace_file(&self, file: SrcFile) {
         narxia_log::t!("File contents:\n{}", self.display_file(file));
     }
