@@ -12,7 +12,7 @@ pub struct Database {
 }
 
 impl salsa::Database for Database {
-    fn salsa_event(&self, event: salsa::Event) {}
+    fn salsa_event(&self, _event: salsa::Event) {}
 }
 
 pub struct DriverCtx {
