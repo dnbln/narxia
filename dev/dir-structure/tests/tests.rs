@@ -306,7 +306,10 @@ fn write_subdirectory_children() {
             "f3" => "f3",
             name => panic!("Unexpected file {}", name),
         };
-        assert_eq!(content, expected_content, "Unexpected content of {name_str}");
+        assert_eq!(
+            content, expected_content,
+            "Unexpected content of {name_str}"
+        );
         len += 1;
     }
 
@@ -335,4 +338,94 @@ fn parse_dirs_inner_with_self_path() {
     let dir = Dir::read_from(&d).unwrap();
     assert_eq!(dir.subdirs.len(), 1);
     assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
+}
+
+#[test]
+fn clean_dir_writer() {
+    #[derive(dir_structure::DirStructure)]
+    struct Dir {
+        #[dir_structure(path = "f1.txt")]
+        f1: String,
+        #[dir_structure(path = "f2.txt")]
+        f2: String,
+        f3: String,
+    }
+
+    let p = test_dir("clean_dir_writer");
+    let d = p.join("dir");
+    Dir {
+        f1: "f1".to_owned(),
+        f2: "f2".to_owned(),
+        f3: "f3".to_owned(),
+    }
+    .write_to(&d)
+    .unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
+    assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
+    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
+    std::fs::write(d.join("f4"), "f4").unwrap();
+
+    dir_structure::CleanDir(Dir {
+        f1: "f1".to_owned(),
+        f2: "f2".to_owned(),
+        f3: "f3".to_owned(),
+    })
+    .write_to(&d)
+    .unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
+    assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
+    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
+    assert!(!d.join("f4").exists());
+}
+
+#[test]
+fn clean_dir_writer_newtype() {
+    #[derive(dir_structure::DirStructure)]
+    struct Dir {
+        #[dir_structure(with_newtype = dir_structure::CleanDir<Subdir>)]
+        subdir: Subdir,
+    }
+
+    #[derive(dir_structure::DirStructure)]
+    struct Subdir {
+        #[dir_structure(path = "f1.txt")]
+        f1: String,
+        #[dir_structure(path = "f2.txt")]
+        f2: String,
+        f3: String,
+    }
+
+    let p = test_dir("clean_dir_writer_newtype");
+    let d = p.join("dir");
+    Dir {
+        subdir: Subdir {
+            f1: "f1".to_owned(),
+            f2: "f2".to_owned(),
+            f3: "f3".to_owned(),
+        },
+    }
+    .write_to(&d)
+    .unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(), "f1");
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(), "f2");
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
+    std::fs::write(d.join("subdir/f4"), "f4").unwrap();
+
+    dir_structure::CleanDir(Dir {
+        subdir: Subdir {
+            f1: "f1".to_owned(),
+            f2: "f2".to_owned(),
+            f3: "f3".to_owned(),
+        }
+    })
+    .write_to(&d)
+    .unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(), "f1");
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(), "f2");
+    assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
+    assert!(!d.join("subdir/f4").exists());
 }

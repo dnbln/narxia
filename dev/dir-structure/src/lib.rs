@@ -471,7 +471,7 @@ pub mod json {
     use std::path::Path;
     use std::str::FromStr;
 
-    use crate::{FromRefForWriter, ReadFrom, WriteTo};
+    use crate::{FromRefForWriter, NewtypeToInner, ReadFrom, WriteTo};
 
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
@@ -493,13 +493,26 @@ pub mod json {
         }
     }
 
+    struct JsonToStr<'a, T>(&'a T)
+    where
+        T: serde::Serialize + 'a;
+
+    impl<'a, T> fmt::Display for JsonToStr<'a, T>
+    where
+        T: serde::Serialize + 'a,
+    {
+        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+            let s = serde_json::to_string(&self.0).map_err(|_| fmt::Error)?;
+            write!(f, "{}", s)
+        }
+    }
+
     impl<T> fmt::Display for Json<T>
     where
         T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
     {
         fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            let s = serde_json::to_string(&self.0).map_err(|_| fmt::Error)?;
-            write!(f, "{}", s)
+            JsonToStr(&self.0).fmt(f)
         }
     }
 
@@ -515,9 +528,49 @@ pub mod json {
         }
     }
 
-    impl<T> WriteTo for Json<T> where T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static {
+    impl<T> WriteTo for Json<T>
+    where
+        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+    {
         fn write_to(&self, path: &Path) -> crate::Result<()> {
-            crate::FileString::from_ref_for_writer(&self.to_string()).write_to(path)
+            Self::from_ref_for_writer(&self.0).write_to(path)
+        }
+    }
+
+    impl<T> NewtypeToInner for Json<T>
+    where
+        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+    {
+        type Inner = T;
+
+        fn into_inner(self) -> Self::Inner {
+            self.0
+        }
+    }
+
+    impl<'a, T> FromRefForWriter<'a> for Json<T>
+    where
+        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+    {
+        type Inner = T;
+        type Wr = JsonWr<'a, T>;
+
+        fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+            JsonWr(value)
+        }
+    }
+
+    /// [`WriteTo`] impl for [`Json`].
+    pub struct JsonWr<'a, T>(&'a T)
+    where
+        T: serde::Serialize + 'a;
+
+    impl<'a, T> WriteTo for JsonWr<'a, T>
+    where
+        T: serde::Serialize + 'a,
+    {
+        fn write_to(&self, path: &Path) -> crate::Result<()> {
+            crate::FileString::from_ref_for_writer(&format!("{}", JsonToStr(self.0))).write_to(path)
         }
     }
 }
@@ -854,6 +907,75 @@ where
             DeferredReadOrOwn::Own(own) => own.write_to(path),
             DeferredReadOrOwn::Deferred(d) => d.write_to(path),
         }
+    }
+}
+
+/// A newtype that will clean the directory it is written to, before writing
+/// the value.
+///
+/// This is useful when we want to write a directory structure, but we want
+/// to make sure that the directory is clean before writing it, so that there
+/// are no old files / directories left in it.
+pub struct CleanDir<T: DirStructureItem>(pub T);
+
+impl<T> ReadFrom for CleanDir<T>
+where
+    T: DirStructureItem,
+{
+    fn read_from(path: &Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self(T::read_from(path)?))
+    }
+}
+
+impl<T> WriteTo for CleanDir<T>
+where
+    T: DirStructureItem,
+{
+    fn write_to(&self, path: &Path) -> Result<()> {
+        Self::from_ref_for_writer(&self.0).write_to(path)
+    }
+}
+
+impl<'a, T> FromRefForWriter<'a> for CleanDir<T>
+where
+    T: DirStructureItem + 'a,
+{
+    type Inner = T;
+    type Wr = CleanDirRefWr<'a, T>;
+
+    fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+        CleanDirRefWr(value)
+    }
+}
+
+impl<T> NewtypeToInner for CleanDir<T>
+where
+    T: DirStructureItem,
+{
+    type Inner = T;
+
+    fn into_inner(self) -> Self::Inner {
+        self.0
+    }
+}
+
+/// [`WriteTo`] impl for [`CleanDir`]
+pub struct CleanDirRefWr<'a, T: ?Sized + DirStructureItem>(&'a T);
+
+impl<'a, T> WriteTo for CleanDirRefWr<'a, T>
+where
+    T: ?Sized + DirStructureItem,
+{
+    fn write_to(&self, path: &Path) -> Result<()> {
+        if path.exists() {
+            std::fs::remove_dir_all(path).wrap_io_error_with(path)?;
+        } else {
+            utils::create_parent_dir(path)?;
+        }
+        self.0.write_to(path)
     }
 }
 
