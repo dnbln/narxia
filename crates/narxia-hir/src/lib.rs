@@ -170,6 +170,9 @@ pub enum ExprAtom {
     Num(NumLit),
     LoopExpr(LoopExpr),
     IfExpr(Box<IfExpr>),
+    ReturnExpr(Box<ReturnExpr>),
+    BreakExpr(Box<BreakExpr>),
+    ContinueExpr(ContinueExpr),
     BlockExpr(BlockExpr),
 }
 
@@ -186,6 +189,23 @@ pub struct IfExpr {
     cond: Expr,
     then: Expr,
     else_: Option<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct ReturnExpr {
+    return_kw: Token,
+    expr: Option<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct BreakExpr {
+    break_kw: Token,
+    expr: Option<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct ContinueExpr {
+    continue_kw: Token,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -436,6 +456,12 @@ fn lower_expr_atom(atom: &syntree::ExprAtom) -> ExprAtom {
         ExprAtom::LoopExpr(lower_loop_expr(&loop_expr))
     } else if let Some(if_expr) = atom.get_if_expr() {
         ExprAtom::IfExpr(Box::new(lower_if_expr(&if_expr)))
+    } else if let Some(return_expr) = atom.get_return_expr() {
+        ExprAtom::ReturnExpr(Box::new(lower_return_expr(&return_expr)))
+    } else if let Some(break_expr) = atom.get_break_expr() {
+        ExprAtom::BreakExpr(Box::new(lower_break_expr(&break_expr)))
+    } else if let Some(continue_expr) = atom.get_continue_expr() {
+        ExprAtom::ContinueExpr(lower_continue_expr(&continue_expr))
     } else if let Some(block_expr) = atom.get_block_expr() {
         ExprAtom::BlockExpr(lower_block_expr(&block_expr))
     } else {
@@ -533,6 +559,24 @@ fn lower_if_expr(if_expr: &syntree::IfExpr) -> IfExpr {
         .as_ref()
         .map(|it| lower_expr_node(&it.get_expr_node().unwrap()));
     IfExpr { cond, then, else_ }
+}
+
+fn lower_return_expr(return_expr: &syntree::ReturnExpr) -> ReturnExpr {
+    let return_kw = return_expr.get_return_kw();
+    let expr = return_expr.get_expr_node().map(|it| lower_expr_node(&it));
+    ReturnExpr { return_kw, expr }
+}
+
+fn lower_break_expr(break_expr: &syntree::BreakExpr) -> BreakExpr {
+    let break_kw = break_expr.get_break_kw();
+    let expr = break_expr.get_expr_node().map(|it| lower_expr_node(&it));
+    BreakExpr { break_kw, expr }
+}
+
+fn lower_continue_expr(continue_expr: &syntree::ContinueExpr) -> ContinueExpr {
+    let continue_kw = continue_expr.get_continue_kw();
+
+    ContinueExpr { continue_kw }
 }
 
 fn lower_block_expr(block_expr: &syntree::BlockExpr) -> BlockExpr {

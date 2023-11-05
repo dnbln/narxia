@@ -435,7 +435,7 @@ syntree_enum! {
 }
 
 syntree_node! {
-    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, BlockExpr]
+    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, BlockExpr]
 }
 
 syntree_node! {
@@ -753,6 +753,18 @@ syntree_node! {
 
 syntree_node! {
     ElseClause = (else_kw![else] ExprNode)
+}
+
+syntree_node! {
+    ReturnExpr = (return_kw![return] ?ExprNode)
+}
+
+syntree_node! {
+    BreakExpr = (break_kw![break] ?ExprNode)
+}
+
+syntree_node! {
+    ContinueExpr = continue_kw![continue]
 }
 
 syntree_node! {

@@ -128,7 +128,9 @@ pub fn parse_fn(
 
 #[proc_macro]
 pub fn parse_fn_decl(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ts = syn::parse(tokens).map_or_else(|e| e.to_compile_error(), |p| expand_fn_decl(p));
+    let ts = syn::parse(tokens)
+        .and_then(expand_fn_decl)
+        .unwrap_or_else(|e| e.to_compile_error());
     // eprintln!("{}", ts);
     ts.into()
 }
@@ -395,7 +397,7 @@ impl Parse for ParserSeparator {
     }
 }
 
-fn expand_fn_decl(p: ParserSpecRule) -> TokenStream {
+fn expand_fn_decl(p: ParserSpecRule) -> syn::Result<TokenStream> {
     let name = &p.name;
     let syntax_kind = &p.syntax_kind;
     let end_expr = quote! {
@@ -409,23 +411,23 @@ fn expand_fn_decl(p: ParserSpecRule) -> TokenStream {
         },
     );
     let mut body = TokenStream::new();
-    expand_parser_spec_instruction_set(&p.body.instructions, &end_expr, &mut body);
+    expand_parser_spec_instruction_set(&p.body.instructions, &end_expr, &mut body)?;
     let vis = p.vis;
-    quote! {
+    Ok(quote! {
         #[parse_fn]
         #vis fn #name(p: &mut Parser, #args) -> CompletedMarker {
             let m = p.ev.begin();
             #body
             #end_expr
         }
-    }
+    })
 }
 
 fn expand_parser_spec_instruction_set(
     is: &ParserInstructionSet,
     end_expr: &TokenStream,
     to: &mut TokenStream,
-) {
+) -> syn::Result<()> {
     let recovery_check_and_return = quote! {
         if p.is_recovering() {
             return #end_expr;
@@ -472,14 +474,16 @@ fn expand_parser_spec_instruction_set(
                     });
                 }
                 ParseStmtExtra::If(if_extra) => {
-                    expand_if_extra(if_extra, end_expr, to);
+                    expand_if_extra(if_extra, end_expr, to)?;
                 }
                 ParseStmtExtra::Match(match_extra) => {
-                    expand_match(match_extra, end_expr, to);
+                    expand_match(match_extra, end_expr, to)?;
                 }
             },
         }
     }
+
+    Ok(())
 }
 
 fn expand_ws_extra(ws_extra: &WsExtra, to: &mut TokenStream) {
@@ -677,12 +681,16 @@ impl Parse for IfExtraElseClause {
     }
 }
 
-fn expand_if_extra(if_extra: &IfExtra, end_expr: &TokenStream, to: &mut TokenStream) {
+fn expand_if_extra(
+    if_extra: &IfExtra,
+    end_expr: &TokenStream,
+    to: &mut TokenStream,
+) -> syn::Result<()> {
     let mut if_condition = TokenStream::new();
     expand_condition_eval(&if_extra.condition_expr, &mut if_condition);
 
     let mut if_true = TokenStream::new();
-    expand_parser_spec_instruction_set(&if_extra.then_block.instructions, end_expr, &mut if_true);
+    expand_parser_spec_instruction_set(&if_extra.then_block.instructions, end_expr, &mut if_true)?;
 
     to.extend(quote_spanned! {if_extra.if_token.span()=>
         if #if_condition {
@@ -697,7 +705,7 @@ fn expand_if_extra(if_extra: &IfExtra, end_expr: &TokenStream, to: &mut TokenStr
             &else_if.then_block.instructions,
             end_expr,
             &mut else_if_true,
-        );
+        )?;
         let mut else_if_condition = TokenStream::new();
         expand_condition_eval(&else_if.condition, &mut else_if_condition);
         else_ifs.push(quote_spanned! {else_if.if_token.span()=>
@@ -715,13 +723,15 @@ fn expand_if_extra(if_extra: &IfExtra, end_expr: &TokenStream, to: &mut TokenStr
             &else_clause.else_block.instructions,
             end_expr,
             &mut else_clause_true,
-        );
+        )?;
         to.extend(quote_spanned! {else_clause.else_token.span()=>
             else {
                 #else_clause_true
             }
         });
     }
+
+    Ok(())
 }
 
 struct IfChain {
@@ -748,6 +758,13 @@ impl IfChain {
         self.else_clause = Some(else_branch);
     }
 
+    fn add_else_branch_default(&mut self, else_branch: Block) {
+        if self.else_clause.is_some() {
+            return;
+        }
+        self.else_clause = Some(else_branch);
+    }
+
     fn compile(&self, ts: &mut TokenStream) {
         for (idx, if_) in self.ifs.iter().enumerate() {
             if idx == 0 {
@@ -768,30 +785,46 @@ impl IfChain {
     }
 }
 
-fn expand_match(extra: &MatchExtra, end_expr: &TokenStream, to: &mut TokenStream) {
+fn expand_match(
+    extra: &MatchExtra,
+    end_expr: &TokenStream,
+    to: &mut TokenStream,
+) -> syn::Result<()> {
     let mut if_chain = IfChain::new();
     for arm in &extra.arms {
-        expand_match_arm(arm, end_expr, &mut if_chain);
+        expand_match_arm(arm, end_expr, &mut if_chain)?;
     }
 
-    if_chain.add_else_branch(parse_quote_spanned! {extra.delimiter.span.span()=>
+    if_chain.add_else_branch_default(parse_quote_spanned! {extra.delimiter.span.span()=>
         {p.err_unexpected();}
     });
 
     if_chain.compile(to);
+
+    Ok(())
 }
 
-fn expand_match_arm(arm: &MatchExtraArm, end_expr: &TokenStream, if_chain: &mut IfChain) {
+fn expand_match_arm(
+    arm: &MatchExtraArm,
+    end_expr: &TokenStream,
+    if_chain: &mut IfChain,
+) -> syn::Result<()> {
     match &arm.arm_code {
         MatchExtraArmCode::ImmediateExpect(_) => {
             for pat in &arm.pat.pat {
                 match pat {
-                    MatchExtraArmSelector { delimiter: _, tt } => {
+                    MatchExtraArmSelector::T { delimiter: _, tt } => {
                         if_chain.add_if(parse_quote_spanned! {tt.span()=>
                             if p.at(T![#tt]) {
                                 p.expect(T![#tt]);
                             }
                         });
+                    }
+                    MatchExtraArmSelector::CatchAll { wild } => {
+                        return Err(syn::Error::new_spanned(
+                            wild,
+                            "_ cannot be combined with ! in a match arm",
+                        ));
                     }
                 }
             }
@@ -801,16 +834,34 @@ fn expand_match_arm(arm: &MatchExtraArm, end_expr: &TokenStream, if_chain: &mut 
             instructions,
         }) => {
             let mut ins = TokenStream::new();
-            expand_parser_spec_instruction_set(&instructions.instructions, end_expr, &mut ins);
-            let pats = arm.pat.pat.iter().map(|it| &it.tt);
-
-            if_chain.add_if(parse_quote_spanned! {arrow.span()=>
-                if #( p.at(T![#pats]) )||* {
-                    #ins
+            expand_parser_spec_instruction_set(&instructions.instructions, end_expr, &mut ins)?;
+            match &*arm.pat.pat {
+                [MatchExtraArmSelector::CatchAll { .. }] => {
+                    if_chain.add_else_branch(parse_quote_spanned! {arrow.span()=>{#ins}});
                 }
-            });
+                no_catch_all => {
+                    let pats = no_catch_all.iter().map(|it| {
+                        match it {
+                            MatchExtraArmSelector::CatchAll { wild } => {
+                                return Err(syn::Error::new_spanned(wild, "_ should be alone in an match arm"));
+                            },
+                            MatchExtraArmSelector::T { delimiter: _, tt } => {
+                                Ok(tt)
+                            }
+                        }
+                    }).collect::<Result<Vec<_>, _>>()?;
+
+                    if_chain.add_if(parse_quote_spanned! {arrow.span()=>
+                        if #( p.at(T![#pats]) )||* {
+                            #ins
+                        }
+                    });
+                }
+            }
         }
     }
+
+    Ok(())
 }
 
 struct MatchExtra {
@@ -904,15 +955,25 @@ impl<T: Parse> Parse for VecParser<T> {
     }
 }
 
-struct MatchExtraArmSelector {
-    delimiter: token::Bracket,
-    tt: TokenStream,
+enum MatchExtraArmSelector {
+    T {
+        delimiter: token::Bracket,
+        tt: TokenStream,
+    },
+    CatchAll {
+        wild: Token![_],
+    },
 }
 
 impl Parse for MatchExtraArmSelector {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(Token![_]) {
+            return Ok(Self::CatchAll {
+                wild: input.parse()?,
+            });
+        }
         let tt;
-        Ok(Self {
+        Ok(Self::T {
             delimiter: bracketed!(tt in input),
             tt: tt.parse()?,
         })
@@ -1531,7 +1592,11 @@ impl Parse for SyntreeEnumDef {
         let name = input.parse()?;
         let eq = input.parse()?;
         let punct = input.parse_terminated(Ident::parse, Token![|])?;
-        Ok(Self { name, eq, variants: punct })
+        Ok(Self {
+            name,
+            eq,
+            variants: punct,
+        })
     }
 }
 
@@ -1550,7 +1615,7 @@ impl SyntreeEnumDef {
                 });
             }
 
-            if_chain.add_else_branch(parse_quote_spanned! {self.eq.span()=>
+            if_chain.add_else_branch_default(parse_quote_spanned! {self.eq.span()=>
                 {unreachable!("invalid syntax kind: {:?}", kind);}
             });
 

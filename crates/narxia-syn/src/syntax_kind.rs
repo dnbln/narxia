@@ -163,6 +163,9 @@ pub enum SyntaxKind {
     LambdaExpr,
     LambdaParamList,
     LambdaParam,
+    ReturnExpr,
+    BreakExpr,
+    ContinueExpr,
 
     LetStmt,
     Pat,

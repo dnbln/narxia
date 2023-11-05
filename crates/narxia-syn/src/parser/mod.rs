@@ -126,14 +126,20 @@ impl<'a> Parser<'a> {
         self.recovering = Some(ParserRecoveringInfo {
             choked_syntax_kind: self.ts.lookahead(0).map(|t| t.kind()).unwrap_or(T![eof]),
         });
+        let location = match info {
+            ParseErrorInfo::ExpectedKind(..) => None,
+            ParseErrorInfo::UnexpectedToken { got, at } => Some(at),
+        };
         self.ev
-            .error(ParseError::new(info, self.ts.current_token_span()));
+            .error(ParseError::new(info, self.ts.current_token_span(), location));
     }
 
+    #[track_caller]
     fn err_unexpected(&mut self) {
+        let location = std::panic::Location::caller();
         self.dbg();
         let k = self.ts.lookahead(0).map(|tok| tok.kind()).unwrap();
-        self.err(ParseErrorInfo::UnexpectedToken { got: k });
+        self.err(ParseErrorInfo::UnexpectedToken { got: k, at: location });
     }
 
     #[track_caller]
@@ -246,6 +252,9 @@ impl<'a> Parser<'a> {
                 | T![loop]
                 | T![while]
                 | T![for]
+                | T![return]
+                | T![break]
+                | T![continue]
                 | T![if] => {
                     parse_item(self);
                 }
@@ -254,6 +263,9 @@ impl<'a> Parser<'a> {
                 }
                 T![newline] => {
                     self.expect(T![newline]);
+                }
+                T![;] => {
+                    self.expect(T![;]);
                 }
                 t => {
                     narxia_log::e!("Parser is stuck on a {t:?} token");
@@ -346,7 +358,7 @@ parse_fn_decl! {
     parse_item: Item ::=
         $/match {
             [fn] => {$fun::parse_fn_def()}
-            [let] [while] [for] [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$stmt::parse_stmt()}
+            [let] [while] [for] [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['{'] => {$stmt::parse_stmt()}
         }
 }
 

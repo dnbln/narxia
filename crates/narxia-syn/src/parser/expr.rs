@@ -23,6 +23,9 @@ parse_fn_decl! {
             [num_hex] => {$parse_num_lit()}
             [if] => {$parse_if_expr()}
             [loop] => {$parse_loop_expr()}
+            [return] => {$parse_return_expr()}
+            [break] => {$parse_break_expr()}
+            [continue] => {$parse_continue_expr()}
             ['{'] => {$parse_block_expr()}
         }
 }
@@ -362,4 +365,31 @@ parse_fn_decl! {
         $![loop]
         $/ws:wcn
         $parse_block()
+}
+
+parse_fn_decl! {
+    parse_return_expr: ReturnExpr ::=
+        $![return]
+        $/state:s1
+        $/ws:wcn
+        $/match {
+            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
+            _ => {$/restore_state:s1}
+        }
+}
+
+parse_fn_decl! {
+    parse_continue_expr: ContinueExpr ::=
+        $![continue]
+}
+
+parse_fn_decl! {
+    parse_break_expr: BreakExpr ::=
+        $![break]
+        $/state:s1
+        $/ws:wcn
+        $/match {
+            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
+            _ => {$/restore_state:s1}
+        }
 }

@@ -38,7 +38,10 @@ fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::R
     let ctx = narxia_driver::DriverCtx::initialize();
     let input = test.input.perform_read().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), input.0);
-    let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
+    let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(&ctx, src_file);
+    if !errors.is_empty() {
+        bail!("Errors: {errors:?}");
+    }
     let tree = syn_file.tree(&ctx.db);
 
     let tree_str = tree.present_with_style(TreePresenterStyle::plain(), |p| format!("{p:?}"));
