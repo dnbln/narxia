@@ -1,0 +1,29 @@
+Root@0..22
+  Item@0..22
+    FnDef@0..22
+      FnHead@0..16
+        FN_KW@0..2 "fn"
+        WHITESPACE@2..3 " "
+        FnName@3..7
+          IDENT@3..7 "main"
+        FnParamList@7..9
+          L_PAREN@7..8 "("
+          R_PAREN@8..9 ")"
+        WHITESPACE@9..10 " "
+        FnRetTy@10..16
+          THIN_ARROW@10..12 "->"
+          WHITESPACE@12..13 " "
+          TyRef@13..16
+            IDENT@13..16 "i32"
+      WHITESPACE@16..17 " "
+      Block@17..22
+        L_BRACE@17..18 "{"
+        WHITESPACE@18..19 " "
+        Item@19..20
+          Stmt@19..20
+            Expr@19..20
+              ExprAtom@19..20
+                NumLit@19..20
+                  NUM_DEC@19..20 "0"
+        WHITESPACE@20..21 " "
+        R_BRACE@21..22 "}"

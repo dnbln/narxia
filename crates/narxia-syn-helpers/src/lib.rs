@@ -9,7 +9,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{
     braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data,
-    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Path, Token,
+    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Path, Token, Visibility,
 };
 
 #[proc_macro_derive(DeriveT, attributes(T))]
@@ -134,12 +134,38 @@ pub fn parse_fn_decl(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream
 }
 
 struct ParserSpecRule {
+    vis: Visibility,
     name: Ident,
     args: Option<ParserFnArgs>,
     colon: Token![:],
     syntax_kind: Ident,
     sep: ParserSeparator,
     body: ParserSpecBody,
+}
+
+impl Parse for ParserSpecRule {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let vis = input.parse()?;
+        let name = input.parse()?;
+        let args = if input.peek(token::Paren) {
+            Some(input.parse::<ParserFnArgs>()?)
+        } else {
+            None
+        };
+        let colon = input.parse()?;
+        let syntax_kind = input.parse()?;
+        let sep = input.parse()?;
+        let body = input.parse()?;
+        Ok(Self {
+            vis,
+            name,
+            args,
+            colon,
+            syntax_kind,
+            sep,
+            body,
+        })
+    }
 }
 
 struct ParserFnArgs {
@@ -369,29 +395,6 @@ impl Parse for ParserSeparator {
     }
 }
 
-impl Parse for ParserSpecRule {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let name = input.parse()?;
-        let args = if input.peek(token::Paren) {
-            Some(input.parse::<ParserFnArgs>()?)
-        } else {
-            None
-        };
-        let colon = input.parse()?;
-        let syntax_kind = input.parse()?;
-        let sep = input.parse()?;
-        let body = input.parse()?;
-        Ok(Self {
-            name,
-            args,
-            colon,
-            syntax_kind,
-            sep,
-            body,
-        })
-    }
-}
-
 fn expand_fn_decl(p: ParserSpecRule) -> TokenStream {
     let name = &p.name;
     let syntax_kind = &p.syntax_kind;
@@ -407,9 +410,10 @@ fn expand_fn_decl(p: ParserSpecRule) -> TokenStream {
     );
     let mut body = TokenStream::new();
     expand_parser_spec_instruction_set(&p.body.instructions, &end_expr, &mut body);
+    let vis = p.vis;
     quote! {
         #[parse_fn]
-        fn #name(p: &mut Parser, #args) -> CompletedMarker {
+        #vis fn #name(p: &mut Parser, #args) -> CompletedMarker {
             let m = p.ev.begin();
             #body
             #end_expr

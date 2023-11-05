@@ -35,6 +35,13 @@ impl TextSpan {
         }
     }
 
+    pub fn sub_offset(&self, offset: usize) -> Self {
+        Self {
+            start: self.start - offset,
+            end: self.end - offset,
+        }
+    }
+
     pub fn get(self, slice: &str) -> &str {
         &slice[self.start..self.end]
     }

@@ -1,7 +1,8 @@
 Root@0..5
   Item@0..5
-    LetStmt@0..5
-      LET_KW@0..3 "let"
-      WHITESPACE@3..4 " "
-      Pat@4..5
-        IDENT@4..5 "x"
+    Stmt@0..5
+      LetStmt@0..5
+        LET_KW@0..3 "let"
+        WHITESPACE@3..4 " "
+        Pat@4..5
+          IDENT@4..5 "x"

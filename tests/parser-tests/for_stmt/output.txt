@@ -15,34 +15,35 @@ Root@0..43
         WHITESPACE@11..12 "\r"
         NEWLINE@12..13 "\n"
         WHITESPACE@13..17 "    "
-        Stmt@17..40
-          ForStmt@17..40
-            FOR_KW@17..20 "for"
-            WHITESPACE@20..21 " "
-            L_PAREN@21..22 "("
-            ForPat@22..23
-              Pat@22..23
-                IDENT@22..23 "i"
-            WHITESPACE@23..24 " "
-            IN_KW@24..26 "in"
-            WHITESPACE@26..27 " "
-            ForInExpr@27..30
-              Expr@27..30
-                CallExpr@27..30
-                  ExprAtom@27..28
-                    IDENT@27..28 "f"
-                  CallExprArgs@28..30
-                    CallExprArgsList@28..30
-                      L_PAREN@28..29 "("
-                      R_PAREN@29..30 ")"
-            R_PAREN@30..31 ")"
-            WHITESPACE@31..32 " "
-            Block@32..40
-              L_BRACE@32..33 "{"
-              WHITESPACE@33..34 "\r"
-              NEWLINE@34..35 "\n"
-              WHITESPACE@35..39 "    "
-              R_BRACE@39..40 "}"
+        Item@17..40
+          Stmt@17..40
+            ForStmt@17..40
+              FOR_KW@17..20 "for"
+              WHITESPACE@20..21 " "
+              L_PAREN@21..22 "("
+              ForPat@22..23
+                Pat@22..23
+                  IDENT@22..23 "i"
+              WHITESPACE@23..24 " "
+              IN_KW@24..26 "in"
+              WHITESPACE@26..27 " "
+              ForInExpr@27..30
+                Expr@27..30
+                  CallExpr@27..30
+                    ExprAtom@27..28
+                      IDENT@27..28 "f"
+                    CallExprArgs@28..30
+                      CallExprArgsList@28..30
+                        L_PAREN@28..29 "("
+                        R_PAREN@29..30 ")"
+              R_PAREN@30..31 ")"
+              WHITESPACE@31..32 " "
+              Block@32..40
+                L_BRACE@32..33 "{"
+                WHITESPACE@33..34 "\r"
+                NEWLINE@34..35 "\n"
+                WHITESPACE@35..39 "    "
+                R_BRACE@39..40 "}"
         WHITESPACE@40..41 "\r"
         NEWLINE@41..42 "\n"
         R_BRACE@42..43 "}"

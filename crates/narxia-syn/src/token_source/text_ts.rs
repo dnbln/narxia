@@ -105,6 +105,7 @@ impl<'text> CharTokenParser<'text> {
         }
     }
 
+    #[inline(always)]
     fn consume_all<const NC: usize, const NR: usize>(
         &mut self,
         chars: [char; NC],
@@ -126,6 +127,7 @@ impl<'text> CharTokenParser<'text> {
         end
     }
 
+    #[inline(always)]
     fn consume_until<const NC: usize, const NR: usize>(
         &mut self,
         chars: [char; NC],
@@ -171,6 +173,29 @@ impl<'text> CharTokenParser<'text> {
                     _ => SyntaxKind::IDENT,
                 };
                 r(kind, start, end)
+            }
+            '0' => {
+                match self.chars.next() {
+                    Some((_next, 'x')) => {
+                        let end = self.consume_all(['_'], ['0'..='9', 'a'..='f', 'A'..='F']);
+                        r(SyntaxKind::NUM_HEX, start, end)
+                    }
+                    Some((_next, 'b')) => {
+                        let end = self.consume_all(['_', '0', '1'], []);
+                        r(SyntaxKind::NUM_BIN, start, end)
+                    }
+                    Some((_next, '0'..='7')) => {
+                        let end = self.consume_all(['_'], ['0'..='7']);
+                        r(SyntaxKind::NUM_OCT, start, end)
+                    }
+                    Some((_, _)) | None => {
+                        r1(SyntaxKind::NUM_DEC, start)
+                    }
+                }
+            }
+            '1'..='9' => {
+                let end = self.consume_all(['_'], ['0'..='9']);
+                r(SyntaxKind::NUM_DEC, start, end)
             }
             ' ' | '\t' | '\r' => {
                 let end = self.consume_all([' ', '\t', '\r'], []);

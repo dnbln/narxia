@@ -1,0 +1,39 @@
+Root@0..56
+  Item@0..56
+    Stmt@0..56
+      LetStmt@0..56
+        LET_KW@0..3 "let"
+        WHITESPACE@3..4 " "
+        Pat@4..5
+          IDENT@4..5 "x"
+        WHITESPACE@5..6 " "
+        EQ@6..7 "="
+        WHITESPACE@7..8 " "
+        Expr@8..56
+          BinaryOpExpr@8..56
+            BinaryOpExpr@8..42
+              BinaryOpExpr@8..29
+                ExprAtom@8..19
+                  NumLit@8..19
+                    NUM_DEC@8..19 "123_456_789"
+                WHITESPACE@19..20 " "
+                BinaryOpExprOp@20..21
+                  PLUS@20..21 "+"
+                WHITESPACE@21..22 " "
+                ExprAtom@22..29
+                  NumLit@22..29
+                    NUM_BIN@22..29 "0b01_00"
+              WHITESPACE@29..30 " "
+              BinaryOpExprOp@30..31
+                PLUS@30..31 "+"
+              WHITESPACE@31..32 " "
+              ExprAtom@32..42
+                NumLit@32..42
+                  NUM_OCT@32..42 "01_234_567"
+            WHITESPACE@42..43 " "
+            BinaryOpExprOp@43..44
+              PLUS@43..44 "+"
+            WHITESPACE@44..45 " "
+            ExprAtom@45..56
+              NumLit@45..56
+                NUM_HEX@45..56 "0x3_abc_def"

@@ -323,7 +323,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    Item = |[FnDef, LetStmt, ForStmt, WhileStmt, AssignmentStmt, ExprNode]
+    Item = |[FnDef, Stmt]
 }
 
 syntree_node! {
@@ -343,7 +343,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnHead = (fn_kw![fn] FnName ?GenericParamList FnParamList)
+    FnHead = (fn_kw![fn] FnName ?GenericParamList FnParamList ?FnRetTy)
 }
 
 syntree_node! {
@@ -407,6 +407,10 @@ syntree_node! {
 }
 
 syntree_node! {
+    FnRetTy = (arrow![->] TyRef)
+}
+
+syntree_node! {
     TyRef = ident![ident]
 }
 
@@ -431,7 +435,11 @@ syntree_enum! {
 }
 
 syntree_node! {
-    ExprAtom = |[ident![ident], str![string], LoopExpr, IfExpr, BlockExpr]
+    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, BlockExpr]
+}
+
+syntree_node! {
+    NumLit = |[num_bin![num_bin], num_oct![num_oct], num_dec![num_dec], num_hex![num_hex]]
 }
 
 syntree_node! {
@@ -684,7 +692,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    LambdaExpr = (lbrace!['{'] ?LambdaParamList *|[Stmt, semi![;], newline![newline]] rbrace!['}'])
+    LambdaExpr = (lbrace!['{'] ?LambdaParamList *|[Item, semi![;], newline![newline]] rbrace!['}'])
 }
 
 syntree_node! {
@@ -712,11 +720,11 @@ syntree_node! {
 }
 
 syntree_node! {
-    Block = (lbrace!['{'] *|[Stmt, semi![;], newline![newline]] rbrace!['}'])
+    Block = (lbrace!['{'] *|[Item, semi![;], newline![newline]] rbrace!['}'])
 }
 
 syntree_node! {
-    Stmt = |[ExprNode, LetStmt, ForStmt, WhileStmt]
+    Stmt = |[ExprNode, LetStmt, ForStmt, WhileStmt, AssignmentStmt]
 }
 
 syntree_node! {

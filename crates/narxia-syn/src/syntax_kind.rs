@@ -7,8 +7,14 @@ pub enum SyntaxKind {
     // Tokens
     #[T(ident)]
     IDENT,
-    #[T(number)]
-    NUMBER,
+    #[T(num_dec)]
+    NUM_DEC,
+    #[T(num_bin)]
+    NUM_BIN,
+    #[T(num_oct)]
+    NUM_OCT,
+    #[T(num_hex)]
+    NUM_HEX,
     #[T(string)]
     STRING,
     // Keywords
@@ -127,9 +133,11 @@ pub enum SyntaxKind {
     FnParamName,
     FnParamTy,
     FnParamDefault,
+    FnRetTy,
     Block,
     Stmt,
 
+    NumLit,
     ExprAtom,
     Expr,
     BinaryOpExpr,

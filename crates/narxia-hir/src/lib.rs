@@ -1,4 +1,4 @@
-use narxia_syn::syntree::{self, Token};
+use narxia_syn::syntree::{self, Token, TreeNode};
 use narxia_syn::text_span::TextSpan;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -28,10 +28,7 @@ pub struct ModDef {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Item {
     FnDef(FnDef),
-    Expr(Expr),
-    LetStmt(LetStmt),
-    ForStmt(ForStmt),
-    WhileStmt(WhileStmt),
+    Stmt(Stmt),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -44,13 +41,23 @@ pub struct Ident {
 pub struct FnDef {
     name: Ident,
     params: Vec<FnParam>,
+    ret_ty: Option<FnRetTy>,
+    body: Block,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FnParam {
+    param_span: HirSpan,
     pat: Pat,
     ty: TyRef,
     default: Option<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct FnRetTy {
+    span: HirSpan,
+    arrow_span: HirSpan,
+    ty: TyRef,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -101,7 +108,7 @@ pub struct MethodCall {
 #[derive(Debug, Eq, PartialEq)]
 pub struct LambdaExpr {
     lambda_param_list: Option<LambdaParamList>,
-    body: Vec<Stmt>,
+    body: Vec<Item>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -160,9 +167,18 @@ fn lower_binop(binop: &syntree::BinOp) -> BinOp {
 pub enum ExprAtom {
     Ident(Ident),
     Str(StrLiteral),
+    Num(NumLit),
     LoopExpr(LoopExpr),
     IfExpr(Box<IfExpr>),
     BlockExpr(BlockExpr),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum NumLit {
+    Bin(Token),
+    Oct(Token),
+    Dec(Token),
+    Hex(Token),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -190,7 +206,7 @@ pub struct BlockExpr {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Block {
-    stmts: Vec<Stmt>,
+    items: Vec<Item>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -232,23 +248,17 @@ pub enum TyRef {
 }
 
 pub fn lower_mod_def(root: syntree::Root) -> ModDef {
-    let items = root.get_item_list().map(lower_item).collect();
+    let items = root.get_item_list().map(|item| lower_item(&item)).collect();
     ModDef { items }
 }
 
-fn lower_item(item: syntree::Item) -> Item {
+fn lower_item(item: &syntree::Item) -> Item {
     if let Some(fn_def) = item.get_fn_def() {
         Item::FnDef(lower_fn_def(fn_def))
-    } else if let Some(expr_node) = item.get_expr_node() {
-        Item::Expr(lower_expr_node(&expr_node))
-    } else if let Some(let_stmt) = item.get_let_stmt() {
-        Item::LetStmt(lower_let_stmt(&let_stmt))
-    } else if let Some(while_stmt) = item.get_while_stmt() {
-        Item::WhileStmt(lower_while_stmt(&while_stmt))
-    } else if let Some(for_stmt) = item.get_for_stmt() {
-        Item::ForStmt(lower_for_stmt(&for_stmt))
+    } else if let Some(stmt) = item.get_stmt() {
+        Item::Stmt(lower_stmt(&stmt))
     } else {
-        unreachable!()
+        todo!()
     }
 }
 
@@ -256,7 +266,22 @@ fn lower_fn_def(fn_def: syntree::FnDef) -> FnDef {
     let head = fn_def.get_fn_head();
     let name = lower_ident(&head.get_fn_name().unwrap().get_ident());
     let params = lower_fn_def_params(&head.get_fn_param_list().unwrap());
-    FnDef { name, params }
+    let ret_ty = head.get_fn_ret_ty().as_ref().map(lower_fn_ret_ty);
+    let body = lower_block(&fn_def.get_block().unwrap());
+    FnDef {
+        name,
+        params,
+        ret_ty,
+        body,
+    }
+}
+
+fn lower_fn_ret_ty(ret_ty: &syntree::FnRetTy) -> FnRetTy {
+    FnRetTy {
+        span: HirSpan::of_node(ret_ty),
+        arrow_span: HirSpan::of(&ret_ty.get_arrow()),
+        ty: lower_ty_ref(&ret_ty.get_ty_ref().unwrap()),
+    }
 }
 
 fn lower_fn_def_params(fn_param_list: &syntree::FnParamList) -> Vec<FnParam> {
@@ -275,7 +300,12 @@ fn lower_fn_def_param(fn_param: &syntree::FnParam) -> FnParam {
         .map(|it| it.get_expr_node().unwrap())
         .as_ref()
         .map(lower_expr_node);
-    FnParam { pat, ty, default }
+    FnParam {
+        pat,
+        ty,
+        default,
+        param_span: HirSpan::of_node(fn_param),
+    }
 }
 
 fn lower_expr(expr: &syntree::Expr) -> Expr {
@@ -347,11 +377,7 @@ fn lower_method_call(method_call: &syntree::MethodCall) -> MethodCall {
     let base = Box::new(lower_expr(&method_call.get_expr()));
     let method = lower_ident(&method_call.get_method_name().unwrap());
     let args = lower_call_expr_args(&method_call.get_call_expr_args().unwrap());
-    MethodCall {
-        base,
-        method,
-        args,
-    }
+    MethodCall { base, method, args }
 }
 
 fn lower_lambda_expr(lambda_expr: &syntree::LambdaExpr) -> LambdaExpr {
@@ -360,8 +386,8 @@ fn lower_lambda_expr(lambda_expr: &syntree::LambdaExpr) -> LambdaExpr {
         .as_ref()
         .map(lower_lambda_param_list);
     let body = lambda_expr
-        .get_stmt_list()
-        .map(|it| lower_stmt(&it))
+        .get_item_list()
+        .map(|it| lower_item(&it))
         .collect();
     LambdaExpr {
         lambda_param_list,
@@ -404,6 +430,8 @@ fn lower_expr_atom(atom: &syntree::ExprAtom) -> ExprAtom {
         ExprAtom::Ident(lower_ident(&ident))
     } else if let Some(str_literal) = atom.get_str() {
         ExprAtom::Str(lower_str_literal(&str_literal))
+    } else if let Some(num_lit) = atom.get_num_lit() {
+        ExprAtom::Num(lower_num_literal(&num_lit))
     } else if let Some(loop_expr) = atom.get_loop_expr() {
         ExprAtom::LoopExpr(lower_loop_expr(&loop_expr))
     } else if let Some(if_expr) = atom.get_if_expr() {
@@ -411,7 +439,21 @@ fn lower_expr_atom(atom: &syntree::ExprAtom) -> ExprAtom {
     } else if let Some(block_expr) = atom.get_block_expr() {
         ExprAtom::BlockExpr(lower_block_expr(&block_expr))
     } else {
-        unreachable!()
+        todo!()
+    }
+}
+
+fn lower_num_literal(num_lit: &syntree::NumLit) -> NumLit {
+    if let Some(num_bin) = num_lit.get_num_bin() {
+        NumLit::Bin(num_bin)
+    } else if let Some(num_oct) = num_lit.get_num_oct() {
+        NumLit::Oct(num_oct)
+    } else if let Some(num_dec) = num_lit.get_num_dec() {
+        NumLit::Dec(num_dec)
+    } else if let Some(num_hex) = num_lit.get_num_hex() {
+        NumLit::Hex(num_hex)
+    } else {
+        todo!()
     }
 }
 
@@ -421,8 +463,8 @@ fn lower_loop_expr(loop_expr: &syntree::LoopExpr) -> LoopExpr {
 }
 
 fn lower_block(block: &syntree::Block) -> Block {
-    let stmts = block.get_stmt_list().map(|it| lower_stmt(&it)).collect();
-    Block { stmts }
+    let items = block.get_item_list().map(|it| lower_item(&it)).collect();
+    Block { items }
 }
 
 fn lower_stmt(stmt: &syntree::Stmt) -> Stmt {
@@ -435,7 +477,7 @@ fn lower_stmt(stmt: &syntree::Stmt) -> Stmt {
     } else if let Some(while_stmt) = stmt.get_while_stmt() {
         Stmt::WhileStmt(lower_while_stmt(&while_stmt))
     } else {
-        unreachable!()
+        todo!()
     }
 }
 
