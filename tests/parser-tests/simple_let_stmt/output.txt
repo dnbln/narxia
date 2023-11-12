@@ -3,6 +3,6 @@ Root@0..5
     Stmt@0..5
       LetStmt@0..5
         LET_KW@0..3 "let"
-        WHITESPACE@3..4 " "
+        COMPOSED_TRIVIA@3..4 " "
         Pat@4..5
           IDENT@4..5 "x"

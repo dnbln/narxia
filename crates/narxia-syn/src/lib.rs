@@ -1,4 +1,6 @@
 #![feature(char_indices_offset)]
+#![feature(let_chains)]
+#![feature(closure_track_caller)]
 
 pub extern crate narxia_log;
 

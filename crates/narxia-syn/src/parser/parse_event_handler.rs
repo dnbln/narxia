@@ -39,12 +39,14 @@ pub struct CompletedMarker {
 }
 
 impl<'a> ParseEventHandler<'a> {
+    #[inline(always)]
     pub fn begin(&mut self) -> Marker {
         let idx = self.events.len();
         self.events.push(ParseEvent::Begin);
         Marker::new(idx)
     }
 
+    #[inline(always)]
     pub fn token(&mut self, kind: SyntaxKind, text: &'a str) {
         self.events.push(ParseEvent::Token { kind, text });
     }
@@ -65,6 +67,7 @@ impl<'a> ParseEventHandler<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn end(&mut self, mut marker: Marker, kind: SyntaxKind) -> CompletedMarker {
         let idx_end = self.events.len();
         self.events.push(ParseEvent::End { kind });

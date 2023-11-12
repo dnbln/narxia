@@ -3,7 +3,7 @@ Root@0..89
     FnDef@0..18
       FnHead@0..13
         FN_KW@0..2 "fn"
-        WHITESPACE@2..3 " "
+        COMPOSED_TRIVIA@2..3 " "
         FnName@3..4
           IDENT@3..4 "f"
         GenericParamList@4..7
@@ -20,26 +20,22 @@ Root@0..89
               Pat@8..9
                 IDENT@8..9 "v"
             COLON@9..10 ":"
-            WHITESPACE@10..11 " "
+            COMPOSED_TRIVIA@10..11 " "
             FnParamTy@11..12
               TyRef@11..12
                 IDENT@11..12 "T"
           R_PAREN@12..13 ")"
-      WHITESPACE@13..14 " "
+      COMPOSED_TRIVIA@13..14 " "
       Block@14..18
         L_BRACE@14..15 "{"
-        WHITESPACE@15..16 "\r"
-        NEWLINE@16..17 "\n"
+        COMPOSED_TRIVIA@15..17 "\r\n"
         R_BRACE@17..18 "}"
-  WHITESPACE@18..19 "\r"
-  NEWLINE@19..20 "\n"
-  WHITESPACE@20..21 "\r"
-  NEWLINE@21..22 "\n"
+  COMPOSED_TRIVIA@18..22 "\r\n\r\n"
   Item@22..49
     FnDef@22..49
       FnHead@22..44
         FN_KW@22..24 "fn"
-        WHITESPACE@24..25 " "
+        COMPOSED_TRIVIA@24..25 " "
         FnName@25..26
           IDENT@25..26 "f"
         GenericParamList@26..32
@@ -49,7 +45,7 @@ Root@0..89
               GenericTyParamName@27..28
                 IDENT@27..28 "T"
           COMMA@28..29 ","
-          WHITESPACE@29..30 " "
+          COMPOSED_TRIVIA@29..30 " "
           GenericParam@30..31
             GenericTyParam@30..31
               GenericTyParamName@30..31
@@ -62,37 +58,33 @@ Root@0..89
               Pat@33..34
                 IDENT@33..34 "v"
             COLON@34..35 ":"
-            WHITESPACE@35..36 " "
+            COMPOSED_TRIVIA@35..36 " "
             FnParamTy@36..37
               TyRef@36..37
                 IDENT@36..37 "T"
           COMMA@37..38 ","
-          WHITESPACE@38..39 " "
+          COMPOSED_TRIVIA@38..39 " "
           FnParam@39..43
             FnParamName@39..40
               Pat@39..40
                 IDENT@39..40 "w"
             COLON@40..41 ":"
-            WHITESPACE@41..42 " "
+            COMPOSED_TRIVIA@41..42 " "
             FnParamTy@42..43
               TyRef@42..43
                 IDENT@42..43 "U"
           R_PAREN@43..44 ")"
-      WHITESPACE@44..45 " "
+      COMPOSED_TRIVIA@44..45 " "
       Block@45..49
         L_BRACE@45..46 "{"
-        WHITESPACE@46..47 "\r"
-        NEWLINE@47..48 "\n"
+        COMPOSED_TRIVIA@46..48 "\r\n"
         R_BRACE@48..49 "}"
-  WHITESPACE@49..50 "\r"
-  NEWLINE@50..51 "\n"
-  WHITESPACE@51..52 "\r"
-  NEWLINE@52..53 "\n"
+  COMPOSED_TRIVIA@49..53 "\r\n\r\n"
   Item@53..89
     FnDef@53..89
       FnHead@53..84
         FN_KW@53..55 "fn"
-        WHITESPACE@55..56 " "
+        COMPOSED_TRIVIA@55..56 " "
         FnName@56..57
           IDENT@56..57 "f"
         GenericParamList@57..78
@@ -102,7 +94,7 @@ Root@0..89
               GenericTyParamName@58..59
                 IDENT@58..59 "T"
               COLON@59..60 ":"
-              WHITESPACE@60..61 " "
+              COMPOSED_TRIVIA@60..61 " "
               GenericTyParamBoundList@61..72
                 GenericTyParamBound@61..65
                   TyRef@61..65
@@ -111,10 +103,10 @@ Root@0..89
                 GenericTyParamBound@66..71
                   TyRef@66..71
                     IDENT@66..71 "Clone"
-                WHITESPACE@71..72 " "
+                COMPOSED_TRIVIA@71..72 " "
               GenericTyParamDefault@72..77
                 EQ@72..73 "="
-                WHITESPACE@73..74 " "
+                COMPOSED_TRIVIA@73..74 " "
                 TyRef@74..77
                   IDENT@74..77 "i32"
           GT@77..78 ">"
@@ -125,14 +117,13 @@ Root@0..89
               Pat@79..80
                 IDENT@79..80 "v"
             COLON@80..81 ":"
-            WHITESPACE@81..82 " "
+            COMPOSED_TRIVIA@81..82 " "
             FnParamTy@82..83
               TyRef@82..83
                 IDENT@82..83 "T"
           R_PAREN@83..84 ")"
-      WHITESPACE@84..85 " "
+      COMPOSED_TRIVIA@84..85 " "
       Block@85..89
         L_BRACE@85..86 "{"
-        WHITESPACE@86..87 "\r"
-        NEWLINE@87..88 "\n"
+        COMPOSED_TRIVIA@86..88 "\r\n"
         R_BRACE@88..89 "}"

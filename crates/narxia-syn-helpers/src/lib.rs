@@ -307,6 +307,7 @@ struct WsBehaviorParsed {
     ident: Ident,
 }
 
+#[derive(PartialEq, Eq)]
 struct WsBehavior {
     v: u8,
 }
@@ -315,6 +316,8 @@ impl WsBehavior {
     const WS: WsBehavior = WsBehavior { v: 0b001 };
     const COMMENT: WsBehavior = WsBehavior { v: 0b010 };
     const NEWLINE: WsBehavior = WsBehavior { v: 0b100 };
+    const WCN: WsBehavior = WsBehavior { v: 0b111 };
+    const WC: WsBehavior = WsBehavior { v: 0b011 };
 }
 
 impl std::ops::BitOr for WsBehavior {
@@ -487,9 +490,21 @@ fn expand_parser_spec_instruction_set(
 }
 
 fn expand_ws_extra(ws_extra: &WsExtra, to: &mut TokenStream) {
+    let span = ws_extra.behavior.ident.span();
+    let name = match ws_extra.behavior.behavior {
+        WsBehavior::WCN => {
+            format_ident!("skip_ws_wcn", span = span)
+        }
+        WsBehavior::WC => {
+            format_ident!("skip_ws_wc", span = span)
+        }
+        _ => {
+            unreachable!()
+        }
+    };
     to.extend(quote_spanned! {
         ws_extra.ws_ident.span()=>
-        p.skip_ws();
+        p.#name();
     })
 }
 
@@ -840,16 +855,18 @@ fn expand_match_arm(
                     if_chain.add_else_branch(parse_quote_spanned! {arrow.span()=>{#ins}});
                 }
                 no_catch_all => {
-                    let pats = no_catch_all.iter().map(|it| {
-                        match it {
+                    let pats = no_catch_all
+                        .iter()
+                        .map(|it| match it {
                             MatchExtraArmSelector::CatchAll { wild } => {
-                                return Err(syn::Error::new_spanned(wild, "_ should be alone in an match arm"));
-                            },
-                            MatchExtraArmSelector::T { delimiter: _, tt } => {
-                                Ok(tt)
+                                return Err(syn::Error::new_spanned(
+                                    wild,
+                                    "_ should be alone in an match arm",
+                                ));
                             }
-                        }
-                    }).collect::<Result<Vec<_>, _>>()?;
+                            MatchExtraArmSelector::T { delimiter: _, tt } => Ok(tt),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
 
                     if_chain.add_if(parse_quote_spanned! {arrow.span()=>
                         if #( p.at(T![#pats]) )||* {
@@ -1070,9 +1087,9 @@ impl SyntreeNodeDef {
 
             if add_ws_accessor {
                 token_accessors.push(TokenAccessor {
-                    name: format_ident!("get_ws"),
+                    name: format_ident!("get_trivia"),
                     kind: AccessorKind::List,
-                    token: quote! {whitespace},
+                    token: quote! {composed_trivia},
                     allow_empty: true,
                 });
             }

@@ -5,31 +5,30 @@ Root@0..22
         ExprAtom@0..20
           IfExpr@0..20
             IF_KW@0..2 "if"
-            WHITESPACE@2..3 " "
+            COMPOSED_TRIVIA@2..3 " "
             IfCondition@3..11
               L_PAREN@3..4 "("
               Expr@4..10
                 BinaryOpExpr@4..10
                   ExprAtom@4..5
                     IDENT@4..5 "a"
-                  WHITESPACE@5..6 " "
+                  COMPOSED_TRIVIA@5..6 " "
                   BinaryOpExprOp@6..8
                     EQ2@6..8 "=="
-                  WHITESPACE@8..9 " "
+                  COMPOSED_TRIVIA@8..9 " "
                   ExprAtom@9..10
                     IDENT@9..10 "b"
               R_PAREN@10..11 ")"
-            WHITESPACE@11..12 " "
+            COMPOSED_TRIVIA@11..12 " "
             IfThenClause@12..13
               Expr@12..13
                 ExprAtom@12..13
                   IDENT@12..13 "a"
-            WHITESPACE@13..14 " "
+            COMPOSED_TRIVIA@13..14 " "
             ElseClause@14..20
               ELSE_KW@14..18 "else"
-              WHITESPACE@18..19 " "
+              COMPOSED_TRIVIA@18..19 " "
               Expr@19..20
                 ExprAtom@19..20
                   IDENT@19..20 "b"
-  WHITESPACE@20..21 "\r"
-  NEWLINE@21..22 "\n"
+  COMPOSED_TRIVIA@20..22 "\r\n"

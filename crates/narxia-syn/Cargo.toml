@@ -10,6 +10,7 @@ colored.workspace = true
 rowan = "0.15.11"
 drop_bomb = "0.1.5"
 smallvec = "1.10.0"
+bitflags.workspace = true
 
 narxia-syn-helpers.workspace = true
 narxia-log.workspace = true

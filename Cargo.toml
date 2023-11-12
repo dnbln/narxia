@@ -3,6 +3,9 @@ members = ["crates/*", "dev/*", "tests/narxia-test-runner"]
 default-members = ["crates/narxia-driver"]
 resolver = "2"
 
+[profile.release]
+debug = true
+
 [workspace.dependencies]
 narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
@@ -18,7 +21,9 @@ dir-structure-macros = { path = "dev/dir-structure-macros", version = "0.1.3" }
 dir-structure = { path = "dev/dir-structure", version = "0.1.3" }
 
 clap = { version = "4.4.3", features = ["derive"] }
+criterion = { version = "0.5", features = ["html_reports"] }
 colored = "2.0.4"
+bitflags = "2"
 miette = { version = "5.10.0", features = ["fancy"] }
 path-absolutize = "3.1.1"
 salsa = { path = "crates/narxia-salsa" }

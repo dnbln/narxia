@@ -82,7 +82,7 @@ pub struct CallExpr {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CallExprArgs {
-    args: Vec<Expr>,
+    args: Option<Vec<Expr>>,
     trailing_lambda: Option<LambdaExpr>,
 }
 
@@ -360,12 +360,11 @@ fn lower_call_expr(call_expr: &syntree::CallExpr) -> CallExpr {
 }
 
 fn lower_call_expr_args(call_expr_args: &syntree::CallExprArgs) -> CallExprArgs {
-    let args = call_expr_args
-        .get_call_expr_args_list()
-        .unwrap()
-        .get_expr_node_list()
-        .map(|it| lower_expr_node(&it))
-        .collect();
+    let args = call_expr_args.get_call_expr_args_list().map(|it| {
+        it.get_expr_node_list()
+            .map(|it| lower_expr_node(&it))
+            .collect()
+    });
     let trailing_lambda = call_expr_args
         .get_call_expr_arg_lambda()
         .map(|it| lower_lambda_expr(&it.get_lambda_expr()));

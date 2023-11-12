@@ -119,6 +119,8 @@ pub enum SyntaxKind {
     ERROR,
     #[T(newline)]
     NEWLINE,
+    #[T(composed_trivia)]
+    COMPOSED_TRIVIA,
     #[T(eof)]
     EOF,
 

@@ -1,5 +1,5 @@
 use narxia_syn_helpers::{parse_fn_decl, parse_fn};
-use super::{Parser, parse_block, CompletedMarker, parse_list_simple2, AttemptRecoveryLevel, parse_ty_ref, parse_block_insides, parse_list_rep_simple2, fun};
+use super::{Parser, parse_block, CompletedMarker, parse_list_simple2, AttemptRecoveryLevel, parse_ty_ref, parse_block_insides, parse_list_rep_simple2, fun, WsSkipConfig};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
@@ -46,7 +46,7 @@ fn infix_binary_op(
     }
     loop {
         let s = p.state();
-        p.skip_ws();
+        p.skip_ws_wc();
         if !handle_operator(p) {
             p.restore_state(s);
             break m;
@@ -54,7 +54,7 @@ fn infix_binary_op(
         if p.is_recovering() {
             return m;
         }
-        p.skip_ws();
+        p.skip_ws_wcn();
         let m0 = p.ev.precede_completed(&m);
         lower(p);
         m = p.ev.end(m0, SyntaxKind::BinaryOpExpr);
@@ -95,7 +95,7 @@ fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
 
     loop {
         let s = p.state();
-        p.skip_ws();
+        p.skip_ws_wc();
         if p.at_eof() {
             p.restore_state(s);
             break m;
@@ -117,10 +117,10 @@ fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
         } else if p.at(T![.]) {
             let m0 = p.ev.precede_completed(&m);
             p.expect(T![.]);
-            p.skip_ws();
+            p.skip_ws_wcn();
             p.expect(T![ident]);
             let s = p.state();
-            p.skip_ws();
+            p.skip_ws_wc();
             if p.at(T!['(']) {
                 parse_call_expr_args(p);
                 m = p.ev.end(m0, SyntaxKind::MethodCall);
@@ -160,7 +160,7 @@ parse_fn_decl! {
             ['('] => {
                 $parse_call_expr_args_list()
                 $/state:s1
-                $/ws:wcn
+                $/ws:wc
                 $/if at['{'] {
                     $parse_call_expr_args_trailing_block()
                 }
@@ -196,7 +196,7 @@ fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
     if p.is_recovering() {
         return p.ev.end(m, SyntaxKind::LambdaExpr);
     }
-    p.skip_ws();
+    p.skip_ws_wcn();
 
     let s = p.state();
     // attempt to parse list of args if there
@@ -215,7 +215,7 @@ fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
 parse_fn_decl! {
     parse_lambda_param_list: LambdaParamList ::=
         $parse_list_rep_simple2(T![,], parse_lambda_param, AttemptRecoveryLevel::Shallow)
-        $/ws:wcn
+        $/ws:wc
         $![->]
 }
 
@@ -223,7 +223,7 @@ parse_fn_decl! {
     parse_lambda_param: LambdaParam ::=
         $fun::parse_fn_param_name()
         $/state:s1
-        $/ws:wcn
+        $/ws:wc
         $/if at[:] {
             $![:]
             $/ws:wcn
@@ -238,7 +238,7 @@ parse_fn_decl! {
 parse_fn_decl! {
     parse_custom_infix_expr_infix: CustomInfixExprInfix ::=
         $![ident]
-        $/ws:wcn
+        $/ws:wc
         $parse_custom_infix_expr_infix_arg()
 }
 
@@ -252,7 +252,7 @@ fn parse_precedence_2_expr(p: &mut Parser) -> CompletedMarker {
     if p.at(T![+]) || p.at(T![-]) || p.at(T![!]) || p.at(T![*]) {
         let m = p.ev.begin();
         parse_prefix_unary_op(p);
-        p.skip_ws();
+        p.skip_ws_wcn();
         parse_precedence_2_expr(p);
         p.ev.end(m, SyntaxKind::UnaryOpExpr)
     } else {
@@ -371,7 +371,7 @@ parse_fn_decl! {
     parse_return_expr: ReturnExpr ::=
         $![return]
         $/state:s1
-        $/ws:wcn
+        $/ws:wc
         $/match {
             [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
             _ => {$/restore_state:s1}
@@ -387,7 +387,7 @@ parse_fn_decl! {
     parse_break_expr: BreakExpr ::=
         $![break]
         $/state:s1
-        $/ws:wcn
+        $/ws:wc
         $/match {
             [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
             _ => {$/restore_state:s1}

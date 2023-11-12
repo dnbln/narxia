@@ -5,150 +5,144 @@ Root@0..328
         CallExpr@0..12
           ExprAtom@0..1
             IDENT@0..1 "f"
-          WHITESPACE@1..2 " "
+          COMPOSED_TRIVIA@1..2 " "
           CallExprArgs@2..12
             CallExprArgLambda@2..12
               LambdaExpr@2..12
                 L_BRACE@2..3 "{"
-                WHITESPACE@3..4 " "
+                COMPOSED_TRIVIA@3..4 " "
                 Item@4..10
                   Stmt@4..10
                     Expr@4..10
                       BinaryOpExpr@4..10
                         ExprAtom@4..6
                           IDENT@4..6 "it"
-                        WHITESPACE@6..7 " "
+                        COMPOSED_TRIVIA@6..7 " "
                         BinaryOpExprOp@7..8
                           PLUS@7..8 "+"
-                        WHITESPACE@8..9 " "
+                        COMPOSED_TRIVIA@8..9 " "
                         ExprAtom@9..10
                           IDENT@9..10 "a"
-                WHITESPACE@10..11 " "
+                COMPOSED_TRIVIA@10..11 " "
                 R_BRACE@11..12 "}"
-  WHITESPACE@12..13 "\r"
-  NEWLINE@13..14 "\n"
+  COMPOSED_TRIVIA@12..14 "\r\n"
   Item@14..32
     Stmt@14..32
       Expr@14..32
         CallExpr@14..32
           ExprAtom@14..15
             IDENT@14..15 "f"
-          WHITESPACE@15..16 " "
+          COMPOSED_TRIVIA@15..16 " "
           CallExprArgs@16..32
             CallExprArgLambda@16..32
               LambdaExpr@16..32
                 L_BRACE@16..17 "{"
-                WHITESPACE@17..18 " "
+                COMPOSED_TRIVIA@17..18 " "
                 LambdaParamList@18..23
                   LambdaParam@18..20
                     FnParamName@18..20
                       Pat@18..20
                         IDENT@18..20 "it"
-                  WHITESPACE@20..21 " "
+                  COMPOSED_TRIVIA@20..21 " "
                   THIN_ARROW@21..23 "->"
-                WHITESPACE@23..24 " "
+                COMPOSED_TRIVIA@23..24 " "
                 Item@24..30
                   Stmt@24..30
                     Expr@24..30
                       BinaryOpExpr@24..30
                         ExprAtom@24..26
                           IDENT@24..26 "it"
-                        WHITESPACE@26..27 " "
+                        COMPOSED_TRIVIA@26..27 " "
                         BinaryOpExprOp@27..28
                           PLUS@27..28 "+"
-                        WHITESPACE@28..29 " "
+                        COMPOSED_TRIVIA@28..29 " "
                         ExprAtom@29..30
                           IDENT@29..30 "a"
-                WHITESPACE@30..31 " "
+                COMPOSED_TRIVIA@30..31 " "
                 R_BRACE@31..32 "}"
-  WHITESPACE@32..33 "\r"
-  NEWLINE@33..34 "\n"
+  COMPOSED_TRIVIA@32..34 "\r\n"
   Item@34..46
     Stmt@34..46
       Expr@34..46
         CallExpr@34..46
           ExprAtom@34..35
             IDENT@34..35 "f"
-          WHITESPACE@35..36 " "
+          COMPOSED_TRIVIA@35..36 " "
           CallExprArgs@36..46
             CallExprArgLambda@36..46
               LambdaExpr@36..46
                 L_BRACE@36..37 "{"
-                WHITESPACE@37..38 " "
+                COMPOSED_TRIVIA@37..38 " "
                 Item@38..44
                   Stmt@38..44
                     Expr@38..44
                       BinaryOpExpr@38..44
                         ExprAtom@38..40
                           IDENT@38..40 "it"
-                        WHITESPACE@40..41 " "
+                        COMPOSED_TRIVIA@40..41 " "
                         BinaryOpExprOp@41..42
                           PLUS@41..42 "+"
-                        WHITESPACE@42..43 " "
+                        COMPOSED_TRIVIA@42..43 " "
                         ExprAtom@43..44
                           IDENT@43..44 "a"
-                WHITESPACE@44..45 " "
+                COMPOSED_TRIVIA@44..45 " "
                 R_BRACE@45..46 "}"
-  WHITESPACE@46..47 "\r"
-  NEWLINE@47..48 "\n"
+  COMPOSED_TRIVIA@46..48 "\r\n"
   Item@48..66
     Stmt@48..66
       Expr@48..66
         CallExpr@48..66
           ExprAtom@48..49
             IDENT@48..49 "f"
-          WHITESPACE@49..50 " "
+          COMPOSED_TRIVIA@49..50 " "
           CallExprArgs@50..66
             CallExprArgLambda@50..66
               LambdaExpr@50..66
                 L_BRACE@50..51 "{"
-                WHITESPACE@51..52 " "
+                COMPOSED_TRIVIA@51..52 " "
                 LambdaParamList@52..57
                   LambdaParam@52..54
                     FnParamName@52..54
                       Pat@52..54
                         IDENT@52..54 "it"
-                  WHITESPACE@54..55 " "
+                  COMPOSED_TRIVIA@54..55 " "
                   THIN_ARROW@55..57 "->"
-                WHITESPACE@57..58 " "
+                COMPOSED_TRIVIA@57..58 " "
                 Item@58..64
                   Stmt@58..64
                     Expr@58..64
                       BinaryOpExpr@58..64
                         ExprAtom@58..60
                           IDENT@58..60 "it"
-                        WHITESPACE@60..61 " "
+                        COMPOSED_TRIVIA@60..61 " "
                         BinaryOpExprOp@61..62
                           PLUS@61..62 "+"
-                        WHITESPACE@62..63 " "
+                        COMPOSED_TRIVIA@62..63 " "
                         ExprAtom@63..64
                           IDENT@63..64 "a"
-                WHITESPACE@64..65 " "
+                COMPOSED_TRIVIA@64..65 " "
                 R_BRACE@65..66 "}"
-  WHITESPACE@66..67 "\r"
-  NEWLINE@67..68 "\n"
+  COMPOSED_TRIVIA@66..68 "\r\n"
   Item@68..115
     Stmt@68..115
       Expr@68..115
         CallExpr@68..115
           ExprAtom@68..69
             IDENT@68..69 "f"
-          WHITESPACE@69..70 " "
+          COMPOSED_TRIVIA@69..70 " "
           CallExprArgs@70..115
             CallExprArgLambda@70..115
               LambdaExpr@70..115
                 L_BRACE@70..71 "{"
-                WHITESPACE@71..72 " "
+                COMPOSED_TRIVIA@71..72 " "
                 LambdaParamList@72..77
                   LambdaParam@72..74
                     FnParamName@72..74
                       Pat@72..74
                         IDENT@72..74 "it"
-                  WHITESPACE@74..75 " "
+                  COMPOSED_TRIVIA@74..75 " "
                   THIN_ARROW@75..77 "->"
-                WHITESPACE@77..78 "\r"
-                NEWLINE@78..79 "\n"
-                WHITESPACE@79..83 "    "
+                COMPOSED_TRIVIA@77..83 "\r\n    "
                 Item@83..89
                   Stmt@83..89
                     Expr@83..89
@@ -160,9 +154,9 @@ Root@0..328
                             L_PAREN@87..88 "("
                             R_PAREN@88..89 ")"
                 SEMI@89..90 ";"
-                WHITESPACE@90..91 "\r"
+                COMPOSED_TRIVIA@90..91 "\r"
                 NEWLINE@91..92 "\n"
-                WHITESPACE@92..96 "    "
+                COMPOSED_TRIVIA@92..96 "    "
                 Item@96..103
                   Stmt@96..103
                     Expr@96..103
@@ -174,159 +168,156 @@ Root@0..328
                             L_PAREN@101..102 "("
                             R_PAREN@102..103 ")"
                 SEMI@103..104 ";"
-                WHITESPACE@104..105 "\r"
+                COMPOSED_TRIVIA@104..105 "\r"
                 NEWLINE@105..106 "\n"
-                WHITESPACE@106..110 "    "
+                COMPOSED_TRIVIA@106..110 "    "
                 Item@110..112
                   Stmt@110..112
                     Expr@110..112
                       ExprAtom@110..112
                         IDENT@110..112 "it"
-                WHITESPACE@112..113 "\r"
+                COMPOSED_TRIVIA@112..113 "\r"
                 NEWLINE@113..114 "\n"
                 R_BRACE@114..115 "}"
-  WHITESPACE@115..116 "\r"
-  NEWLINE@116..117 "\n"
+  COMPOSED_TRIVIA@115..117 "\r\n"
   Item@117..140
     Stmt@117..140
       Expr@117..140
         CallExpr@117..140
           ExprAtom@117..118
             IDENT@117..118 "f"
-          WHITESPACE@118..119 " "
+          COMPOSED_TRIVIA@118..119 " "
           CallExprArgs@119..140
             CallExprArgLambda@119..140
               LambdaExpr@119..140
                 L_BRACE@119..120 "{"
-                WHITESPACE@120..121 " "
+                COMPOSED_TRIVIA@120..121 " "
                 LambdaParamList@121..131
                   LambdaParam@121..128
                     FnParamName@121..123
                       Pat@121..123
                         IDENT@121..123 "it"
                     COLON@123..124 ":"
-                    WHITESPACE@124..125 " "
+                    COMPOSED_TRIVIA@124..125 " "
                     FnParamTy@125..128
                       TyRef@125..128
                         IDENT@125..128 "i32"
-                  WHITESPACE@128..129 " "
+                  COMPOSED_TRIVIA@128..129 " "
                   THIN_ARROW@129..131 "->"
-                WHITESPACE@131..132 " "
+                COMPOSED_TRIVIA@131..132 " "
                 Item@132..138
                   Stmt@132..138
                     Expr@132..138
                       BinaryOpExpr@132..138
                         ExprAtom@132..134
                           IDENT@132..134 "it"
-                        WHITESPACE@134..135 " "
+                        COMPOSED_TRIVIA@134..135 " "
                         BinaryOpExprOp@135..136
                           PLUS@135..136 "+"
-                        WHITESPACE@136..137 " "
+                        COMPOSED_TRIVIA@136..137 " "
                         ExprAtom@137..138
                           IDENT@137..138 "a"
-                WHITESPACE@138..139 " "
+                COMPOSED_TRIVIA@138..139 " "
                 R_BRACE@139..140 "}"
-  WHITESPACE@140..141 "\r"
-  NEWLINE@141..142 "\n"
+  COMPOSED_TRIVIA@140..142 "\r\n"
   Item@142..177
     Stmt@142..177
       Expr@142..177
         CallExpr@142..177
           ExprAtom@142..143
             IDENT@142..143 "f"
-          WHITESPACE@143..144 " "
+          COMPOSED_TRIVIA@143..144 " "
           CallExprArgs@144..177
             CallExprArgLambda@144..177
               LambdaExpr@144..177
                 L_BRACE@144..145 "{"
-                WHITESPACE@145..146 " "
+                COMPOSED_TRIVIA@145..146 " "
                 LambdaParamList@146..166
                   LambdaParam@146..153
                     FnParamName@146..148
                       Pat@146..148
                         IDENT@146..148 "it"
                     COLON@148..149 ":"
-                    WHITESPACE@149..150 " "
+                    COMPOSED_TRIVIA@149..150 " "
                     FnParamTy@150..153
                       TyRef@150..153
                         IDENT@150..153 "i32"
                   COMMA@153..154 ","
-                  WHITESPACE@154..155 " "
+                  COMPOSED_TRIVIA@154..155 " "
                   LambdaParam@155..163
                     FnParamName@155..158
                       Pat@155..158
                         IDENT@155..158 "it2"
                     COLON@158..159 ":"
-                    WHITESPACE@159..160 " "
+                    COMPOSED_TRIVIA@159..160 " "
                     FnParamTy@160..163
                       TyRef@160..163
                         IDENT@160..163 "i32"
-                  WHITESPACE@163..164 " "
+                  COMPOSED_TRIVIA@163..164 " "
                   THIN_ARROW@164..166 "->"
-                WHITESPACE@166..167 " "
+                COMPOSED_TRIVIA@166..167 " "
                 Item@167..175
                   Stmt@167..175
                     Expr@167..175
                       BinaryOpExpr@167..175
                         ExprAtom@167..169
                           IDENT@167..169 "it"
-                        WHITESPACE@169..170 " "
+                        COMPOSED_TRIVIA@169..170 " "
                         BinaryOpExprOp@170..171
                           PLUS@170..171 "+"
-                        WHITESPACE@171..172 " "
+                        COMPOSED_TRIVIA@171..172 " "
                         ExprAtom@172..175
                           IDENT@172..175 "it2"
-                WHITESPACE@175..176 " "
+                COMPOSED_TRIVIA@175..176 " "
                 R_BRACE@176..177 "}"
-  WHITESPACE@177..178 "\r"
-  NEWLINE@178..179 "\n"
+  COMPOSED_TRIVIA@177..179 "\r\n"
   Item@179..230
     Stmt@179..230
       Expr@179..230
         CallExpr@179..230
           ExprAtom@179..180
             IDENT@179..180 "f"
-          WHITESPACE@180..181 " "
+          COMPOSED_TRIVIA@180..181 " "
           CallExprArgs@181..230
             CallExprArgLambda@181..230
               LambdaExpr@181..230
                 L_BRACE@181..182 "{"
-                WHITESPACE@182..183 " "
+                COMPOSED_TRIVIA@182..183 " "
                 LambdaParamList@183..213
                   LambdaParam@183..190
                     FnParamName@183..185
                       Pat@183..185
                         IDENT@183..185 "it"
                     COLON@185..186 ":"
-                    WHITESPACE@186..187 " "
+                    COMPOSED_TRIVIA@186..187 " "
                     FnParamTy@187..190
                       TyRef@187..190
                         IDENT@187..190 "i32"
                   COMMA@190..191 ","
-                  WHITESPACE@191..192 " "
+                  COMPOSED_TRIVIA@191..192 " "
                   LambdaParam@192..200
                     FnParamName@192..195
                       Pat@192..195
                         IDENT@192..195 "it2"
                     COLON@195..196 ":"
-                    WHITESPACE@196..197 " "
+                    COMPOSED_TRIVIA@196..197 " "
                     FnParamTy@197..200
                       TyRef@197..200
                         IDENT@197..200 "i32"
                   COMMA@200..201 ","
-                  WHITESPACE@201..202 " "
+                  COMPOSED_TRIVIA@201..202 " "
                   LambdaParam@202..210
                     FnParamName@202..205
                       Pat@202..205
                         IDENT@202..205 "it3"
                     COLON@205..206 ":"
-                    WHITESPACE@206..207 " "
+                    COMPOSED_TRIVIA@206..207 " "
                     FnParamTy@207..210
                       TyRef@207..210
                         IDENT@207..210 "i32"
-                  WHITESPACE@210..211 " "
+                  COMPOSED_TRIVIA@210..211 " "
                   THIN_ARROW@211..213 "->"
-                WHITESPACE@213..214 " "
+                COMPOSED_TRIVIA@213..214 " "
                 Item@214..228
                   Stmt@214..228
                     Expr@214..228
@@ -334,22 +325,21 @@ Root@0..328
                         BinaryOpExpr@214..222
                           ExprAtom@214..216
                             IDENT@214..216 "it"
-                          WHITESPACE@216..217 " "
+                          COMPOSED_TRIVIA@216..217 " "
                           BinaryOpExprOp@217..218
                             PLUS@217..218 "+"
-                          WHITESPACE@218..219 " "
+                          COMPOSED_TRIVIA@218..219 " "
                           ExprAtom@219..222
                             IDENT@219..222 "it2"
-                        WHITESPACE@222..223 " "
+                        COMPOSED_TRIVIA@222..223 " "
                         BinaryOpExprOp@223..224
                           PLUS@223..224 "+"
-                        WHITESPACE@224..225 " "
+                        COMPOSED_TRIVIA@224..225 " "
                         ExprAtom@225..228
                           IDENT@225..228 "it3"
-                WHITESPACE@228..229 " "
+                COMPOSED_TRIVIA@228..229 " "
                 R_BRACE@229..230 "}"
-  WHITESPACE@230..231 "\r"
-  NEWLINE@231..232 "\n"
+  COMPOSED_TRIVIA@230..232 "\r\n"
   Item@232..246
     Stmt@232..246
       Expr@232..246
@@ -360,27 +350,26 @@ Root@0..328
             CallExprArgsList@233..235
               L_PAREN@233..234 "("
               R_PAREN@234..235 ")"
-            WHITESPACE@235..236 " "
+            COMPOSED_TRIVIA@235..236 " "
             CallExprArgLambda@236..246
               LambdaExpr@236..246
                 L_BRACE@236..237 "{"
-                WHITESPACE@237..238 " "
+                COMPOSED_TRIVIA@237..238 " "
                 Item@238..244
                   Stmt@238..244
                     Expr@238..244
                       BinaryOpExpr@238..244
                         ExprAtom@238..240
                           IDENT@238..240 "it"
-                        WHITESPACE@240..241 " "
+                        COMPOSED_TRIVIA@240..241 " "
                         BinaryOpExprOp@241..242
                           PLUS@241..242 "+"
-                        WHITESPACE@242..243 " "
+                        COMPOSED_TRIVIA@242..243 " "
                         ExprAtom@243..244
                           IDENT@243..244 "a"
-                WHITESPACE@244..245 " "
+                COMPOSED_TRIVIA@244..245 " "
                 R_BRACE@245..246 "}"
-  WHITESPACE@246..247 "\r"
-  NEWLINE@247..248 "\n"
+  COMPOSED_TRIVIA@246..248 "\r\n"
   Item@248..268
     Stmt@248..268
       Expr@248..268
@@ -391,35 +380,34 @@ Root@0..328
             CallExprArgsList@249..251
               L_PAREN@249..250 "("
               R_PAREN@250..251 ")"
-            WHITESPACE@251..252 " "
+            COMPOSED_TRIVIA@251..252 " "
             CallExprArgLambda@252..268
               LambdaExpr@252..268
                 L_BRACE@252..253 "{"
-                WHITESPACE@253..254 " "
+                COMPOSED_TRIVIA@253..254 " "
                 LambdaParamList@254..259
                   LambdaParam@254..256
                     FnParamName@254..256
                       Pat@254..256
                         IDENT@254..256 "it"
-                  WHITESPACE@256..257 " "
+                  COMPOSED_TRIVIA@256..257 " "
                   THIN_ARROW@257..259 "->"
-                WHITESPACE@259..260 " "
+                COMPOSED_TRIVIA@259..260 " "
                 Item@260..266
                   Stmt@260..266
                     Expr@260..266
                       BinaryOpExpr@260..266
                         ExprAtom@260..262
                           IDENT@260..262 "it"
-                        WHITESPACE@262..263 " "
+                        COMPOSED_TRIVIA@262..263 " "
                         BinaryOpExprOp@263..264
                           PLUS@263..264 "+"
-                        WHITESPACE@264..265 " "
+                        COMPOSED_TRIVIA@264..265 " "
                         ExprAtom@265..266
                           IDENT@265..266 "a"
-                WHITESPACE@266..267 " "
+                COMPOSED_TRIVIA@266..267 " "
                 R_BRACE@267..268 "}"
-  WHITESPACE@268..269 "\r"
-  NEWLINE@269..270 "\n"
+  COMPOSED_TRIVIA@268..270 "\r\n"
   Item@270..291
     Stmt@270..291
       Expr@270..291
@@ -433,35 +421,34 @@ Root@0..328
                 ExprAtom@272..273
                   IDENT@272..273 "a"
               R_PAREN@273..274 ")"
-            WHITESPACE@274..275 " "
+            COMPOSED_TRIVIA@274..275 " "
             CallExprArgLambda@275..291
               LambdaExpr@275..291
                 L_BRACE@275..276 "{"
-                WHITESPACE@276..277 " "
+                COMPOSED_TRIVIA@276..277 " "
                 LambdaParamList@277..282
                   LambdaParam@277..279
                     FnParamName@277..279
                       Pat@277..279
                         IDENT@277..279 "it"
-                  WHITESPACE@279..280 " "
+                  COMPOSED_TRIVIA@279..280 " "
                   THIN_ARROW@280..282 "->"
-                WHITESPACE@282..283 " "
+                COMPOSED_TRIVIA@282..283 " "
                 Item@283..289
                   Stmt@283..289
                     Expr@283..289
                       BinaryOpExpr@283..289
                         ExprAtom@283..285
                           IDENT@283..285 "it"
-                        WHITESPACE@285..286 " "
+                        COMPOSED_TRIVIA@285..286 " "
                         BinaryOpExprOp@286..287
                           PLUS@286..287 "+"
-                        WHITESPACE@287..288 " "
+                        COMPOSED_TRIVIA@287..288 " "
                         ExprAtom@288..289
                           IDENT@288..289 "b"
-                WHITESPACE@289..290 " "
+                COMPOSED_TRIVIA@289..290 " "
                 R_BRACE@290..291 "}"
-  WHITESPACE@291..292 "\r"
-  NEWLINE@292..293 "\n"
+  COMPOSED_TRIVIA@291..293 "\r\n"
   Item@293..307
     Stmt@293..307
       Expr@293..307
@@ -471,28 +458,27 @@ Root@0..328
               IDENT@293..294 "a"
             DOT@294..295 "."
             IDENT@295..296 "f"
-          WHITESPACE@296..297 " "
+          COMPOSED_TRIVIA@296..297 " "
           CallExprArgs@297..307
             CallExprArgLambda@297..307
               LambdaExpr@297..307
                 L_BRACE@297..298 "{"
-                WHITESPACE@298..299 " "
+                COMPOSED_TRIVIA@298..299 " "
                 Item@299..305
                   Stmt@299..305
                     Expr@299..305
                       BinaryOpExpr@299..305
                         ExprAtom@299..301
                           IDENT@299..301 "it"
-                        WHITESPACE@301..302 " "
+                        COMPOSED_TRIVIA@301..302 " "
                         BinaryOpExprOp@302..303
                           PLUS@302..303 "+"
-                        WHITESPACE@303..304 " "
+                        COMPOSED_TRIVIA@303..304 " "
                         ExprAtom@304..305
                           IDENT@304..305 "a"
-                WHITESPACE@305..306 " "
+                COMPOSED_TRIVIA@305..306 " "
                 R_BRACE@306..307 "}"
-  WHITESPACE@307..308 "\r"
-  NEWLINE@308..309 "\n"
+  COMPOSED_TRIVIA@307..309 "\r\n"
   Item@309..326
     Stmt@309..326
       Expr@309..326
@@ -508,24 +494,23 @@ Root@0..328
                 ExprAtom@313..314
                   IDENT@313..314 "a"
               R_PAREN@314..315 ")"
-            WHITESPACE@315..316 " "
+            COMPOSED_TRIVIA@315..316 " "
             CallExprArgLambda@316..326
               LambdaExpr@316..326
                 L_BRACE@316..317 "{"
-                WHITESPACE@317..318 " "
+                COMPOSED_TRIVIA@317..318 " "
                 Item@318..324
                   Stmt@318..324
                     Expr@318..324
                       BinaryOpExpr@318..324
                         ExprAtom@318..320
                           IDENT@318..320 "it"
-                        WHITESPACE@320..321 " "
+                        COMPOSED_TRIVIA@320..321 " "
                         BinaryOpExprOp@321..322
                           PLUS@321..322 "+"
-                        WHITESPACE@322..323 " "
+                        COMPOSED_TRIVIA@322..323 " "
                         ExprAtom@323..324
                           IDENT@323..324 "b"
-                WHITESPACE@324..325 " "
+                COMPOSED_TRIVIA@324..325 " "
                 R_BRACE@325..326 "}"
-  WHITESPACE@326..327 "\r"
-  NEWLINE@327..328 "\n"
+  COMPOSED_TRIVIA@326..328 "\r\n"

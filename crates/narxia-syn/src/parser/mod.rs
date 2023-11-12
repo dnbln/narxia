@@ -10,7 +10,7 @@ use crate::parser::parse_event_handler::{
 use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
 use crate::syntax_kind::{SyntaxKind, T};
 use crate::syntree::GreenTree;
-use crate::token_source::TokenSource;
+use crate::token_source::{BufferedTokenSource, DynTsContainer, TokenSource};
 
 mod parse_event_handler;
 mod parse_stack;
@@ -82,7 +82,7 @@ impl Default for ParserDbgStyling {
 }
 
 pub struct Parser<'a> {
-    ts: &'a mut dyn TokenSource<'a>,
+    ts: BufferedTokenSource<'a, DynTsContainer<'a>>,
     ev: ParseEventHandler<'a>,
     pstk: ParseStack,
     recovering: Option<ParserRecoveringInfo>,
@@ -92,10 +92,29 @@ struct ParserRecoveringInfo {
     choked_syntax_kind: SyntaxKind,
 }
 
+bitflags::bitflags! {
+    #[derive(PartialEq, Eq)]
+    struct WsSkipConfig: u8 {
+        const W     = 0b001;
+        const C     = 0b010;
+        const N     = 0b100;
+        const WC    = 0b011;
+        const WN    = 0b101;
+        const CN    = 0b110;
+        const WCN   = 0b111;
+    }
+}
+
+impl WsSkipConfig {
+    const fn from_bits_truncated_macro_impl(b: u8) -> WsSkipConfig {
+        Self::from_bits_truncate(b)
+    }
+}
+
 impl<'a> Parser<'a> {
     pub fn new(ts: &'a mut dyn TokenSource<'a>) -> Self {
         Self {
-            ts,
+            ts: BufferedTokenSource::new(DynTsContainer(ts)),
             ev: ParseEventHandler::new(),
             pstk: ParseStack::new(),
             recovering: None,
@@ -110,36 +129,69 @@ impl<'a> Parser<'a> {
         self.recovering = None;
     }
 
-    fn skip_ws(&mut self) {
-        while let Some(tok) = self.ts.lookahead(0) {
-            if tok.kind() != SyntaxKind::WHITESPACE {
-                break;
-            }
-            let text = self.ts.get_token_text(&tok);
-            self.ev.token(SyntaxKind::WHITESPACE, text);
-
-            self.ts.advance();
-        }
+    #[inline(always)]
+    fn skip_ws_wcn(&mut self) {
+        // while let Some(token) = self.ts.lookahead0() {
+        //     let kind = token.kind();
+        //     if ![SyntaxKind::WHITESPACE, SyntaxKind::COMMENT, SyntaxKind::NEWLINE].contains(&kind) {
+        //         break;
+        //     }
+        //     self.ev.token(kind, self.ts.get_token_text(&token));
+        //     self.ts.advance();
+        // }
+        self.ts.skip_whitespace_wcn(|token, text| {
+            self.ev.token(token.kind(), text);
+        });
+        debug_assert!(
+            !self.at(SyntaxKind::WHITESPACE)
+                && !self.at(SyntaxKind::COMMENT)
+                && !self.at(SyntaxKind::NEWLINE)
+        );
     }
 
+    #[inline(always)]
+    fn skip_ws_wc(&mut self) {
+        self.ts.skip_whitespace_wc(|token, text| {
+            self.ev.token(token.kind(), text);
+        });
+        debug_assert!(!self.at(SyntaxKind::WHITESPACE) && !self.at(SyntaxKind::COMMENT));
+    }
+
+    // #[inline(always)]
+    // fn skip_ws(&mut self, ws_skip_config: WsSkipConfig) {
+    //     match ws_skip_config {
+    //         WsSkipConfig::WCN => self.skip_ws_wcn(),
+    //         WsSkipConfig::WC => self.skip_ws_wc(),
+    //         _ => unreachable!(),
+    //     }
+    // }
+
     fn err(&mut self, info: ParseErrorInfo) {
+        let tkind = self.ts.lookahead0().map(|t| t.kind()).unwrap_or(T![eof]);
         self.recovering = Some(ParserRecoveringInfo {
-            choked_syntax_kind: self.ts.lookahead(0).map(|t| t.kind()).unwrap_or(T![eof]),
+            choked_syntax_kind: tkind,
         });
         let location = match info {
-            ParseErrorInfo::ExpectedKind(..) => None,
-            ParseErrorInfo::UnexpectedToken { got, at } => Some(at),
+            ParseErrorInfo::ExpectedKind(_, at) => Some(at),
+            ParseErrorInfo::UnexpectedToken { got: _, at } => Some(at),
         };
-        self.ev
-            .error(ParseError::new(info, self.ts.current_token_span(), location));
+        self.ev.error(ParseError::new(
+            info,
+            self.ts.current_token_span(),
+            tkind,
+            location,
+        ));
     }
 
     #[track_caller]
     fn err_unexpected(&mut self) {
         let location = std::panic::Location::caller();
         self.dbg();
-        let k = self.ts.lookahead(0).map(|tok| tok.kind()).unwrap();
-        self.err(ParseErrorInfo::UnexpectedToken { got: k, at: location });
+        let k = self.ts.lookahead0().map(|tok| tok.kind()).unwrap();
+        self.err(ParseErrorInfo::UnexpectedToken {
+            got: k,
+            at: location,
+        });
     }
 
     #[track_caller]
@@ -147,19 +199,52 @@ impl<'a> Parser<'a> {
         self.pstk.push(name, can_recover, self.ts.current_pos())
     }
 
-    fn expect(&mut self, k: SyntaxKind) -> bool {
-        let size = Self::t_sizeof(k);
-        if self.at(k) {
-            let token = self.ts.compose_token(k, size).unwrap();
-            self.ev.token(k, self.ts.get_token_text(&token));
-            self.ts.advance_n(size);
-            true
-        } else {
-            self.err(ParseErrorInfo::ExpectedKind(k));
-            false
+    #[inline(always)]
+    #[track_caller]
+    pub fn expect(&mut self, k: SyntaxKind) {
+        match k {
+            T![==] => self.expect_2(T![=], T![=], T![==]),
+            T![!=] => self.expect_2(T![!], T![=], T![!=]),
+            T![<=] => self.expect_2(T![<], T![=], T![<=]),
+            T![>=] => self.expect_2(T![>], T![=], T![>=]),
+            T![->] => self.expect_2(T![-], T![>], T![->]),
+            T![=>] => self.expect_2(T![=], T![>], T![=>]),
+            T![&&] => self.expect_2(T![&], T![&], T![&&]),
+            T![||] => self.expect_2(T![|], T![|], T![||]),
+            k => self.expect_1(k),
         }
     }
 
+    #[inline(always)]
+    #[track_caller]
+    fn expect_1(&mut self, k: SyntaxKind) {
+        if !self.ts.expect_1(k, |_token, text| {
+            self.ev.token(k, text);
+        }) {
+            self.err(ParseErrorInfo::ExpectedKind(
+                k,
+                std::panic::Location::caller(),
+            ));
+        }
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    fn expect_2(&mut self, k1: SyntaxKind, k2: SyntaxKind, complete: SyntaxKind) {
+        if !self
+            .ts
+            .expect_2(k1, k2, complete, |t1, t2, tcomplete, text| {
+                self.ev.token(complete, text);
+            })
+        {
+            self.err(ParseErrorInfo::ExpectedKind(
+                complete,
+                std::panic::Location::caller(),
+            ));
+        }
+    }
+
+    #[inline(always)]
     fn t_sizeof(k: SyntaxKind) -> usize {
         match k {
             T![==] | T![!=] | T![<=] | T![>=] | T![->] | T![=>] | T![&&] | T![||] => 2,
@@ -168,9 +253,10 @@ impl<'a> Parser<'a> {
     }
 
     fn at_eof(&mut self) -> bool {
-        self.ts.lookahead(0).is_none()
+        self.ts.lookahead0().is_none()
     }
 
+    #[inline(always)]
     fn at(&mut self, k: SyntaxKind) -> bool {
         match k {
             T![==] => self.at2(T![=], T![=]),
@@ -181,50 +267,29 @@ impl<'a> Parser<'a> {
             T![=>] => self.at2(T![=], T![>]),
             T![&&] => self.at2(T![&], T![&]),
             T![||] => self.at2(T![|], T![|]),
-            _ => self
-                .ts
-                .lookahead(0)
-                .map(|tok| tok.kind() == k)
-                .unwrap_or(false),
+            k => self.ts.at_1(k),
         }
     }
 
+    #[inline(always)]
     fn at2(&mut self, k1: SyntaxKind, k2: SyntaxKind) -> bool {
-        self.ts
-            .lookahead(0)
-            .map(|tok| tok.kind() == k1)
-            .unwrap_or(false)
-            && self
-                .ts
-                .lookahead(1)
-                .map(|tok| tok.kind() == k2)
-                .unwrap_or(false)
-    }
-
-    fn bump_any(&mut self) -> bool {
-        let Some(token) = self.ts.lookahead(0) else {
-            return false;
-        };
-        self.expect(token.kind());
-        true
+        self.ts.at_2(k1, k2)
     }
 
     fn bump_until(&mut self, k: SyntaxKind) -> bool {
-        while let Some(token) = self.ts.lookahead(0) {
-            if token.kind() == k {
-                return true;
-            }
-            self.bump_any();
-        }
-        false
+        self.ts.bump_until(k, |token, text| {
+            self.ev.token(token.kind(), text);
+        })
     }
 
+    #[inline(always)]
     fn state(&mut self) -> ParserState {
         let ts_pos = self.ts.current_pos();
         let ev_pos = self.ev.state();
         ParserState { ts_pos, ev_pos }
     }
 
+    #[inline(always)]
     fn restore_state(&mut self, state: ParserState) {
         self.ts.restore_pos(state.ts_pos);
         self.ev.rollback(state.ev_pos);
@@ -233,7 +298,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) {
         let _guard = self.guard("parse", &[]);
         let m = self.ev.begin();
-        while let Some(token) = self.ts.lookahead(0) {
+        while let Some(token) = self.ts.lookahead0() {
             match token.kind() {
                 T![fn]
                 | T![const]
@@ -259,10 +324,10 @@ impl<'a> Parser<'a> {
                     parse_item(self);
                 }
                 T![whitespace] => {
-                    self.skip_ws();
+                    self.skip_ws_wcn();
                 }
                 T![newline] => {
-                    self.expect(T![newline]);
+                    self.skip_ws_wcn();
                 }
                 T![;] => {
                     self.expect(T![;]);
@@ -369,7 +434,7 @@ fn parse_list_rep<E: NotAttemptingRecovery>(
     recovery: AttemptRecoveryLevel,
 ) -> Result<(), E> {
     parse(p)?;
-    p.skip_ws();
+    p.skip_ws_wcn();
 
     'recovered: {
         if p.is_recovering() {
@@ -395,9 +460,9 @@ fn parse_list_rep<E: NotAttemptingRecovery>(
     'outer: {
         while p.at(sep) {
             p.expect(sep);
-            p.skip_ws();
+            p.skip_ws_wcn();
             parse(p)?;
-            p.skip_ws();
+            p.skip_ws_wcn();
 
             'recovered: {
                 if p.is_recovering() {
@@ -466,6 +531,7 @@ enum AttemptRecoveryLevel {
     Deep,
 }
 
+#[track_caller]
 fn parse_list<E: NotAttemptingRecovery>(
     p: &mut Parser,
     start: SyntaxKind,
@@ -549,6 +615,7 @@ fn parse_list<E: NotAttemptingRecovery>(
     Ok(())
 }
 
+#[track_caller]
 fn parse_list_simple<T>(
     p: &mut Parser,
     start: SyntaxKind,
@@ -564,17 +631,21 @@ fn parse_list_simple<T>(
             parse_item(p);
             Ok(())
         },
+        #[track_caller]
         |p| {
-            p.skip_ws();
+            p.skip_ws_wcn();
             if p.at_eof() {
-                p.err(ParseErrorInfo::ExpectedKind(end));
+                p.err(ParseErrorInfo::ExpectedKind(
+                    end,
+                    std::panic::Location::caller(),
+                ));
                 return Err(());
             }
             Ok(())
         },
         |p| p.at(T![,]),
         |p| {
-            p.skip_ws();
+            p.skip_ws_wcn();
             match p.at(sep) {
                 true => {
                     p.expect(sep);
@@ -620,17 +691,17 @@ parse_fn_decl! {
 
 #[parse_fn]
 fn parse_block_insides(p: &mut Parser) {
-    p.skip_ws();
+    p.skip_ws_wcn();
     if !p.at(T!['}']) {
         loop {
-            p.skip_ws();
+            p.skip_ws_wc();
             while p.at(T![;]) || p.at(T![newline]) {
                 if p.at(T![;]) {
                     p.expect(T![;]);
                 } else if p.at(T![newline]) {
                     p.expect(T![newline]);
                 }
-                p.skip_ws();
+                p.skip_ws_wc();
             }
 
             if p.at(T!['}']) {

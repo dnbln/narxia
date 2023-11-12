@@ -34,7 +34,7 @@ impl ParsingErrors {
 }
 
 #[salsa::tracked]
-pub fn parse_file(db: &dyn SynDb, file: SrcFile) -> SynFile {
+pub fn parse_file<'db>(db: &'db dyn SynDb, file: SrcFile) -> SynFile {
     let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(file.text(db));
     let mut parser = narxia_syn::parser::Parser::new(&mut ts);
     parser.parse();

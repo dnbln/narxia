@@ -17,3 +17,10 @@ narxia-src-db.workspace = true
 narxia-syn.workspace = true
 narxia-syn-db.workspace = true
 narxia-hir-db.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "parser-bench"
+harness = false

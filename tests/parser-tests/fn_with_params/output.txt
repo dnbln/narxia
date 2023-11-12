@@ -3,7 +3,7 @@ Root@0..83
     FnDef@0..29
       FnHead@0..24
         FN_KW@0..2 "fn"
-        WHITESPACE@2..3 " "
+        COMPOSED_TRIVIA@2..3 " "
         FnName@3..8
           IDENT@3..8 "input"
         FnParamList@8..24
@@ -13,37 +13,33 @@ Root@0..83
               Pat@9..11
                 IDENT@9..11 "a0"
             COLON@11..12 ":"
-            WHITESPACE@12..13 " "
+            COMPOSED_TRIVIA@12..13 " "
             FnParamTy@13..15
               TyRef@13..15
                 IDENT@13..15 "A0"
           COMMA@15..16 ","
-          WHITESPACE@16..17 " "
+          COMPOSED_TRIVIA@16..17 " "
           FnParam@17..23
             FnParamName@17..19
               Pat@17..19
                 IDENT@17..19 "a1"
             COLON@19..20 ":"
-            WHITESPACE@20..21 " "
+            COMPOSED_TRIVIA@20..21 " "
             FnParamTy@21..23
               TyRef@21..23
                 IDENT@21..23 "A1"
           R_PAREN@23..24 ")"
-      WHITESPACE@24..25 " "
+      COMPOSED_TRIVIA@24..25 " "
       Block@25..29
         L_BRACE@25..26 "{"
-        WHITESPACE@26..27 "\r"
-        NEWLINE@27..28 "\n"
+        COMPOSED_TRIVIA@26..28 "\r\n"
         R_BRACE@28..29 "}"
-  WHITESPACE@29..30 "\r"
-  NEWLINE@30..31 "\n"
-  WHITESPACE@31..32 "\r"
-  NEWLINE@32..33 "\n"
+  COMPOSED_TRIVIA@29..33 "\r\n\r\n"
   Item@33..83
     FnDef@33..83
       FnHead@33..78
         FN_KW@33..35 "fn"
-        WHITESPACE@35..36 " "
+        COMPOSED_TRIVIA@35..36 " "
         FnName@36..55
           IDENT@36..55 "input_with_defaults"
         FnParamList@55..78
@@ -53,25 +49,25 @@ Root@0..83
               Pat@56..58
                 IDENT@56..58 "a0"
             COLON@58..59 ":"
-            WHITESPACE@59..60 " "
+            COMPOSED_TRIVIA@59..60 " "
             FnParamTy@60..62
               TyRef@60..62
                 IDENT@60..62 "A0"
           COMMA@62..63 ","
-          WHITESPACE@63..64 " "
+          COMPOSED_TRIVIA@63..64 " "
           FnParam@64..77
             FnParamName@64..66
               Pat@64..66
                 IDENT@64..66 "a1"
             COLON@66..67 ":"
-            WHITESPACE@67..68 " "
+            COMPOSED_TRIVIA@67..68 " "
             FnParamTy@68..70
               TyRef@68..70
                 IDENT@68..70 "A1"
-            WHITESPACE@70..71 " "
+            COMPOSED_TRIVIA@70..71 " "
             FnParamDefault@71..77
               EQ@71..72 "="
-              WHITESPACE@72..73 " "
+              COMPOSED_TRIVIA@72..73 " "
               Expr@73..77
                 CallExpr@73..77
                   ExprAtom@73..75
@@ -81,9 +77,8 @@ Root@0..83
                       L_PAREN@75..76 "("
                       R_PAREN@76..77 ")"
           R_PAREN@77..78 ")"
-      WHITESPACE@78..79 " "
+      COMPOSED_TRIVIA@78..79 " "
       Block@79..83
         L_BRACE@79..80 "{"
-        WHITESPACE@80..81 "\r"
-        NEWLINE@81..82 "\n"
+        COMPOSED_TRIVIA@80..82 "\r\n"
         R_BRACE@82..83 "}"

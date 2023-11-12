@@ -3,7 +3,7 @@ Root@0..30
     FnDef@0..30
       FnHead@0..25
         FN_KW@0..2 "fn"
-        WHITESPACE@2..3 " "
+        COMPOSED_TRIVIA@2..3 " "
         FnName@3..4
           IDENT@3..4 "f"
         GenericParamList@4..17
@@ -11,11 +11,11 @@ Root@0..30
           GenericParam@5..16
             GenericConstParam@5..16
               CONST_KW@5..10 "const"
-              WHITESPACE@10..11 " "
+              COMPOSED_TRIVIA@10..11 " "
               GenericConstParamName@11..12
                 IDENT@11..12 "V"
               COLON@12..13 ":"
-              WHITESPACE@13..14 " "
+              COMPOSED_TRIVIA@13..14 " "
               TyRef@14..16
                 IDENT@14..16 "Ty"
           GT@16..17 ">"
@@ -26,14 +26,13 @@ Root@0..30
               Pat@18..19
                 IDENT@18..19 "a"
             COLON@19..20 ":"
-            WHITESPACE@20..21 " "
+            COMPOSED_TRIVIA@20..21 " "
             FnParamTy@21..24
               TyRef@21..24
                 IDENT@21..24 "i32"
           R_PAREN@24..25 ")"
-      WHITESPACE@25..26 " "
+      COMPOSED_TRIVIA@25..26 " "
       Block@26..30
         L_BRACE@26..27 "{"
-        WHITESPACE@27..28 "\r"
-        NEWLINE@28..29 "\n"
+        COMPOSED_TRIVIA@27..29 "\r\n"
         R_BRACE@29..30 "}"

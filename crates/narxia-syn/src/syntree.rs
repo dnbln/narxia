@@ -319,7 +319,7 @@ pub trait TreeNode: Sized {
 }
 
 syntree_node! {
-    Root = *|[Item, newline![newline]]
+    Root = *|[Item]
 }
 
 syntree_node! {
@@ -459,8 +459,8 @@ impl BinaryOpExpr {
         self.get_children_exprs().1
     }
 
-    pub fn get_ws(&self) -> impl Iterator<Item = Token> + '_ {
-        get_token_list(&self.node, T![whitespace])
+    pub fn get_trivia(&self) -> impl Iterator<Item = Token> + '_ {
+        get_token_list(&self.node, T![composed_trivia])
     }
 
     pub fn get_children_exprs(&self) -> (Expr, Option<Expr>) {
@@ -535,18 +535,18 @@ impl BinaryOpExpr {
         );
         _op.call_accessors(tests_data);
 
-        let _ws = self.get_ws();
-        let _ws = _ws
+        let _trivia = self.get_trivia();
+        let _trivia = _trivia
             .map(|it| tests_data::ElemRef::from(&it))
             .collect::<Vec<_>>();
         tests_data.push(
             tests_data::ElemRef::from(self),
             "BinaryOpExpr",
-            "get_ws",
-            if _ws.is_empty() {
+            "get_trivia",
+            if _trivia.is_empty() {
                 tests_data::AccessorCalledDataReturned::EmptyAllowed
             } else {
-                tests_data::AccessorCalledDataReturned::ReturnedList(_ws)
+                tests_data::AccessorCalledDataReturned::ReturnedList(_trivia)
             },
         );
     }

@@ -1,5 +1,5 @@
 use narxia_syn_helpers::{parse_fn_decl, parse_fn};
-use super::{Parser, parse_block, CompletedMarker, parse_ty_ref, expr, parse_pat};
+use super::{Parser, parse_block, CompletedMarker, parse_ty_ref, expr, parse_pat, WsSkipConfig};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
@@ -18,7 +18,7 @@ fn parse_expr_potential_assignment(p: &mut Parser) {
     let s = p.state();
     let lhs = p.ev.precede_completed(&expr);
     let lhs = p.ev.end(lhs, SyntaxKind::AssignmentLhs);
-    p.skip_ws();
+    p.skip_ws_wc();
     if p.at(T![=]) {
         let m = p.ev.precede_completed(&lhs);
         parse_assignment_eq_rhs_expr(p);
