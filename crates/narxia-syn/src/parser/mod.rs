@@ -713,13 +713,11 @@ fn parse_block_insides(p: &mut Parser) {
     }
 }
 
-#[parse_fn]
-fn parse_block(p: &mut Parser) -> CompletedMarker {
-    let m = p.ev.begin();
-    p.expect(T!['{']);
-    parse_block_insides(p);
-    p.expect(T!['}']);
-    p.ev.end(m, SyntaxKind::Block)
+parse_fn_decl! {
+    parse_block: Block ::=
+        $!['{']
+        $parse_block_insides()
+        $!['}']
 }
 
 parse_fn_decl! {

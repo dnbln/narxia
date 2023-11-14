@@ -315,11 +315,8 @@ fn parse_precedence_11_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_10_expr, [T![||]])
 }
 
-#[parse_fn]
-pub fn parse_expr(p: &mut Parser) -> CompletedMarker {
-    let m = p.ev.begin();
-    parse_precedence_11_expr(p);
-    p.ev.end(m, SyntaxKind::Expr)
+parse_fn_decl! {
+    pub parse_expr: Expr ::= $parse_precedence_11_expr()
 }
 
 parse_fn_decl! {
