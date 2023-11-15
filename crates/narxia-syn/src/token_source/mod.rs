@@ -19,7 +19,7 @@ impl fmt::Display for Token {
 }
 
 impl Token {
-    fn add_offset(self, offset: usize) -> Self {
+    fn add_offset(self, offset: u32) -> Self {
         Self {
             kind: self.kind,
             span: self.span.add_offset(offset),
@@ -48,7 +48,7 @@ impl Token {
     pub(crate) unsafe fn compose(self, other: Token, kind: SyntaxKind) -> Token {
         Token {
             kind,
-            span: TextSpan::new(self.span.start, other.span.end),
+            span: TextSpan::new_unchecked(self.span.start, other.span.end),
         }
     }
 
@@ -96,7 +96,7 @@ where
     }
 
     pub fn current_pos(&mut self) -> usize {
-        self.current_token_span().start
+        self.current_token_span().start as usize
     }
 
     pub fn current_token_span(&mut self) -> TextSpan {
@@ -121,8 +121,8 @@ where
             self.buffer_len = 1;
             Some(t0)
         } else {
-            // Safety: length != 0 means length >= 1 so we can use get_unchecked(0)
-            Some(unsafe { *self.buffer.get_unchecked(0) })
+            // Safety: length != 0 means length >= 1 so we have one elem.
+            Some(unsafe { self.get_buf_0() })
         }
     }
 
@@ -131,18 +131,25 @@ where
     pub fn lookahead(&mut self, n: usize) -> Option<Token> {
         debug_assert!(n <= 3);
         unsafe {
-            match (n, self.buffer_len) {
-                (0, 0) => {
+            // perf: collapse tuple match into multiplication + match on result.
+            // self.buffer_len is always in [0, 4].
+            // n is always in [0, 3].
+            // so (n * 5 + self.buffer_len) will give us all the values we care about
+            match n * 5 + self.buffer_len {
+                0 => {
+                    // (0, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     *self.buffer.get_unchecked_mut(0) = t0;
                     self.buffer_len = 1;
                     Some(t0)
                 }
-                (0, _) => {
+                1 | 2 | 3 | 4 => {
+                    // (0, 1) | (0, 2) | (0, 3) | (0, 4)
                     // Safety: length != 0 means length >= 1 so we can use get_unchecked(0)
                     Some(*self.buffer.get_unchecked(0))
                 }
-                (1, 0) => {
+                5 => {
+                    // (1, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
                     *self.buffer.get_unchecked_mut(0) = t0;
@@ -150,17 +157,20 @@ where
                     self.buffer_len = 2;
                     Some(t1)
                 }
-                (1, 1) => {
+                6 => {
+                    // (1, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     *self.buffer.get_unchecked_mut(1) = t1;
                     self.buffer_len = 2;
                     Some(t1)
                 }
-                (1, _) => {
+                7 | 8 | 9 => {
+                    // (1, 2) | (1, 3) | (1, 4)
                     // Safety: length != 0 && length != 1 means length >= 2 so we can use get_unchecked(1)
                     Some(*self.buffer.get_unchecked(1))
                 }
-                (2, 0) => {
+                10 => {
+                    // (2, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
@@ -170,7 +180,8 @@ where
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                (2, 1) => {
+                11 => {
+                    // (2, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
                     *self.buffer.get_unchecked_mut(1) = t1;
@@ -178,18 +189,21 @@ where
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                (2, 2) => {
+                12 => {
+                    // (2, 2)
                     let t2 = self.ts.next()?; // token at position = 2
                     *self.buffer.get_unchecked_mut(2) = t2;
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                (2, _) => {
+                13 | 14 => {
+                    // (2, 3) | (2, 4)
                     // Safety: length != 0 && length != 1 && length != 2
                     // means length >= 3 so we can use get_unchecked(2)
                     Some(*self.buffer.get_unchecked(2))
                 }
-                (3, 0) => {
+                15 => {
+                    // (3, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
@@ -201,7 +215,8 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                (3, 1) => {
+                16 => {
+                    // (3, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
                     let t3 = self.ts.next()?; // token at position = 3
@@ -211,7 +226,8 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                (3, 2) => {
+                17 => {
+                    // (3, 2)
                     let t2 = self.ts.next()?; // token at position = 2
                     let t3 = self.ts.next()?; // token at position = 3
                     *self.buffer.get_unchecked_mut(2) = t2;
@@ -219,14 +235,18 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                (3, 3) => {
+                18 => {
+                    // (3, 3)
                     let t3 = self.ts.next()?; // token at position = 3
                     *self.buffer.get_unchecked_mut(3) = t3;
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                (3, _) => Some(*self.buffer.get_unchecked(3)),
-                (_, _) => unreachable!(),
+                19 => {
+                    // (3, 4)
+                    Some(*self.buffer.get_unchecked(3))
+                }
+                _ => core::hint::unreachable_unchecked(),
             }
         }
         // while n >= self.buffer.len() {
@@ -333,7 +353,7 @@ where
                     self.buffer_len = 3;
                     t
                 }
-                _ => unreachable!(),
+                _ => core::hint::unreachable_unchecked(),
             };
             let text = self.ts.get_token_text(&t0);
             push_token_evt(t0, text);
@@ -428,7 +448,7 @@ where
                     self.buffer_len = 2;
                     (t0, t1)
                 }
-                _ => unreachable!(),
+                _ => core::hint::unreachable_unchecked(),
             };
             let token = t0.compose(t1, complete);
             let text = self.ts.get_token_text(&token);
@@ -479,51 +499,356 @@ where
 
     #[inline(always)]
     #[track_caller]
-    pub fn skip_whitespace_wc(
-        &mut self,
-        mut push_token_evt: impl FnMut(Token, &'l str),
-    ) {
+    pub fn skip_whitespace_wc(&mut self, mut push_token_evt: impl FnMut(Token, &'l str)) {
+        let check_sk =
+            |sk: SyntaxKind| -> bool { SyntaxKind::WHITESPACE == sk || SyntaxKind::COMMENT == sk };
+
         match self.buffer_len {
-            0 => {}
-            _ => {
+            0 => {
+                let token = self.ts.skip_ws_wc();
+
+                match token {
+                    Some(t) => {
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {}
+                }
+            }
+            1 => {
                 let t0 = unsafe { self.get_buf_0() };
-                self.ts.restore_pos(t0.span.start);
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                self.ts.restore_pos(t0.span.end as usize);
                 self.buffer_len = 0;
-            }
-        }
 
-        let token = self.ts.skip_ws_wc();
+                let token = self.ts.skip_ws_wc();
 
-        match token {
-            Some(t) => {
-                push_token_evt(t, self.get_token_text(&t));
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        push_token_evt(
+                            t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                            self.get_token_text(&t0),
+                        );
+                    }
+                }
             }
-            None => {}
+            2 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                    }
+                    self.buffer_len = 1;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                self.ts.restore_pos(t1.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wc();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            3 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(2);
+                    }
+                    self.buffer_len = 2;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                let t2 = unsafe { *self.buffer.get_unchecked(2) };
+                if !check_sk(t2.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t2;
+                    }
+                    self.buffer_len = 1;
+                    let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                self.ts.restore_pos(t2.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wc();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t2, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            4 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(2);
+                        *self.buffer.get_unchecked_mut(2) = *self.buffer.get_unchecked(3);
+                    }
+                    self.buffer_len = 3;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                let t2 = unsafe { *self.buffer.get_unchecked(2) };
+                if !check_sk(t2.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t2;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(3);
+                    }
+                    self.buffer_len = 2;
+                    let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                let t3 = unsafe { *self.buffer.get_unchecked(3) };
+                if !check_sk(t3.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t3;
+                    }
+                    self.buffer_len = 1;
+                    let t = unsafe { t0.compose(t2, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                self.ts.restore_pos(t3.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wc();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t3, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 
     #[inline(always)]
     #[track_caller]
-    pub fn skip_whitespace_wcn(
-        &mut self,
-        mut push_token_evt: impl FnMut(Token, &'l str),
-    ) {
+    pub fn skip_whitespace_wcn(&mut self, mut push_token_evt: impl FnMut(Token, &'l str)) {
+        let check_sk = |sk: SyntaxKind| -> bool {
+            sk == SyntaxKind::WHITESPACE || sk == SyntaxKind::NEWLINE || sk == SyntaxKind::COMMENT
+        };
+
         match self.buffer_len {
-            0 => {}
-            _ => {
+            0 => {
+                let token = self.ts.skip_ws_wcn();
+
+                match token {
+                    Some(t) => {
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {}
+                }
+            }
+            1 => {
                 let t0 = unsafe { self.get_buf_0() };
-                self.ts.restore_pos(t0.span.start);
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                self.ts.restore_pos(t0.span.end as usize);
                 self.buffer_len = 0;
-            }
-        }
 
-        let token = self.ts.skip_ws_wcn();
+                let token = self.ts.skip_ws_wcn();
 
-        match token {
-            Some(t) => {
-                push_token_evt(t, self.get_token_text(&t));
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        push_token_evt(
+                            t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                            self.get_token_text(&t0),
+                        );
+                    }
+                }
             }
-            None => {}
+            2 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                    }
+                    self.buffer_len = 1;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                self.ts.restore_pos(t1.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wcn();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            3 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(2);
+                    }
+                    self.buffer_len = 2;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                let t2 = unsafe { *self.buffer.get_unchecked(2) };
+                if !check_sk(t2.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t2;
+                    }
+                    self.buffer_len = 1;
+                    let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                self.ts.restore_pos(t2.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wcn();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t2, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            4 => {
+                let t0 = unsafe { self.get_buf_0() };
+                if !check_sk(t0.kind) {
+                    return;
+                }
+                let t1 = unsafe { *self.buffer.get_unchecked(1) };
+                if !check_sk(t1.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t1;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(2);
+                        *self.buffer.get_unchecked_mut(2) = *self.buffer.get_unchecked(3);
+                    }
+                    self.buffer_len = 3;
+                    push_token_evt(
+                        t0.with_kind(SyntaxKind::COMPOSED_TRIVIA),
+                        self.get_token_text(&t0),
+                    );
+                    return;
+                }
+                let t2 = unsafe { *self.buffer.get_unchecked(2) };
+                if !check_sk(t2.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t2;
+                        *self.buffer.get_unchecked_mut(1) = *self.buffer.get_unchecked(3);
+                    }
+                    self.buffer_len = 2;
+                    let t = unsafe { t0.compose(t1, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                let t3 = unsafe { *self.buffer.get_unchecked(3) };
+                if !check_sk(t3.kind) {
+                    unsafe {
+                        *self.buffer.get_unchecked_mut(0) = t3;
+                    }
+                    self.buffer_len = 1;
+                    let t = unsafe { t0.compose(t2, SyntaxKind::COMPOSED_TRIVIA) };
+                    push_token_evt(t, self.get_token_text(&t));
+                    return;
+                }
+                self.ts.restore_pos(t3.span.end as usize);
+                self.buffer_len = 0;
+
+                let token = self.ts.skip_ws_wcn();
+
+                match token {
+                    Some(t) => {
+                        let t = unsafe { t0.compose(t, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                    None => {
+                        let t = unsafe { t0.compose(t3, SyntaxKind::COMPOSED_TRIVIA) };
+                        push_token_evt(t, self.get_token_text(&t));
+                    }
+                }
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 
@@ -622,13 +947,12 @@ where
                     }
                     false
                 }
-                _ => unreachable!(),
+                _ => core::hint::unreachable_unchecked(),
             }
         }
     }
 
-    #[inline(always)]
-    unsafe fn get_buf_0(&mut self) -> Token {
+    unsafe fn get_buf_0(&self) -> Token {
         *self.buffer.get_unchecked(0)
     }
 
@@ -651,7 +975,7 @@ where
                 let token = unsafe { self.get_buf_0() };
                 Some(unsafe { token.compose(last, kind) })
             }
-            _ => unreachable!(),
+            _ => unsafe { core::hint::unreachable_unchecked() },
         }
     }
 
@@ -681,7 +1005,7 @@ where
                     *self.buffer.get_unchecked_mut(2) = *self.buffer.get_unchecked(3);
                     self.buffer_len = 3;
                 }
-                _ => unreachable!(),
+                _ => core::hint::unreachable_unchecked(),
             }
         }
     }
@@ -766,7 +1090,7 @@ where
                     *self.buffer.get_unchecked_mut(0) = *self.buffer.get_unchecked(3);
                     self.buffer_len = 1;
                 }
-                (_, _) => unreachable!(),
+                (_, _) => unsafe { core::hint::unreachable_unchecked() },
             }
         }
     }
@@ -774,16 +1098,17 @@ where
     #[track_caller]
     pub fn restore_pos(&mut self, pos: usize) {
         unsafe {
+            let pos_u32 = pos.try_into().unwrap_unchecked();
             match self.buffer_len {
                 0 => {
                     self.ts.restore_pos(pos);
                 }
                 1 => {
                     let t0 = self.get_buf_0();
-                    if t0.span.start == pos {
-                        self.ts.restore_pos(t0.span.end);
+                    if t0.span.start == pos_u32 {
+                        self.ts.restore_pos(t0.span.end as usize);
                         return;
-                    } else if t0.span.end == pos {
+                    } else if t0.span.end == pos_u32 {
                         self.ts.restore_pos(pos);
                         self.buffer_len = 0;
                         return;
@@ -795,11 +1120,11 @@ where
                 2 => {
                     let t0 = self.get_buf_0();
                     let t1 = *self.buffer.get_unchecked(1);
-                    if t0.span.start == pos {
-                        self.ts.restore_pos(t1.span.end);
+                    if t0.span.start == pos_u32 {
+                        self.ts.restore_pos(t1.span.end as usize);
                         return;
-                    } else if t1.span.start == pos {
-                        self.ts.restore_pos(t1.span.end);
+                    } else if t1.span.start == pos_u32 {
+                        self.ts.restore_pos(t1.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t1;
                         self.buffer_len = 1;
                         return;
@@ -812,17 +1137,17 @@ where
                     let t0 = self.get_buf_0();
                     let t1 = *self.buffer.get_unchecked(1);
                     let t2 = *self.buffer.get_unchecked(2);
-                    if t0.span.start == pos {
-                        self.ts.restore_pos(t2.span.end);
+                    if t0.span.start == pos_u32 {
+                        self.ts.restore_pos(t2.span.end as usize);
                         return;
-                    } else if t1.span.start == pos {
-                        self.ts.restore_pos(t2.span.end);
+                    } else if t1.span.start == pos_u32 {
+                        self.ts.restore_pos(t2.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t1;
                         *self.buffer.get_unchecked_mut(1) = t2;
                         self.buffer_len = 2;
                         return;
-                    } else if t2.span.start == pos {
-                        self.ts.restore_pos(t2.span.end);
+                    } else if t2.span.start == pos_u32 {
+                        self.ts.restore_pos(t2.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t2;
                         self.buffer_len = 1;
                         return;
@@ -836,24 +1161,24 @@ where
                     let t1 = *self.buffer.get_unchecked(1);
                     let t2 = *self.buffer.get_unchecked(2);
                     let t3 = *self.buffer.get_unchecked(3);
-                    if t0.span.start == pos {
-                        self.ts.restore_pos(t3.span.end);
+                    if t0.span.start == pos_u32 {
+                        self.ts.restore_pos(t3.span.end as usize);
                         return;
-                    } else if t1.span.start == pos {
-                        self.ts.restore_pos(t3.span.end);
+                    } else if t1.span.start == pos_u32 {
+                        self.ts.restore_pos(t3.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t1;
                         *self.buffer.get_unchecked_mut(1) = t2;
                         *self.buffer.get_unchecked_mut(2) = t3;
                         self.buffer_len = 3;
                         return;
-                    } else if t2.span.start == pos {
-                        self.ts.restore_pos(t3.span.end);
+                    } else if t2.span.start == pos_u32 {
+                        self.ts.restore_pos(t3.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t2;
                         *self.buffer.get_unchecked_mut(1) = t3;
                         self.buffer_len = 2;
                         return;
-                    } else if t3.span.start == pos {
-                        self.ts.restore_pos(t3.span.end);
+                    } else if t3.span.start == pos_u32 {
+                        self.ts.restore_pos(t3.span.end as usize);
                         *self.buffer.get_unchecked_mut(0) = t3;
                         self.buffer_len = 1;
                         return;
@@ -862,7 +1187,7 @@ where
                     self.ts.restore_pos(pos);
                     self.buffer_len = 0;
                 }
-                _ => unreachable!(),
+                _ => core::hint::unreachable_unchecked(),
             }
         }
     }

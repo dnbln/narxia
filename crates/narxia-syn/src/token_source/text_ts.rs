@@ -13,6 +13,7 @@ pub struct TextTokenSource<'text> {
 
 impl<'text> TextTokenSource<'text> {
     pub fn new(text: &'text str) -> Self {
+        assert!(text.len() <= u32::MAX as usize);
         Self {
             text,
             pos: 0,
@@ -28,7 +29,7 @@ impl<'text> TextTokenSource<'text> {
 
         let to_parse = &self.text[self.pos..];
         let (token, advanced, error) = Self::parse_one_token(to_parse);
-        let token = token.add_offset(self.pos);
+        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
         self.pos += advanced;
         self.error = error;
         Some(token)
@@ -55,7 +56,7 @@ impl<'text> TextTokenSource<'text> {
         }
 
         let (token, advanced, error) = Self::parse_ws_wc(to_parse);
-        let token = token.add_offset(self.pos);
+        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
         self.pos += advanced;
         self.error = error;
         Some(token)
@@ -73,7 +74,7 @@ impl<'text> TextTokenSource<'text> {
             _ => return None,
         }
         let (token, advanced, error) = Self::parse_ws_wcn(to_parse);
-        let token = token.add_offset(self.pos);
+        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
         self.pos += advanced;
         self.error = error;
         Some(token)
@@ -116,7 +117,8 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
     }
 
     fn eof_span(&self) -> TextSpan {
-        TextSpan::new(self.text.len(), self.text.len())
+        let l = self.text.len().try_into().unwrap();
+        unsafe { TextSpan::new_unchecked(l, l) }
     }
 
     fn restore_pos(&mut self, pos: usize) {
@@ -132,12 +134,14 @@ struct CharTokenParser<'text> {
 
 #[inline(always)]
 fn r(kind: SyntaxKind, start: usize, end: usize) -> (Token, usize) {
+    let s = unsafe { start.try_into().unwrap_unchecked() };
+    let e = unsafe { end.try_into().unwrap_unchecked() };
     (
         Token {
             kind,
-            span: TextSpan { start, end },
+            span: unsafe { TextSpan::new_unchecked(s, e) },
         },
-        end,
+        end as usize,
     )
 }
 
@@ -325,17 +329,16 @@ impl<'text> CharTokenParser<'text> {
             let s = self.chars.offset();
             loop {
                 let Some((start, c)) = self.chars.next() else {
-                    break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, self.chars.offset())
+                    break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, self.chars.offset());
                 };
                 match c {
-                    ' ' | '\t' | '\r' => {
-                    }
+                    ' ' | '\t' | '\r' => {}
                     '/' => {
                         match self.chars.next() {
                             Some((_, '/')) => {
                                 let end = self.consume_until(['\n'], []);
                                 // here if we got to the end we should stop either way, since we ran into a \n
-                                break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, end)
+                                break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, end);
                             }
                             Some((_, '*')) => loop {
                                 let Some((_, c)) = self.chars.next() else {
@@ -365,13 +368,11 @@ impl<'text> CharTokenParser<'text> {
             let s = self.chars.offset();
             loop {
                 let Some((start, c)) = self.chars.next() else {
-                    break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, self.chars.offset())
+                    break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, self.chars.offset());
                 };
                 match c {
-                    ' ' | '\t' | '\r' => {
-                    }
-                    '\n' => {
-                    }
+                    ' ' | '\t' | '\r' => {}
+                    '\n' => {}
                     '/' => {
                         match self.chars.next() {
                             Some((_, '/')) => {
