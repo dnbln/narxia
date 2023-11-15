@@ -7,15 +7,17 @@ use crate::parse_error::ParseError;
 use crate::parser::{ColorizeProcedure, ParserDbgStyling};
 use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
+use crate::text_span::TextSpan;
+use crate::token_source::TokenRepr;
 
 pub struct ParseEventHandlerPos(usize);
 
 #[derive(Debug)]
-pub struct ParseEventHandler<'a> {
-    events: Vec<ParseEvent<'a>>,
+pub struct ParseEventHandler {
+    events: Vec<ParseEvent>,
 }
 
-impl<'a> ParseEventHandler<'a> {
+impl ParseEventHandler {
     pub(crate) fn new() -> Self {
         Self { events: Vec::new() }
     }
@@ -38,7 +40,7 @@ pub struct CompletedMarker {
     idx_end: usize,
 }
 
-impl<'a> ParseEventHandler<'a> {
+impl ParseEventHandler {
     #[inline(always)]
     pub fn begin(&mut self) -> Marker {
         let idx = self.events.len();
@@ -47,8 +49,8 @@ impl<'a> ParseEventHandler<'a> {
     }
 
     #[inline(always)]
-    pub fn token(&mut self, kind: SyntaxKind, text: &'a str) {
-        self.events.push(ParseEvent::Token { kind, text });
+    pub fn token(&mut self, kind: SyntaxKind, span: TextSpan) {
+        self.events.push(ParseEvent::Token { trepr: TokenRepr::new(kind, span) });
     }
 
     pub fn present(
@@ -110,19 +112,19 @@ impl<'a> ParseEventHandler<'a> {
     }
 
     pub fn error(&mut self, error: ParseError) {
-        self.events.push(ParseEvent::Error(error));
+        self.events.push(ParseEvent::Error(Box::new(error)));
     }
 
-    pub fn finish(self, tb: &mut dyn TreeBuilder<'a>) {
+    pub fn finish<'a>(self, tb: &mut dyn TreeBuilder<'a>) {
         let mut stack = Vec::new();
 
-        enum CompiledParseEvent<'a> {
+        enum CompiledParseEvent {
             Begin {
                 kind: SyntaxKind,
                 precede: Vec<usize>,
                 preceding: bool,
             },
-            Token(SyntaxKind, &'a str),
+            Token(TokenRepr),
             Error(ParseError),
             End,
         }
@@ -139,8 +141,8 @@ impl<'a> ParseEventHandler<'a> {
                         preceding: false,
                     });
                 }
-                ParseEvent::Token { kind, text } => {
-                    compiled_events.push(CompiledParseEvent::Token(kind, text));
+                ParseEvent::Token { trepr } => {
+                    compiled_events.push(CompiledParseEvent::Token(trepr));
                 }
                 ParseEvent::End { kind } => {
                     let start = stack.pop().unwrap();
@@ -173,7 +175,7 @@ impl<'a> ParseEventHandler<'a> {
                     }
                 }
                 ParseEvent::Error(error) => {
-                    compiled_events.push(CompiledParseEvent::Error(error));
+                    compiled_events.push(CompiledParseEvent::Error(*error));
                 }
                 ParseEvent::Tombstone => {}
             }
@@ -185,7 +187,7 @@ impl<'a> ParseEventHandler<'a> {
             tb: &mut dyn TreeBuilder<'a>,
             kind: SyntaxKind,
             precede: &[usize],
-            compiled_events: &[CompiledParseEvent<'a>],
+            compiled_events: &[CompiledParseEvent],
         ) {
             for &idx in precede {
                 match &compiled_events[idx] {
@@ -213,8 +215,8 @@ impl<'a> ParseEventHandler<'a> {
 
                     handle_precede(tb, *kind, precede, &compiled_events);
                 }
-                CompiledParseEvent::Token(kind, text) => {
-                    tb.token(*kind, text);
+                CompiledParseEvent::Token(trepr) => {
+                    tb.token(trepr.kind(), trepr.span());
                 }
                 CompiledParseEvent::Error(error) => {
                     tb.error(error.clone());
@@ -266,19 +268,21 @@ impl<'a> ParseEventHandler<'a> {
 pub trait TreeBuilder<'a> {
     fn start_node(&mut self, kind: SyntaxKind);
     fn finish_node(&mut self);
-    fn token(&mut self, kind: SyntaxKind, text: &'a str);
+    fn token(&mut self, kind: SyntaxKind, span: TextSpan);
     fn error(&mut self, error: ParseError);
 }
 
 pub struct GreenTreeBuilder<'a> {
     tb: rowan::GreenNodeBuilder<'a>,
+    src: Box<dyn Fn(TextSpan) -> &'a str + 'a>,
     parse_errors: Vec<ParseError>,
 }
 
 impl<'a> GreenTreeBuilder<'a> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(src: Box<dyn Fn(TextSpan) -> &'a str + 'a>) -> Self {
         Self {
             tb: rowan::GreenNodeBuilder::new(),
+            src,
             parse_errors: Vec::new(),
         }
     }
@@ -297,8 +301,54 @@ impl<'a> TreeBuilder<'a> for GreenTreeBuilder<'a> {
         self.tb.finish_node();
     }
 
-    fn token(&mut self, kind: SyntaxKind, text: &str) {
-        self.tb.token(NarxiaLanguage::kind_to_raw(kind), text);
+    fn token(&mut self, kind: SyntaxKind, span: TextSpan) {
+        self.tb
+            .token(NarxiaLanguage::kind_to_raw(kind), (self.src)(span));
+    }
+
+    fn error(&mut self, error: ParseError) {
+        self.parse_errors.push(error);
+    }
+}
+
+pub struct GreenTreeBuilderSD<'a, F: Fn(TextSpan) -> &'a str + 'a> {
+    tb: rowan::GreenNodeBuilder<'a>,
+    src: F,
+    parse_errors: Vec<ParseError>,
+}
+
+impl<'a, F> GreenTreeBuilderSD<'a, F>
+where
+    F: Fn(TextSpan) -> &'a str + 'a,
+{
+    pub(crate) fn new(src: F) -> Self {
+        Self {
+            tb: rowan::GreenNodeBuilder::new(),
+            src,
+            parse_errors: Vec::new(),
+        }
+    }
+
+    pub(crate) fn finish(self) -> (GreenTree, Vec<ParseError>) {
+        (GreenTree::new(self.tb.finish()), self.parse_errors)
+    }
+}
+
+impl<'a, F> TreeBuilder<'a> for GreenTreeBuilderSD<'a, F>
+where
+    F: Fn(TextSpan) -> &'a str + 'a,
+{
+    fn start_node(&mut self, kind: SyntaxKind) {
+        self.tb.start_node(NarxiaLanguage::kind_to_raw(kind));
+    }
+
+    fn finish_node(&mut self) {
+        self.tb.finish_node();
+    }
+
+    fn token(&mut self, kind: SyntaxKind, span: TextSpan) {
+        self.tb
+            .token(NarxiaLanguage::kind_to_raw(kind), (self.src)(span));
     }
 
     fn error(&mut self, error: ParseError) {
@@ -307,20 +357,22 @@ impl<'a> TreeBuilder<'a> for GreenTreeBuilder<'a> {
 }
 
 #[derive(Debug)]
-enum ParseEvent<'a> {
+enum ParseEvent {
     Begin,
-    Token { kind: SyntaxKind, text: &'a str },
-    Error(ParseError),
+    Token { trepr: TokenRepr },
+    Error(Box<ParseError>),
     End { kind: SyntaxKind },
     Precede { idx: usize },
     Tombstone,
 }
 
-impl<'a> fmt::Display for ParseEvent<'a> {
+impl fmt::Display for ParseEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ParseEvent::Begin => write!(f, "Begin"),
-            ParseEvent::Token { kind, text } => write!(f, "Token({:?}, {:?})", kind, text),
+            ParseEvent::Token { trepr } => {
+                write!(f, "Token({:?}, @{})", trepr.kind(), trepr.span())
+            }
             ParseEvent::Error(error) => write!(f, "Error({:?})", error),
             ParseEvent::End { kind } => write!(f, "End({:?})", kind),
             ParseEvent::Precede { idx } => write!(f, "Precede({})", idx),
@@ -330,7 +382,7 @@ impl<'a> fmt::Display for ParseEvent<'a> {
 }
 
 pub struct RecentEventPresenter<'a> {
-    internal: &'a ParseEventHandler<'a>,
+    internal: &'a ParseEventHandler,
     offset: usize,
     count: usize,
     add_absolute_positions: bool,

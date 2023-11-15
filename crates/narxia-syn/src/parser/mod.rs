@@ -3,6 +3,7 @@ use std::fmt;
 use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
 
+use self::parse_event_handler::GreenTreeBuilderSD;
 use crate::parse_error::{ParseError, ParseErrorInfo};
 use crate::parser::parse_event_handler::{
     CompletedMarker, GreenTreeBuilder, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
@@ -83,7 +84,7 @@ impl Default for ParserDbgStyling {
 
 pub struct Parser<'a> {
     ts: BufferedTokenSource<'a, DynTsContainer<'a>>,
-    ev: ParseEventHandler<'a>,
+    ev: ParseEventHandler,
     pstk: ParseStack,
     recovering: Option<ParserRecoveringInfo>,
 }
@@ -139,8 +140,8 @@ impl<'a> Parser<'a> {
         //     self.ev.token(kind, self.ts.get_token_text(&token));
         //     self.ts.advance();
         // }
-        self.ts.skip_whitespace_wcn(|token, text| {
-            self.ev.token(token.kind(), text);
+        self.ts.skip_whitespace_wcn(|token| {
+            self.ev.token(token.kind(), token.span());
         });
         debug_assert!(
             !self.at(SyntaxKind::WHITESPACE)
@@ -151,8 +152,8 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn skip_ws_wc(&mut self) {
-        self.ts.skip_whitespace_wc(|token, text| {
-            self.ev.token(token.kind(), text);
+        self.ts.skip_whitespace_wc(|token| {
+            self.ev.token(token.kind(), token.span());
         });
         debug_assert!(!self.at(SyntaxKind::WHITESPACE) && !self.at(SyntaxKind::COMMENT));
     }
@@ -167,7 +168,7 @@ impl<'a> Parser<'a> {
     // }
 
     fn err(&mut self, info: ParseErrorInfo) {
-        let tkind = self.ts.lookahead0().map(|t| t.kind()).unwrap_or(T![eof]);
+        let tkind = self.ts.lookahead0_kind().unwrap_or(T![eof]);
         self.recovering = Some(ParserRecoveringInfo {
             choked_syntax_kind: tkind,
         });
@@ -187,13 +188,14 @@ impl<'a> Parser<'a> {
     fn err_unexpected(&mut self) {
         let location = std::panic::Location::caller();
         self.dbg();
-        let k = self.ts.lookahead0().map(|tok| tok.kind()).unwrap();
+        let k = self.ts.lookahead0_kind().unwrap();
         self.err(ParseErrorInfo::UnexpectedToken {
             got: k,
             at: location,
         });
     }
 
+    #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
         self.pstk.push(name, can_recover, self.ts.current_pos())
@@ -218,8 +220,8 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn expect_1(&mut self, k: SyntaxKind) {
-        if !self.ts.expect_1(k, |_token, text| {
-            self.ev.token(k, text);
+        if !self.ts.expect_1(k, |token| {
+            self.ev.token(token.kind(), token.span());
         }) {
             self.err(ParseErrorInfo::ExpectedKind(
                 k,
@@ -231,12 +233,9 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn expect_2(&mut self, k1: SyntaxKind, k2: SyntaxKind, complete: SyntaxKind) {
-        if !self
-            .ts
-            .expect_2(k1, k2, complete, |t1, t2, tcomplete, text| {
-                self.ev.token(complete, text);
-            })
-        {
+        if !self.ts.expect_2(k1, k2, complete, |t1, t2, tcomplete| {
+            self.ev.token(complete, tcomplete.span());
+        }) {
             self.err(ParseErrorInfo::ExpectedKind(
                 complete,
                 std::panic::Location::caller(),
@@ -253,7 +252,7 @@ impl<'a> Parser<'a> {
     }
 
     fn at_eof(&mut self) -> bool {
-        self.ts.lookahead0().is_none()
+        self.ts.at_eof()
     }
 
     #[inline(always)]
@@ -277,8 +276,8 @@ impl<'a> Parser<'a> {
     }
 
     fn bump_until(&mut self, k: SyntaxKind) -> bool {
-        self.ts.bump_until(k, |token, text| {
-            self.ev.token(token.kind(), text);
+        self.ts.bump_until(k, |token| {
+            self.ev.token(token.kind(), token.span());
         })
     }
 
@@ -298,8 +297,8 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) {
         let _guard = self.guard("parse", &[]);
         let m = self.ev.begin();
-        while let Some(token) = self.ts.lookahead0() {
-            match token.kind() {
+        while let Some(token_kind) = self.ts.lookahead0_kind() {
+            match token_kind {
                 T![fn]
                 | T![const]
                 | T![let]
@@ -348,8 +347,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn finish_to_tree(self) -> (GreenTree, Vec<ParseError>) {
-        let mut tb = GreenTreeBuilder::new();
-        self.finish(&mut tb);
+        let Self { ts, ev, .. } = self;
+        let mut tb = GreenTreeBuilderSD::new(move |span| ts.get_span_text(span));
+        ev.finish(&mut tb);
         tb.finish()
     }
 
@@ -411,6 +411,10 @@ impl<'a> Parser<'a> {
 
     #[track_caller]
     fn dbg(&mut self) {
+        #[cfg(not(debug_assertions))]
+        {
+            return;
+        }
         let styling = ParserDbgStyling::default();
         let _span = narxia_log::span!(narxia_log::Level::DEBUG, "Parser::dbg").entered();
         let mut log = String::new();

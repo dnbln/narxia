@@ -64,9 +64,13 @@ impl<'a> fmt::Display for ParseStackPresenter<'a> {
                 f,
                 "{:offset$}{} {} (@{})",
                 "",
-                self.parser_styling.stack_offset.colorize(format!("[-{index:3}]")),
+                self.parser_styling
+                    .stack_offset
+                    .colorize(format!("[-{index:3}]")),
                 self.parser_styling.stack_fn_name.colorize(item.name),
-                self.parser_styling.token_stream_position.colorize(format!("{}", item.text_pos)),
+                self.parser_styling
+                    .token_stream_position
+                    .colorize(format!("{}", item.text_pos)),
                 offset = self.offset
             )?;
         }
@@ -86,6 +90,7 @@ impl ParseStack {
         }
     }
 
+    #[inline(always)]
     #[track_caller]
     pub fn push(
         &mut self,
@@ -94,13 +99,17 @@ impl ParseStack {
         text_pos: usize,
     ) -> ParseStackGuard {
         let internal = self.internal.clone();
-        let pos = internal.borrow().items.len();
+        let pos;
         let call_at = std::panic::Location::caller();
-        internal.borrow_mut().items.push(ParseStackItem {
-            name,
-            can_recover,
-            text_pos,
-        });
+        {
+            let mut bw = internal.borrow_mut();
+            pos = bw.items.len();
+            bw.items.push(ParseStackItem {
+                name,
+                can_recover,
+                text_pos,
+            });
+        }
         ParseStackGuard {
             internal,
             pos,

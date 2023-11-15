@@ -247,7 +247,6 @@ parse_fn_decl! {
         $parse_expr()
 }
 
-#[parse_fn]
 fn parse_precedence_2_expr(p: &mut Parser) -> CompletedMarker {
     if p.at(T![+]) || p.at(T![-]) || p.at(T![!]) || p.at(T![*]) {
         let m = p.ev.begin();
@@ -270,47 +269,38 @@ parse_fn_decl! {
         }
 }
 
-#[parse_fn]
 fn parse_precedence_3_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_2_expr, [T![*], T![/], T![%]])
 }
 
-#[parse_fn]
 fn parse_precedence_4_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_3_expr, [T![+], T![-]])
 }
 
-#[parse_fn]
 fn parse_precedence_5_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_4_expr, [T![<=], T![>=], T![<], T![>]])
 }
 
-#[parse_fn]
 fn parse_precedence_6_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_5_expr, [T![==], T![!=]])
 }
 
-#[parse_fn]
 fn parse_precedence_7_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_6_expr, [T![&]])
 }
 
-#[parse_fn]
 fn parse_precedence_8_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_7_expr, [T![^]])
 }
 
-#[parse_fn]
 fn parse_precedence_9_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_8_expr, [T![|]])
 }
 
-#[parse_fn]
 fn parse_precedence_10_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_9_expr, [T![&&]])
 }
 
-#[parse_fn]
 fn parse_precedence_11_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_10_expr, [T![||]])
 }

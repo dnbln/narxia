@@ -89,8 +89,8 @@ fn run_parser(input: &str) -> (narxia_syn::syntree::GreenTree, Vec<narxia_syn::p
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parser 100", |b| {
-        let input = make_input(100);
+    c.bench_function("parser 1000", |b| {
+        let input = make_input(1000);
         b.iter(|| run_parser(black_box(&input)))
     });
 }

@@ -108,8 +108,8 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
         self.ws_wcn_skipped()
     }
 
-    fn get_token_text(&self, token: &Token) -> &'text str {
-        &self.text[token.span]
+    fn get_span_text(&self, span: TextSpan) -> &'text str {
+        &self.text[span]
     }
 
     fn get_error(&self) -> Option<TokenError> {
