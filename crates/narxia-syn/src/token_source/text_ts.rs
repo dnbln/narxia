@@ -153,7 +153,6 @@ fn r1(kind: SyntaxKind, start: usize) -> (Token, usize) {
 impl<'text> CharTokenParser<'text> {
     #[inline(always)]
     fn new(text: &'text str) -> Self {
-        narxia_log::d!("To parse: {text:?}");
         Self {
             text,
             chars: text.char_indices(),

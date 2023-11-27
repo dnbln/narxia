@@ -1,4 +1,3 @@
-#![feature(trait_upcasting)]
 use narxia_syn::syntree::SynTree;
 
 #[salsa::jar(db = SynDb)]
@@ -35,10 +34,13 @@ impl ParsingErrors {
 
 #[salsa::tracked]
 pub fn parse_file<'db>(db: &'db dyn SynDb, file: SrcFile) -> SynFile {
-    let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(file.text(db));
-    let mut parser = narxia_syn::parser::Parser::new(&mut ts);
-    parser.parse();
-    let (tree, errors) = parser.finish_to_tree();
+    let (tree, errors) = file.with_text(db, |text| {
+        let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(text);
+        let mut parser = narxia_syn::parser::Parser::new(&mut ts);
+        parser.parse();
+        parser.finish_to_tree()
+    });
+
     if !errors.is_empty() {
         narxia_log::e!("There were parsing errors:\n{errors:?}");
         narxia_log::w!("The tree might not be complete.");

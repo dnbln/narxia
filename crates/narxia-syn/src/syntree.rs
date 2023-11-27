@@ -327,7 +327,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    AssignmentStmt = (AssignmentLhs AssignmentEqRhs)
+    AssignmentStmt = (AssignmentLhs AssignmentOpAndRhsExpr)
 }
 
 syntree_node! {
@@ -335,7 +335,43 @@ syntree_node! {
 }
 
 syntree_node! {
-    AssignmentEqRhs = (eq![=] ExprNode)
+    AssignmentOpAndRhsExpr = (AssignmentOpNode ExprNode)
+}
+
+syntree_node! {
+    AssignmentOpNode: AssignmentOp = |[
+        eq![=], plus_eq![+=], minus_eq![-=], asterisk_eq![*=], slash_eq![/=], percent_eq![%=],
+        amp_eq![&=], pipe_eq![|=], caret_eq![^=]
+    ]
+}
+
+pub enum AssignmentOp {
+    Eq(Token),
+    PlusEq(Token),
+    MinusEq(Token),
+    AsteriskEq(Token),
+    SlashEq(Token),
+    PercentEq(Token),
+    AmpEq(Token),
+    PipeEq(Token),
+    CaretEq(Token),
+}
+
+impl AssignmentOp {
+    pub fn from_token(t: Token) -> Option<Self> {
+        match t.kind() {
+            T![=] => Some(Self::Eq(t)),
+            T![+=] => Some(Self::PlusEq(t)),
+            T![-=] => Some(Self::MinusEq(t)),
+            T![*=] => Some(Self::AsteriskEq(t)),
+            T![/=] => Some(Self::SlashEq(t)),
+            T![%=] => Some(Self::PercentEq(t)),
+            T![&=] => Some(Self::AmpEq(t)),
+            T![|=] => Some(Self::PipeEq(t)),
+            T![^=] => Some(Self::CaretEq(t)),
+            _ => None,
+        }
+    }
 }
 
 syntree_node! {
@@ -435,7 +471,11 @@ syntree_enum! {
 }
 
 syntree_node! {
-    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, BlockExpr]
+    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, TupleLikeExpr, BlockExpr]
+}
+
+syntree_node! {
+    TupleLikeExpr = (lparen!['('] ExprNode rparen![')'])
 }
 
 syntree_node! {

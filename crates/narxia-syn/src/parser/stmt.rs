@@ -1,11 +1,12 @@
-use narxia_syn_helpers::{parse_fn_decl, parse_fn};
-use super::{Parser, parse_block, CompletedMarker, parse_ty_ref, expr, parse_pat, WsSkipConfig};
+use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+
+use super::{expr, parse_block, parse_pat, parse_ty_ref, CompletedMarker, Parser, WsSkipConfig};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
     pub parse_stmt: Stmt ::=
         $/match {
-            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['{'] => {$parse_expr_potential_assignment()}
+            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$parse_expr_potential_assignment()}
             [let] => {$parse_let_stmt()}
             [while] => {$parse_while_stmt()}
             [for] => {$parse_for_stmt()}
@@ -19,9 +20,18 @@ fn parse_expr_potential_assignment(p: &mut Parser) {
     let lhs = p.ev.precede_completed(&expr);
     let lhs = p.ev.end(lhs, SyntaxKind::AssignmentLhs);
     p.skip_ws_wc();
-    if p.at(T![=]) {
+    if p.at(T![=])
+        || p.at(T![+=])
+        || p.at(T![-=])
+        || p.at(T![*=])
+        || p.at(T![/=])
+        || p.at(T![%=])
+        || p.at(T![&=])
+        || p.at(T![|=])
+        || p.at(T![^=])
+    {
         let m = p.ev.precede_completed(&lhs);
-        parse_assignment_eq_rhs_expr(p);
+        parse_assignment_op_rhs_expr(p);
         p.ev.end(m, SyntaxKind::AssignmentStmt);
     } else {
         p.restore_state(s);
@@ -29,9 +39,16 @@ fn parse_expr_potential_assignment(p: &mut Parser) {
 }
 
 parse_fn_decl! {
-    parse_assignment_eq_rhs_expr: AssignmentEqRhs ::= $![=] $/ws:wcn $expr::parse_expr()
+    parse_assignment_op_rhs_expr: AssignmentOpAndRhsExpr ::=
+        $parse_assignment_op()
+        $/ws:wcn
+        $expr::parse_expr()
 }
 
+parse_fn_decl! {
+    parse_assignment_op: AssignmentOp ::=
+        $/match {[=] [+=] [-=] [*=] [/=] [%=] [&=] [|=] [^=]!}
+}
 
 parse_fn_decl! {
     parse_for_stmt: ForStmt ::=
@@ -80,6 +97,10 @@ parse_fn_decl! {
     parse_let_stmt: LetStmt ::=
         $![let]
         $/ws:wcn
+        $/match {
+            [mut] => {$![mut] $/ws:wcn}
+            _ => {}
+        }
         $parse_pat()
         $/state:s1
         $/ws:wcn

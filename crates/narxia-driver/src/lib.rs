@@ -1,9 +1,11 @@
+use std::cell::RefCell;
 use std::fmt::Formatter;
 use std::path::PathBuf;
+use std::rc::Rc;
 use std::{fmt, io};
 
 use colored::Colorize;
-use narxia_src_db::SrcFile;
+use narxia_src_db::{SrcFile, SrcFileDatabase};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
 
@@ -11,6 +13,22 @@ use narxia_syn_db::SynFile;
 #[derive(Default)]
 pub struct Database {
     storage: salsa::Storage<Self>,
+
+    src_file_db: Rc<RefCell<SrcFileDatabase>>,
+}
+
+impl narxia_src_db::Db for Database {
+    fn src_file_db<'db>(&'db self) -> std::cell::Ref<'db, SrcFileDatabase> {
+        self.src_file_db.borrow()
+    }
+
+    fn src_file_db_mut<'db>(&'db self) -> std::cell::RefMut<'db, SrcFileDatabase> {
+        self.src_file_db.borrow_mut()
+    }
+
+    fn src_file_text<'db>(&'db self, span: narxia_src_db::Span) -> String {
+        self.src_file_db.borrow().get_loaded_span(span).to_owned()
+    }
 }
 
 impl salsa::Database for Database {
@@ -46,13 +64,15 @@ pub struct DisplayFile<'a>(&'a Database, SrcFile);
 
 impl<'a> fmt::Display for DisplayFile<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}\n{}\n{}",
-            ">>>>".bright_blue(),
-            self.1.text(self.0).bright_white().bold(),
-            "<<<<".bright_blue(),
-        )
+        self.1.with_text(self.0, |text| {
+            write!(
+                f,
+                "{}\n{}\n{}",
+                ">>>>".bright_blue(),
+                text.bright_white().bold(),
+                "<<<<".bright_blue(),
+            )
+        })
     }
 }
 

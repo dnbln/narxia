@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 narxia-syn.workspace = true
+narxia-src-db.workspace = true

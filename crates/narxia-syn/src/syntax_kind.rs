@@ -22,6 +22,8 @@ pub enum SyntaxKind {
     FN_KW,
     #[T(let)]
     LET_KW,
+    #[T(mut)]
+    MUT_KW,
     #[T(const)]
     CONST_KW,
     #[T(as)]
@@ -110,6 +112,22 @@ pub enum SyntaxKind {
     AMP2,
     #[T(||)]
     PIPE2,
+    #[T(+=)]
+    PLUS_EQ,
+    #[T(-=)]
+    MINUS_EQ,
+    #[T(*=)]
+    ASTERISK_EQ,
+    #[T(/=)]
+    SLASH_EQ,
+    #[T(%=)]
+    PERCENT_EQ,
+    #[T(&=)]
+    AMP_EQ,
+    #[T(|=)]
+    PIPE_EQ,
+    #[T(^=)]
+    CARET_EQ,
     // Others
     #[T(whitespace)]
     WHITESPACE,
@@ -161,6 +179,7 @@ pub enum SyntaxKind {
     IfCondition,
     IfThenClause,
     ElseClause,
+    TupleLikeExpr,
     BlockExpr,
     LambdaExpr,
     LambdaParamList,
@@ -197,7 +216,8 @@ pub enum SyntaxKind {
 
     AssignmentStmt,
     AssignmentLhs,
-    AssignmentEqRhs,
+    AssignmentOpAndRhsExpr,
+    AssignmentOp,
 
     #[doc(hidden)]
     __TOMBSTONE,

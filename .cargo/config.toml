@@ -1,3 +1,10 @@
+[unstable]
+codegen-backend = true
+
+# FIXME: use once cranelift gets distributed with rustup on windows
+# [profile.dev]
+# codegen-backend = "cranelift"
+
 [target.'cfg(all())']
 rustflags = [
     "-Zshare-generics=y",
@@ -11,6 +18,9 @@ rustflags = [
 
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
+rustflags = [
+	"-C", "link-arg=/STACK:8000000"
+]
 
 [target.x86_64-apple-darwin]
 rustflags = [

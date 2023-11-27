@@ -198,7 +198,8 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
-        self.pstk.push(name, can_recover, self.ts.current_pos())
+        let g = self.pstk.push(name, can_recover, self.ts.current_pos());
+        g
     }
 
     #[inline(always)]
@@ -266,6 +267,14 @@ impl<'a> Parser<'a> {
             T![=>] => self.at2(T![=], T![>]),
             T![&&] => self.at2(T![&], T![&]),
             T![||] => self.at2(T![|], T![|]),
+            T![+=] => self.at2(T![+], T![=]),
+            T![-=] => self.at2(T![-], T![=]),
+            T![*=] => self.at2(T![*], T![=]),
+            T![/=] => self.at2(T![/], T![=]),
+            T![%=] => self.at2(T![%], T![=]),
+            T![&=] => self.at2(T![&], T![=]),
+            T![|=] => self.at2(T![|], T![=]),
+            T![^=] => self.at2(T![^], T![=]),
             k => self.ts.at_1(k),
         }
     }
@@ -312,6 +321,7 @@ impl<'a> Parser<'a> {
                 | T![num_oct]
                 | T![num_dec]
                 | T![num_hex]
+                | T!['(']
                 | T!['{']
                 | T![loop]
                 | T![while]
@@ -427,7 +437,7 @@ parse_fn_decl! {
     parse_item: Item ::=
         $/match {
             [fn] => {$fun::parse_fn_def()}
-            [let] [while] [for] [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['{'] => {$stmt::parse_stmt()}
+            [let] [while] [for] [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$stmt::parse_stmt()}
         }
 }
 

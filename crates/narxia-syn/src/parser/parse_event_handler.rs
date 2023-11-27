@@ -24,12 +24,13 @@ impl ParseEventHandler {
 }
 
 #[must_use]
-pub struct Marker(usize, drop_bomb::DropBomb);
+pub struct Marker(usize, #[cfg(debug_assertions)] drop_bomb::DropBomb);
 
 impl Marker {
     fn new(idx: usize) -> Self {
         Self(
             idx,
+            #[cfg(debug_assertions)]
             drop_bomb::DropBomb::new("Marker must be either completed or abandoned"),
         )
     }
@@ -73,6 +74,7 @@ impl ParseEventHandler {
     pub fn end(&mut self, mut marker: Marker, kind: SyntaxKind) -> CompletedMarker {
         let idx_end = self.events.len();
         self.events.push(ParseEvent::End { kind });
+        #[cfg(debug_assertions)]
         marker.1.defuse();
         CompletedMarker {
             idx: marker.0,
@@ -82,6 +84,7 @@ impl ParseEventHandler {
 
     pub fn abandon(&mut self, mut marker: Marker) {
         self.events[marker.0] = ParseEvent::Tombstone;
+        #[cfg(debug_assertions)]
         marker.1.defuse();
     }
 

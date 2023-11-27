@@ -1,5 +1,9 @@
-use narxia_syn_helpers::{parse_fn_decl, parse_fn};
-use super::{Parser, parse_block, CompletedMarker, parse_list_simple2, AttemptRecoveryLevel, parse_ty_ref, parse_block_insides, parse_list_rep_simple2, fun, WsSkipConfig};
+use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+
+use super::{
+    fun, parse_block, parse_block_insides, parse_list_rep_simple2, parse_list_simple2,
+    parse_ty_ref, AttemptRecoveryLevel, CompletedMarker, Parser, WsSkipConfig,
+};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
@@ -26,8 +30,20 @@ parse_fn_decl! {
             [return] => {$parse_return_expr()}
             [break] => {$parse_break_expr()}
             [continue] => {$parse_continue_expr()}
+            ['('] => {$parse_tuple_like_expr()}
             ['{'] => {$parse_block_expr()}
         }
+}
+
+parse_fn_decl! {
+    parse_tuple_like_expr: TupleLikeExpr ::=
+        $parse_list_simple2(
+            T!['('],
+            parse_expr,
+            T![,],
+            T![')'],
+            AttemptRecoveryLevel::Shallow,
+        )
 }
 
 parse_fn_decl! {
@@ -73,7 +89,21 @@ fn infix_binary_op_simple<const N: usize>(
         for op in &operators {
             // we need a special case for && and || because they have higher precedence than & and |
             // otherwise the parser will choke trying to parse the rhs beginning with & or |
-            if *op == T![&] && p.at(T![&&]) || *op == T![|] && p.at(T![||]) {
+            // similary, we need a special case for op= (+=, -=, etc) to avoid choking on
+            // the `=` after `stmt::parse_expr_potential_assignment`
+            const CHOKE_SETS: [(SyntaxKind, SyntaxKind); 10] = [
+                (T![&], T![&&]),
+                (T![|], T![||]),
+                (T![+], T![+=]),
+                (T![-], T![-=]),
+                (T![*], T![*=]),
+                (T![/], T![/=]),
+                (T![%], T![%=]),
+                (T![&], T![&=]),
+                (T![|], T![|=]),
+                (T![^], T![^=]),
+            ];
+            if CHOKE_SETS.into_iter().any(|it| it.0 == *op && p.at(it.1)) {
                 return false;
             }
             if p.at(*op) {
@@ -87,6 +117,7 @@ fn infix_binary_op_simple<const N: usize>(
     })
 }
 
+#[parse_fn]
 fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
     let mut m = parse_expr_atom(p);
     if p.is_recovering() {
@@ -190,6 +221,7 @@ parse_fn_decl! {
         $parse_lambda_expr()
 }
 
+#[parse_fn]
 fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.ev.begin();
     p.expect(T!['{']);
@@ -234,7 +266,6 @@ parse_fn_decl! {
         }
 }
 
-
 parse_fn_decl! {
     parse_custom_infix_expr_infix: CustomInfixExprInfix ::=
         $![ident]
@@ -247,11 +278,12 @@ parse_fn_decl! {
         $parse_expr()
 }
 
+#[parse_fn]
 fn parse_precedence_2_expr(p: &mut Parser) -> CompletedMarker {
     if p.at(T![+]) || p.at(T![-]) || p.at(T![!]) || p.at(T![*]) {
         let m = p.ev.begin();
         parse_prefix_unary_op(p);
-        p.skip_ws_wcn();
+        p.skip_ws_wc();
         parse_precedence_2_expr(p);
         p.ev.end(m, SyntaxKind::UnaryOpExpr)
     } else {
@@ -269,38 +301,47 @@ parse_fn_decl! {
         }
 }
 
+#[parse_fn]
 fn parse_precedence_3_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_2_expr, [T![*], T![/], T![%]])
 }
 
+#[parse_fn]
 fn parse_precedence_4_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_3_expr, [T![+], T![-]])
 }
 
+#[parse_fn]
 fn parse_precedence_5_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_4_expr, [T![<=], T![>=], T![<], T![>]])
 }
 
+#[parse_fn]
 fn parse_precedence_6_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_5_expr, [T![==], T![!=]])
 }
 
+#[parse_fn]
 fn parse_precedence_7_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_6_expr, [T![&]])
 }
 
+#[parse_fn]
 fn parse_precedence_8_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_7_expr, [T![^]])
 }
 
+#[parse_fn]
 fn parse_precedence_9_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_8_expr, [T![|]])
 }
 
+#[parse_fn]
 fn parse_precedence_10_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_9_expr, [T![&&]])
 }
 
+#[parse_fn]
 fn parse_precedence_11_expr(p: &mut Parser) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_10_expr, [T![||]])
 }

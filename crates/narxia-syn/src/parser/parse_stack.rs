@@ -103,6 +103,9 @@ impl ParseStack {
         let call_at = std::panic::Location::caller();
         {
             let mut bw = internal.borrow_mut();
+            if bw.items.len() > 10_000 {
+                panic!("ParseStack: too many items; the parser is likely stuck in an infinite loop");
+            }
             pos = bw.items.len();
             bw.items.push(ParseStackItem {
                 name,

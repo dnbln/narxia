@@ -4,7 +4,6 @@ use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
     pub parse_fn_def: FnDef ::=
-        $/dbg
         $parse_fn_head()
         $/ws:wcn
         $parse_block()
