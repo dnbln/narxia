@@ -1,39 +1,39 @@
 //! Collects ids for all nodes in the hir tree.
-//! 
+//!
 //! This is used to build the [`HirRefArena`] which is used to map
 //! from [`HirId`]s to [`HirRefElem`]s.
-//! 
+//!
 //! The way this works is it first computes the ids for all the nodes in the tree,
 //! mutates the tree to store the ids, and then stores references to the various nodes
 //! in the [`HirRefArena`].
-//! 
+//!
 //! After that, the [`HirRefArena`] can be used to immediately get the [`HirRefElem`]
 //! for a given [`HirId`], which stores a reference to the actual element.
-//! 
+//!
 //! It is done in 2 steps because we need to mutate the tree to store the ids before
 //! we can store references to the nodes in the [`HirRefArena`].
-//! 
+//!
 //! There's a method for each node in the hir tree, and each method has 2 "variants",
 //! depending on the [`Act`] with which it is invoked.
-//! 
+//!
 //! The [`Act`] enum is used to distinguish between the 2 steps of the algorithm.
 //! [`Act::Compute`] refers to the initial computation of the [`HirId`]s, and
 //! [`Act::Push`] refers to the second step of pushing the references to the nodes
 //! into the [`HirRefArena`].
-//! 
+//!
 //! As such, the [`Act::Compute`] stores a `&mut` reference, and the [`Act::Push`]
 //! stores a `&` reference, to the hir nodes.
-//! 
+//!
 //! The [`_match`], [`_list`] and [`_simple_seq`] macros are used to match on the
 //! [`Act`] and invoke the appropriate methods for the appropriate variants.
 //! They overall just make the code a bit easier to deal with. Refer to their
 //! documentation on how to work with them.
-//! 
+//!
 //! A small note on the macros: They all expect the expressions passed to other
 //! calls to be owned values, and not references. This is because the macros
 //! will build references to the expressions, depending on the [`Act`] we're currently
 //! executing.
-//! 
+//!
 //! [`HirId`]: crate::HirId
 
 use crate::hir::*;
@@ -63,7 +63,7 @@ pub fn initially_update_ids_mod<'hir, 'compute>(
     mod_node: &'compute mut ModDef,
 ) {
     let ModDef { items, hir_id } = mod_node;
-    *hir_id = ctxt.arena.create_id();
+    *hir_id = ctxt.arena.create_id(*hir_id);
     collect_ids_item_list(ctxt, Act::Compute(items));
 }
 
@@ -99,16 +99,16 @@ macro_rules! expand_single {
 
 /// Matches on the [`Act`] and then matches again on the given expression,
 /// allowing us to `match` on the various `*Kind`s in the HIR.
-/// 
+///
 /// Example usage:
-/// 
+///
 /// ```ignore
 /// _match!((ctxt, base, base, base.kind) {
 ///     BaseKind::Kind1(kind1) => {(collect_ids_kind1(*kind1))},
 ///     BaseKind::Kind2(kind2) => {(collect_ids_kind2(*kind2))},
 /// })
 /// ```
-/// 
+///
 /// Do note that the `*kind1` and `*kind2` *have to* be dereferenced.
 /// Otherwise, the macro will build `&mut &` or `&&mut ` references,
 /// which are not what we want.
@@ -143,7 +143,7 @@ macro_rules! _match {
     }) => {
         match $base {
             Act::Compute($t) => {
-                $t.hir_id = $ctxt.arena.create_id();
+                $t.hir_id = $ctxt.arena.create_id($t.hir_id);
                 match &mut $match_expr {
                     $($pat => {
                         $(
@@ -168,9 +168,9 @@ macro_rules! _match {
 
 /// Matches on the [`Act`] and then iterates over the given expression (which should be a `Vec<T>`),
 /// calling the given function on each element.
-/// 
+///
 /// Example usage:
-/// 
+///
 /// ```ignore
 /// let item_vec: Vec<Item> = vec![item1, item2, item3];
 /// let base = Act::Compute(&mut item_vec);
@@ -213,7 +213,7 @@ macro_rules! _simple_seq {
     (self $kind:ident, $ctxt:expr, $base:expr, $name:ident, {$($single:tt),* $(,)?}) => {
         match $base {
             Act::Compute($name) => {
-                $name.hir_id = $ctxt.arena.create_id();
+                $name.hir_id = $ctxt.arena.create_id($name.hir_id);
                 $(
                     expand_single!(Compute $ctxt, $single);
                 )*
@@ -251,6 +251,7 @@ fn collect_ids_fn_def<'hir, 'compute>(
 ) {
     _simple_seq!(self Fn, ctxt, fn_def_node, fn_def_node, {
         (collect_ids_fn_def_params(fn_def_node.params)),
+        (?collect_ids_fn_def_ret(fn_def_node.ret_ty)),
         (collect_ids_block(fn_def_node.body)),
     });
 }
@@ -278,6 +279,15 @@ fn collect_ids_fn_def_param<'hir, 'compute>(
     );
 }
 
+fn collect_ids_fn_def_ret<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    ret_ty_node: Act<'compute, 'hir, FnRetTy>,
+) {
+    _simple_seq!(self FnRetTy, ctxt, ret_ty_node, ret_ty_node, {
+        (collect_ids_ty_ref(ret_ty_node.ty)),
+    });
+}
+
 fn collect_ids_ty_ref<'hir, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir>,
     ty_ref_node: Act<'compute, 'hir, TyRef>,
@@ -287,7 +297,6 @@ fn collect_ids_ty_ref<'hir, 'compute>(
             (?collect_ids_ty_generics(*generics)),
         },
         TyRefKind::Primitive(primitive_kind) => {
-
         },
     });
 }
@@ -323,16 +332,115 @@ fn collect_ids_expr<'hir, 'compute>(
     expr_node: Act<'compute, 'hir, Expr>,
 ) {
     _match!(self Expr, (ctxt, expr_node, expr_node, expr_node.kind) {
-        ExprKind::Atom(_) => {},
-        ExprKind::Binary {left, op: _, right} => {
-            (collect_ids_expr(*left)),
-            (collect_ids_expr(*right)),
+        ExprKind::Atom(atom) => {
+            (collect_ids_expr_atom(*atom)),
+        },
+        ExprKind::Binary(binary_op_expr) => {
+            (collect_ids_binary_op_expr(*binary_op_expr)),
         },
         ExprKind::CallExpr(call_expr) => {(collect_ids_call_expr(*call_expr))},
         ExprKind::IndexExpr(index_expr) => {(collect_ids_index_expr(*index_expr))},
         ExprKind::FieldAccess(field_access) => {(collect_ids_field_access_expr(*field_access))},
         ExprKind::MethodCall(method_call) => {(collect_ids_method_call_expr(*method_call))},
     });
+}
+
+fn collect_ids_expr_atom<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    atom_node: Act<'compute, 'hir, ExprAtom>,
+) {
+    _match!((ctxt, atom_node, atom_node, atom_node.kind) {
+        ExprAtomKind::Ident(ident) => {},
+        ExprAtomKind::Str(str) => {},
+        ExprAtomKind::Num(num) => {},
+        ExprAtomKind::LoopExpr(loop_expr) => {
+            (collect_ids_loop_expr(*loop_expr)),
+        },
+        ExprAtomKind::IfExpr(if_expr) => {
+            (collect_ids_if_expr(*if_expr)),
+        },
+        ExprAtomKind::BlockExpr(block_expr) => {
+            (collect_ids_block_expr(*block_expr)),
+        },
+        ExprAtomKind::ReturnExpr(ret) => {
+            (collect_ids_return_expr(*ret)),
+        },
+        ExprAtomKind::BreakExpr(break_expr) => {
+            (collect_ids_break_expr(*break_expr)),
+        },
+        ExprAtomKind::ContinueExpr(continue_expr) => {
+            (collect_ids_continue_expr(*continue_expr)),
+        },
+        ExprAtomKind::TupleLikeExpr(tuple_like) => {
+            (collect_ids_tuple_like_expr(*tuple_like)),
+        },
+    });
+}
+
+fn collect_ids_if_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    if_expr_node: Act<'compute, 'hir, IfExpr>,
+) {
+    _simple_seq!(ctxt, if_expr_node, if_expr_node, {
+        (collect_ids_expr(if_expr_node.cond)),
+        (collect_ids_expr(if_expr_node.then)),
+        (?collect_ids_expr(if_expr_node.else_)),
+    });
+}
+
+fn collect_ids_block_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    block_expr_node: Act<'compute, 'hir, BlockExpr>,
+) {
+    _simple_seq!(ctxt, block_expr_node, block_expr_node, {
+        (collect_ids_block(block_expr_node.block)),
+    });
+}
+
+fn collect_ids_loop_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    loop_expr_node: Act<'compute, 'hir, LoopExpr>,
+) {
+    _simple_seq!(ctxt, loop_expr_node, loop_expr_node, {
+        (collect_ids_block(loop_expr_node.body)),
+    });
+}
+
+fn collect_ids_return_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    return_expr_node: Act<'compute, 'hir, ReturnExpr>,
+) {
+    _simple_seq!(ctxt, return_expr_node, return_expr_node, {
+        (?collect_ids_expr(return_expr_node.expr)),
+    });
+}
+
+fn collect_ids_break_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    break_expr_node: Act<'compute, 'hir, BreakExpr>,
+) {
+    _simple_seq!(ctxt, break_expr_node, break_expr_node, {
+        (?collect_ids_expr(break_expr_node.expr)),
+    });
+}
+
+fn collect_ids_continue_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    continue_expr_node: Act<'compute, 'hir, ContinueExpr>,
+) {
+    _simple_seq!(ctxt, continue_expr_node, continue_expr_node, {});
+}
+
+fn collect_ids_binary_op_expr<'hir, 'collect>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    binary_op_expr_node: Act<'collect, 'hir, BinaryOpExpr>,
+) {
+    _simple_seq!(ctxt, binary_op_expr_node, binary_op_expr_node,
+        {
+            (collect_ids_expr(binary_op_expr_node.lhs)),
+            (collect_ids_expr(binary_op_expr_node.rhs)),
+        }
+    );
 }
 
 fn collect_ids_call_expr<'hir, 'compute>(
@@ -405,12 +513,30 @@ fn collect_ids_lambda_expr<'hir, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir>,
     lambda_expr_node: Act<'compute, 'hir, LambdaExpr>,
 ) {
-    _simple_seq!(ctxt, lambda_expr_node, lambda_expr_node,
+    _simple_seq!(self LambdaExpr, ctxt, lambda_expr_node, lambda_expr_node,
         {
             (?collect_ids_lambda_param_list(lambda_expr_node.lambda_param_list)),
             (collect_ids_item_list(lambda_expr_node.body)),
         }
     );
+}
+
+fn collect_ids_tuple_like_expr<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    tuple_like_expr_node: Act<'compute, 'hir, TupleLikeExpr>,
+) {
+    _simple_seq!(ctxt, tuple_like_expr_node, tuple_like_expr_node,
+        {
+            (collect_ids_expr_vec(tuple_like_expr_node.exprs)),
+        }
+    );
+}
+
+fn collect_ids_expr_vec<'hir, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir>,
+    exprs: Act<'compute, 'hir, Vec<Expr>>,
+) {
+    _list!(ctxt, exprs, collect_ids_expr);
 }
 
 fn collect_ids_lambda_param_list<'hir, 'compute>(

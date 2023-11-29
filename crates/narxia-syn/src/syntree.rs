@@ -316,6 +316,9 @@ pub trait TreeNode: Sized {
         self.get_node().kind()
     }
     fn get_node(&self) -> &Node;
+    fn get_span(&self) -> TextSpan {
+        TextSpan::of_node(self.get_node())
+    }
 }
 
 syntree_node! {
@@ -475,7 +478,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    TupleLikeExpr = (lparen!['('] ExprNode rparen![')'])
+    TupleLikeExpr = (lparen!['('] *|[ExprNode, comma![,]] rparen![')'])
 }
 
 syntree_node! {

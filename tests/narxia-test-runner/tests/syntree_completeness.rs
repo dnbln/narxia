@@ -142,19 +142,11 @@ fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
     Ok(())
 }
 
-fn collect_trials() -> miette::Result<Vec<Trial>> {
-    let mut trials = Vec::new();
-
-    narxia_test_runner::for_each_parser_test! {
-        |test| {
-            trials.push(Trial::test(test.file_name().clone().into_string().unwrap(), move || {
-                run_for_test(test.value().clone()).map_err(Failed::from)
-            }));
-        }
-    }
-
-    Ok(trials)
+fn run_test_wrap(test: ParserTestSingleFolder) -> Result<(), Failed> {
+    run_for_test(test).map_err(Failed::from)
 }
+
+narxia_test_runner::parser_test_trials!(collect_trials, run_test_wrap);
 
 fn main() -> miette::Result<()> {
     let args = Arguments::from_args();

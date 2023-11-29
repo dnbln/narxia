@@ -11,13 +11,44 @@ struct HirLowerCtxt {
     src_file: SrcFile,
 }
 
+trait HasHirSpan {
+    fn span(&self) -> HirSpan;
+}
+
+impl<T> HasHirSpan for T where T: TreeNode {
+    fn span(&self) -> HirSpan {
+        HirSpan::of_node(self)
+    }
+}
+
 impl HirLowerCtxt {
+    #[cfg(hir_id_span)]
+    fn dummy_hir_id<T: HasHirSpan>(&self, v: &T) -> HirId {
+        HirId {
+            root: self.src_file,
+            id: usize::MAX,
+            span: T::span(v),
+        }
+    }
+
+    #[cfg(not(hir_id_span))]
     fn dummy_hir_id(&self) -> HirId {
         HirId {
             root: self.src_file,
             id: usize::MAX,
         }
     }
+}
+
+macro_rules! dummy_hir_id {
+    ($ctxt:expr, $v:expr) => {
+        {
+            #[cfg(hir_id_span)]
+            {HirLowerCtxt::dummy_hir_id($ctxt, $v)}
+            #[cfg(not(hir_id_span))]
+            {HirLowerCtxt::dummy_hir_id($ctxt)}
+        }
+    };
 }
 
 fn lower_binop(binop: &syntree::BinOp) -> BinOp {
@@ -62,27 +93,28 @@ fn lower_mod_def_impl(hir_lower_ctxt: &HirLowerCtxt, root: syntree::Root) -> Mod
         .collect();
     ModDef {
         items,
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, &root),
     }
 }
 
 fn lower_item(hir_lower_ctxt: &HirLowerCtxt, item: &syntree::Item) -> Item {
+    let hir_id = dummy_hir_id!(hir_lower_ctxt, item);
     if let Some(fn_def) = item.get_fn_def() {
         Item {
-            kind: ItemKind::FnDef(lower_fn_def(hir_lower_ctxt, fn_def)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            kind: ItemKind::FnDef(lower_fn_def(hir_lower_ctxt, &fn_def)),
+            hir_id,
         }
     } else if let Some(stmt) = item.get_stmt() {
         Item {
             kind: ItemKind::Stmt(lower_stmt(hir_lower_ctxt, &stmt)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else {
         todo!()
     }
 }
 
-fn lower_fn_def(hir_lower_ctxt: &HirLowerCtxt, fn_def: syntree::FnDef) -> FnDef {
+fn lower_fn_def(hir_lower_ctxt: &HirLowerCtxt, fn_def: &syntree::FnDef) -> FnDef {
     let head = fn_def.get_fn_head();
     let name = lower_ident(hir_lower_ctxt, &head.get_fn_name().unwrap().get_ident());
     let params = lower_fn_def_params(hir_lower_ctxt, &head.get_fn_param_list().unwrap());
@@ -96,7 +128,7 @@ fn lower_fn_def(hir_lower_ctxt: &HirLowerCtxt, fn_def: syntree::FnDef) -> FnDef 
         params,
         ret_ty,
         body,
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, fn_def),
     }
 }
 
@@ -105,7 +137,7 @@ fn lower_fn_ret_ty(hir_lower_ctxt: &HirLowerCtxt, ret_ty: &syntree::FnRetTy) -> 
         span: HirSpan::of_node(ret_ty),
         arrow_span: HirSpan::of(&ret_ty.get_arrow()),
         ty: lower_ty_ref(hir_lower_ctxt, &ret_ty.get_ty_ref().unwrap()),
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, ret_ty),
     }
 }
 
@@ -136,43 +168,44 @@ fn lower_fn_def_param(hir_lower_ctxt: &HirLowerCtxt, fn_param: &syntree::FnParam
         ty,
         default,
         param_span: HirSpan::of_node(fn_param),
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, fn_param),
     }
 }
 
 fn lower_expr(hir_lower_ctxt: &HirLowerCtxt, expr: &syntree::Expr) -> Expr {
+    let hir_id = dummy_hir_id!(hir_lower_ctxt, expr);
     match expr {
         syntree::Expr::ExprAtom(atom) => Expr {
             kind: ExprKind::Atom(lower_expr_atom(hir_lower_ctxt, atom)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         },
         syntree::Expr::ExprNode(node) => lower_expr_node(hir_lower_ctxt, node),
         syntree::Expr::BinaryOpExpr(binary_op_expr) => {
             let (left, op, right) = lower_binary_op_expr(hir_lower_ctxt, binary_op_expr);
             Expr {
-                kind: ExprKind::Binary {
-                    left: Box::new(left),
+                kind: ExprKind::Binary(BinaryOpExpr {
+                    lhs: Box::new(left),
                     op,
-                    right: Box::new(right),
-                },
-                hir_id: hir_lower_ctxt.dummy_hir_id(),
+                    rhs: Box::new(right),
+                }),
+                hir_id,
             }
         }
         syntree::Expr::CallExpr(call_expr) => Expr {
             kind: ExprKind::CallExpr(lower_call_expr(hir_lower_ctxt, call_expr)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         },
         syntree::Expr::IndexExpr(index_expr) => Expr {
             kind: ExprKind::IndexExpr(lower_index_expr(hir_lower_ctxt, index_expr)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         },
         syntree::Expr::FieldAccess(field_access) => Expr {
             kind: ExprKind::FieldAccess(lower_field_access(hir_lower_ctxt, field_access)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         },
         syntree::Expr::MethodCall(method_call) => Expr {
             kind: ExprKind::MethodCall(lower_method_call(hir_lower_ctxt, method_call)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         },
         syntree::Expr::Block(block) => {
             let block = lower_block(hir_lower_ctxt, block);
@@ -180,7 +213,7 @@ fn lower_expr(hir_lower_ctxt: &HirLowerCtxt, expr: &syntree::Expr) -> Expr {
                 kind: ExprKind::Atom(ExprAtom {
                     kind: ExprAtomKind::BlockExpr(BlockExpr { block }),
                 }),
-                hir_id: hir_lower_ctxt.dummy_hir_id(),
+                hir_id,
             }
         }
     }
@@ -257,6 +290,7 @@ fn lower_lambda_expr(
     LambdaExpr {
         lambda_param_list,
         body,
+        hir_id: dummy_hir_id!(hir_lower_ctxt, lambda_expr),
     }
 }
 
@@ -339,6 +373,10 @@ fn lower_expr_atom(hir_lower_ctxt: &HirLowerCtxt, atom: &syntree::ExprAtom) -> E
         ExprAtom {
             kind: ExprAtomKind::BlockExpr(lower_block_expr(hir_lower_ctxt, &block_expr)),
         }
+    } else if let Some(tuple_like) = atom.get_tuple_like_expr() {
+        ExprAtom {
+            kind: ExprAtomKind::TupleLikeExpr(lower_tuple_like_expr(hir_lower_ctxt, &tuple_like)),
+        }
     } else {
         todo!()
     }
@@ -363,6 +401,14 @@ fn lower_loop_expr(hir_lower_ctxt: &HirLowerCtxt, loop_expr: &syntree::LoopExpr)
     LoopExpr { body }
 }
 
+fn lower_tuple_like_expr(hir_lower_ctxt: &HirLowerCtxt, tuple_like_expr: &syntree::TupleLikeExpr) -> TupleLikeExpr {
+    let exprs = tuple_like_expr
+        .get_expr_node_list()
+        .map(|it| lower_expr_node(hir_lower_ctxt, &it))
+        .collect();
+    TupleLikeExpr { exprs }
+}
+
 fn lower_block(hir_lower_ctxt: &HirLowerCtxt, block: &syntree::Block) -> Block {
     let items = block
         .get_item_list()
@@ -370,35 +416,36 @@ fn lower_block(hir_lower_ctxt: &HirLowerCtxt, block: &syntree::Block) -> Block {
         .collect();
     Block {
         items,
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, block),
     }
 }
 
 fn lower_stmt(hir_lower_ctxt: &HirLowerCtxt, stmt: &syntree::Stmt) -> Stmt {
+    let hir_id = dummy_hir_id!(hir_lower_ctxt, stmt);
     if let Some(expr) = stmt.get_expr_node() {
         Stmt {
             kind: StmtKind::ExprStmt(lower_expr_node(hir_lower_ctxt, &expr)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else if let Some(let_stmt) = stmt.get_let_stmt() {
         Stmt {
             kind: StmtKind::LetStmt(lower_let_stmt(hir_lower_ctxt, &let_stmt)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else if let Some(for_stmt) = stmt.get_for_stmt() {
         Stmt {
             kind: StmtKind::ForStmt(lower_for_stmt(hir_lower_ctxt, &for_stmt)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else if let Some(while_stmt) = stmt.get_while_stmt() {
         Stmt {
             kind: StmtKind::WhileStmt(lower_while_stmt(hir_lower_ctxt, &while_stmt)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else if let Some(assignment_stmt) = stmt.get_assignment_stmt() {
         Stmt {
             kind: StmtKind::AssignmentStmt(lower_assignment_stmt(hir_lower_ctxt, &assignment_stmt)),
-            hir_id: hir_lower_ctxt.dummy_hir_id(),
+            hir_id,
         }
     } else {
         todo!()
@@ -485,17 +532,14 @@ fn lower_str_literal(hir_lower_ctxt: &HirLowerCtxt, str_literal: &Token) -> StrL
 fn lower_pat(hir_lower_ctxt: &HirLowerCtxt, pat: &syntree::Pat) -> Pat {
     if let pat_ident = pat.get_ident() {
         let pat_ident = lower_ident(hir_lower_ctxt, &pat_ident);
-        if pat_ident.text == "_" {
-            return Pat {
-                kind: PatKind::Wildcard(pat_ident),
-                hir_id: hir_lower_ctxt.dummy_hir_id(),
-            };
-        } else {
-            Pat {
-                kind: PatKind::Ident(pat_ident),
-                hir_id: hir_lower_ctxt.dummy_hir_id(),
-            }
-        }
+        let kind = match pat_ident.text.as_str() {
+            "_" => PatKind::Wildcard(pat_ident),
+            _ => PatKind::Ident(pat_ident),
+        };
+        return Pat {
+            kind,
+            hir_id: dummy_hir_id!(hir_lower_ctxt, pat),
+        };
     } else {
         todo!()
     }
@@ -503,10 +547,27 @@ fn lower_pat(hir_lower_ctxt: &HirLowerCtxt, pat: &syntree::Pat) -> Pat {
 
 fn lower_ty_ref(hir_lower_ctxt: &HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRef {
     let name = lower_ident(hir_lower_ctxt, &ty_ref.get_ident());
+    let kind = match name.text.as_str() {
+        "i8" => TyRefKind::Primitive(PrimitiveTy::I8),
+        "i16" => TyRefKind::Primitive(PrimitiveTy::I16),
+        "i32" => TyRefKind::Primitive(PrimitiveTy::I32),
+        "i64" => TyRefKind::Primitive(PrimitiveTy::I64),
+        "i128" => TyRefKind::Primitive(PrimitiveTy::I128),
+        "u8" => TyRefKind::Primitive(PrimitiveTy::U8),
+        "u16" => TyRefKind::Primitive(PrimitiveTy::U16),
+        "u32" => TyRefKind::Primitive(PrimitiveTy::U32),
+        "u64" => TyRefKind::Primitive(PrimitiveTy::U64),
+        "u128" => TyRefKind::Primitive(PrimitiveTy::U128),
+        "f32" => TyRefKind::Primitive(PrimitiveTy::F32),
+        "f64" => TyRefKind::Primitive(PrimitiveTy::F64),
+        "char" => TyRefKind::Primitive(PrimitiveTy::Char),
+        "bool" => TyRefKind::Primitive(PrimitiveTy::Bool),
+        _ => TyRefKind::Named(name, None),
+    };
     TyRef {
-        kind: TyRefKind::Named(name, None),
+        kind,
         span: HirSpan::of_node(ty_ref),
-        hir_id: hir_lower_ctxt.dummy_hir_id(),
+        hir_id: dummy_hir_id!(hir_lower_ctxt, ty_ref),
     }
 }
 

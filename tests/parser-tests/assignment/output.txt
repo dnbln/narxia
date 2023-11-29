@@ -7,8 +7,9 @@ Root@0..16
             ExprAtom@0..1
               IDENT@0..1 "x"
         COMPOSED_TRIVIA@1..2 " "
-        AssignmentEqRhs@2..5
-          EQ@2..3 "="
+        AssignmentOpAndRhsExpr@2..5
+          AssignmentOp@2..3
+            EQ@2..3 "="
           COMPOSED_TRIVIA@3..4 " "
           Expr@4..5
             ExprAtom@4..5
@@ -25,8 +26,9 @@ Root@0..16
               DOT@8..9 "."
               IDENT@9..10 "y"
         COMPOSED_TRIVIA@10..11 " "
-        AssignmentEqRhs@11..14
-          EQ@11..12 "="
+        AssignmentOpAndRhsExpr@11..14
+          AssignmentOp@11..12
+            EQ@11..12 "="
           COMPOSED_TRIVIA@12..13 " "
           Expr@13..14
             ExprAtom@13..14

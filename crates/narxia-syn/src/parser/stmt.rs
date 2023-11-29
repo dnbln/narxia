@@ -1,6 +1,6 @@
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
 
-use super::{expr, parse_block, parse_pat, parse_ty_ref, CompletedMarker, Parser, WsSkipConfig};
+use super::{expr, parse_block, parse_pat, parse_ty_ref, CompletedMarker, Parser};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {

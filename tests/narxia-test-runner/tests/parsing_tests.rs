@@ -70,24 +70,12 @@ fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::R
     Ok(())
 }
 
-fn run_test(test: ParserTestSingleFolder, test_mode: TestMode) -> Result<(), Failed> {
+fn run_test(test: ParserTestSingleFolder) -> Result<(), Failed> {
+    let test_mode = TestMode::get_behavior();
     run_test_impl(test, test_mode).map_err(Failed::from)
 }
 
-fn collect_trials() -> miette::Result<Vec<Trial>> {
-    let test_mode = TestMode::get_behavior();
-    let mut trials = Vec::new();
-
-    narxia_test_runner::for_each_parser_test! {
-        |test| {
-            let name = test.file_name().clone().into_string().unwrap();
-            let folder = test.value().clone();
-            trials.push(Trial::test(name, move || run_test(folder, test_mode)));
-        }
-    }
-
-    Ok(trials)
-}
+narxia_test_runner::parser_test_trials!(collect_trials, run_test);
 
 fn main() -> miette::Result<()> {
     let args = Arguments::from_args();

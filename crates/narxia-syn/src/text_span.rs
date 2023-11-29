@@ -20,11 +20,11 @@ impl TextSpan {
         let r = node.text_range();
         unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
     }
-    pub fn from_range(range: std::ops::Range<u32>) -> Self {
+    pub const fn from_range(range: std::ops::Range<u32>) -> Self {
         Self::new(range.start, range.end)
     }
 
-    pub fn new(start: u32, end: u32) -> Self {
+    pub const fn new(start: u32, end: u32) -> Self {
         debug_assert!(start <= end);
         unsafe { Self::new_unchecked(start, end) }
     }
@@ -32,18 +32,18 @@ impl TextSpan {
     /// # Safety
     /// start <= end
     #[must_use]
-    pub unsafe fn new_unchecked(start: u32, end: u32) -> Self {
+    pub const unsafe fn new_unchecked(start: u32, end: u32) -> Self {
         Self { start, end }
     }
 
-    pub fn add_offset(self, offset: u32) -> Self {
+    pub const fn add_offset(self, offset: u32) -> Self {
         Self {
             start: self.start + offset,
             end: self.end + offset,
         }
     }
 
-    pub fn sub_offset(self, offset: u32) -> Self {
+    pub const fn sub_offset(self, offset: u32) -> Self {
         Self {
             start: self.start - offset,
             end: self.end - offset,

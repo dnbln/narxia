@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 colored.workspace = true
-rowan = "0.15.11"
-drop_bomb = "0.1.5"
-smallvec = "1.10.0"
+rowan.workspace = true
+drop_bomb.workspace = true
+smallvec.workspace = true
 bitflags.workspace = true
 
 narxia-syn-helpers.workspace = true

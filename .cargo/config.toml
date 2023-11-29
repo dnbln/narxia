@@ -5,6 +5,11 @@ codegen-backend = true
 # [profile.dev]
 # codegen-backend = "cranelift"
 
+[target.'cfg(debug_assertions)']
+rustflags = [
+    "--cfg", "hir_id_span",
+]
+
 [target.'cfg(all())']
 rustflags = [
     "-Zshare-generics=y",
@@ -19,7 +24,7 @@ rustflags = [
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
 rustflags = [
-	"-C", "link-arg=/STACK:8000000"
+	"-C", "link-arg=/STACK:16000000"
 ]
 
 [target.x86_64-apple-darwin]

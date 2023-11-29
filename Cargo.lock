@@ -743,6 +743,8 @@ dependencies = [
  "libtest-mimic",
  "miette",
  "narxia-driver",
+ "narxia-hir",
+ "narxia-hir-db",
  "narxia-syn",
 ]
 

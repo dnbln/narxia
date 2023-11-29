@@ -69,15 +69,18 @@ pub struct Expr {
 #[derive(Debug, Eq, PartialEq)]
 pub enum ExprKind {
     Atom(ExprAtom),
-    Binary {
-        left: Box<Expr>,
-        op: BinOp,
-        right: Box<Expr>,
-    },
+    Binary(BinaryOpExpr),
     CallExpr(CallExpr),
     IndexExpr(IndexExpr),
     FieldAccess(FieldAccess),
     MethodCall(MethodCall),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct BinaryOpExpr {
+    pub lhs: Box<Expr>,
+    pub op: BinOp,
+    pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -115,6 +118,7 @@ pub struct MethodCall {
 pub struct LambdaExpr {
     pub lambda_param_list: Option<LambdaParamList>,
     pub body: Vec<Item>,
+    pub hir_id: HirId,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -164,6 +168,7 @@ pub enum ExprAtomKind {
     BreakExpr(Box<BreakExpr>),
     ContinueExpr(ContinueExpr),
     BlockExpr(BlockExpr),
+    TupleLikeExpr(TupleLikeExpr),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -218,6 +223,11 @@ pub struct BlockExpr {
 pub struct Block {
     pub items: Vec<Item>,
     pub hir_id: HirId,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TupleLikeExpr {
+    pub exprs: Vec<Expr>,
 }
 
 #[derive(Debug, Eq, PartialEq)]

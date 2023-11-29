@@ -6,14 +6,14 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-miette.workspace = true
-dir-structure.workspace = true
-
-[dev-dependencies]
-libtest-mimic = "0.6.1"
 colored.workspace = true
+libtest-mimic.workspace = true
+dir-structure.workspace = true
+miette.workspace = true
 
 narxia-driver.workspace = true
+narxia-hir.workspace = true
+narxia-hir-db.workspace = true
 narxia-syn.workspace = true
 
 [[test]]
@@ -28,4 +28,9 @@ path = "tests/syntree_correctness.rs"
 [[test]]
 name = "syntree_completeness"
 path = "tests/syntree_completeness.rs"
+harness = false
+
+[[test]]
+name = "no_dummy_hir_ids_left_after_lowering"
+path = "tests/no_dummy_hir_ids_left_after_lowering.rs"
 harness = false

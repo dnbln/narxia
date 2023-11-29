@@ -1,6 +1,8 @@
 use narxia_src_db::SrcFile;
 
-use crate::hir::{Block, Expr, FnDef, FnParam, Item, ModDef, Pat, Stmt, TyRef, TyGenericArg};
+use crate::hir::{
+    Block, Expr, FnDef, FnParam, FnRetTy, Item, LambdaExpr, ModDef, Pat, Stmt, TyGenericArg, TyRef,
+};
 use crate::HirId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,7 +11,9 @@ pub enum HirRefElem<'hir> {
     Item(&'hir Item),
     Fn(&'hir FnDef),
     FnParam(&'hir FnParam),
+    FnRetTy(&'hir FnRetTy),
     Expr(&'hir Expr),
+    LambdaExpr(&'hir LambdaExpr),
     Pat(&'hir Pat),
     Stmt(&'hir Stmt),
     Block(&'hir Block),
@@ -33,12 +37,14 @@ impl<'hir> HirRefArena<'hir> {
         }
     }
 
-    pub fn create_id(&mut self) -> HirId {
+    pub fn create_id(&mut self, prev_hir_id: HirId) -> HirId {
         let id = self.current_id;
         self.current_id += 1;
         HirId {
             root: self.current_file,
             id,
+            #[cfg(hir_id_span)]
+            span: prev_hir_id.span,
         }
     }
 

@@ -10,10 +10,14 @@ pub mod lower;
 pub mod visitor;
 pub mod visitor_mut;
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub struct HirSpan {
     span: TextSpan,
 }
+
+pub const DUMMY_SP: HirSpan = HirSpan {
+    span: unsafe { TextSpan::new_unchecked(0, 0) },
+};
 
 impl HirSpan {
     pub fn of_node<T: syntree::TreeNode>(node: &T) -> Self {
@@ -33,11 +37,18 @@ impl HirSpan {
 pub struct HirId {
     root: SrcFile,
     id: usize,
+    #[cfg(hir_id_span)]
+    span: HirSpan,
 }
 
 impl HirId {
     pub fn is_dummy(self) -> bool {
         self.id == usize::MAX
+    }
+
+    #[cfg(hir_id_span)]
+    pub fn span(self) -> HirSpan {
+        self.span
     }
 }
 

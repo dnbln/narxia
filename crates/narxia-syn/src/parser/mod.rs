@@ -6,7 +6,7 @@ use narxia_syn_helpers::{parse_fn, parse_fn_decl};
 use self::parse_event_handler::GreenTreeBuilderSD;
 use crate::parse_error::{ParseError, ParseErrorInfo};
 use crate::parser::parse_event_handler::{
-    CompletedMarker, GreenTreeBuilder, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
+    CompletedMarker, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
 };
 use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
 use crate::syntax_kind::{SyntaxKind, T};
@@ -214,6 +214,14 @@ impl<'a> Parser<'a> {
             T![=>] => self.expect_2(T![=], T![>], T![=>]),
             T![&&] => self.expect_2(T![&], T![&], T![&&]),
             T![||] => self.expect_2(T![|], T![|], T![||]),
+            T![+=] => self.expect_2(T![+], T![=], T![+=]),
+            T![-=] => self.expect_2(T![-], T![=], T![-=]),
+            T![*=] => self.expect_2(T![*], T![=], T![*=]),
+            T![/=] => self.expect_2(T![/], T![=], T![/=]),
+            T![%=] => self.expect_2(T![%], T![=], T![%=]),
+            T![&=] => self.expect_2(T![&], T![=], T![&=]),
+            T![|=] => self.expect_2(T![|], T![=], T![|=]),
+            T![^=] => self.expect_2(T![^], T![=], T![^=]),
             k => self.expect_1(k),
         }
     }
@@ -234,21 +242,13 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn expect_2(&mut self, k1: SyntaxKind, k2: SyntaxKind, complete: SyntaxKind) {
-        if !self.ts.expect_2(k1, k2, complete, |t1, t2, tcomplete| {
+        if !self.ts.expect_2(k1, k2, complete, |_t1, _t2, tcomplete| {
             self.ev.token(complete, tcomplete.span());
         }) {
             self.err(ParseErrorInfo::ExpectedKind(
                 complete,
                 std::panic::Location::caller(),
             ));
-        }
-    }
-
-    #[inline(always)]
-    fn t_sizeof(k: SyntaxKind) -> usize {
-        match k {
-            T![==] | T![!=] | T![<=] | T![>=] | T![->] | T![=>] | T![&&] | T![||] => 2,
-            _ => 1,
         }
     }
 
@@ -332,10 +332,7 @@ impl<'a> Parser<'a> {
                 | T![if] => {
                     parse_item(self);
                 }
-                T![whitespace] => {
-                    self.skip_ws_wcn();
-                }
-                T![newline] => {
+                T![whitespace] | T![newline] => {
                     self.skip_ws_wcn();
                 }
                 T![;] => {
