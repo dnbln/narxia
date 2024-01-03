@@ -74,6 +74,7 @@ fn lower_binop(binop: &syntree::BinOp) -> BinOp {
 
 pub struct LowerCtxt {
     pub src_file: SrcFile,
+    pub hir_ref_arena_start_index: HirId,
 }
 
 pub fn lower_mod_def(lower_ctxt: &mut LowerCtxt, root: syntree::Root) -> ModDef {
@@ -81,7 +82,8 @@ pub fn lower_mod_def(lower_ctxt: &mut LowerCtxt, root: syntree::Root) -> ModDef 
         src_file: lower_ctxt.src_file,
     };
     let mut mod_def = lower_mod_def_impl(&hir_lower_ctxt, root);
-    let mut collect_ids_ctxt = HirCollectIdsCtxt::new(HirRefArena::new(lower_ctxt.src_file));
+    let mut ref_arena = HirRefArena::new_starting_at(lower_ctxt.src_file, lower_ctxt.hir_ref_arena_start_index);
+    let mut collect_ids_ctxt = HirCollectIdsCtxt::new(&mut ref_arena);
     crate::hir_collect_ids::initially_update_ids_mod(&mut collect_ids_ctxt, &mut mod_def);
     mod_def
 }

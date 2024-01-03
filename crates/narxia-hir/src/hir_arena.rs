@@ -26,6 +26,7 @@ pub struct HirRefArena<'hir> {
     buffer: Vec<HirRefElem<'hir>>,
     current_file: SrcFile,
     current_id: usize,
+    start_id: usize,
 }
 
 impl<'hir> HirRefArena<'hir> {
@@ -34,6 +35,16 @@ impl<'hir> HirRefArena<'hir> {
             buffer: Vec::new(),
             current_file: file,
             current_id: 0,
+            start_id: 0,
+        }
+    }
+
+    pub fn new_starting_at(file: SrcFile, start: HirId) -> Self {
+        Self {
+            buffer: Vec::new(),
+            current_file: file,
+            current_id: start.id,
+            start_id: start.id,
         }
     }
 
@@ -56,9 +67,6 @@ impl<'hir> HirRefArena<'hir> {
     }
 
     pub fn get(&self, at: HirId) -> HirRefElem<'hir> {
-        if at.root != self.current_file {
-            panic!("get: at.root != self.current_file");
-        }
         self.buffer[at.id]
     }
 }

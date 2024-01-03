@@ -39,17 +39,13 @@
 use crate::hir::*;
 use crate::hir_arena::{HirRefArena, HirRefElem};
 
-pub struct HirCollectIdsCtxt<'hir> {
-    arena: HirRefArena<'hir>,
+pub struct HirCollectIdsCtxt<'hir, 'arena> {
+    arena: &'arena mut HirRefArena<'hir>,
 }
 
-impl<'hir> HirCollectIdsCtxt<'hir> {
-    pub fn new(arena: HirRefArena<'hir>) -> Self {
+impl<'hir, 'arena> HirCollectIdsCtxt<'hir, 'arena> {
+    pub fn new(arena: &'arena mut HirRefArena<'hir>) -> Self {
         Self { arena }
-    }
-
-    pub fn into_arena(self) -> HirRefArena<'hir> {
-        self.arena
     }
 }
 
@@ -58,8 +54,8 @@ enum Act<'compute, 'hir, T> {
     Push(&'hir T),
 }
 
-pub fn initially_update_ids_mod<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+pub fn initially_update_ids_mod<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     mod_node: &'compute mut ModDef,
 ) {
     let ModDef { items, hir_id } = mod_node;
@@ -67,7 +63,7 @@ pub fn initially_update_ids_mod<'hir, 'compute>(
     collect_ids_item_list(ctxt, Act::Compute(items));
 }
 
-pub fn collect_ids_mod<'hir>(ctxt: &mut HirCollectIdsCtxt<'hir>, mod_node: &'hir ModDef) {
+pub fn collect_ids_mod<'hir, 'arena>(ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>, mod_node: &'hir ModDef) {
     ctxt.arena
         .push_ref(mod_node.hir_id, HirRefElem::Mod(mod_node));
     {
@@ -228,15 +224,15 @@ macro_rules! _simple_seq {
     };
 }
 
-fn collect_ids_item_list<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_item_list<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     item_list: Act<'compute, 'hir, Vec<Item>>,
 ) {
     _list!(ctxt, item_list, collect_ids_item);
 }
 
-fn collect_ids_item<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_item<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     item_node: Act<'compute, 'hir, Item>,
 ) {
     _match!(self Item, (ctxt, item_node, item_node, item_node.kind) {
@@ -245,8 +241,8 @@ fn collect_ids_item<'hir, 'compute>(
     });
 }
 
-fn collect_ids_fn_def<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_fn_def<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     fn_def_node: Act<'compute, 'hir, FnDef>,
 ) {
     _simple_seq!(self Fn, ctxt, fn_def_node, fn_def_node, {
@@ -256,15 +252,15 @@ fn collect_ids_fn_def<'hir, 'compute>(
     });
 }
 
-fn collect_ids_fn_def_params<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_fn_def_params<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     params: Act<'compute, 'hir, Vec<FnParam>>,
 ) {
     _list!(ctxt, params, collect_ids_fn_def_param);
 }
 
-fn collect_ids_fn_def_param<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_fn_def_param<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     param_node: Act<'compute, 'hir, FnParam>,
 ) {
     _simple_seq!(self FnParam,
@@ -279,8 +275,8 @@ fn collect_ids_fn_def_param<'hir, 'compute>(
     );
 }
 
-fn collect_ids_fn_def_ret<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_fn_def_ret<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     ret_ty_node: Act<'compute, 'hir, FnRetTy>,
 ) {
     _simple_seq!(self FnRetTy, ctxt, ret_ty_node, ret_ty_node, {
@@ -288,8 +284,8 @@ fn collect_ids_fn_def_ret<'hir, 'compute>(
     });
 }
 
-fn collect_ids_ty_ref<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_ty_ref<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     ty_ref_node: Act<'compute, 'hir, TyRef>,
 ) {
     _match!(self TyRef, (ctxt, ty_ref_node, ty_ref_node, ty_ref_node.kind) {
@@ -301,8 +297,8 @@ fn collect_ids_ty_ref<'hir, 'compute>(
     });
 }
 
-fn collect_ids_ty_generics<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_ty_generics<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     generics_node: Act<'compute, 'hir, TyGenericArgs>,
 ) {
     _simple_seq!(ctxt, generics_node, generics_node, {
@@ -310,15 +306,15 @@ fn collect_ids_ty_generics<'hir, 'compute>(
     });
 }
 
-fn collect_ids_ty_generic_args_vec<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_ty_generic_args_vec<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     generics: Act<'compute, 'hir, Vec<TyGenericArg>>,
 ) {
     _list!(ctxt, generics, collect_ids_ty_generic_arg);
 }
 
-fn collect_ids_ty_generic_arg<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_ty_generic_arg<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     generic_arg_node: Act<'compute, 'hir, TyGenericArg>,
 ) {
     _match!(self TyGenericArg, (ctxt, generic_arg_node, generic_arg_node, generic_arg_node.kind) {
@@ -327,8 +323,8 @@ fn collect_ids_ty_generic_arg<'hir, 'compute>(
     });
 }
 
-fn collect_ids_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     expr_node: Act<'compute, 'hir, Expr>,
 ) {
     _match!(self Expr, (ctxt, expr_node, expr_node, expr_node.kind) {
@@ -345,8 +341,8 @@ fn collect_ids_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_expr_atom<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_expr_atom<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     atom_node: Act<'compute, 'hir, ExprAtom>,
 ) {
     _match!((ctxt, atom_node, atom_node, atom_node.kind) {
@@ -377,8 +373,8 @@ fn collect_ids_expr_atom<'hir, 'compute>(
     });
 }
 
-fn collect_ids_if_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_if_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     if_expr_node: Act<'compute, 'hir, IfExpr>,
 ) {
     _simple_seq!(ctxt, if_expr_node, if_expr_node, {
@@ -388,8 +384,8 @@ fn collect_ids_if_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_block_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_block_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     block_expr_node: Act<'compute, 'hir, BlockExpr>,
 ) {
     _simple_seq!(ctxt, block_expr_node, block_expr_node, {
@@ -397,8 +393,8 @@ fn collect_ids_block_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_loop_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_loop_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     loop_expr_node: Act<'compute, 'hir, LoopExpr>,
 ) {
     _simple_seq!(ctxt, loop_expr_node, loop_expr_node, {
@@ -406,8 +402,8 @@ fn collect_ids_loop_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_return_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_return_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     return_expr_node: Act<'compute, 'hir, ReturnExpr>,
 ) {
     _simple_seq!(ctxt, return_expr_node, return_expr_node, {
@@ -415,8 +411,8 @@ fn collect_ids_return_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_break_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_break_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     break_expr_node: Act<'compute, 'hir, BreakExpr>,
 ) {
     _simple_seq!(ctxt, break_expr_node, break_expr_node, {
@@ -424,15 +420,15 @@ fn collect_ids_break_expr<'hir, 'compute>(
     });
 }
 
-fn collect_ids_continue_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_continue_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     continue_expr_node: Act<'compute, 'hir, ContinueExpr>,
 ) {
     _simple_seq!(ctxt, continue_expr_node, continue_expr_node, {});
 }
 
-fn collect_ids_binary_op_expr<'hir, 'collect>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_binary_op_expr<'hir, 'arena, 'collect>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     binary_op_expr_node: Act<'collect, 'hir, BinaryOpExpr>,
 ) {
     _simple_seq!(ctxt, binary_op_expr_node, binary_op_expr_node,
@@ -443,8 +439,8 @@ fn collect_ids_binary_op_expr<'hir, 'collect>(
     );
 }
 
-fn collect_ids_call_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_call_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     call_expr_node: Act<'compute, 'hir, CallExpr>,
 ) {
     _simple_seq!(ctxt, call_expr_node, call_expr_node,
@@ -455,8 +451,8 @@ fn collect_ids_call_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_index_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_index_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     index_expr_node: Act<'compute, 'hir, IndexExpr>,
 ) {
     _simple_seq!(ctxt, index_expr_node, index_expr_node,
@@ -467,8 +463,8 @@ fn collect_ids_index_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_field_access_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_field_access_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     field_access_expr: Act<'compute, 'hir, FieldAccess>,
 ) {
     _simple_seq!(ctxt, field_access_expr, field_access_expr,
@@ -478,8 +474,8 @@ fn collect_ids_field_access_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_method_call_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_method_call_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     method_call_node: Act<'compute, 'hir, MethodCall>,
 ) {
     _simple_seq!(ctxt, method_call_node, method_call_node,
@@ -490,8 +486,8 @@ fn collect_ids_method_call_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_call_expr_args<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_call_expr_args<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     call_expr_args_node: Act<'compute, 'hir, CallExprArgs>,
 ) {
     _simple_seq!(ctxt, call_expr_args_node, call_expr_args_node,
@@ -502,15 +498,15 @@ fn collect_ids_call_expr_args<'hir, 'compute>(
     );
 }
 
-fn collect_ids_call_expr_args_list<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_call_expr_args_list<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     args: Act<'compute, 'hir, Vec<Expr>>,
 ) {
     _list!(ctxt, args, collect_ids_expr)
 }
 
-fn collect_ids_lambda_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_lambda_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     lambda_expr_node: Act<'compute, 'hir, LambdaExpr>,
 ) {
     _simple_seq!(self LambdaExpr, ctxt, lambda_expr_node, lambda_expr_node,
@@ -521,8 +517,8 @@ fn collect_ids_lambda_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_tuple_like_expr<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_tuple_like_expr<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     tuple_like_expr_node: Act<'compute, 'hir, TupleLikeExpr>,
 ) {
     _simple_seq!(ctxt, tuple_like_expr_node, tuple_like_expr_node,
@@ -532,15 +528,15 @@ fn collect_ids_tuple_like_expr<'hir, 'compute>(
     );
 }
 
-fn collect_ids_expr_vec<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_expr_vec<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     exprs: Act<'compute, 'hir, Vec<Expr>>,
 ) {
     _list!(ctxt, exprs, collect_ids_expr);
 }
 
-fn collect_ids_lambda_param_list<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_lambda_param_list<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     lambda_param_list_node: Act<'compute, 'hir, LambdaParamList>,
 ) {
     _simple_seq!(ctxt, lambda_param_list_node, lambda_param_list_node, {
@@ -548,15 +544,15 @@ fn collect_ids_lambda_param_list<'hir, 'compute>(
     });
 }
 
-fn collect_ids_lambda_param_list_vec<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_lambda_param_list_vec<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     lambda_param_list: Act<'compute, 'hir, Vec<LambdaParam>>,
 ) {
     _list!(ctxt, lambda_param_list, collect_ids_lambda_param);
 }
 
-fn collect_ids_lambda_param<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_lambda_param<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     lambda_param_node: Act<'compute, 'hir, LambdaParam>,
 ) {
     _simple_seq!(ctxt, lambda_param_node, lambda_param_node, {
@@ -565,8 +561,8 @@ fn collect_ids_lambda_param<'hir, 'compute>(
     });
 }
 
-fn collect_ids_pat<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_pat<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     pat_node: Act<'compute, 'hir, Pat>,
 ) {
     _match!(self Pat, (ctxt, pat_node, pat_node, pat_node.kind) {
@@ -576,8 +572,8 @@ fn collect_ids_pat<'hir, 'compute>(
     })
 }
 
-fn collect_ids_stmt<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_stmt<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     stmt_node: Act<'compute, 'hir, Stmt>,
 ) {
     _match!(self Stmt, (ctxt, stmt_node, stmt_node, stmt_node.kind) {
@@ -599,8 +595,8 @@ fn collect_ids_stmt<'hir, 'compute>(
     });
 }
 
-fn collect_ids_let_stmt<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_let_stmt<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     let_stmt_node: Act<'compute, 'hir, LetStmt>,
 ) {
     _simple_seq!(ctxt, let_stmt_node, let_stmt_node,
@@ -612,8 +608,8 @@ fn collect_ids_let_stmt<'hir, 'compute>(
     );
 }
 
-fn collect_ids_for_stmt<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_for_stmt<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     for_stmt: Act<'compute, 'hir, ForStmt>,
 ) {
     _simple_seq!(ctxt, for_stmt, for_stmt,
@@ -625,8 +621,8 @@ fn collect_ids_for_stmt<'hir, 'compute>(
     );
 }
 
-fn collect_ids_while_stmt<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_while_stmt<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     while_stmt: Act<'compute, 'hir, WhileStmt>,
 ) {
     _simple_seq!(ctxt, while_stmt, while_stmt,
@@ -637,8 +633,8 @@ fn collect_ids_while_stmt<'hir, 'compute>(
     );
 }
 
-fn collect_ids_assignment_stmt<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_assignment_stmt<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     assignment_stmt: Act<'compute, 'hir, AssignmentStmt>,
 ) {
     _simple_seq!(ctxt, assignment_stmt, assignment_stmt,
@@ -649,8 +645,8 @@ fn collect_ids_assignment_stmt<'hir, 'compute>(
     );
 }
 
-fn collect_ids_block<'hir, 'compute>(
-    ctxt: &mut HirCollectIdsCtxt<'hir>,
+fn collect_ids_block<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     block_node: Act<'compute, 'hir, Block>,
 ) {
     _simple_seq!(self Block, ctxt, block_node, block_node,

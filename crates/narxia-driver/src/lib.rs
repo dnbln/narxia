@@ -5,6 +5,7 @@ use std::rc::Rc;
 use std::{fmt, io};
 
 use colored::Colorize;
+use narxia_hir::HirId;
 use narxia_src_db::{SrcFile, SrcFileDatabase};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
@@ -110,3 +111,63 @@ pub fn lower_syn_file(ctx: &DriverCtx, file: SynFile) -> narxia_hir_db::HirFile 
 pub fn init_log() {
     narxia_log_impl::init();
 }
+
+pub struct HirDebugImpl<'hir, 'ctxt, H: std::fmt::Debug> {
+    hir: &'hir H,
+    context: &'ctxt DriverCtx,
+}
+
+impl<'hir, 'ctxt, H: std::fmt::Debug> std::fmt::Debug for HirDebugImpl<'hir, 'ctxt, H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hir = &self.hir;
+        let context = self.context;
+
+        thread_local! {
+            static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
+        }
+    
+        DRIVER_CTXT.with(|f| {
+            if !f.borrow().is_null() {
+                panic!("Driver context already set");
+            }
+
+            *f.borrow_mut() = context as *const DriverCtx;
+        });
+
+        struct ContextResetGuard;
+
+        impl Drop for ContextResetGuard {
+            fn drop(&mut self) {
+                DRIVER_CTXT.with(|f| {
+                    *f.borrow_mut() = core::ptr::null();
+                });
+            }
+        }
+
+        let _guard = ContextResetGuard;
+    
+        fn debug_hir_id_path_callback(hir_id: HirId) -> String {
+            DRIVER_CTXT.with(|f| {
+                let f = f.borrow();
+                let ctx = unsafe { &**f };
+                let db = &ctx.db;
+                format!("{}", hir_id.src_file().get_presentable_path(db).display())
+            })
+        }
+    
+        narxia_hir::hir::dbg_hir(debug_hir_id_path_callback, || {
+            write!(f, "{:?}", hir)
+        })
+    }
+}
+
+pub trait HirDbg {
+    fn hir_dbg<'hir, 'ctxt>(&'hir self, context: &'ctxt DriverCtx) -> HirDebugImpl<'hir, 'ctxt, Self> where Self: std::fmt::Debug + Sized {
+        HirDebugImpl {
+            hir: self,
+            context,
+        }
+    }
+}
+
+impl<T> HirDbg for T where T: std::fmt::Debug + Sized {}

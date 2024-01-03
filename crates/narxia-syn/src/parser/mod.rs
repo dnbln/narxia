@@ -11,7 +11,8 @@ use crate::parser::parse_event_handler::{
 use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
 use crate::syntax_kind::{SyntaxKind, T};
 use crate::syntree::GreenTree;
-use crate::token_source::{BufferedTokenSource, DynTsContainer, TokenSource};
+use crate::token_source::buffered_ts::BufferedTokenSource;
+use crate::token_source::{DynTsContainer, TokenSource};
 
 mod parse_event_handler;
 mod parse_stack;

@@ -651,6 +651,7 @@ dependencies = [
  "colored",
  "criterion",
  "miette",
+ "narxia-hir",
  "narxia-hir-db",
  "narxia-log",
  "narxia-log-impl",

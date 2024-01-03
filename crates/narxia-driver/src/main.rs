@@ -1,9 +1,8 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use colored::Colorize;
 use miette::IntoDiagnostic;
-use narxia_driver::DriverCtx;
+use narxia_driver::{DriverCtx, HirDbg};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -53,7 +52,8 @@ fn main() -> miette::Result<()> {
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
-            println!("{:?}", hir.mod_def(&ctx.db));
+
+            println!("{:?}", hir.mod_def(&ctx.db).hir_dbg(&ctx));
         }
     }
 

@@ -2,11 +2,49 @@ use std::fmt;
 
 use narxia_syn::syntree::Token;
 
-use crate::{HirSpan, HirId};
+use crate::{HirId, HirSpan};
+
+pub struct HirDebugContext {
+    get_path_fn: fn(HirId) -> String,
+}
+
+thread_local! {
+    static DEBUG_CONTEXT: std::cell::RefCell<Option<HirDebugContext>> = std::cell::RefCell::new(None);
+}
+
+pub fn dbg_hir(get_path_fn: fn(HirId) -> String, cb: impl FnOnce() -> std::fmt::Result) -> std::fmt::Result {
+    DEBUG_CONTEXT.with(move |f| {
+        if f.borrow().is_some() {
+            panic!("Hir debug context already set");
+        }
+
+        struct HirDebugContextGuard<'a>(&'a std::cell::RefCell<Option<HirDebugContext>>);
+
+        impl<'a> Drop for HirDebugContextGuard<'a> {
+            fn drop(&mut self) {
+                *self.0.borrow_mut() = None;
+            }
+        }
+
+        *f.borrow_mut() = Some(HirDebugContext { get_path_fn });
+
+        let _guard = HirDebugContextGuard(f);
+
+        cb()
+    })
+}
 
 impl fmt::Debug for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} ~ {}", self.root, self.id)
+        let path = DEBUG_CONTEXT.with(|f| {
+            let f = f.borrow();
+            if let Some(ctx) = &*f {
+                (ctx.get_path_fn)(*self)
+            } else {
+                panic!("Hir debug context not set");
+            }
+        });
+        write!(f, "{path} ~ {}", self.id)
     }
 }
 
@@ -28,10 +66,16 @@ pub enum ItemKind {
     Stmt(Stmt),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Eq, PartialEq)]
 pub struct Ident {
     pub span: HirSpan,
     pub text: String,
+}
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} @ {}", self.text, self.span)
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
