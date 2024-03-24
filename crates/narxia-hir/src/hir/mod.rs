@@ -35,6 +35,7 @@ pub enum ItemKind {
 pub struct Ident {
     pub span: HirSpan,
     pub text: String,
+    pub hir_id: HirId,
 }
 
 impl fmt::Debug for Ident {
@@ -331,6 +332,7 @@ pub struct LetStmt {
     pub pat: Pat,
     pub ty: Option<TyRef>,
     pub init: Option<Expr>,
+    pub hir_id: HirId,
 }
 
 #[derive(Debug, Eq, PartialEq)]

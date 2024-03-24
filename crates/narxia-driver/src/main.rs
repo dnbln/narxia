@@ -15,6 +15,7 @@ enum NarxiaDriverCommand {
     #[clap(name = "display-hir-debug")]
     DisplayHirDebug(NarxiaDriverDisplayHirDebugCommand),
     DisplayTyBounds(NarxiaDriverDisplayTyBoundsCommand),
+    DisplayNameResolution(NarxiaDriverDisplayNameResolutionCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -32,9 +33,13 @@ pub struct NarxiaDriverDisplayHirDebugCommand {
     file: PathBuf,
 }
 
-
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverDisplayTyBoundsCommand {
+    file: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct NarxiaDriverDisplayNameResolutionCommand {
     file: PathBuf,
 }
 
@@ -96,7 +101,7 @@ fn main() -> miette::Result<()> {
 
             let mod_def = hir.mod_def(&ctx.db);
 
-            let tbounds = narxia_hir_typechk::collect_ty_bounds(mod_def);
+            let tbounds = narxia_hir_typechk::ty_bounds::collect_ty_bounds(mod_def);
             let mut hir_ref_arena = HirRefArena::new(file);
             narxia_hir::build_refs_to_arena(&mut hir_ref_arena, mod_def);
 
@@ -106,6 +111,32 @@ fn main() -> miette::Result<()> {
                 let hir_ref = hir_ref_arena.get(bound.hir_id);
 
                 println!("Bound from:\n{}", hir_ref.hir_dbg(&ctx));
+            }
+        }
+        NarxiaDriverCommand::DisplayNameResolution(display_name_resolution_cmd) => {
+            narxia_log::i!("Display name resolution command: {display_name_resolution_cmd:?}");
+
+            let file = display_name_resolution_cmd.file;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+
+            ctx.trace_file(file);
+
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+
+            let mod_def = hir.mod_def(&ctx.db);
+
+            let mut hir_ref_arena = HirRefArena::new(file);
+            narxia_hir::build_refs_to_arena(&mut hir_ref_arena, mod_def);
+
+            let name_ref_context = narxia_hir_typechk::do_name_resolution(&mod_def);
+
+            for (name, place) in name_ref_context.iter() {
+                println!("Name: {:?} -> {:?}", name.hir_dbg(&ctx), place.hir_dbg(&ctx));
+
+                let hir_ref = hir_ref_arena.get(place.place_base.hir_id);
+
+                println!("Place from:\n{}", hir_ref.hir_dbg(&ctx));
             }
         }
     }

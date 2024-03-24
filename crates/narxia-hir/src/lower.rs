@@ -24,6 +24,12 @@ where
     }
 }
 
+impl HasHirSpan for HirSpan {
+    fn span(&self) -> HirSpan {
+        *self
+    }
+}
+
 impl HirLowerCtxt {
     #[cfg(hir_id_span)]
     fn dummy_hir_id<T: HasHirSpan>(&self, v: &T) -> HirId {
@@ -491,6 +497,7 @@ fn lower_let_stmt(hir_lower_ctxt: &HirLowerCtxt, let_stmt: &syntree::LetStmt) ->
         pat,
         ty,
         init,
+        hir_id: dummy_hir_id!(hir_lower_ctxt, let_stmt),
     }
 }
 
@@ -777,5 +784,9 @@ fn lower_ident(hir_lower_ctxt: &HirLowerCtxt, ident: &Token) -> Ident {
 
     let span = HirSpan::of(ident);
     let text = ident.text().to_owned();
-    Ident { span, text }
+    Ident {
+        span,
+        text,
+        hir_id: dummy_hir_id!(hir_lower_ctxt, &span),
+    }
 }

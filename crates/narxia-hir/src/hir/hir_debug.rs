@@ -710,6 +710,18 @@ fn display_expr_atom(
     Ok(())
 }
 
+impl fmt::Display for ExprAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_expr_atom(f, self, HirDisplayContext::new())
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.text)
+    }
+}
+
 fn display_lambda_param(
     f: &mut fmt::Formatter,
     param: &LambdaParam,

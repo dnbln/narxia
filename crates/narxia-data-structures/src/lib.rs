@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::ops::Index;
 
@@ -17,7 +18,7 @@ impl<K: std::hash::Hash + Eq, V> Default for FxHashMap<K, V> {
     }
 }
 
-impl <K: std::hash::Hash + Eq, V: PartialEq> PartialEq for FxHashMap<K, V> {
+impl<K: std::hash::Hash + Eq, V: PartialEq> PartialEq for FxHashMap<K, V> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
@@ -86,5 +87,36 @@ where
 
 pub struct FxHashSet<K>(HashSet<K>);
 
-pub struct FxBTreeMap<K, V>(BTreeMap<K, V>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FxBTreeMap<K: Ord, V>(BTreeMap<K, V>);
+
+impl<K: Ord, V> FxBTreeMap<K, V> {
+    pub fn new() -> Self {
+        Self(BTreeMap::new())
+    }
+
+    pub fn insert(&mut self, k: K, v: V) -> Option<V> {
+        self.0.insert(k, v)
+    }
+
+    pub fn get<Q: Ord + ?Sized>(&self, k: &Q) -> Option<&V>
+    where
+        K: Borrow<Q>,
+    {
+        self.0.get(k)
+    }
+
+    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, K, V> {
+        self.0.iter()
+    }
+}
+
+impl<K: Ord, KA: AsRef<K>, V> Index<KA> for FxBTreeMap<K, V> {
+    type Output = V;
+
+    fn index(&self, index: KA) -> &Self::Output {
+        self.0.index(index.as_ref())
+    }
+}
+
 pub struct FxBTreeSet<K>(BTreeSet<K>);

@@ -375,7 +375,9 @@ fn collect_ids_expr_atom<'hir, 'arena, 'compute>(
     atom_node: Act<'compute, 'hir, ExprAtom>,
 ) {
     _match!((ctxt, atom_node, atom_node, atom_node.kind) {
-        ExprAtomKind::Ident(ident) => {},
+        ExprAtomKind::Ident(ident) => {
+            (collect_ids_ident(*ident)),
+        },
         ExprAtomKind::Str(str) => {
             (collect_ids_str_literal(*str)),
         },
@@ -405,6 +407,13 @@ fn collect_ids_expr_atom<'hir, 'arena, 'compute>(
             (collect_ids_lambda_expr(*lambda)),
         },
     });
+}
+
+fn collect_ids_ident<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    ident_node: Act<'compute, 'hir, Ident>,
+) {
+    _simple_seq!(self Ident, ctxt, ident_node, ident_node, {});
 }
 
 fn collect_ids_str_literal<'hir, 'arena, 'compute>(
@@ -683,7 +692,7 @@ fn collect_ids_let_stmt<'hir, 'arena, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     let_stmt_node: Act<'compute, 'hir, LetStmt>,
 ) {
-    _simple_seq!(ctxt, let_stmt_node, let_stmt_node,
+    _simple_seq!(self LetStmt, ctxt, let_stmt_node, let_stmt_node,
         {
             (collect_ids_pat(let_stmt_node.pat)),
             (?collect_ids_ty_ref(let_stmt_node.ty)),
