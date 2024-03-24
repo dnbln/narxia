@@ -1,12 +1,10 @@
 [package]
-name = "narxia-hir"
+name = "narxia-hir-typechk"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-owo-colors.workspace = true
-
-narxia-syn.workspace = true
-narxia-src-db.workspace = true
+narxia-hir.workspace = true
+narxia-data-structures.workspace = true

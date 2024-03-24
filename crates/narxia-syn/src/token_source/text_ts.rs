@@ -1,5 +1,6 @@
 use std::ops::RangeInclusive;
 
+use super::TokParserState;
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 use crate::token_source::{Token, TokenError, TokenSource};
@@ -9,6 +10,7 @@ pub struct TextTokenSource<'text> {
     text: &'text str,
     pos: usize,
     error: Option<TokenError>,
+    state: TokParserState,
 }
 
 impl<'text> TextTokenSource<'text> {
@@ -18,6 +20,7 @@ impl<'text> TextTokenSource<'text> {
             text,
             pos: 0,
             error: None,
+            state: TokParserState::Normal,
         }
     }
 
@@ -28,7 +31,7 @@ impl<'text> TextTokenSource<'text> {
         }
 
         let to_parse = &self.text[self.pos..];
-        let (token, advanced, error) = Self::parse_one_token(to_parse);
+        let (token, advanced, error) = Self::parse_one_token(self.state, to_parse);
         let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
         self.pos += advanced;
         self.error = error;
@@ -36,10 +39,19 @@ impl<'text> TextTokenSource<'text> {
     }
 
     #[inline(always)]
-    fn parse_one_token(s: &str) -> (Token, usize, Option<TokenError>) {
-        let mut parser = CharTokenParser::new(s);
-        let (token, advance) = parser.parse_one_token();
-        (token, advance, parser.error)
+    fn parse_one_token(state: TokParserState, s: &str) -> (Token, usize, Option<TokenError>) {
+        match state {
+            TokParserState::Normal => {
+                let mut parser = CharTokenParser::new(s);
+                let (token, advance) = parser.parse_one_token();
+                (token, advance, parser.error)
+            }
+            TokParserState::InStringLiteral => {
+                let mut parser = CharInStringTokenParser::new(s);
+                let (token, advance) = parser.parse_one_token();
+                (token, advance, parser.error)
+            }
+        }
     }
 
     #[inline(always)]
@@ -124,6 +136,10 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
     fn restore_pos(&mut self, pos: usize) {
         self.pos = pos;
     }
+
+    fn set_parser_state(&mut self, state: TokParserState) {
+        self.state = state;
+    }
 }
 
 struct CharTokenParser<'text> {
@@ -150,6 +166,50 @@ fn r1(kind: SyntaxKind, start: usize) -> (Token, usize) {
     r(kind, start, start + 1)
 }
 
+#[inline(always)]
+fn consume_all<const NC: usize, const NR: usize>(
+    c: &mut std::str::CharIndices,
+    chars: [char; NC],
+    ranges: [RangeInclusive<char>; NR],
+) -> usize {
+    let end;
+
+    loop {
+        let Some((next, c)) = c.next() else {
+            end = c.offset();
+            break;
+        };
+        if !chars.contains(&c) && !ranges.iter().any(|r| r.contains(&c)) {
+            end = next;
+            break;
+        }
+    }
+
+    end
+}
+
+#[inline(always)]
+fn consume_until<const NC: usize, const NR: usize>(
+    c: &mut std::str::CharIndices,
+    chars: [char; NC],
+    ranges: [RangeInclusive<char>; NR],
+) -> usize {
+    let end;
+
+    loop {
+        let Some((next, c)) = c.next() else {
+            end = c.offset();
+            break;
+        };
+        if chars.contains(&c) || ranges.iter().any(|r| r.contains(&c)) {
+            end = next;
+            break;
+        }
+    }
+
+    end
+}
+
 impl<'text> CharTokenParser<'text> {
     #[inline(always)]
     fn new(text: &'text str) -> Self {
@@ -161,55 +221,11 @@ impl<'text> CharTokenParser<'text> {
     }
 
     #[inline(always)]
-    fn consume_all<const NC: usize, const NR: usize>(
-        &mut self,
-        chars: [char; NC],
-        ranges: [RangeInclusive<char>; NR],
-    ) -> usize {
-        let end;
-
-        loop {
-            let Some((next, c)) = self.chars.next() else {
-                end = self.chars.offset();
-                break;
-            };
-            if !chars.contains(&c) && !ranges.iter().any(|r| r.contains(&c)) {
-                end = next;
-                break;
-            }
-        }
-
-        end
-    }
-
-    #[inline(always)]
-    fn consume_until<const NC: usize, const NR: usize>(
-        &mut self,
-        chars: [char; NC],
-        ranges: [RangeInclusive<char>; NR],
-    ) -> usize {
-        let end;
-
-        loop {
-            let Some((next, c)) = self.chars.next() else {
-                end = self.chars.offset();
-                break;
-            };
-            if chars.contains(&c) || ranges.iter().any(|r| r.contains(&c)) {
-                end = next;
-                break;
-            }
-        }
-
-        end
-    }
-
-    #[inline(always)]
     fn parse_one_token(&mut self) -> (Token, usize) {
         let (start, c) = self.chars.next().unwrap();
         match c {
             'a'..='z' | 'A'..='Z' | '_' => {
-                let end = self.consume_all(['_'], ['a'..='z', 'A'..='Z', '0'..='9']);
+                let end = consume_all(&mut self.chars, ['_'], ['a'..='z', 'A'..='Z', '0'..='9']);
                 let t = &self.text[start..end];
                 let kind = match t {
                     "fn" => SyntaxKind::FN_KW,
@@ -226,31 +242,33 @@ impl<'text> CharTokenParser<'text> {
                     "true" => SyntaxKind::TRUE_KW,
                     "false" => SyntaxKind::FALSE_KW,
                     "const" => SyntaxKind::CONST_KW,
+                    "mut" => SyntaxKind::MUT_KW,
                     _ => SyntaxKind::IDENT,
                 };
                 r(kind, start, end)
             }
             '0' => match self.chars.next() {
                 Some((_next, 'x')) => {
-                    let end = self.consume_all(['_'], ['0'..='9', 'a'..='f', 'A'..='F']);
+                    let end =
+                        consume_all(&mut self.chars, ['_'], ['0'..='9', 'a'..='f', 'A'..='F']);
                     r(SyntaxKind::NUM_HEX, start, end)
                 }
                 Some((_next, 'b')) => {
-                    let end = self.consume_all(['_', '0', '1'], []);
+                    let end = consume_all(&mut self.chars, ['_', '0', '1'], []);
                     r(SyntaxKind::NUM_BIN, start, end)
                 }
                 Some((_next, '0'..='7')) => {
-                    let end = self.consume_all(['_'], ['0'..='7']);
+                    let end = consume_all(&mut self.chars, ['_'], ['0'..='7']);
                     r(SyntaxKind::NUM_OCT, start, end)
                 }
                 Some((_, _)) | None => r1(SyntaxKind::NUM_DEC, start),
             },
             '1'..='9' => {
-                let end = self.consume_all(['_'], ['0'..='9']);
+                let end = consume_all(&mut self.chars, ['_'], ['0'..='9']);
                 r(SyntaxKind::NUM_DEC, start, end)
             }
             ' ' | '\t' | '\r' => {
-                let end = self.consume_all([' ', '\t', '\r'], []);
+                let end = consume_all(&mut self.chars, [' ', '\t', '\r'], []);
                 r(SyntaxKind::WHITESPACE, start, end)
             }
             '\n' => r1(SyntaxKind::NEWLINE, start),
@@ -260,7 +278,7 @@ impl<'text> CharTokenParser<'text> {
             '/' => {
                 let (end, kind) = match self.chars.next() {
                     Some((_, '/')) => {
-                        let end = self.consume_until(['\n'], []);
+                        let end = consume_until(&mut self.chars, ['\n'], []);
                         (end, SyntaxKind::COMMENT)
                     }
                     Some((_, '*')) => loop {
@@ -297,22 +315,23 @@ impl<'text> CharTokenParser<'text> {
             '|' => r1(SyntaxKind::PIPE, start),
             '^' => r1(SyntaxKind::CARET, start),
             '"' => {
-                let mut escaped = false;
-                let end = loop {
-                    let Some((next, c)) = self.chars.next() else {
-                        self.error = Some(TokenError::StringNotClosed);
-                        break self.chars.offset();
-                    };
-                    if c == '"' && !escaped {
-                        break next + 1;
-                    }
-                    if c == '\\' {
-                        escaped = !escaped;
-                    } else {
-                        escaped = false;
-                    }
-                };
-                r(SyntaxKind::STRING, start, end)
+                // let mut escaped = false;
+                // let end = loop {
+                //     let Some((next, c)) = self.chars.next() else {
+                //         self.error = Some(TokenError::StringNotClosed);
+                //         break self.chars.offset();
+                //     };
+                //     if c == '"' && !escaped {
+                //         break next + 1;
+                //     }
+                //     if c == '\\' {
+                //         escaped = !escaped;
+                //     } else {
+                //         escaped = false;
+                //     }
+                // };
+                // r(SyntaxKind::STRING, start, end)
+                r1(SyntaxKind::BEGIN_STRING, start)
             }
             c => {
                 let end = self.chars.offset();
@@ -335,7 +354,7 @@ impl<'text> CharTokenParser<'text> {
                     '/' => {
                         match self.chars.next() {
                             Some((_, '/')) => {
-                                let end = self.consume_until(['\n'], []);
+                                let end = consume_until(&mut self.chars, ['\n'], []);
                                 // here if we got to the end we should stop either way, since we ran into a \n
                                 break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, end);
                             }
@@ -376,7 +395,7 @@ impl<'text> CharTokenParser<'text> {
                         match self.chars.next() {
                             Some((_, '/')) => {
                                 // here consuming the \n from the thing is alright
-                                let _end = self.consume_until(['\n'], []);
+                                let _end = consume_until(&mut self.chars, ['\n'], []);
                             }
                             Some((_, '*')) => loop {
                                 let Some((_, c)) = self.chars.next() else {
@@ -396,6 +415,70 @@ impl<'text> CharTokenParser<'text> {
                         break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, start);
                     }
                 }
+            }
+        }
+    }
+}
+
+struct CharInStringTokenParser<'text> {
+    text: &'text str,
+    chars: std::str::CharIndices<'text>,
+    error: Option<TokenError>,
+}
+
+impl<'text> CharInStringTokenParser<'text> {
+    #[inline(always)]
+    fn new(text: &'text str) -> Self {
+        Self {
+            text,
+            chars: text.char_indices(),
+            error: None,
+        }
+    }
+
+    #[inline(always)]
+    fn parse_one_token(&mut self) -> (Token, usize) {
+        let (start, c) = self.chars.next().unwrap();
+        match c {
+            '"' => r1(SyntaxKind::END_STRING, start),
+            '\\' => {
+                let Some((next, c)) = self.chars.next() else {
+                    self.error = Some(TokenError::StringNotClosed);
+                    return r1(SyntaxKind::ERROR, start);
+                };
+                match c {
+                    'x' => {
+                        let end = consume_all(&mut self.chars, [], ['0'..='9', 'a'..='f', 'A'..='F']);
+                        r(SyntaxKind::StringLiteralFragEscapeSequenceToken, start, end)
+                    }
+                    _ => r(
+                        SyntaxKind::StringLiteralFragEscapedCharToken,
+                        start,
+                        next + 1,
+                    ),
+                }
+            }
+            '$' => {
+                let Some((next, c)) = self.chars.next() else {
+                    self.error = Some(TokenError::StringNotClosed);
+                    return r1(SyntaxKind::ERROR, start);
+                };
+
+                match c {
+                    '{' => r1(SyntaxKind::StringLiteralFragDisplayToken, start),
+                    '?' => r(SyntaxKind::StringLiteralFragDebugToken, start, next + 1),
+                    'a'..='z' | 'A'..='Z' | '_' => {
+                        r1(SyntaxKind::StringLiteralFragDisplayToken, start)
+                    }
+                    _ => {
+                        self.error = Some(TokenError::UnexpectedChar(c));
+                        r1(SyntaxKind::ERROR, start)
+                    }
+                }
+            }
+            _ => {
+                let end = consume_until(&mut self.chars, ['\\', '"', '$'], []);
+                r(SyntaxKind::StringLiteralFragTextPartToken, start, end)
             }
         }
     }

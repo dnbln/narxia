@@ -1,0 +1,54 @@
+Root@0..41
+  Item@0..9
+    Stmt@0..9
+      LetStmt@0..9
+        LET_KW@0..3 "let"
+        COMPOSED_TRIVIA@3..4 " "
+        Pat@4..5
+          IDENT@4..5 "x"
+        COMPOSED_TRIVIA@5..6 " "
+        EQ@6..7 "="
+        COMPOSED_TRIVIA@7..8 " "
+        Expr@8..9
+          ExprAtom@8..9
+            NumLit@8..9
+              NUM_DEC@8..9 "1"
+  COMPOSED_TRIVIA@9..11 "\r\n"
+  Item@11..24
+    Stmt@11..24
+      LetStmt@11..24
+        LET_KW@11..14 "let"
+        COMPOSED_TRIVIA@14..15 " "
+        MUT_KW@15..18 "mut"
+        COMPOSED_TRIVIA@18..19 " "
+        Pat@19..20
+          IDENT@19..20 "y"
+        COMPOSED_TRIVIA@20..21 " "
+        EQ@21..22 "="
+        COMPOSED_TRIVIA@22..23 " "
+        Expr@23..24
+          ExprAtom@23..24
+            NumLit@23..24
+              NUM_DEC@23..24 "2"
+  COMPOSED_TRIVIA@24..26 "\r\n"
+  Item@26..39
+    Stmt@26..39
+      LetStmt@26..39
+        LET_KW@26..29 "let"
+        COMPOSED_TRIVIA@29..30 " "
+        Pat@30..31
+          IDENT@30..31 "z"
+        COMPOSED_TRIVIA@31..32 " "
+        EQ@32..33 "="
+        COMPOSED_TRIVIA@33..34 " "
+        Expr@34..39
+          BinaryOpExpr@34..39
+            ExprAtom@34..35
+              IDENT@34..35 "x"
+            COMPOSED_TRIVIA@35..36 " "
+            BinaryOpExprOp@36..37
+              PLUS@36..37 "+"
+            COMPOSED_TRIVIA@37..38 " "
+            ExprAtom@38..39
+              IDENT@38..39 "y"
+  COMPOSED_TRIVIA@39..41 "\r\n"

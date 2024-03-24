@@ -14,7 +14,6 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
-use colored::{ColoredString, Colorize};
 use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, IntoDiagnostic};
 use narxia_syn::syntax_kind::SyntaxKind;
@@ -24,6 +23,7 @@ use narxia_syn::syntree::tests_data::{
 use narxia_syn::syntree::{Node, Token, TreeNode};
 use narxia_syn::text_span::TextSpan;
 use narxia_test_runner::parser_tests::ParserTestSingleFolder;
+use owo_colors::{OwoColorize, Style};
 
 fn node_chk(node: &Node) -> impl Fn(&ElemRef) -> bool + '_ {
     |e| e.kind == node.kind() && e.span == TextSpan::of_node(node)
@@ -96,38 +96,41 @@ fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
                         it.kind() == node.kind() && TextSpan::of_node(it) == TextSpan::of_node(node)
                     });
 
-                    let painter = match is_missing {
-                        true => |s: ColoredString| s.bright_red(),
-                        false => |s: ColoredString| s.green(),
+                    let style = match is_missing {
+                        true => Style::new().bright_red(),
+                        false => Style::new().green(),
                     };
 
-                    let data = painter(ColoredString::from(
-                        format!("{:?}@{}", node.kind(), TextSpan::of_node(node)).as_str(),
-                    ));
-
-                    writeln!(f, "{:offset$}{data}", "", offset = offset.0)
+                    writeln!(
+                        f,
+                        "{:offset$}{}",
+                        "",
+                        format_args!("{:?}@{}", node.kind(), TextSpan::of_node(node)).style(style),
+                        offset = offset.0
+                    )
                 },
                 &|f, offset, token| {
                     let is_missing = missing_tokens.iter().any(|it| {
                         it.kind() == token.kind() && TextSpan::of(it) == TextSpan::of(token)
                     });
 
-                    let painter = match is_missing {
-                        true => |s: ColoredString| s.bright_red(),
-                        false => |s: ColoredString| s.green(),
+                    let style = match is_missing {
+                        true => Style::new().bright_red(),
+                        false => Style::new().green(),
                     };
 
-                    let data = painter(ColoredString::from(
-                        format!(
+                    writeln!(
+                        f,
+                        "{:offset$}{}",
+                        "",
+                        style.style(format_args!(
                             "{:?}@{} {:?}",
                             token.kind(),
                             TextSpan::of(token),
                             token.text()
-                        )
-                        .as_str(),
-                    ));
-
-                    writeln!(f, "{:offset$}{data}", "", offset = offset.0)
+                        )),
+                        offset = offset.0
+                    )
                 },
             )
         );

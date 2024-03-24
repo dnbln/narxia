@@ -1,3 +1,5 @@
+#![feature(trait_upcasting)]
+
 use narxia_syn::syntree::SynTree;
 
 #[salsa::jar(db = SynDb)]

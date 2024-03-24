@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 use std::{fmt, io};
 
-use colored::{ColoredString, Colorize};
+use owo_colors::{OwoColorize, Style};
 use tracing::field::{Field, Visit};
 use tracing::span::Attributes;
 use tracing::{Event, Id, Level, Metadata, Subscriber};
@@ -116,7 +116,7 @@ where
             self.style_field(w, "at", |w| {
                 write!(w, "{}", file_path.dimmed().bright_white())?;
                 if let Some(file_line) = md.line() {
-                    write!(w, ":{}", file_line.to_string().bright_white())?;
+                    write!(w, ":{}", file_line.bright_white())?;
                 }
                 Ok(())
             })?;
@@ -170,15 +170,19 @@ where
 
         let level = event.metadata().level();
 
-        let (name, style_color): (&str, fn(String) -> ColoredString) = match level {
-            &Level::TRACE => ("TRACE", |s| s.bright_white()),
-            &Level::DEBUG => ("DEBUG", |s| s.bright_blue()),
-            &Level::INFO => ("INFO", |s| s.green()),
-            &Level::WARN => ("WARN", |s| s.yellow()),
-            &Level::ERROR => ("ERROR", |s| s.red()),
+        let (name, style_color): (&str, Style) = match level {
+            &Level::TRACE => ("TRACE", Style::new().bright_white()),
+            &Level::DEBUG => ("DEBUG", Style::new().bright_blue()),
+            &Level::INFO => ("INFO", Style::new().green()),
+            &Level::WARN => ("WARN", Style::new().yellow()),
+            &Level::ERROR => ("ERROR", Style::new().red()),
         };
 
-        write!(w, ">>> {}:", style_color(name.to_owned()).bold())?;
+        write!(
+            w,
+            ">>> {}:",
+            style_color.clone().bold().style(name.to_owned())
+        )?;
 
         if let Some(message) = message {
             if message.contains('\n') {
@@ -186,7 +190,7 @@ where
             } else {
                 write!(w, " ")?;
             }
-            write!(w, "{}", style_color(message))?;
+            write!(w, "{}", style_color.style(message))?;
         }
 
         writeln!(w)?;

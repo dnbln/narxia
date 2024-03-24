@@ -1,8 +1,10 @@
 use std::fmt;
 use std::fmt::Formatter;
 
+use owo_colors::OwoColorize;
+
 use crate::language::NarxiaLanguage;
-use crate::parser::{ColorizeProcedure, ParserDbgStyling};
+use crate::parser::ParserDbgStyling;
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 
@@ -102,10 +104,8 @@ impl fmt::Display for DbgFmtColorizedToken {
         write!(
             f,
             "{}@{}",
-            self.1
-                .token_kind
-                .colorize(format_args!("{:?}", self.0.kind)),
-            self.1.token_span.colorize(self.0.span),
+            format_args!("{:?}", self.0.kind).style(self.1.token_kind),
+            self.0.span.style(self.1.token_span),
         )
     }
 }
@@ -127,6 +127,13 @@ pub trait TokenSource<'l> {
     }
     fn eof_span(&self) -> TextSpan;
     fn restore_pos(&mut self, pos: usize);
+    fn set_parser_state(&mut self, state: TokParserState);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TokParserState {
+    Normal,
+    InStringLiteral,
 }
 
 pub(crate) struct DynTsContainer<'l>(pub &'l mut dyn TokenSource<'l>);
@@ -160,6 +167,11 @@ impl<'l> TokenSource<'l> for DynTsContainer<'l> {
     #[inline(always)]
     fn restore_pos(&mut self, pos: usize) {
         self.0.restore_pos(pos)
+    }
+
+    #[inline(always)]
+    fn set_parser_state(&mut self, state: TokParserState) {
+        self.0.set_parser_state(state)
     }
 }
 

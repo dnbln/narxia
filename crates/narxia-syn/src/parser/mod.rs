@@ -1,7 +1,7 @@
 use std::fmt;
 
-use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+use owo_colors::{OwoColorize, Style};
 
 use self::parse_event_handler::GreenTreeBuilderSD;
 use crate::parse_error::{ParseError, ParseErrorInfo};
@@ -26,59 +26,45 @@ struct ParserState {
     ev_pos: ParseEventHandlerPos,
 }
 
-pub(crate) trait ColorizeProcedure {
-    fn colorize<T: fmt::Display>(&self, v: T) -> ColoredString;
-}
-
-impl ColorizeProcedure for fn(ColoredString) -> ColoredString {
-    fn colorize<T: fmt::Display>(&self, v: T) -> ColoredString {
-        (*self)(ColoredString::from(v.to_string().as_str()))
-    }
-}
-
 #[derive(Copy, Clone)]
 pub(crate) struct ParserDbgStyling {
-    pub(crate) top_name: fn() -> ColoredString,
-    pub(crate) region_name: fn(ColoredString) -> ColoredString,
-    pub(crate) top_stack_name: fn(ColoredString) -> ColoredString,
+    pub(crate) top_name: fn() -> String,
+    pub(crate) region_name: Style,
+    pub(crate) top_stack_name: Style,
 
-    pub(crate) token_offset: fn(ColoredString) -> ColoredString,
-    pub(crate) token_kind: fn(ColoredString) -> ColoredString,
-    pub(crate) token_span: fn(ColoredString) -> ColoredString,
-    pub(crate) token_text: fn(ColoredString) -> ColoredString,
+    pub(crate) token_offset: Style,
+    pub(crate) token_kind: Style,
+    pub(crate) token_span: Style,
+    pub(crate) token_text: Style,
 
-    pub(crate) stack_offset: fn(ColoredString) -> ColoredString,
-    pub(crate) stack_fn_name: fn(ColoredString) -> ColoredString,
-    pub(crate) token_stream_position: fn(ColoredString) -> ColoredString,
+    pub(crate) stack_offset: Style,
+    pub(crate) stack_fn_name: Style,
+    pub(crate) token_stream_position: Style,
 
-    pub(crate) recent_event_absolute_position: fn(ColoredString) -> ColoredString,
-    pub(crate) recent_event_relative_position: fn(ColoredString) -> ColoredString,
-    pub(crate) recent_event_kind: fn(ColoredString) -> ColoredString,
+    pub(crate) recent_event_absolute_position: Style,
+    pub(crate) recent_event_relative_position: Style,
+    pub(crate) recent_event_kind: Style,
 }
 
 impl Default for ParserDbgStyling {
     fn default() -> Self {
         Self {
-            top_name: || {
-                ColoredString::from(
-                    format!("{}::{}", "Parser".blue().bold(), "dbg".blue().bold()).as_str(),
-                )
-            },
-            region_name: |s| s.bold().red(),
-            top_stack_name: |s| s.bright_red().bold(),
+            top_name: || format!("{}::{}", "Parser".blue().bold(), "dbg".blue().bold()),
+            region_name: Style::new().bold().red(),
+            top_stack_name: Style::new().bright_red().bold(),
 
-            token_offset: |s| s.bright_blue(),
-            token_kind: |s| s.green().bold(),
-            token_span: |s| s.bright_purple().bold(),
-            token_text: |s| s.bright_blue(),
+            token_offset: Style::new().bright_blue(),
+            token_kind: Style::new().green().bold(),
+            token_span: Style::new().bright_purple().bold(),
+            token_text: Style::new().bright_blue(),
 
-            stack_offset: |s| s.bright_blue(),
-            stack_fn_name: |s| s.bright_green().bold(),
-            token_stream_position: |s| s.bright_purple().bold(),
+            stack_offset: Style::new().bright_blue(),
+            stack_fn_name: Style::new().bright_green().bold(),
+            token_stream_position: Style::new().bright_purple().bold(),
 
-            recent_event_absolute_position: |s| s.bright_purple().bold(),
-            recent_event_relative_position: |s| s.bright_blue().bold(),
-            recent_event_kind: |s| s.bright_cyan().bold(),
+            recent_event_absolute_position: Style::new().bright_purple().bold(),
+            recent_event_relative_position: Style::new().bright_blue().bold(),
+            recent_event_kind: Style::new().bright_cyan().bold(),
         }
     }
 }
@@ -317,7 +303,7 @@ impl<'a> Parser<'a> {
                 | T![-]
                 | T![!]
                 | T![*]
-                | T![string]
+                | T![begin_string]
                 | T![num_bin]
                 | T![num_oct]
                 | T![num_dec]
@@ -347,7 +333,7 @@ impl<'a> Parser<'a> {
             }
         }
         self.ev.end(m, SyntaxKind::Root);
-        self.dbg();
+        // self.dbg();
     }
 
     pub fn finish(self, tb: &mut dyn TreeBuilder<'a>) {
@@ -366,16 +352,17 @@ impl<'a> Parser<'a> {
     where
         W: fmt::Write,
     {
-        let region =
-            |w: &mut W, name: &str| writeln!(w, "  {}:", styling.region_name.colorize(name));
+        let region = |w: &mut W, name: &str| writeln!(w, "  {}:", name.style(styling.region_name));
 
         writeln!(
             w,
             "{} in {}",
             (styling.top_name)(),
-            styling
-                .top_stack_name
-                .colorize(self.pstk.top_item().unwrap().name),
+            self.pstk
+                .top_item()
+                .unwrap()
+                .name
+                .style(styling.top_stack_name),
         )?;
         writeln!(w, "    at {}", std::panic::Location::caller(),)?;
 
@@ -385,11 +372,9 @@ impl<'a> Parser<'a> {
             writeln!(
                 w,
                 "    {}  {} {}",
-                styling.token_offset.colorize(format!("+{i}")),
+                "+{i}".style(styling.token_offset),
                 tok.dbg_fmt_colorized(styling),
-                styling
-                    .token_text
-                    .colorize(format!("{:?}", self.ts.get_token_text(&tok))),
+                format_args!("{:?}", self.ts.get_token_text(&tok)).style(styling.token_text),
             )?;
             i += 1;
             if i > 3 {
@@ -401,8 +386,8 @@ impl<'a> Parser<'a> {
             writeln!(
                 w,
                 "    {}  {}",
-                styling.token_offset.colorize("+0"),
-                styling.token_kind.colorize("<EOF>")
+                "+0".style(styling.token_offset),
+                "<EOF>".style(styling.token_kind),
             )?;
         }
 
@@ -435,7 +420,7 @@ parse_fn_decl! {
     parse_item: Item ::=
         $/match {
             [fn] => {$fun::parse_fn_def()}
-            [let] [while] [for] [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$stmt::parse_stmt()}
+            [let] [while] [for] [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$stmt::parse_stmt()}
         }
 }
 
@@ -543,6 +528,7 @@ enum AttemptRecoveryLevel {
     Deep,
 }
 
+#[inline(always)]
 #[track_caller]
 fn parse_list<E: NotAttemptingRecovery>(
     p: &mut Parser,
@@ -627,6 +613,7 @@ fn parse_list<E: NotAttemptingRecovery>(
     Ok(())
 }
 
+#[inline(always)]
 #[track_caller]
 fn parse_list_simple<T>(
     p: &mut Parser,
@@ -671,6 +658,7 @@ fn parse_list_simple<T>(
     )
 }
 
+#[inline(always)]
 fn parse_list_simple2<T>(
     p: &mut Parser,
     start: SyntaxKind,
@@ -682,6 +670,7 @@ fn parse_list_simple2<T>(
     let _r = parse_list_simple(p, start, parse_item, sep, end, attempt_recovery);
 }
 
+#[inline(always)]
 fn parse_list_simple3<T>(
     p: &mut Parser,
     kind: SyntaxKind,
@@ -697,8 +686,43 @@ fn parse_list_simple3<T>(
 }
 
 parse_fn_decl! {
-    parse_ty_ref: TyRef ::=
-        $![ident]
+    parse_ty_ref: TyRef ::= $/match {
+        [ident]!
+        [fn] => {$parse_fn_ty()}
+    }
+}
+
+parse_fn_decl! {
+    parse_fn_ty: FnTy ::=
+        $![fn]
+        $/state:s1
+        $/ws:wcn
+        $/if at['('] {
+            $parse_fn_ty_param_tys()
+            $/state:s2
+            $/ws:wcn
+            $/if at[->] {
+                $parse_fn_ty_ret_ty()
+            }
+            $/else {
+                $/restore_state:s2
+            }
+        }
+        $/else if at[->] {
+            $parse_fn_ty_ret_ty()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+parse_fn_decl! {
+    parse_fn_ty_param_tys: FnTyParamTys ::=
+        $parse_list_simple2(T!['('], parse_ty_ref, T![,], T![')'], AttemptRecoveryLevel::Shallow)
+}
+
+parse_fn_decl! {
+    parse_fn_ty_ret_ty: FnTyRetTy ::= $![->] $/ws:wcn $parse_ty_ref()
 }
 
 #[parse_fn]

@@ -16,9 +16,11 @@ opt-level = 3
 opt-level = 3
 
 [workspace.dependencies]
+narxia-data-structures = { path = "crates/narxia-data-structures" }
 narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
 narxia-hir-db = { path = "crates/narxia-hir-db" }
+narxia-hir-typechk = { path = "crates/narxia-hir-typechk" }
 narxia-log = { path = "crates/narxia-log" }
 narxia-log-impl = { path = "crates/narxia-log-impl" }
 narxia-src-db = { path = "crates/narxia-src-db" }
@@ -31,10 +33,10 @@ dir-structure = { path = "dev/dir-structure", version = "0.1.3" }
 
 clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
-colored = "2.0.4"
+owo-colors = "4.0.0"
 bitflags = "2"
-libtest-mimic = "0.6.1"
-miette = { version = "5.10.0", features = ["fancy"] }
+libtest-mimic = "0.7.0"
+miette = { version = "7.2.0", features = ["fancy"] }
 path-absolutize = "3.1.1"
 salsa = { path = "crates/narxia-salsa" }
 rowan = "0.15.11"

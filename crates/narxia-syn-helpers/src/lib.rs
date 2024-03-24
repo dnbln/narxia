@@ -800,11 +800,105 @@ impl IfChain {
     }
 }
 
+fn match_is_optimizable(extra: &MatchExtra) -> bool {
+    let composites = [
+        quote! {==},
+        quote! {!=},
+        quote! {<=},
+        quote! {>=},
+        quote! {=>},
+        quote! {->},
+        quote! {&&},
+        quote! {||},
+        quote! {+=},
+        quote! {-=},
+        quote! {*=},
+        quote! {/=},
+        quote! {%=},
+        quote! {&=},
+        quote! {|=},
+        quote! {^=},
+    ];
+
+    extra.arms.iter().all(|arm| {
+        arm.pat.pat.iter().all(|it| match it {
+            MatchExtraArmSelector::T { delimiter, tt } => {
+                let bad = composites.iter().any(|it| tt.to_string() == it.to_string());
+
+                !bad
+            }
+            MatchExtraArmSelector::CatchAll { wild } => true,
+        })
+    })
+}
+
+fn expand_optimized_match(
+    extra: &MatchExtra,
+    end_expr: &TokenStream,
+    to: &mut TokenStream,
+) -> syn::Result<()> {
+    let mut arms = vec![];
+
+    for arm in &extra.arms {
+        let MatchExtraArm { pat, arm_code } = arm;
+        match arm_code {
+            MatchExtraArmCode::ImmediateExpect(_) => {
+                for selector in &pat.pat {
+                    match selector {
+                        MatchExtraArmSelector::T { delimiter, tt } => {
+                            arms.push(quote! {
+                                Some(T![#tt]) => {p.expect(T![#tt]);},
+                            });
+                        }
+                        MatchExtraArmSelector::CatchAll { wild } => {
+                            return Err(syn::Error::new_spanned(
+                                wild,
+                                "_ cannot be combined with ! in a match arm",
+                            ));
+                        }
+                    }
+                }
+            }
+            MatchExtraArmCode::InstrBlock(ins) => {
+                let mut ts = TokenStream::new();
+                expand_parser_spec_instruction_set(
+                    &ins.instructions.instructions,
+                    end_expr,
+                    &mut ts,
+                )?;
+                for selector in &pat.pat {
+                    match selector {
+                        MatchExtraArmSelector::T { delimiter, tt } => {
+                            arms.push(quote! {
+                                Some(T![#tt]) => {#ts},
+                            });
+                        }
+                        MatchExtraArmSelector::CatchAll { wild } => {
+                            arms.push(quote! {_ => {#ts},});
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    to.extend(quote! {match p.ts.lookahead0_kind() {
+        #(#arms)*
+        _ => {p.err_unexpected();}
+    }});
+
+    Ok(())
+}
+
 fn expand_match(
     extra: &MatchExtra,
     end_expr: &TokenStream,
     to: &mut TokenStream,
 ) -> syn::Result<()> {
+    if match_is_optimizable(&extra) {
+        return expand_optimized_match(extra, end_expr, to);
+    }
+
     let mut if_chain = IfChain::new();
     for arm in &extra.arms {
         expand_match_arm(arm, end_expr, &mut if_chain)?;

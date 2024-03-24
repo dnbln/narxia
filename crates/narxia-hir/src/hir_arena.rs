@@ -1,7 +1,9 @@
+use std::fmt;
+
 use narxia_src_db::SrcFile;
 
 use crate::hir::{
-    Block, Expr, FnDef, FnParam, FnRetTy, Item, LambdaExpr, ModDef, Pat, Stmt, TyGenericArg, TyRef,
+    AssignmentStmt, Block, Expr, FnDef, FnParam, FnRetTy, Item, ModDef, Pat, Stmt, StrLiteral, StrLiteralDebugFragment, StrLiteralDisplayFragment, TyGenericArg, TyRef
 };
 use crate::HirId;
 
@@ -13,12 +15,37 @@ pub enum HirRefElem<'hir> {
     FnParam(&'hir FnParam),
     FnRetTy(&'hir FnRetTy),
     Expr(&'hir Expr),
-    LambdaExpr(&'hir LambdaExpr),
     Pat(&'hir Pat),
     Stmt(&'hir Stmt),
     Block(&'hir Block),
     TyRef(&'hir TyRef),
     TyGenericArg(&'hir TyGenericArg),
+    AssignmentStmt(&'hir AssignmentStmt),
+    StrLiteral(&'hir StrLiteral),
+    StrLiteralDisplayFragment(&'hir StrLiteralDisplayFragment),
+    StrLiteralDebugFragment(&'hir StrLiteralDebugFragment),
+}
+
+impl<'hir> fmt::Display for HirRefElem<'hir> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mod(m) => write!(f, "{}", m),
+            Self::Item(i) => write!(f, "{}", i),
+            Self::Fn(fn_def) => write!(f, "{}", fn_def),
+            Self::FnParam(p) => write!(f, "{}", p),
+            Self::FnRetTy(r) => write!(f, "{}", r),
+            Self::Expr(e) => write!(f, "{}", e),
+            Self::Pat(p) => write!(f, "{}", p),
+            Self::Stmt(s) => write!(f, "{}", s),
+            Self::Block(b) => write!(f, "{}", b),
+            Self::TyRef(t) => write!(f, "{}", t),
+            Self::TyGenericArg(t) => write!(f, "{}", t),
+            Self::AssignmentStmt(a) => write!(f, "{}", a),
+            Self::StrLiteral(s) => write!(f, "{}", s),
+            Self::StrLiteralDisplayFragment(s) => write!(f, "{}", s),
+            Self::StrLiteralDebugFragment(s) => write!(f, "{}", s),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

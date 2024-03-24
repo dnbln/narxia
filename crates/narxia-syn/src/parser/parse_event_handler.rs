@@ -1,10 +1,11 @@
 use std::fmt;
 
+use owo_colors::OwoColorize;
 use rowan::Language;
 
 use crate::language::NarxiaLanguage;
 use crate::parse_error::ParseError;
-use crate::parser::{ColorizeProcedure, ParserDbgStyling};
+use crate::parser::ParserDbgStyling;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntree::GreenTree;
 use crate::text_span::TextSpan;
@@ -51,7 +52,9 @@ impl ParseEventHandler {
 
     #[inline(always)]
     pub fn token(&mut self, kind: SyntaxKind, span: TextSpan) {
-        self.events.push(ParseEvent::Token { trepr: TokenRepr::new(kind, span) });
+        self.events.push(ParseEvent::Token {
+            trepr: TokenRepr::new(kind, span),
+        });
     }
 
     pub fn present(
@@ -409,17 +412,15 @@ impl<'a> fmt::Display for RecentEventPresenter<'a> {
                 if self.add_absolute_positions {
                     format!(
                         "@{} ",
-                        self.styling
-                            .recent_event_absolute_position
-                            .colorize(format!("{:3}", start + index))
+                        format_args!("{:3}", start + index)
+                            .style(self.styling.recent_event_absolute_position)
                     )
                 } else {
                     "".to_owned()
                 },
-                self.styling
-                    .recent_event_relative_position
-                    .colorize(format!("{}", actual_count - index - 1)),
-                self.styling.recent_event_kind.colorize(format!("{event}")),
+                format_args!("{}", actual_count - index - 1)
+                    .style(self.styling.recent_event_relative_position),
+                format_args!("{event}").style(self.styling.recent_event_kind),
                 offset = self.offset
             )?;
         }

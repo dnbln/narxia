@@ -6,7 +6,7 @@ use crate::syntax_kind::{SyntaxKind, T};
 parse_fn_decl! {
     pub parse_stmt: Stmt ::=
         $/match {
-            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$parse_expr_potential_assignment()}
+            [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$parse_expr_potential_assignment()}
             [let] => {$parse_let_stmt()}
             [while] => {$parse_while_stmt()}
             [for] => {$parse_for_stmt()}

@@ -12,7 +12,7 @@ pub mod lower;
 pub mod visitor;
 pub mod visitor_mut;
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct HirSpan {
     span: TextSpan,
 }
@@ -47,7 +47,7 @@ impl fmt::Debug for HirSpan {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct HirId {
     root: SrcFile,
     id: usize,

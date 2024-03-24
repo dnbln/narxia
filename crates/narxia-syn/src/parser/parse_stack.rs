@@ -2,7 +2,9 @@ use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 
-use crate::parser::{ColorizeProcedure, ParserDbgStyling};
+use owo_colors::OwoColorize;
+
+use crate::parser::ParserDbgStyling;
 use crate::syntax_kind::SyntaxKind;
 
 type ParseStackInternalRef = Rc<RefCell<ParseStackInternal>>;
@@ -64,13 +66,9 @@ impl<'a> fmt::Display for ParseStackPresenter<'a> {
                 f,
                 "{:offset$}{} {} (@{})",
                 "",
-                self.parser_styling
-                    .stack_offset
-                    .colorize(format!("[-{index:3}]")),
-                self.parser_styling.stack_fn_name.colorize(item.name),
-                self.parser_styling
-                    .token_stream_position
-                    .colorize(format!("{}", item.text_pos)),
+                format_args!("[-{index:3}]").style(self.parser_styling.stack_offset),
+                item.name.style(self.parser_styling.stack_fn_name),
+                format_args!("{}", item.text_pos).style(self.parser_styling.token_stream_position),
                 offset = self.offset
             )?;
         }
@@ -104,7 +102,9 @@ impl ParseStack {
         {
             let mut bw = internal.borrow_mut();
             if bw.items.len() > 10_000 {
-                panic!("ParseStack: too many items; the parser is likely stuck in an infinite loop");
+                panic!(
+                    "ParseStack: too many items; the parser is likely stuck in an infinite loop"
+                );
             }
             pos = bw.items.len();
             bw.items.push(ParseStackItem {

@@ -1,3 +1,5 @@
+#![feature(trait_upcasting)]
+
 use narxia_hir::{hir_arena::HirRefArena, HirId};
 
 #[salsa::jar(db = HirDb)]

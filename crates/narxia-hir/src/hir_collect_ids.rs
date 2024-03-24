@@ -226,9 +226,18 @@ macro_rules! _simple_seq {
 
 fn collect_ids_item_list<'hir, 'arena, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
-    item_list: Act<'compute, 'hir, Vec<Item>>,
+    item_list: Act<'compute, 'hir, ItemList>,
 ) {
-    _list!(ctxt, item_list, collect_ids_item);
+    fn do_collect<'hir, 'arena, 'compute>(
+        ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+        item_list: Act<'compute, 'hir, Vec<Item>>,
+    ) {
+        _list!(ctxt, item_list, collect_ids_item);
+    }
+
+    _simple_seq!(ctxt, item_list, item_list, {
+        (do_collect(item_list.items)),
+    });
 }
 
 fn collect_ids_item<'hir, 'arena, 'compute>(
@@ -290,11 +299,31 @@ fn collect_ids_ty_ref<'hir, 'arena, 'compute>(
 ) {
     _match!(self TyRef, (ctxt, ty_ref_node, ty_ref_node, ty_ref_node.kind) {
         TyRefKind::Named(name, generics) => {
-            (?collect_ids_ty_generics(*generics)),
+            (collect_ids_ty_generics(*generics)),
         },
         TyRefKind::Primitive(primitive_kind) => {
         },
+        TyRefKind::Fn(fn_ty) => {
+            (collect_ids_fn_ty(*fn_ty)),
+        },
     });
+}
+
+fn collect_ids_fn_ty<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    fn_ty_node: Act<'compute, 'hir, FnTy>,
+) {
+    _simple_seq!(ctxt, fn_ty_node, fn_ty_node, {
+        (collect_ids_fn_ty_params(fn_ty_node.params)),
+        (?collect_ids_ty_ref(fn_ty_node.ret_ty)),
+    });
+}
+
+fn collect_ids_fn_ty_params<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    params: Act<'compute, 'hir, Vec<TyRef>>,
+) {
+    _list!(ctxt, params, collect_ids_ty_ref);
 }
 
 fn collect_ids_ty_generics<'hir, 'arena, 'compute>(
@@ -347,7 +376,9 @@ fn collect_ids_expr_atom<'hir, 'arena, 'compute>(
 ) {
     _match!((ctxt, atom_node, atom_node, atom_node.kind) {
         ExprAtomKind::Ident(ident) => {},
-        ExprAtomKind::Str(str) => {},
+        ExprAtomKind::Str(str) => {
+            (collect_ids_str_literal(*str)),
+        },
         ExprAtomKind::Num(num) => {},
         ExprAtomKind::LoopExpr(loop_expr) => {
             (collect_ids_loop_expr(*loop_expr)),
@@ -370,6 +401,60 @@ fn collect_ids_expr_atom<'hir, 'arena, 'compute>(
         ExprAtomKind::TupleLikeExpr(tuple_like) => {
             (collect_ids_tuple_like_expr(*tuple_like)),
         },
+        ExprAtomKind::LambdaExpr(lambda) => {
+            (collect_ids_lambda_expr(*lambda)),
+        },
+    });
+}
+
+fn collect_ids_str_literal<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    str_node: Act<'compute, 'hir, StrLiteral>,
+) {
+    _simple_seq!(self StrLiteral, ctxt, str_node, str_node, {
+        (collect_ids_fragment_vec(str_node.fragments)),
+    });
+}
+
+fn collect_ids_fragment_vec<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    fragments: Act<'compute, 'hir, Vec<StrLiteralFragment>>,
+) {
+    _list!(ctxt, fragments, collect_ids_fragment);
+}
+
+fn collect_ids_fragment<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    fragment_node: Act<'compute, 'hir, StrLiteralFragment>,
+) {
+    _match!((ctxt, fragment_node, fragment_node, fragment_node.kind) {
+        StrLiteralFragmentKind::Text(_) => {},
+        StrLiteralFragmentKind::Display(f) => {
+            (collect_ids_display_fragment(*f))
+        },
+        StrLiteralFragmentKind::Debug(f) => {
+            (collect_ids_debug_fragment(*f))
+        },
+        StrLiteralFragmentKind::EscapeSequence(..) => {},
+        StrLiteralFragmentKind::EscapedChar(..) => {},
+    });
+}
+
+fn collect_ids_display_fragment<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    display_fragment_node: Act<'compute, 'hir, StrLiteralDisplayFragment>,
+) {
+    _simple_seq!(self StrLiteralDisplayFragment, ctxt, display_fragment_node, display_fragment_node, {
+        (collect_ids_expr(display_fragment_node.expr)),
+    });
+}
+
+fn collect_ids_debug_fragment<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    debug_fragment_node: Act<'compute, 'hir, StrLiteralDebugFragment>,
+) {
+    _simple_seq!(self StrLiteralDebugFragment, ctxt, debug_fragment_node, debug_fragment_node, {
+        (collect_ids_expr(debug_fragment_node.expr)),
     });
 }
 
@@ -492,8 +577,7 @@ fn collect_ids_call_expr_args<'hir, 'arena, 'compute>(
 ) {
     _simple_seq!(ctxt, call_expr_args_node, call_expr_args_node,
         {
-            (?collect_ids_call_expr_args_list(call_expr_args_node.args)),
-            (?collect_ids_lambda_expr(call_expr_args_node.trailing_lambda)),
+            (collect_ids_call_expr_args_list(call_expr_args_node.args)),
         }
     );
 }
@@ -509,7 +593,7 @@ fn collect_ids_lambda_expr<'hir, 'arena, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     lambda_expr_node: Act<'compute, 'hir, LambdaExpr>,
 ) {
-    _simple_seq!(self LambdaExpr, ctxt, lambda_expr_node, lambda_expr_node,
+    _simple_seq!(ctxt, lambda_expr_node, lambda_expr_node,
         {
             (?collect_ids_lambda_param_list(lambda_expr_node.lambda_param_list)),
             (collect_ids_item_list(lambda_expr_node.body)),
@@ -637,7 +721,7 @@ fn collect_ids_assignment_stmt<'hir, 'arena, 'compute>(
     ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
     assignment_stmt: Act<'compute, 'hir, AssignmentStmt>,
 ) {
-    _simple_seq!(ctxt, assignment_stmt, assignment_stmt,
+    _simple_seq!(self AssignmentStmt, ctxt, assignment_stmt, assignment_stmt,
         {
             (collect_ids_expr(assignment_stmt.lhs)),
             (collect_ids_expr(assignment_stmt.rhs)),

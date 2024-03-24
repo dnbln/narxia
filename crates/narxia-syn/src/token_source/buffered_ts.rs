@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{text_span::TextSpan, syntax_kind::SyntaxKind};
 
-use super::{Token, TokenSource};
+use super::{TokParserState, Token, TokenSource};
 
 pub(crate) struct BufferedTokenSource<'l, T: TokenSource<'l> + 'l> {
     ts: T,
@@ -47,6 +47,30 @@ where
     #[inline(always)]
     pub fn get_span_text(&self, span: TextSpan) -> &'l str {
         self.ts.get_span_text(span)
+    }
+
+    #[inline(always)]
+    fn state_change(&mut self, state: TokParserState) {
+        self.ts.set_parser_state(state);
+
+        match self.buffer_len {
+            0 => {}
+            1 | 2 | 3 | 4 => {
+                self.buffer_len = 0;
+                self.ts.restore_pos(self.buffer_spans[0] as usize);
+            }
+            _ => unsafe { core::hint::unreachable_unchecked() },
+        }
+    }
+
+    #[inline(always)]
+    pub fn enter_string(&mut self) {
+        self.state_change(TokParserState::InStringLiteral);
+    }
+
+    #[inline(always)]
+    pub fn enter_normal(&mut self) {
+        self.state_change(TokParserState::Normal)
     }
 
     #[inline(always)]

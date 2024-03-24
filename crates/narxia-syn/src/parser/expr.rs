@@ -16,11 +16,91 @@ parse_fn_decl! {
         }
 }
 
+#[parse_fn]
+fn parse_string_lit(p: &mut Parser) -> CompletedMarker {
+    let m = p.ev.begin();
+
+    p.expect_1(T![begin_string]);
+
+    p.ts.enter_string();
+
+    loop {
+        if p.at(T![end_string]) {
+            break;
+        }
+        if p.at_eof() {
+            p.err_unexpected();
+            break;
+        }
+
+        if p.at(T![string_literal_frag_text_part_t]) {
+            let m = p.ev.begin();
+            p.expect(T![string_literal_frag_text_part_t]);
+            p.ev.end(m, SyntaxKind::StringLiteralFragTextPart);
+        } else if p.at(T![string_literal_frag_escaped_char_t]) {
+            p.expect(T![string_literal_frag_escaped_char_t])
+        } else if p.at(T![string_literal_frag_escape_sequence_t]) {
+            p.expect(T![string_literal_frag_escape_sequence_t])
+        } else if p.at(T![string_literal_frag_display_t]) {
+            let m0 = p.ev.begin();
+            p.expect(T![string_literal_frag_display_t]);
+            p.ts.enter_normal();
+
+            if p.at(T![ident]) {
+                let m = p.ev.begin();
+                p.expect(T![ident]);
+                p.ev.end(m, SyntaxKind::StringLiteralFragIdent);
+            } else if p.at(T!['{']) {
+                let m = p.ev.begin();
+                parse_block_expr(p);
+                p.ev.end(m, SyntaxKind::StringLiteralFragExpr);
+            } else {
+                p.err_unexpected();
+                break;
+            }
+
+            p.ev.end(m0, SyntaxKind::StringLiteralFragDisplay);
+
+            p.ts.enter_string();
+        } else if p.at(T![string_literal_frag_debug_t]) {
+            let m0 = p.ev.begin();
+            p.expect(T![string_literal_frag_debug_t]);
+            p.ts.enter_normal();
+
+            if p.at(T![ident]) {
+                let m = p.ev.begin();
+                p.expect(T![ident]);
+                p.ev.end(m, SyntaxKind::StringLiteralFragIdent);
+            } else if p.at(T!['{']) {
+                let m = p.ev.begin();
+                parse_block_expr(p);
+                p.ev.end(m, SyntaxKind::StringLiteralFragExpr);
+            } else {
+                p.err_unexpected();
+                break;
+            }
+
+            p.ev.end(m0, SyntaxKind::StringLiteralFragDebug);
+
+            p.ts.enter_string();
+        } else {
+            p.err_unexpected();
+            break;
+        }
+    }
+
+    p.expect(T![end_string]);
+
+    p.ts.enter_normal();
+
+    p.ev.end(m, SyntaxKind::StringLiteral)
+}
+
 parse_fn_decl! {
     parse_expr_atom: ExprAtom ::=
         $/match {
             [ident]!
-            [string]!
+            [begin_string] => {$parse_string_lit()}
             [num_bin]
             [num_oct]
             [num_dec]
@@ -401,7 +481,7 @@ parse_fn_decl! {
         $/state:s1
         $/ws:wc
         $/match {
-            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
+            [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
             _ => {$/restore_state:s1}
         }
 }
@@ -417,7 +497,7 @@ parse_fn_decl! {
         $/state:s1
         $/ws:wc
         $/match {
-            [ident] [+] [-] [!] [*] [string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
+            [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
             _ => {$/restore_state:s1}
         }
 }

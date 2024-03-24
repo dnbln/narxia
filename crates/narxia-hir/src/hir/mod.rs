@@ -4,53 +4,18 @@ use narxia_syn::syntree::Token;
 
 use crate::{HirId, HirSpan};
 
-pub struct HirDebugContext {
-    get_path_fn: fn(HirId) -> String,
-}
+mod hir_debug;
 
-thread_local! {
-    static DEBUG_CONTEXT: std::cell::RefCell<Option<HirDebugContext>> = std::cell::RefCell::new(None);
-}
+pub use hir_debug::*;
 
-pub fn dbg_hir(get_path_fn: fn(HirId) -> String, cb: impl FnOnce() -> std::fmt::Result) -> std::fmt::Result {
-    DEBUG_CONTEXT.with(move |f| {
-        if f.borrow().is_some() {
-            panic!("Hir debug context already set");
-        }
-
-        struct HirDebugContextGuard<'a>(&'a std::cell::RefCell<Option<HirDebugContext>>);
-
-        impl<'a> Drop for HirDebugContextGuard<'a> {
-            fn drop(&mut self) {
-                *self.0.borrow_mut() = None;
-            }
-        }
-
-        *f.borrow_mut() = Some(HirDebugContext { get_path_fn });
-
-        let _guard = HirDebugContextGuard(f);
-
-        cb()
-    })
-}
-
-impl fmt::Debug for HirId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let path = DEBUG_CONTEXT.with(|f| {
-            let f = f.borrow();
-            if let Some(ctx) = &*f {
-                (ctx.get_path_fn)(*self)
-            } else {
-                panic!("Hir debug context not set");
-            }
-        });
-        write!(f, "{path} ~ {}", self.id)
-    }
+#[derive(Debug, Eq, PartialEq)]
+pub struct ItemList {
+    pub items: Vec<Item>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct ModDef {
-    pub items: Vec<Item>,
+    pub items: ItemList,
     pub hir_id: HirId,
 }
 
@@ -81,10 +46,29 @@ impl fmt::Debug for Ident {
 #[derive(Debug, Eq, PartialEq)]
 pub struct FnDef {
     pub name: Ident,
+    pub generics: Option<GenericParams>,
     pub params: Vec<FnParam>,
     pub ret_ty: Option<FnRetTy>,
     pub body: Block,
     pub hir_id: HirId,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct GenericParams {
+    pub span: HirSpan,
+    pub params: Vec<GenericParam>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct GenericParam {
+    pub span: HirSpan,
+    pub kind: GenericParamKind,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum GenericParamKind {
+    Type(Ident),
+    Const(Ident, TyRef),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -135,8 +119,7 @@ pub struct CallExpr {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct CallExprArgs {
-    pub args: Option<Vec<Expr>>,
-    pub trailing_lambda: Option<LambdaExpr>,
+    pub args: Vec<Expr>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -161,8 +144,7 @@ pub struct MethodCall {
 #[derive(Debug, Eq, PartialEq)]
 pub struct LambdaExpr {
     pub lambda_param_list: Option<LambdaParamList>,
-    pub body: Vec<Item>,
-    pub hir_id: HirId,
+    pub body: ItemList,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -176,7 +158,7 @@ pub struct LambdaParam {
     pub ty: Option<TyRef>,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum BinOp {
     Add(HirSpan),
     Sub(HirSpan),
@@ -213,6 +195,7 @@ pub enum ExprAtomKind {
     ContinueExpr(ContinueExpr),
     BlockExpr(BlockExpr),
     TupleLikeExpr(TupleLikeExpr),
+    LambdaExpr(LambdaExpr),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -249,8 +232,40 @@ pub struct ContinueExpr {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct StrLiteral {
+    pub hir_id: HirId,
     pub span: HirSpan,
-    pub text: String,
+    pub fragments: Vec<StrLiteralFragment>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct StrLiteralFragment {
+    pub kind: StrLiteralFragmentKind,
+    pub span: HirSpan,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum StrLiteralFragmentKind {
+    Text(Token),
+    EscapedChar(Token, char),
+    EscapeSequence(Token, char),
+    Display(StrLiteralDisplayFragment),
+    Debug(StrLiteralDebugFragment),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct StrLiteralDisplayFragment {
+    pub display_token: Token,
+    pub span: HirSpan,
+    pub expr: Expr,
+    pub hir_id: HirId,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct StrLiteralDebugFragment {
+    pub debug_token: Token,
+    pub span: HirSpan,
+    pub expr: Expr,
+    pub hir_id: HirId,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -265,7 +280,7 @@ pub struct BlockExpr {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Block {
-    pub items: Vec<Item>,
+    pub items: ItemList,
     pub hir_id: HirId,
 }
 
@@ -294,6 +309,7 @@ pub struct AssignmentStmt {
     pub lhs: Expr,
     pub op: AssignmentOp,
     pub rhs: Expr,
+    pub hir_id: HirId,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -311,9 +327,16 @@ pub enum AssignmentOp {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct LetStmt {
+    pub mutability: LetMutability,
     pub pat: Pat,
     pub ty: Option<TyRef>,
     pub init: Option<Expr>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum LetMutability {
+    Imm,
+    Mut(HirSpan),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -351,8 +374,9 @@ pub struct TyRef {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum TyRefKind {
-    Named(Ident, Option<TyGenericArgs>),
+    Named(Ident, TyGenericArgs),
     Primitive(PrimitiveTy),
+    Fn(FnTy),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -376,7 +400,6 @@ pub enum PrimitiveTy {
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct TyGenericArgs {
-    pub span: HirSpan,
     pub args: Vec<TyGenericArg>,
 }
 
@@ -391,4 +414,10 @@ pub struct TyGenericArg {
 pub enum TyGenericArgKind {
     ConstVal(Expr),
     Type(TyRef),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct FnTy {
+    pub params: Vec<TyRef>,
+    pub ret_ty: Option<Box<TyRef>>,
 }

@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap.workspace = true
-colored.workspace = true
+owo-colors.workspace = true
 miette.workspace = true
 salsa.workspace = true
 
@@ -18,6 +18,7 @@ narxia-syn.workspace = true
 narxia-syn-db.workspace = true
 narxia-hir.workspace = true
 narxia-hir-db.workspace = true
+narxia-hir-typechk.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

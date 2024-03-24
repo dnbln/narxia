@@ -15,8 +15,10 @@ pub enum SyntaxKind {
     NUM_OCT,
     #[T(num_hex)]
     NUM_HEX,
-    #[T(string)]
-    STRING,
+    #[T(begin_string)]
+    BEGIN_STRING,
+    #[T(end_string)]
+    END_STRING,
     // Keywords
     #[T(fn)]
     FN_KW,
@@ -192,6 +194,9 @@ pub enum SyntaxKind {
     Pat,
 
     TyRef,
+    FnTy,
+    FnTyParamTys,
+    FnTyRetTy,
     GenericParamList,
     GenericParam,
 
@@ -218,6 +223,33 @@ pub enum SyntaxKind {
     AssignmentLhs,
     AssignmentOpAndRhsExpr,
     AssignmentOp,
+
+    StringLiteral,
+    StringLiteralFragTextPart,
+    // raw text in a string
+    #[T(string_literal_frag_text_part_t)]
+    StringLiteralFragTextPartToken,
+    StringLiteralFragEscapedChar,
+    // \n, \r, \t, \", \', \\ ...
+    #[T(string_literal_frag_escaped_char_t)]
+    StringLiteralFragEscapedCharToken,
+    StringLiteralFragEscapeSequence,
+    // \x12, \u1234
+    #[T(string_literal_frag_escape_sequence_t)]
+    StringLiteralFragEscapeSequenceToken,
+    // $
+    #[T(string_literal_frag_display_t)]
+    StringLiteralFragDisplayToken,
+    // $?
+    #[T(string_literal_frag_debug_t)]
+    StringLiteralFragDebugToken,
+    // the name after the $ or $?
+    StringLiteralFragIdent,
+    // the expression after the $ or $?
+    StringLiteralFragExpr,
+
+    StringLiteralFragDisplay,
+    StringLiteralFragDebug,
 
     #[doc(hidden)]
     __TOMBSTONE,

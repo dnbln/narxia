@@ -26,7 +26,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use miette::{bail, IntoDiagnostic};
 use narxia_syn::syntree::tests_data::{
     AccessorCalledDataList, AccessorCalledDataReturned, AccessorInfo, ElemRef,

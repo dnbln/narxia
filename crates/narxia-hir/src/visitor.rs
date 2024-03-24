@@ -9,6 +9,10 @@ pub trait HirVisitor {
         walk_item(self, item)
     }
 
+    fn visit_item_list(&mut self, item_list: &hir::ItemList) {
+        walk_item_list(self, item_list)
+    }
+
     fn visit_fn_def(&mut self, fn_def: &hir::FnDef) {
         walk_fn_def(self, fn_def)
     }
@@ -49,6 +53,10 @@ pub trait HirVisitor {
         walk_block(self, block)
     }
 
+    fn visit_block_expr(&mut self, block_expr: &hir::BlockExpr) {
+        walk_block_expr(self, block_expr)
+    }
+
     fn visit_ty_ref(&mut self, ty_ref: &hir::TyRef) {
         walk_ty_ref(self, ty_ref)
     }
@@ -65,51 +73,74 @@ pub trait HirVisitor {
         walk_ty_generic_arg(self, generic_arg)
     }
 
-    fn visit_expr_atom(&mut self, atom: &hir::ExprAtom) {
-        walk_expr_atom(self, atom)
+    fn visit_fn_ty_ref(&mut self, fn_ty: &hir::FnTy) {
+        walk_fn_ty_ref(self, fn_ty)
     }
 
-    fn visit_expr_binary_expr(&mut self, binary_expr: &hir::BinaryOpExpr) {
+    fn visit_expr_atom(&mut self, hir_id: HirId, atom: &hir::ExprAtom) {
+        walk_expr_atom(self, hir_id, atom)
+    }
+
+    fn visit_str_literal(&mut self, str_literal: &hir::StrLiteral) {
+        walk_str_literal(self, str_literal)
+    }
+
+    fn visit_str_literal_fragment(&mut self, str_literal_fragment: &hir::StrLiteralFragment) {
+        walk_str_literal_fragment(self, str_literal_fragment)
+    }
+
+    fn visit_str_display_fragment(
+        &mut self,
+        str_display_fragment: &hir::StrLiteralDisplayFragment,
+    ) {
+        walk_str_display_fragment(self, str_display_fragment)
+    }
+
+    fn visit_str_debug_fragment(&mut self, str_debug_fragment: &hir::StrLiteralDebugFragment) {
+        walk_str_debug_fragment(self, str_debug_fragment)
+    }
+
+    fn visit_expr_binary_expr(&mut self, hir_id: HirId, binary_expr: &hir::BinaryOpExpr) {
         walk_expr_binary_expr(self, binary_expr)
     }
 
-    fn visit_expr_call_expr(&mut self, call_expr: &hir::CallExpr) {
+    fn visit_expr_call_expr(&mut self, hir_id: HirId, call_expr: &hir::CallExpr) {
         walk_expr_call_expr(self, call_expr)
     }
 
-    fn visit_expr_index_expr(&mut self, index_expr: &hir::IndexExpr) {
+    fn visit_expr_index_expr(&mut self, hir_id: HirId, index_expr: &hir::IndexExpr) {
         walk_expr_index_expr(self, index_expr)
     }
 
-    fn visit_expr_field_access(&mut self, field_access: &hir::FieldAccess) {
+    fn visit_expr_field_access(&mut self, hir_id: HirId, field_access: &hir::FieldAccess) {
         walk_expr_field_access(self, field_access)
     }
 
-    fn visit_expr_method_call(&mut self, method_call: &hir::MethodCall) {
+    fn visit_expr_method_call(&mut self, hir_id: HirId, method_call: &hir::MethodCall) {
         walk_expr_method_call(self, method_call)
     }
 
-    fn visit_return_expr(&mut self, ret: &hir::ReturnExpr) {
+    fn visit_return_expr(&mut self, hir_id: HirId, ret: &hir::ReturnExpr) {
         walk_return_expr(self, ret)
     }
 
-    fn visit_break_expr(&mut self, break_expr: &hir::BreakExpr) {
+    fn visit_break_expr(&mut self, hir_id: HirId, break_expr: &hir::BreakExpr) {
         walk_break_expr(self, break_expr)
     }
 
-    fn visit_continue_expr(&mut self, continue_expr: &hir::ContinueExpr) {
+    fn visit_continue_expr(&mut self, hir_id: HirId, continue_expr: &hir::ContinueExpr) {
         walk_continue_expr(self, continue_expr)
     }
 
-    fn visit_loop_expr(&mut self, loop_expr: &hir::LoopExpr) {
+    fn visit_loop_expr(&mut self, hir_id: HirId, loop_expr: &hir::LoopExpr) {
         walk_loop_expr(self, loop_expr)
     }
 
-    fn visit_if_expr(&mut self, if_expr: &hir::IfExpr) {
+    fn visit_if_expr(&mut self, hir_id: HirId, if_expr: &hir::IfExpr) {
         walk_if_expr(self, if_expr)
     }
 
-    fn visit_tuple_like_expr(&mut self, tuple_like_expr: &hir::TupleLikeExpr) {
+    fn visit_tuple_like_expr(&mut self, hir_id: HirId, tuple_like_expr: &hir::TupleLikeExpr) {
         walk_tuple_like_expr(self, tuple_like_expr)
     }
 
@@ -117,7 +148,7 @@ pub trait HirVisitor {
         walk_call_args(self, call_args)
     }
 
-    fn visit_lambda_expr(&mut self, lambda_expr: &hir::LambdaExpr) {
+    fn visit_lambda_expr(&mut self, hir_id: HirId, lambda_expr: &hir::LambdaExpr) {
         walk_lambda_expr(self, lambda_expr)
     }
 
@@ -136,7 +167,11 @@ pub trait HirVisitor {
 
 pub fn walk_mod_def<V: HirVisitor + ?Sized>(visitor: &mut V, mod_def: &hir::ModDef) {
     visitor.visit_hir_id(mod_def.hir_id);
-    for item in &mod_def.items {
+    visitor.visit_item_list(&mod_def.items);
+}
+
+pub fn walk_item_list<V: HirVisitor + ?Sized>(visitor: &mut V, item_list: &hir::ItemList) {
+    for item in &item_list.items {
         visitor.visit_item(item);
     }
 }
@@ -189,64 +224,70 @@ pub fn walk_expr<V: HirVisitor + ?Sized>(visitor: &mut V, expr: &hir::Expr) {
     visitor.visit_hir_id(expr.hir_id);
     match &expr.kind {
         hir::ExprKind::Atom(atom) => {
-            visitor.visit_expr_atom(atom);
+            visitor.visit_expr_atom(expr.hir_id, atom);
         }
         hir::ExprKind::Binary(binary_expr) => {
-            visitor.visit_expr_binary_expr(binary_expr);
+            visitor.visit_expr_binary_expr(expr.hir_id, binary_expr);
         }
         hir::ExprKind::CallExpr(call_expr) => {
-            visitor.visit_expr_call_expr(call_expr);
+            visitor.visit_expr_call_expr(expr.hir_id, call_expr);
         }
         hir::ExprKind::IndexExpr(index_expr) => {
-            visitor.visit_expr_index_expr(index_expr);
+            visitor.visit_expr_index_expr(expr.hir_id, index_expr);
         }
         hir::ExprKind::FieldAccess(field_access) => {
-            visitor.visit_expr_field_access(field_access);
+            visitor.visit_expr_field_access(expr.hir_id, field_access);
         }
         hir::ExprKind::MethodCall(method_call) => {
-            visitor.visit_expr_method_call(method_call);
+            visitor.visit_expr_method_call(expr.hir_id, method_call);
         }
     }
 }
 
-pub fn walk_expr_atom<V: HirVisitor + ?Sized>(visitor: &mut V, atom: &hir::ExprAtom) {
+pub fn walk_expr_atom<V: HirVisitor + ?Sized>(
+    visitor: &mut V,
+    hir_id: HirId,
+    atom: &hir::ExprAtom,
+) {
     match &atom.kind {
         hir::ExprAtomKind::Ident(_) => {}
-        hir::ExprAtomKind::Num(_) | hir::ExprAtomKind::Str(_) => {}
+        hir::ExprAtomKind::Num(_) => {}
+        hir::ExprAtomKind::Str(s) => {
+            visitor.visit_str_literal(s);
+        }
         hir::ExprAtomKind::BlockExpr(block_expr) => {
-            visitor.visit_block(&block_expr.block);
+            visitor.visit_block_expr(block_expr);
         }
         hir::ExprAtomKind::ReturnExpr(ret) => {
-            visitor.visit_return_expr(ret);
+            visitor.visit_return_expr(hir_id, ret);
         }
         hir::ExprAtomKind::BreakExpr(break_expr) => {
-            visitor.visit_break_expr(break_expr);
+            visitor.visit_break_expr(hir_id, break_expr);
         }
         hir::ExprAtomKind::ContinueExpr(continue_expr) => {
-            visitor.visit_continue_expr(continue_expr);
+            visitor.visit_continue_expr(hir_id, continue_expr);
         }
         hir::ExprAtomKind::LoopExpr(loop_expr) => {
-            visitor.visit_loop_expr(loop_expr);
+            visitor.visit_loop_expr(hir_id, loop_expr);
         }
         hir::ExprAtomKind::IfExpr(if_expr) => {
-            visitor.visit_if_expr(if_expr);
+            visitor.visit_if_expr(hir_id, if_expr);
         }
         hir::ExprAtomKind::TupleLikeExpr(tuple_like_expr) => {
-            visitor.visit_tuple_like_expr(tuple_like_expr);
+            visitor.visit_tuple_like_expr(hir_id, tuple_like_expr);
         }
+        hir::ExprAtomKind::LambdaExpr(l) => visitor.visit_lambda_expr(hir_id, l),
     }
 }
 
 pub fn walk_ty_ref<V: HirVisitor + ?Sized>(visitor: &mut V, ty_ref: &hir::TyRef) {
     visitor.visit_hir_id(ty_ref.hir_id);
     match &ty_ref.kind {
-        hir::TyRefKind::Named(_, generics) => match generics {
-            Some(generics) => {
-                visitor.visit_ty_generic_args(generics);
-            }
-            None => {}
-        },
+        hir::TyRefKind::Named(_, generics) => {
+            visitor.visit_ty_generic_args(generics);
+        }
         hir::TyRefKind::Primitive(_) => {}
+        hir::TyRefKind::Fn(fn_ty) => visitor.visit_fn_ty_ref(fn_ty),
     }
 }
 
@@ -315,9 +356,11 @@ pub fn walk_assignment_stmt<V: HirVisitor + ?Sized>(
 
 pub fn walk_block<V: HirVisitor + ?Sized>(visitor: &mut V, block: &hir::Block) {
     visitor.visit_hir_id(block.hir_id);
-    for item in &block.items {
-        visitor.visit_item(item);
-    }
+    visitor.visit_item_list(&block.items);
+}
+
+pub fn walk_block_expr<V: HirVisitor + ?Sized>(visitor: &mut V, block_expr: &hir::BlockExpr) {
+    visitor.visit_block(&block_expr.block);
 }
 
 pub fn walk_expr_binary_expr<V: HirVisitor + ?Sized>(
@@ -406,24 +449,16 @@ pub fn walk_pat<V: HirVisitor + ?Sized>(visitor: &mut V, pat: &hir::Pat) {
 }
 
 pub fn walk_call_args<V: HirVisitor + ?Sized>(visitor: &mut V, call_args: &hir::CallExprArgs) {
-    if let Some(args) = &call_args.args {
-        for arg in args {
-            visitor.visit_expr(arg);
-        }
-    }
-    if let Some(trailing_lambda) = &call_args.trailing_lambda {
-        visitor.visit_lambda_expr(trailing_lambda);
+    for arg in &call_args.args {
+        visitor.visit_expr(arg);
     }
 }
 
 pub fn walk_lambda_expr<V: HirVisitor + ?Sized>(visitor: &mut V, lambda_expr: &hir::LambdaExpr) {
-    visitor.visit_hir_id(lambda_expr.hir_id);
     if let Some(lpl) = &lambda_expr.lambda_param_list {
         visitor.visit_lambda_param_list(lpl);
     }
-    for item in &lambda_expr.body {
-        visitor.visit_item(item);
-    }
+    visitor.visit_item_list(&lambda_expr.body);
 }
 
 pub fn walk_lambda_param_list<V: HirVisitor + ?Sized>(
@@ -439,5 +474,54 @@ pub fn walk_lambda_param<V: HirVisitor + ?Sized>(visitor: &mut V, lambda_param: 
     visitor.visit_pat(&lambda_param.pat);
     if let Some(ty) = &lambda_param.ty {
         visitor.visit_ty_ref(ty);
+    }
+}
+
+pub fn walk_str_literal<V: HirVisitor + ?Sized>(visitor: &mut V, str_literal: &hir::StrLiteral) {
+    for fragment in &str_literal.fragments {
+        visitor.visit_str_literal_fragment(fragment);
+    }
+}
+
+pub fn walk_str_literal_fragment<V: HirVisitor + ?Sized>(
+    visitor: &mut V,
+    str_literal_fragment: &hir::StrLiteralFragment,
+) {
+    match &str_literal_fragment.kind {
+        hir::StrLiteralFragmentKind::Text(_)
+        | hir::StrLiteralFragmentKind::EscapeSequence(..)
+        | hir::StrLiteralFragmentKind::EscapedChar(..) => {
+            // Nothing to do.
+        }
+        hir::StrLiteralFragmentKind::Display(f) => {
+            visitor.visit_str_display_fragment(f);
+        }
+        hir::StrLiteralFragmentKind::Debug(f) => {
+            visitor.visit_str_debug_fragment(f);
+        }
+    }
+}
+
+pub fn walk_str_display_fragment<V: HirVisitor + ?Sized>(
+    visitor: &mut V,
+    str_display_fragment: &hir::StrLiteralDisplayFragment,
+) {
+    visitor.visit_expr(&str_display_fragment.expr);
+}
+
+pub fn walk_str_debug_fragment<V: HirVisitor + ?Sized>(
+    visitor: &mut V,
+    str_debug_fragment: &hir::StrLiteralDebugFragment,
+) {
+    visitor.visit_expr(&str_debug_fragment.expr);
+}
+
+pub fn walk_fn_ty_ref<V: HirVisitor + ?Sized>(visitor: &mut V, fn_ty: &hir::FnTy) {
+    for ty in &fn_ty.params {
+        visitor.visit_ty_ref(ty);
+    }
+
+    if let Some(ret_ty) = &fn_ty.ret_ty {
+        visitor.visit_ty_ref(ret_ty);
     }
 }

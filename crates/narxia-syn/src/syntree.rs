@@ -1,11 +1,10 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
-use colored::{ColoredString, Colorize};
 use narxia_syn_helpers::{syntree_enum, syntree_node};
+use owo_colors::Style;
 
 use crate::language::NarxiaLanguage;
-use crate::parser::ColorizeProcedure;
 use crate::syntax_kind::{SyntaxKind, T};
 use crate::text_span::TextSpan;
 
@@ -41,23 +40,23 @@ impl GreenTree {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy)]
 pub struct TreePresenterStyle {
-    pub node_name: fn(ColoredString) -> ColoredString,
-    pub node_span: fn(ColoredString) -> ColoredString,
-    pub token_name: fn(ColoredString) -> ColoredString,
-    pub token_span: fn(ColoredString) -> ColoredString,
-    pub token_text: fn(ColoredString) -> ColoredString,
+    pub node_name: Style,
+    pub node_span: Style,
+    pub token_name: Style,
+    pub token_span: Style,
+    pub token_text: Style,
 }
 
 impl TreePresenterStyle {
     pub fn plain() -> Self {
         Self {
-            node_name: |s| s,
-            node_span: |s| s,
-            token_name: |s| s,
-            token_span: |s| s,
-            token_text: |s| s,
+            node_name: Style::new(),
+            node_span: Style::new(),
+            token_name: Style::new(),
+            token_span: Style::new(),
+            token_text: Style::new(),
         }
     }
 }
@@ -65,11 +64,11 @@ impl TreePresenterStyle {
 impl Default for TreePresenterStyle {
     fn default() -> Self {
         Self {
-            node_name: |s| s.bright_cyan().bold(),
-            node_span: |s| s.bright_purple(),
-            token_name: |s| s.bright_blue().dimmed(),
-            token_span: |s| s.bright_purple(),
-            token_text: |s| s.bright_green(),
+            node_name: Style::new().bright_cyan().bold(),
+            node_span: Style::new().bright_purple(),
+            token_name: Style::new().bright_blue().dimmed(),
+            token_span: Style::new().bright_purple(),
+            token_text: Style::new().bright_green(),
         }
     }
 }
@@ -118,10 +117,10 @@ impl<'a> TreePresenter<'a> {
                     "",
                     self.style
                         .node_name
-                        .colorize(format_args!("{:?}", n.kind())),
+                        .style(format_args!("{:?}", n.kind())),
                     self.style
                         .node_span
-                        .colorize(format_args!("{}", TextSpan::of_node(n))),
+                        .style(format_args!("{}", TextSpan::of_node(n))),
                     width = self.offset
                 )?;
             }
@@ -132,13 +131,13 @@ impl<'a> TreePresenter<'a> {
                     "",
                     self.style
                         .token_name
-                        .colorize(format_args!("{:?}", t.kind())),
+                        .style(format_args!("{:?}", t.kind())),
                     self.style
                         .token_span
-                        .colorize(format_args!("{}", TextSpan::of(t))),
+                        .style(format_args!("{}", TextSpan::of(t))),
                     self.style
                         .token_text
-                        .colorize(format_args!("{:?}", t.text())),
+                        .style(format_args!("{:?}", t.text())),
                     width = self.offset
                 )?;
             }
@@ -450,7 +449,19 @@ syntree_node! {
 }
 
 syntree_node! {
-    TyRef = ident![ident]
+    TyRef = |[ident![ident], FnTy]
+}
+
+syntree_node! {
+    FnTy = (fn_kw![fn] ?FnTyParamTys ?FnTyRetTy)
+}
+
+syntree_node! {
+    FnTyParamTys = (lparen!['('] *|[TyRef, comma![,]] rparen![')'])
+}
+
+syntree_node! {
+    FnTyRetTy = (arrow![->] TyRef)
 }
 
 syntree_node! {
@@ -473,8 +484,62 @@ syntree_enum! {
     Expr = ExprNode | ExprAtom | BinaryOpExpr | CallExpr | IndexExpr | FieldAccess | MethodCall | Block
 }
 
+// StringLiteral,
+// StringLiteralFragTextPart,
+// StringLiteralFragEscapedChar,
+// StringLiteralFragEscapeSequence,
+// StringLiteralFragIdentDisplay,
+// StringLiteralFragIdentDebug,
+// StringLiteralFragExprDisplay,
+// StringLiteralFragExprDebug,
+
 syntree_node! {
-    ExprAtom = |[ident![ident], str![string], NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, TupleLikeExpr, BlockExpr]
+    StringLiteralFragTextPart = string_literal_frag_text_part![string_literal_frag_text_part_t]
+}
+
+syntree_node! {
+    StringLiteralFragEscapedChar = string_literal_frag_escaped_char![string_literal_frag_escaped_char_t]
+}
+
+syntree_node! {
+    StringLiteralFragEscapeSequence = string_literal_frag_escape_sequence![string_literal_frag_escape_sequence_t]
+}
+
+syntree_node! {
+    StringLiteralFragIdent = ident![ident]
+}
+
+syntree_node! {
+    StringLiteralFragExpr = BlockExpr
+}
+
+syntree_enum! {
+    StringLiteralFragDisplayable = StringLiteralFragIdent | StringLiteralFragExpr
+}
+
+syntree_node! {
+    StringLiteralFragDisplay = (display_tok![string_literal_frag_display_t] StringLiteralFragDisplayable)
+}
+
+syntree_node! {
+    StringLiteralFragDebug = (debug_tok![string_literal_frag_debug_t] StringLiteralFragDisplayable)
+}
+
+syntree_enum! {
+    StringLiteralFragment =
+        StringLiteralFragTextPart |
+        StringLiteralFragEscapedChar |
+        StringLiteralFragEscapeSequence |
+        StringLiteralFragDisplay |
+        StringLiteralFragDebug
+}
+
+syntree_node! {
+    StringLiteral = (begin_string![begin_string] *StringLiteralFragment end_string![end_string])
+}
+
+syntree_node! {
+    ExprAtom = |[ident![ident], StringLiteral, NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, TupleLikeExpr, BlockExpr]
 }
 
 syntree_node! {
@@ -727,7 +792,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    CallExprArgsList = ?(lparen!['('] *ExprNode rparen![')'])
+    CallExprArgsList = ?(lparen!['('] *|[ExprNode, comma![,]] rparen![')'])
 }
 
 syntree_node! {
@@ -771,7 +836,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    LetStmt = (let_kw![let] Pat ?(colon![:] TyRef) ?(eq![=] ExprNode))
+    LetStmt = (let_kw![let] mut_kw![mut] Pat ?(colon![:] TyRef) ?(eq![=] ExprNode))
 }
 
 syntree_node! {

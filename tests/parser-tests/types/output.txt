@@ -1,0 +1,181 @@
+Root@0..147
+  Item@0..41
+    FnDef@0..41
+      FnHead@0..27
+        FN_KW@0..2 "fn"
+        COMPOSED_TRIVIA@2..3 " "
+        FnName@3..4
+          IDENT@3..4 "x"
+        FnParamList@4..20
+          L_PAREN@4..5 "("
+          FnParam@5..19
+            FnParamName@5..6
+              Pat@5..6
+                IDENT@5..6 "a"
+            COLON@6..7 ":"
+            COMPOSED_TRIVIA@7..8 " "
+            FnParamTy@8..19
+              TyRef@8..19
+                FnTy@8..19
+                  FN_KW@8..10 "fn"
+                  FnTyParamTys@10..12
+                    L_PAREN@10..11 "("
+                    R_PAREN@11..12 ")"
+                  COMPOSED_TRIVIA@12..13 " "
+                  FnTyRetTy@13..19
+                    THIN_ARROW@13..15 "->"
+                    COMPOSED_TRIVIA@15..16 " "
+                    TyRef@16..19
+                      IDENT@16..19 "i32"
+          R_PAREN@19..20 ")"
+        COMPOSED_TRIVIA@20..21 " "
+        FnRetTy@21..27
+          THIN_ARROW@21..23 "->"
+          COMPOSED_TRIVIA@23..24 " "
+          TyRef@24..27
+            IDENT@24..27 "i32"
+      COMPOSED_TRIVIA@27..28 " "
+      Block@28..41
+        L_BRACE@28..29 "{"
+        COMPOSED_TRIVIA@29..35 "\r\n    "
+        Item@35..38
+          Stmt@35..38
+            Expr@35..38
+              CallExpr@35..38
+                ExprAtom@35..36
+                  IDENT@35..36 "a"
+                CallExprArgs@36..38
+                  CallExprArgsList@36..38
+                    L_PAREN@36..37 "("
+                    R_PAREN@37..38 ")"
+        COMPOSED_TRIVIA@38..39 "\r"
+        NEWLINE@39..40 "\n"
+        R_BRACE@40..41 "}"
+  COMPOSED_TRIVIA@41..45 "\r\n\r\n"
+  Item@45..90
+    FnDef@45..90
+      FnHead@45..75
+        FN_KW@45..47 "fn"
+        COMPOSED_TRIVIA@47..48 " "
+        FnName@48..49
+          IDENT@48..49 "y"
+        FnParamList@49..68
+          L_PAREN@49..50 "("
+          FnParam@50..67
+            FnParamName@50..51
+              Pat@50..51
+                IDENT@50..51 "b"
+            COLON@51..52 ":"
+            COMPOSED_TRIVIA@52..53 " "
+            FnParamTy@53..67
+              TyRef@53..67
+                FnTy@53..67
+                  FN_KW@53..55 "fn"
+                  FnTyParamTys@55..60
+                    L_PAREN@55..56 "("
+                    TyRef@56..59
+                      IDENT@56..59 "i32"
+                    R_PAREN@59..60 ")"
+                  COMPOSED_TRIVIA@60..61 " "
+                  FnTyRetTy@61..67
+                    THIN_ARROW@61..63 "->"
+                    COMPOSED_TRIVIA@63..64 " "
+                    TyRef@64..67
+                      IDENT@64..67 "i32"
+          R_PAREN@67..68 ")"
+        COMPOSED_TRIVIA@68..69 " "
+        FnRetTy@69..75
+          THIN_ARROW@69..71 "->"
+          COMPOSED_TRIVIA@71..72 " "
+          TyRef@72..75
+            IDENT@72..75 "i32"
+      COMPOSED_TRIVIA@75..76 " "
+      Block@76..90
+        L_BRACE@76..77 "{"
+        COMPOSED_TRIVIA@77..83 "\r\n    "
+        Item@83..87
+          Stmt@83..87
+            Expr@83..87
+              CallExpr@83..87
+                ExprAtom@83..84
+                  IDENT@83..84 "b"
+                CallExprArgs@84..87
+                  CallExprArgsList@84..87
+                    L_PAREN@84..85 "("
+                    Expr@85..86
+                      ExprAtom@85..86
+                        NumLit@85..86
+                          NUM_DEC@85..86 "1"
+                    R_PAREN@86..87 ")"
+        COMPOSED_TRIVIA@87..88 "\r"
+        NEWLINE@88..89 "\n"
+        R_BRACE@89..90 "}"
+  COMPOSED_TRIVIA@90..94 "\r\n\r\n"
+  Item@94..147
+    FnDef@94..147
+      FnHead@94..129
+        FN_KW@94..96 "fn"
+        COMPOSED_TRIVIA@96..97 " "
+        FnName@97..98
+          IDENT@97..98 "y"
+        FnParamList@98..122
+          L_PAREN@98..99 "("
+          FnParam@99..121
+            FnParamName@99..100
+              Pat@99..100
+                IDENT@99..100 "b"
+            COLON@100..101 ":"
+            COMPOSED_TRIVIA@101..102 " "
+            FnParamTy@102..121
+              TyRef@102..121
+                FnTy@102..121
+                  FN_KW@102..104 "fn"
+                  FnTyParamTys@104..114
+                    L_PAREN@104..105 "("
+                    TyRef@105..108
+                      IDENT@105..108 "i32"
+                    COMMA@108..109 ","
+                    COMPOSED_TRIVIA@109..110 " "
+                    TyRef@110..113
+                      IDENT@110..113 "i32"
+                    R_PAREN@113..114 ")"
+                  COMPOSED_TRIVIA@114..115 " "
+                  FnTyRetTy@115..121
+                    THIN_ARROW@115..117 "->"
+                    COMPOSED_TRIVIA@117..118 " "
+                    TyRef@118..121
+                      IDENT@118..121 "i32"
+          R_PAREN@121..122 ")"
+        COMPOSED_TRIVIA@122..123 " "
+        FnRetTy@123..129
+          THIN_ARROW@123..125 "->"
+          COMPOSED_TRIVIA@125..126 " "
+          TyRef@126..129
+            IDENT@126..129 "i32"
+      COMPOSED_TRIVIA@129..130 " "
+      Block@130..147
+        L_BRACE@130..131 "{"
+        COMPOSED_TRIVIA@131..137 "\r\n    "
+        Item@137..144
+          Stmt@137..144
+            Expr@137..144
+              CallExpr@137..144
+                ExprAtom@137..138
+                  IDENT@137..138 "b"
+                CallExprArgs@138..144
+                  CallExprArgsList@138..144
+                    L_PAREN@138..139 "("
+                    Expr@139..140
+                      ExprAtom@139..140
+                        NumLit@139..140
+                          NUM_DEC@139..140 "1"
+                    COMMA@140..141 ","
+                    COMPOSED_TRIVIA@141..142 " "
+                    Expr@142..143
+                      ExprAtom@142..143
+                        NumLit@142..143
+                          NUM_DEC@142..143 "2"
+                    R_PAREN@143..144 ")"
+        COMPOSED_TRIVIA@144..145 "\r"
+        NEWLINE@145..146 "\n"
+        R_BRACE@146..147 "}"

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use colored::Colorize;
+use owo_colors::OwoColorize;
 use narxia_hir::HirId;
 use narxia_src_db::{SrcFile, SrcFileDatabase};
 use narxia_syn::parse_error::ParseError;
@@ -112,7 +112,7 @@ pub fn init_log() {
     narxia_log_impl::init();
 }
 
-pub struct HirDebugImpl<'hir, 'ctxt, H: std::fmt::Debug> {
+pub struct HirDebugImpl<'hir, 'ctxt, H> {
     hir: &'hir H,
     context: &'ctxt DriverCtx,
 }
@@ -157,6 +157,50 @@ impl<'hir, 'ctxt, H: std::fmt::Debug> std::fmt::Debug for HirDebugImpl<'hir, 'ct
     
         narxia_hir::hir::dbg_hir(debug_hir_id_path_callback, || {
             write!(f, "{:?}", hir)
+        })
+    }
+}
+
+impl<'hir, 'ctxt, H: std::fmt::Display> std::fmt::Display for HirDebugImpl<'hir, 'ctxt, H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hir = &self.hir;
+        let context = self.context;
+
+        thread_local! {
+            static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
+        }
+    
+        DRIVER_CTXT.with(|f| {
+            if !f.borrow().is_null() {
+                panic!("Driver context already set");
+            }
+
+            *f.borrow_mut() = context as *const DriverCtx;
+        });
+
+        struct ContextResetGuard;
+
+        impl Drop for ContextResetGuard {
+            fn drop(&mut self) {
+                DRIVER_CTXT.with(|f| {
+                    *f.borrow_mut() = core::ptr::null();
+                });
+            }
+        }
+
+        let _guard = ContextResetGuard;
+    
+        fn debug_hir_id_path_callback(hir_id: HirId) -> String {
+            DRIVER_CTXT.with(|f| {
+                let f = f.borrow();
+                let ctx = unsafe { &**f };
+                let db = &ctx.db;
+                format!("{}", hir_id.src_file().get_presentable_path(db).display())
+            })
+        }
+    
+        narxia_hir::hir::dbg_hir(debug_hir_id_path_callback, || {
+            write!(f, "{}", hir)
         })
     }
 }
