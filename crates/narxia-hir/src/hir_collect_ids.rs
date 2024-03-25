@@ -255,6 +255,7 @@ fn collect_ids_fn_def<'hir, 'arena, 'compute>(
     fn_def_node: Act<'compute, 'hir, FnDef>,
 ) {
     _simple_seq!(self Fn, ctxt, fn_def_node, fn_def_node, {
+        (collect_ids_ident(fn_def_node.name)),
         (collect_ids_fn_def_params(fn_def_node.params)),
         (?collect_ids_fn_def_ret(fn_def_node.ret_ty)),
         (collect_ids_block(fn_def_node.body)),
@@ -299,6 +300,7 @@ fn collect_ids_ty_ref<'hir, 'arena, 'compute>(
 ) {
     _match!(self TyRef, (ctxt, ty_ref_node, ty_ref_node, ty_ref_node.kind) {
         TyRefKind::Named(name, generics) => {
+            (collect_ids_ident(*name)),
             (collect_ids_ty_generics(*generics)),
         },
         TyRefKind::Primitive(primitive_kind) => {
@@ -564,6 +566,7 @@ fn collect_ids_field_access_expr<'hir, 'arena, 'compute>(
     _simple_seq!(ctxt, field_access_expr, field_access_expr,
         {
             (collect_ids_expr(field_access_expr.base)),
+            (collect_ids_ident(field_access_expr.field)),
         }
     );
 }
@@ -575,6 +578,7 @@ fn collect_ids_method_call_expr<'hir, 'arena, 'compute>(
     _simple_seq!(ctxt, method_call_node, method_call_node,
         {
             (collect_ids_expr(method_call_node.base)),
+            (collect_ids_ident(method_call_node.method)),
             (collect_ids_call_expr_args(method_call_node.args)),
         }
     );
@@ -659,10 +663,23 @@ fn collect_ids_pat<'hir, 'arena, 'compute>(
     pat_node: Act<'compute, 'hir, Pat>,
 ) {
     _match!(self Pat, (ctxt, pat_node, pat_node, pat_node.kind) {
-        PatKind::Ident(_ident) => {},
-        PatKind::TupleLike(_tuple) => {},
-        PatKind::Wildcard(_ident) => {},
+        PatKind::Ident(ident) => {
+            (collect_ids_ident(*ident)),
+        },
+        PatKind::TupleLike(tuple) => {
+            (collect_ids_tuple_like_pat(*tuple)),
+        },
+        PatKind::Wildcard(ident) => {
+            (collect_ids_ident(*ident)),
+        },
     })
+}
+
+fn collect_ids_tuple_like_pat<'hir, 'arena, 'compute>(
+    ctxt: &mut HirCollectIdsCtxt<'hir, 'arena>,
+    tuple_like_pat_node: Act<'compute, 'hir, Vec<Pat>>,
+) {
+    _list!(ctxt, tuple_like_pat_node, collect_ids_pat);
 }
 
 fn collect_ids_stmt<'hir, 'arena, 'compute>(

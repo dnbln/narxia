@@ -12,5 +12,5 @@ drop_bomb.workspace = true
 smallvec.workspace = true
 bitflags.workspace = true
 
-narxia-syn-helpers.workspace = true
+narxia-proc.workspace = true
 narxia-log.workspace = true

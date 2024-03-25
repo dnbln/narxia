@@ -13,6 +13,8 @@ pub trait HirVisitor<'hir> {
         self.visit_hir_id(ident.hir_id);
     }
 
+    fn visit_num_literal(&mut self, num: &'hir hir::NumLit) {}
+
     fn visit_item_list(&mut self, item_list: &'hir hir::ItemList) {
         walk_item_list(self, item_list)
     }
@@ -169,12 +171,18 @@ pub trait HirVisitor<'hir> {
     }
 }
 
-pub fn walk_mod_def<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, mod_def: &'hir hir::ModDef) {
+pub fn walk_mod_def<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    mod_def: &'hir hir::ModDef,
+) {
     visitor.visit_hir_id(mod_def.hir_id);
     visitor.visit_item_list(&mod_def.items);
 }
 
-pub fn walk_item_list<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, item_list: &'hir hir::ItemList) {
+pub fn walk_item_list<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    item_list: &'hir hir::ItemList,
+) {
     for item in &item_list.items {
         visitor.visit_item(item);
     }
@@ -255,9 +263,11 @@ pub fn walk_expr_atom<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
     match &atom.kind {
         hir::ExprAtomKind::Ident(ident) => {
-            visitor.visit_hir_id(ident.hir_id);
+            visitor.visit_ident(ident);
         }
-        hir::ExprAtomKind::Num(_) => {}
+        hir::ExprAtomKind::Num(num) => {
+            visitor.visit_num_literal(num);
+        }
         hir::ExprAtomKind::Str(s) => {
             visitor.visit_str_literal(s);
         }
@@ -320,18 +330,27 @@ pub fn walk_ty_generic_arg<'hir, V: HirVisitor<'hir> + ?Sized>(
     }
 }
 
-pub fn walk_fn_param<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_param: &'hir hir::FnParam) {
+pub fn walk_fn_param<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    fn_param: &'hir hir::FnParam,
+) {
     visitor.visit_hir_id(fn_param.hir_id);
     visitor.visit_pat(&fn_param.pat);
     visitor.visit_ty_ref(&fn_param.ty);
 }
 
-pub fn walk_fn_ret_ty<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_ret_ty: &'hir hir::FnRetTy) {
+pub fn walk_fn_ret_ty<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    fn_ret_ty: &'hir hir::FnRetTy,
+) {
     visitor.visit_hir_id(fn_ret_ty.hir_id);
     visitor.visit_ty_ref(&fn_ret_ty.ty);
 }
 
-pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, let_stmt: &'hir hir::LetStmt) {
+pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    let_stmt: &'hir hir::LetStmt,
+) {
     visitor.visit_pat(&let_stmt.pat);
     if let Some(ty) = &let_stmt.ty {
         visitor.visit_ty_ref(ty);
@@ -341,13 +360,19 @@ pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, let_st
     }
 }
 
-pub fn walk_for_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, for_stmt: &'hir hir::ForStmt) {
+pub fn walk_for_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    for_stmt: &'hir hir::ForStmt,
+) {
     visitor.visit_pat(&for_stmt.pat);
     visitor.visit_expr(&for_stmt.iter);
     visitor.visit_block(&for_stmt.body);
 }
 
-pub fn walk_while_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, while_stmt: &'hir hir::WhileStmt) {
+pub fn walk_while_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    while_stmt: &'hir hir::WhileStmt,
+) {
     visitor.visit_expr(&while_stmt.expr);
     visitor.visit_block(&while_stmt.body);
 }
@@ -365,7 +390,10 @@ pub fn walk_block<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, block: &'
     visitor.visit_item_list(&block.items);
 }
 
-pub fn walk_block_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, block_expr: &'hir hir::BlockExpr) {
+pub fn walk_block_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    block_expr: &'hir hir::BlockExpr,
+) {
     visitor.visit_block(&block_expr.block);
 }
 
@@ -377,12 +405,18 @@ pub fn walk_expr_binary_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor.visit_expr(&binary_expr.rhs);
 }
 
-pub fn walk_expr_call_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, call_expr: &'hir hir::CallExpr) {
+pub fn walk_expr_call_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    call_expr: &'hir hir::CallExpr,
+) {
     visitor.visit_expr(&call_expr.callee);
     visitor.visit_call_args(&call_expr.args);
 }
 
-pub fn walk_expr_index_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, index_expr: &'hir hir::IndexExpr) {
+pub fn walk_expr_index_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    index_expr: &'hir hir::IndexExpr,
+) {
     visitor.visit_expr(&index_expr.base);
     visitor.visit_expr(&index_expr.index);
 }
@@ -402,13 +436,19 @@ pub fn walk_expr_method_call<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor.visit_call_args(&method_call.args);
 }
 
-pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, ret: &'hir hir::ReturnExpr) {
+pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    ret: &'hir hir::ReturnExpr,
+) {
     if let Some(expr) = &ret.expr {
         visitor.visit_expr(expr);
     }
 }
 
-pub fn walk_break_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, break_expr: &'hir hir::BreakExpr) {
+pub fn walk_break_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    break_expr: &'hir hir::BreakExpr,
+) {
     if let Some(expr) = &break_expr.expr {
         visitor.visit_expr(expr);
     }
@@ -420,11 +460,17 @@ pub fn walk_continue_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
 }
 
-pub fn walk_loop_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, loop_expr: &'hir hir::LoopExpr) {
+pub fn walk_loop_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    loop_expr: &'hir hir::LoopExpr,
+) {
     visitor.visit_block(&loop_expr.body);
 }
 
-pub fn walk_if_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, if_expr: &'hir hir::IfExpr) {
+pub fn walk_if_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    if_expr: &'hir hir::IfExpr,
+) {
     visitor.visit_expr(&if_expr.cond);
     visitor.visit_expr(&if_expr.then);
     if let Some(else_clause) = &if_expr.else_ {
@@ -454,13 +500,19 @@ pub fn walk_pat<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, pat: &'hir 
     }
 }
 
-pub fn walk_call_args<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, call_args: &'hir hir::CallExprArgs) {
+pub fn walk_call_args<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    call_args: &'hir hir::CallExprArgs,
+) {
     for arg in &call_args.args {
         visitor.visit_expr(arg);
     }
 }
 
-pub fn walk_lambda_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, lambda_expr: &'hir hir::LambdaExpr) {
+pub fn walk_lambda_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    lambda_expr: &'hir hir::LambdaExpr,
+) {
     if let Some(lpl) = &lambda_expr.lambda_param_list {
         visitor.visit_lambda_param_list(lpl);
     }
@@ -476,14 +528,20 @@ pub fn walk_lambda_param_list<'hir, V: HirVisitor<'hir> + ?Sized>(
     }
 }
 
-pub fn walk_lambda_param<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, lambda_param: &'hir hir::LambdaParam) {
+pub fn walk_lambda_param<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    lambda_param: &'hir hir::LambdaParam,
+) {
     visitor.visit_pat(&lambda_param.pat);
     if let Some(ty) = &lambda_param.ty {
         visitor.visit_ty_ref(ty);
     }
 }
 
-pub fn walk_str_literal<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, str_literal: &'hir hir::StrLiteral) {
+pub fn walk_str_literal<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    str_literal: &'hir hir::StrLiteral,
+) {
     for fragment in &str_literal.fragments {
         visitor.visit_str_literal_fragment(fragment);
     }

@@ -1,4 +1,4 @@
-use narxia_syn_helpers::{parse_fn_decl, parse_fn};
+use narxia_proc::{parse_fn_decl, parse_fn};
 use super::{Parser, parse_block, CompletedMarker, parse_list_simple2, AttemptRecoveryLevel, parse_ty_ref, expr, parse_list_rep_simple2, parse_pat};
 use crate::syntax_kind::{SyntaxKind, T};
 

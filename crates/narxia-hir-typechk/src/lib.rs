@@ -55,7 +55,7 @@ impl<'hir> NameResolveVisitor<'hir> {
 
     fn resolve_name(&mut self, name_ref: &hir::Ident, place: Place) {
         self.resolved_names
-            .insert(place.place_base.hir_id, place.clone());
+            .insert(name_ref.hir_id, place.clone());
     }
 }
 
@@ -67,8 +67,8 @@ impl<'hir> HirVisitor<'hir> for NameResolveVisitor<'hir> {
             hir::ExprAtomKind::Ident(name) => {
                 let target_hir_id = self.lookup_local_name(name);
 
-                if let Some(target_hir_id) = target_hir_id {
-                    self.resolve_name(name, target_hir_id.clone());
+                if let Some(target_place) = target_hir_id {
+                    self.resolve_name(name, target_place.clone());
                 }
             }
             _ => {}

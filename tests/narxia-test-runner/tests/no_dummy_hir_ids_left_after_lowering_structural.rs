@@ -1,21 +1,7 @@
 use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, IntoDiagnostic};
-use narxia_hir::visitor::HirVisitor;
-use narxia_hir::HirSpan;
+use narxia_hir::hir::HirStructIdCheckTest;
 use narxia_test_runner::parser_tests::ParserTestSingleFolder;
-
-struct HirVis(Vec<HirSpan>);
-
-impl<'hir> HirVisitor<'hir> for HirVis {
-    fn visit_hir_id(&mut self, hir_id: narxia_hir::HirId) {
-        if hir_id.is_dummy() {
-            #[cfg(hir_id_span)]
-            self.0.push(hir_id.span());
-            #[cfg(not(hir_id_span))]
-            self.0.push(narxia_hir::DUMMY_SP);
-        }
-    }
-}
 
 fn run_test_impl(p: ParserTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
@@ -27,12 +13,14 @@ fn run_test_impl(p: ParserTestSingleFolder) -> miette::Result<()> {
     }
     let hir = narxia_hir_db::lower_file(&ctx.db, syn_file);
     let mod_def = hir.mod_def(&ctx.db);
-    let mut vis = HirVis(Vec::new());
-    vis.visit_mod_def(mod_def);
-    let HirVis(dummies) = vis;
-    if !dummies.is_empty() {
-        bail!("Dummies: {dummies:?}");
+
+    match mod_def.check_hir_id("<root>") {
+        Ok(()) => {}
+        Err(e) => {
+            bail!("Dummy in {}", e.0);
+        }
     }
+
     Ok(())
 }
 

@@ -1,5 +1,3 @@
-#![allow(dead_code, unused_imports, unused_variables)] // FIXME: fix
-
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::parse::discouraged::Speculative;
@@ -12,7 +10,6 @@ use syn::{
     DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Path, Token, Visibility,
 };
 
-#[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
     let DeriveInput {
@@ -71,7 +68,6 @@ fn expand_t(ident: Ident, data: DataEnum, sk_path: Path) -> syn::Result<TokenStr
     })
 }
 
-#[proc_macro_attribute]
 pub fn parse_fn(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
@@ -126,7 +122,6 @@ pub fn parse_fn(
     expanded.into()
 }
 
-#[proc_macro]
 pub fn parse_fn_decl(tokens: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ts = syn::parse(tokens)
         .and_then(expand_fn_decl)
@@ -1091,7 +1086,6 @@ impl Parse for MatchExtraArmSelector {
     }
 }
 
-#[proc_macro]
 pub fn syntree_node(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     syn::parse_macro_input!(input as SyntreeNodeDef)
         .expand()
@@ -1684,7 +1678,6 @@ impl TokenAccessor {
     }
 }
 
-#[proc_macro]
 pub fn syntree_enum(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     syn::parse_macro_input!(input as SyntreeEnumDef)
         .expand()

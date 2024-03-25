@@ -1,4 +1,4 @@
-use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+use narxia_proc::{parse_fn, parse_fn_decl};
 
 use super::{
     fun, parse_block, parse_block_insides, parse_list_rep_simple2, parse_list_simple2,

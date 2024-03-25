@@ -49,15 +49,22 @@ impl fmt::Debug for HirId {
         let path = DEBUG_CONTEXT.with(|f| {
             let f = f.borrow();
             if let Some(ctx) = &*f {
-                (ctx.get_path_fn)(*self)
+                Some((ctx.get_path_fn)(*self))
             } else {
-                panic!("Hir debug context not set");
+                None
             }
         });
-        #[cfg(hir_id_span)]
-        write!(f, "{path}:{} ~ {}", self.span, self.id)?;
-        #[cfg(not(hir_id_span))]
-        write!(f, "{path}{}", self.id)?;
+        if let Some(path) = path {
+            #[cfg(hir_id_span)]
+            write!(f, "{path}:{} ~ {}", self.span, self.id)?;
+            #[cfg(not(hir_id_span))]
+            write!(f, "{path}{}", self.id)?;
+        } else {
+            #[cfg(hir_id_span)]
+            write!(f, "HID:{} @{}", self.id, self.span)?;
+            #[cfg(not(hir_id_span))]
+            write!(f, "HID:{}", self.id)?;
+        }
 
         Ok(())
     }

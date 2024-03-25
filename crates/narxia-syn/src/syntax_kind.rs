@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, narxia_syn_helpers::DeriveT)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, narxia_proc::DeriveT)]
 #[repr(u16)]
 #[T(syntax_kind::SyntaxKind)]
 pub enum SyntaxKind {

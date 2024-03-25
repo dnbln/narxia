@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
-use narxia_syn_helpers::{syntree_enum, syntree_node};
+use narxia_proc::{syntree_enum, syntree_node};
 use owo_colors::Style;
 
 use crate::language::NarxiaLanguage;

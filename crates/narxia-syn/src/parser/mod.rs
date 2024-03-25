@@ -1,6 +1,6 @@
 use std::fmt;
 
-use narxia_syn_helpers::{parse_fn, parse_fn_decl};
+use narxia_proc::{parse_fn, parse_fn_decl};
 use owo_colors::{OwoColorize, Style};
 
 use self::parse_event_handler::GreenTreeBuilderSD;

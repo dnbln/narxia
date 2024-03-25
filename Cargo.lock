@@ -664,6 +664,7 @@ dependencies = [
 name = "narxia-hir"
 version = "0.1.0"
 dependencies = [
+ "narxia-proc",
  "narxia-src-db",
  "narxia-syn",
  "owo-colors",
@@ -703,6 +704,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "narxia-proc"
+version = "0.1.0"
+dependencies = [
+ "heck 0.5.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.55",
+]
+
+[[package]]
 name = "narxia-src-db"
 version = "0.1.0"
 dependencies = [
@@ -717,7 +728,7 @@ dependencies = [
  "bitflags 2.5.0",
  "drop_bomb",
  "narxia-log",
- "narxia-syn-helpers",
+ "narxia-proc",
  "owo-colors",
  "rowan",
  "smallvec",
@@ -731,16 +742,6 @@ dependencies = [
  "narxia-src-db",
  "narxia-syn",
  "salsa",
-]
-
-[[package]]
-name = "narxia-syn-helpers"
-version = "0.1.0"
-dependencies = [
- "heck 0.5.0",
- "proc-macro2",
- "quote",
- "syn 2.0.55",
 ]
 
 [[package]]
