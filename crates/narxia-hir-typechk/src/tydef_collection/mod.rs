@@ -1,3 +1,4 @@
+use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::{HirVisitor, RecursiveIdHandleStrategy};
 
 use crate::def_id::DefId;
@@ -15,12 +16,13 @@ pub struct TyDef {
 struct Visitor<'tcx> {
     tydefs: Vec<TyDef>,
     tcx: TyCtxt<'tcx>,
+    hir_map: &'tcx HirMap,
 }
 
-impl<'tcx, 'hir: 'tcx> HirVisitor<'hir> for Visitor<'tcx> {
-    type Strategy = RecursiveIdHandleStrategy<'hir>;
+impl<'tcx> HirVisitor<'tcx> for Visitor<'tcx> {
+    type Strategy = RecursiveIdHandleStrategy<'tcx>;
 
     fn get_strategy(&self) -> Self::Strategy {
-        RecursiveIdHandleStrategy::new(tcx.hir_map())
+        RecursiveIdHandleStrategy::new(self.hir_map)
     }
 }

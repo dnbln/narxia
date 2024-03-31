@@ -11,6 +11,9 @@ pub mod def_id;
 
 pub mod ty;
 pub mod tyctxt;
+mod fn_collection;
+mod tydef_collection;
+mod tyinfer;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaceBase {

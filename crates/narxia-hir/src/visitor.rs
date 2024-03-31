@@ -67,32 +67,32 @@ impl<'hir> RecursiveIdHandleStrategy<'hir> {
 impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for RecursiveIdHandleStrategy<'hir> {
     fn handle_item_id(&self, visitor: &mut V, item_id: hir::ItemId) {
         visitor.visit_hir_id(item_id.0);
-        visitor.visit_item(item_id, self.0.get_item(item_id));
+        self.0.get_item(item_id).accept(item_id, visitor);
     }
 
     fn handle_block_id(&self, visitor: &mut V, block_id: hir::BlockId) {
         visitor.visit_hir_id(block_id.0);
-        visitor.visit_block(block_id, self.0.get_block(block_id));
+        self.0.get_block(block_id).accept(block_id, visitor);
     }
 
     fn handle_expr_id(&self, visitor: &mut V, expr_id: hir::ExprId) {
         visitor.visit_hir_id(expr_id.0);
-        visitor.visit_expr(expr_id, self.0.get_expr(expr_id));
+        self.0.get_expr(expr_id).accept(expr_id, visitor);
     }
 
     fn handle_stmt_id(&self, visitor: &mut V, stmt_id: hir::StmtId) {
         visitor.visit_hir_id(stmt_id.0);
-        visitor.visit_stmt(stmt_id, self.0.get_stmt(stmt_id));
+        self.0.get_stmt(stmt_id).accept(stmt_id, visitor);
     }
 
     fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId) {
         visitor.visit_hir_id(fn_id.0);
-        visitor.visit_fn_def(fn_id, self.0.get_fn(fn_id));
+        self.0.get_fn(fn_id).accept(fn_id, visitor);
     }
 
     fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {
         visitor.visit_hir_id(mod_id.0);
-        visitor.visit_mod_def(mod_id, self.0.get_mod(mod_id));
+        self.0.get_mod(mod_id).accept(mod_id, visitor);
     }
 }
 
@@ -161,7 +161,7 @@ pub trait HirVisitor<'hir> {
         walk_block(self, block)
     }
 
-    fn visit_block_expr(&mut self, block_expr: &'hir hir::BlockExpr) {
+    fn visit_block_expr(&mut self, expr_id: hir::ExprId, block_expr: &'hir hir::BlockExpr) {
         walk_block_expr(self, block_expr)
     }
 
@@ -244,19 +244,23 @@ pub trait HirVisitor<'hir> {
         walk_custom_infix_expr(self, custom_infix)
     }
 
-    fn visit_return_expr(&mut self, ret: &'hir hir::ReturnExpr) {
+    fn visit_return_expr(&mut self, expr_id: hir::ExprId, ret: &'hir hir::ReturnExpr) {
         walk_return_expr(self, ret)
     }
 
-    fn visit_break_expr(&mut self, break_expr: &'hir hir::BreakExpr) {
+    fn visit_break_expr(&mut self, expr_id: hir::ExprId, break_expr: &'hir hir::BreakExpr) {
         walk_break_expr(self, break_expr)
     }
 
-    fn visit_continue_expr(&mut self, continue_expr: &'hir hir::ContinueExpr) {
+    fn visit_continue_expr(
+        &mut self,
+        expr_id: hir::ExprId,
+        continue_expr: &'hir hir::ContinueExpr,
+    ) {
         walk_continue_expr(self, continue_expr)
     }
 
-    fn visit_loop_expr(&mut self, loop_expr: &'hir hir::LoopExpr) {
+    fn visit_loop_expr(&mut self, expr_id: hir::ExprId, loop_expr: &'hir hir::LoopExpr) {
         walk_loop_expr(self, loop_expr)
     }
 
@@ -321,7 +325,7 @@ pub fn walk_mod_def<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     mod_def: &'hir hir::ModDef,
 ) {
-    visitor.visit_item_list(&mod_def.items);
+    mod_def.items.accept(visitor);
 }
 
 pub fn walk_item_list<'hir, V: HirVisitor<'hir> + ?Sized>(
@@ -329,32 +333,32 @@ pub fn walk_item_list<'hir, V: HirVisitor<'hir> + ?Sized>(
     item_list: &'hir hir::ItemList,
 ) {
     for item in &item_list.items {
-        visitor.visit_item_id(*item);
+        item.accept(visitor);
     }
 }
 
 pub fn walk_item<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, item: &'hir hir::Item) {
     match &item.kind {
         hir::ItemKind::FnDef(fn_def) => {
-            visitor.visit_fn_id(*fn_def);
+            fn_def.accept(visitor);
         }
         hir::ItemKind::Stmt(stmt) => {
-            visitor.visit_stmt_id(*stmt);
+            stmt.accept(visitor);
         }
     }
 }
 
 pub fn walk_fn_def<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_def: &'hir hir::FnDef) {
     walk_fn_head(visitor, fn_def);
-    visitor.visit_block_id(fn_def.body);
+    fn_def.body.accept(visitor);
 }
 
 pub fn walk_fn_head<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_def: &'hir hir::FnDef) {
     for param in &fn_def.params {
-        visitor.visit_fn_param(param);
+        param.accept(visitor);
     }
     if let Some(ret_ty) = &fn_def.ret_ty {
-        visitor.visit_fn_ret_ty(ret_ty);
+        ret_ty.accept(visitor);
     }
 }
 
@@ -365,19 +369,19 @@ pub fn walk_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
     match &stmt.kind {
         hir::StmtKind::ExprStmt(expr) => {
-            visitor.visit_expr_id(*expr);
+            expr.accept(visitor);
         }
         hir::StmtKind::LetStmt(let_stmt) => {
-            visitor.visit_let_stmt(stmt_id, let_stmt);
+            let_stmt.accept(stmt_id, visitor);
         }
         hir::StmtKind::ForStmt(for_stmt) => {
-            visitor.visit_for_stmt(stmt_id, for_stmt);
+            for_stmt.accept(stmt_id, visitor);
         }
         hir::StmtKind::WhileStmt(while_stmt) => {
-            visitor.visit_while_stmt(stmt_id, while_stmt);
+            while_stmt.accept(stmt_id, visitor);
         }
         hir::StmtKind::AssignmentStmt(assignment_stmt) => {
-            visitor.visit_assignment_stmt(stmt_id, assignment_stmt);
+            assignment_stmt.accept(stmt_id, visitor);
         }
     }
 }
@@ -389,25 +393,25 @@ pub fn walk_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
     match &expr.kind {
         hir::ExprKind::Atom(atom) => {
-            visitor.visit_expr_atom(expr_id, atom);
+            atom.accept(expr_id, visitor);
         }
         hir::ExprKind::Binary(binary_expr) => {
-            visitor.visit_expr_binary_expr(expr_id, binary_expr);
+            binary_expr.accept(expr_id, visitor);
         }
         hir::ExprKind::CallExpr(call_expr) => {
-            visitor.visit_expr_call_expr(expr_id, call_expr);
+            call_expr.accept(expr_id, visitor);
         }
         hir::ExprKind::IndexExpr(index_expr) => {
-            visitor.visit_expr_index_expr(expr_id, index_expr);
+            index_expr.accept(expr_id, visitor);
         }
         hir::ExprKind::FieldAccess(field_access) => {
-            visitor.visit_expr_field_access(expr_id, field_access);
+            field_access.accept(expr_id, visitor);
         }
         hir::ExprKind::MethodCall(method_call) => {
-            visitor.visit_expr_method_call(expr_id, method_call);
+            method_call.accept(expr_id, visitor);
         }
         hir::ExprKind::CustomInfix(custom_infix) => {
-            visitor.visit_custom_infix_expr(expr_id, custom_infix);
+            custom_infix.accept(expr_id, visitor);
         }
     }
 }
@@ -419,46 +423,51 @@ pub fn walk_expr_atom<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
     match &atom.kind {
         hir::ExprAtomKind::Ident(ident) => {
-            visitor.visit_ident(ident);
+            ident.accept(visitor);
         }
         hir::ExprAtomKind::Num(num) => {
-            visitor.visit_num_literal(num);
+            num.accept(visitor);
         }
         hir::ExprAtomKind::Str(s) => {
-            visitor.visit_str_literal(s);
+            s.accept(visitor);
         }
         hir::ExprAtomKind::BlockExpr(block_expr) => {
-            visitor.visit_block_expr(block_expr);
+            block_expr.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::ReturnExpr(ret) => {
-            visitor.visit_return_expr(ret);
+            ret.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::BreakExpr(break_expr) => {
-            visitor.visit_break_expr(break_expr);
+            break_expr.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::ContinueExpr(continue_expr) => {
-            visitor.visit_continue_expr(continue_expr);
+            continue_expr.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::LoopExpr(loop_expr) => {
-            visitor.visit_loop_expr(loop_expr);
+            loop_expr.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::IfExpr(if_expr) => {
-            visitor.visit_if_expr(expr_id, if_expr);
+            if_expr.accept(expr_id, visitor);
         }
         hir::ExprAtomKind::TupleExpr(tuple_like_expr) => {
-            visitor.visit_tuple_like_expr(expr_id, tuple_like_expr);
+            tuple_like_expr.accept(expr_id, visitor);
         }
-        hir::ExprAtomKind::LambdaExpr(l) => visitor.visit_lambda_expr(expr_id, l),
+        hir::ExprAtomKind::LambdaExpr(l) => {
+            l.accept(expr_id, visitor);
+        }
     }
 }
 
 pub fn walk_ty_ref<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, ty_ref: &'hir hir::TyRef) {
     match &ty_ref.kind {
-        hir::TyRefKind::Named(_, generics) => {
-            visitor.visit_ty_generic_args(generics);
+        hir::TyRefKind::Named(name, generics) => {
+            name.accept(visitor);
+            generics.accept(visitor);
         }
         hir::TyRefKind::Primitive(_) => {}
-        hir::TyRefKind::Fn(fn_ty) => visitor.visit_fn_ty_ref(fn_ty),
+        hir::TyRefKind::Fn(fn_ty) => {
+            fn_ty.accept(visitor);
+        }
     }
 }
 
@@ -467,7 +476,7 @@ pub fn walk_ty_generic_args<'hir, V: HirVisitor<'hir> + ?Sized>(
     generic_args: &'hir hir::TyGenericArgs,
 ) {
     for arg in &generic_args.args {
-        visitor.visit_ty_generic_arg(arg);
+        arg.accept(visitor);
     }
 }
 
@@ -477,10 +486,10 @@ pub fn walk_ty_generic_arg<'hir, V: HirVisitor<'hir> + ?Sized>(
 ) {
     match &generic_arg.kind {
         hir::TyGenericArgKind::Type(ty_ref) => {
-            visitor.visit_ty_ref(ty_ref);
+            ty_ref.accept(visitor);
         }
         hir::TyGenericArgKind::ConstVal(const_val) => {
-            visitor.visit_expr_id(*const_val);
+            const_val.accept(visitor);
         }
     }
 }
@@ -489,27 +498,27 @@ pub fn walk_fn_param<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     fn_param: &'hir hir::FnParam,
 ) {
-    visitor.visit_pat(&fn_param.pat);
-    visitor.visit_ty_ref(&fn_param.ty);
+    fn_param.pat.accept(visitor);
+    fn_param.ty.accept(visitor);
 }
 
 pub fn walk_fn_ret_ty<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     fn_ret_ty: &'hir hir::FnRetTy,
 ) {
-    visitor.visit_ty_ref(&fn_ret_ty.ty);
+    fn_ret_ty.ty.accept(visitor);
 }
 
 pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     let_stmt: &'hir hir::LetStmt,
 ) {
-    visitor.visit_pat(&let_stmt.pat);
+    let_stmt.pat.accept(visitor);
     if let Some(ty) = &let_stmt.ty {
-        visitor.visit_ty_ref(ty);
+        ty.accept(visitor);
     }
     if let Some(init) = let_stmt.init {
-        visitor.visit_expr_id(init);
+        init.accept(visitor);
     }
 }
 
@@ -517,76 +526,76 @@ pub fn walk_for_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     for_stmt: &'hir hir::ForStmt,
 ) {
-    visitor.visit_pat(&for_stmt.pat);
-    visitor.visit_expr_id(for_stmt.iter);
-    visitor.visit_block_id(for_stmt.body);
+    for_stmt.pat.accept(visitor);
+    for_stmt.iter.accept(visitor);
+    for_stmt.body.accept(visitor);
 }
 
 pub fn walk_while_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     while_stmt: &'hir hir::WhileStmt,
 ) {
-    visitor.visit_expr_id(while_stmt.expr);
-    visitor.visit_block_id(while_stmt.body);
+    while_stmt.expr.accept(visitor);
+    while_stmt.body.accept(visitor);
 }
 
 pub fn walk_assignment_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     assignment_stmt: &'hir hir::AssignmentStmt,
 ) {
-    visitor.visit_expr_id(assignment_stmt.lhs);
-    visitor.visit_expr_id(assignment_stmt.rhs);
+    assignment_stmt.lhs.accept(visitor);
+    assignment_stmt.rhs.accept(visitor);
 }
 
 pub fn walk_block<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, block: &'hir hir::Block) {
-    visitor.visit_item_list(&block.items);
+    block.items.accept(visitor);
 }
 
 pub fn walk_block_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     block_expr: &'hir hir::BlockExpr,
 ) {
-    visitor.visit_block_id(block_expr.block);
+    block_expr.block.accept(visitor);
 }
 
 pub fn walk_expr_binary_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     binary_expr: &'hir hir::BinaryOpExpr,
 ) {
-    visitor.visit_expr_id(binary_expr.lhs);
-    visitor.visit_expr_id(binary_expr.rhs);
+    binary_expr.lhs.accept(visitor);
+    binary_expr.rhs.accept(visitor);
 }
 
 pub fn walk_expr_call_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     call_expr: &'hir hir::CallExpr,
 ) {
-    visitor.visit_expr_id(call_expr.callee);
-    visitor.visit_call_args(&call_expr.args);
+    call_expr.callee.accept(visitor);
+    call_expr.args.accept(visitor);
 }
 
 pub fn walk_expr_index_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     index_expr: &'hir hir::IndexExpr,
 ) {
-    visitor.visit_expr_id(index_expr.base);
-    visitor.visit_expr_id(index_expr.index);
+    index_expr.base.accept(visitor);
+    index_expr.index.accept(visitor);
 }
 
 pub fn walk_expr_field_access<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     field_access: &'hir hir::FieldAccess,
 ) {
-    visitor.visit_expr_id(field_access.base);
+    field_access.base.accept(visitor);
 }
 
 pub fn walk_expr_method_call<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     method_call: &'hir hir::MethodCall,
 ) {
-    visitor.visit_expr_id(method_call.base);
-    visitor.visit_ident(&method_call.method);
-    visitor.visit_call_args(&method_call.args);
+    method_call.base.accept(visitor);
+    method_call.method.accept(visitor);
+    method_call.args.accept(visitor);
 }
 
 pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
@@ -594,7 +603,7 @@ pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     ret: &'hir hir::ReturnExpr,
 ) {
     if let Some(expr) = ret.expr {
-        visitor.visit_expr_id(expr);
+        expr.accept(visitor);
     }
 }
 
@@ -603,7 +612,7 @@ pub fn walk_break_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     break_expr: &'hir hir::BreakExpr,
 ) {
     if let Some(expr) = break_expr.expr {
-        visitor.visit_expr_id(expr);
+        expr.accept(visitor);
     }
 }
 
@@ -617,26 +626,26 @@ pub fn walk_custom_infix_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     custom_infix: &'hir hir::CustomInfixExpr,
 ) {
-    visitor.visit_expr_id(custom_infix.base);
-    visitor.visit_ident(&custom_infix.name);
-    visitor.visit_expr_id(custom_infix.arg);
+    custom_infix.base.accept(visitor);
+    custom_infix.name.accept(visitor);
+    custom_infix.arg.accept(visitor);
 }
 
 pub fn walk_loop_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     loop_expr: &'hir hir::LoopExpr,
 ) {
-    visitor.visit_block_id(loop_expr.body);
+    loop_expr.body.accept(visitor);
 }
 
 pub fn walk_if_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     if_expr: &'hir hir::IfExpr,
 ) {
-    visitor.visit_expr_id(if_expr.cond);
-    visitor.visit_expr_id(if_expr.then);
+    if_expr.cond.accept(visitor);
+    if_expr.then.accept(visitor);
     if let Some(else_clause) = if_expr.else_ {
-        visitor.visit_expr_id(else_clause);
+        else_clause.accept(visitor);
     }
 }
 
@@ -645,7 +654,7 @@ pub fn walk_tuple_like_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     tuple_like_expr: &'hir hir::TupleExpr,
 ) {
     for expr in &tuple_like_expr.exprs {
-        visitor.visit_expr_id(*expr);
+        expr.accept(visitor);
     }
 }
 
@@ -654,7 +663,7 @@ pub fn walk_pat<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, pat: &'hir 
         hir::PatKind::Ident(_) => {}
         hir::PatKind::Tuple(tuple_like) => {
             for pat in tuple_like {
-                visitor.visit_pat(pat);
+                pat.accept(visitor);
             }
         }
         hir::PatKind::Wildcard(_) => {}
@@ -666,7 +675,7 @@ pub fn walk_call_args<'hir, V: HirVisitor<'hir> + ?Sized>(
     call_args: &'hir hir::CallExprArgs,
 ) {
     for arg in &call_args.args {
-        visitor.visit_expr_id(*arg);
+        arg.accept(visitor);
     }
 }
 
@@ -675,9 +684,9 @@ pub fn walk_lambda_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     lambda_expr: &'hir hir::LambdaExpr,
 ) {
     if let Some(lpl) = &lambda_expr.lambda_param_list {
-        visitor.visit_lambda_param_list(lpl);
+        lpl.accept(visitor);
     }
-    visitor.visit_item_list(&lambda_expr.body);
+    lambda_expr.body.accept(visitor);
 }
 
 pub fn walk_lambda_param_list<'hir, V: HirVisitor<'hir> + ?Sized>(
@@ -685,7 +694,7 @@ pub fn walk_lambda_param_list<'hir, V: HirVisitor<'hir> + ?Sized>(
     lambda_param_list: &'hir hir::LambdaParamList,
 ) {
     for param in &lambda_param_list.params {
-        visitor.visit_lambda_param(param);
+        param.accept(visitor);
     }
 }
 
@@ -693,9 +702,9 @@ pub fn walk_lambda_param<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     lambda_param: &'hir hir::LambdaParam,
 ) {
-    visitor.visit_pat(&lambda_param.pat);
+    lambda_param.pat.accept(visitor);
     if let Some(ty) = &lambda_param.ty {
-        visitor.visit_ty_ref(ty);
+        ty.accept(visitor);
     }
 }
 
@@ -704,7 +713,7 @@ pub fn walk_str_literal<'hir, V: HirVisitor<'hir> + ?Sized>(
     str_literal: &'hir hir::StrLiteral,
 ) {
     for fragment in &str_literal.fragments {
-        visitor.visit_str_literal_fragment(fragment);
+        fragment.accept(visitor);
     }
 }
 
@@ -719,10 +728,10 @@ pub fn walk_str_literal_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
             // Nothing to do.
         }
         hir::StrLiteralFragmentKind::Display(f) => {
-            visitor.visit_str_display_fragment(f);
+            f.accept(visitor);
         }
         hir::StrLiteralFragmentKind::Debug(f) => {
-            visitor.visit_str_debug_fragment(f);
+            f.accept(visitor);
         }
     }
 }
@@ -731,22 +740,129 @@ pub fn walk_str_display_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     str_display_fragment: &'hir hir::StrLiteralDisplayFragment,
 ) {
-    visitor.visit_expr_id(str_display_fragment.expr);
+    str_display_fragment.expr.accept(visitor);
 }
 
 pub fn walk_str_debug_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     str_debug_fragment: &'hir hir::StrLiteralDebugFragment,
 ) {
-    visitor.visit_expr_id(str_debug_fragment.expr);
+    str_debug_fragment.expr.accept(visitor);
 }
 
 pub fn walk_fn_ty_ref<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_ty: &'hir hir::FnTy) {
     for ty in &fn_ty.params {
-        visitor.visit_ty_ref(ty);
+        ty.accept(visitor);
     }
 
     if let Some(ret_ty) = &fn_ty.ret_ty {
-        visitor.visit_ty_ref(ret_ty);
+        ret_ty.accept(visitor);
     }
+}
+
+pub trait Visitable<'hir> {
+    fn accept<V: HirVisitor<'hir> + ?Sized>(&'hir self, visitor: &mut V);
+}
+
+pub trait OwnedVisitable<'hir> {
+    fn accept<V: HirVisitor<'hir> + ?Sized>(self, visitor: &mut V);
+}
+
+pub trait IdVisitable<'hir> {
+    type Id;
+    fn accept<V: HirVisitor<'hir> + ?Sized>(&'hir self, id: Self::Id, visitor: &mut V);
+}
+
+macro_rules! impl_visitable {
+    ($($visit_name:ident ($ty:ty)),* $(,)?) => {
+        $(
+            impl<'hir> Visitable<'hir> for $ty {
+                fn accept<V: HirVisitor<'hir>+ ?Sized>(&'hir self, visitor: &mut V) {
+                    visitor.$visit_name (self);
+                }
+            }
+        )*
+    };
+}
+
+impl_visitable! {
+    visit_ident(hir::Ident),
+    visit_num_literal(hir::NumLit),
+    visit_item_list(hir::ItemList),
+    visit_fn_param(hir::FnParam),
+    visit_fn_ret_ty(hir::FnRetTy),
+    visit_ty_ref(hir::TyRef),
+    visit_pat(hir::Pat),
+    visit_ty_generic_args(hir::TyGenericArgs),
+    visit_ty_generic_arg(hir::TyGenericArg),
+    visit_fn_ty_ref(hir::FnTy),
+    visit_str_literal(hir::StrLiteral),
+    visit_str_literal_fragment(hir::StrLiteralFragment),
+    visit_str_display_fragment(hir::StrLiteralDisplayFragment),
+    visit_str_debug_fragment(hir::StrLiteralDebugFragment),
+    visit_call_args(hir::CallExprArgs),
+    visit_lambda_param_list(hir::LambdaParamList),
+    visit_lambda_param(hir::LambdaParam),
+}
+
+macro_rules! impl_visitable_id {
+    ($($visit_name:ident ($ty:ty)),* $(,)?) => {
+        $(
+            impl<'hir> OwnedVisitable<'hir> for $ty {
+                fn accept<V: HirVisitor<'hir> + ?Sized>(self, visitor: &mut V) {
+                    visitor.$visit_name (self);
+                }
+            }
+        )*
+    }
+}
+
+impl_visitable_id! {
+    visit_expr_id(hir::ExprId),
+    visit_item_id(hir::ItemId),
+    visit_stmt_id(hir::StmtId),
+    visit_block_id(hir::BlockId),
+    visit_fn_id(hir::FnId),
+    visit_mod_id(hir::ModId),
+}
+
+macro_rules! impl_id_visitable {
+    ($($visit_name:ident [$id:ty] ($ty:ty)),* $(,)?) => {
+        $(
+            impl<'hir> IdVisitable<'hir> for $ty {
+                type Id = $id;
+                fn accept<V: HirVisitor<'hir>+ ?Sized>(&'hir self, id: Self::Id, visitor: &mut V) {
+                    visitor.$visit_name (id, self);
+                }
+            }
+        )*
+    };
+}
+
+impl_id_visitable! {
+    visit_mod_def [hir::ModId] (hir::ModDef),
+    visit_item [hir::ItemId] (hir::Item),
+    visit_fn_def [hir::FnId] (hir::FnDef),
+    visit_stmt [hir::StmtId] (hir::Stmt),
+    visit_expr [hir::ExprId] (hir::Expr),
+    visit_let_stmt [hir::StmtId] (hir::LetStmt),
+    visit_for_stmt [hir::StmtId] (hir::ForStmt),
+    visit_while_stmt [hir::StmtId] (hir::WhileStmt),
+    visit_assignment_stmt [hir::StmtId] (hir::AssignmentStmt),
+    visit_block [hir::BlockId] (hir::Block),
+    visit_block_expr [hir::ExprId] (hir::BlockExpr),
+    visit_expr_atom [hir::ExprId] (hir::ExprAtom),
+    visit_expr_binary_expr [hir::ExprId] (hir::BinaryOpExpr),
+    visit_expr_call_expr [hir::ExprId] (hir::CallExpr),
+    visit_expr_index_expr [hir::ExprId] (hir::IndexExpr),
+    visit_expr_field_access [hir::ExprId] (hir::FieldAccess),
+    visit_expr_method_call [hir::ExprId] (hir::MethodCall),
+    visit_custom_infix_expr [hir::ExprId] (hir::CustomInfixExpr),
+    visit_return_expr [hir::ExprId] (hir::ReturnExpr),
+    visit_break_expr [hir::ExprId] (hir::BreakExpr),
+    visit_continue_expr [hir::ExprId] (hir::ContinueExpr),
+    visit_loop_expr [hir::ExprId] (hir::LoopExpr),
+    visit_if_expr [hir::ExprId] (hir::IfExpr),
+    visit_tuple_like_expr [hir::ExprId] (hir::TupleExpr),
+    visit_lambda_expr [hir::ExprId] (hir::LambdaExpr),
 }

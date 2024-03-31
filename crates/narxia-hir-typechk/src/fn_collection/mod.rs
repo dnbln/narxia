@@ -1,4 +1,4 @@
-use narxia_hir::{hir::{Block, BlockId, FnParam, FnRetTy, Ident}, hir_map::HirMap, visitor::{HirVisitor, RecursiveIdHandleStrategy}};
+use narxia_hir::{hir::{self, Block, BlockId, FnParam, FnRetTy, Ident}, hir_map::HirMap, visitor::{HirVisitor, RecursiveIdHandleStrategy}};
 
 use crate::{def_id::DefId, tyctxt::TyCtxt};
 
@@ -23,13 +23,13 @@ impl<'tcx> HirVisitor<'tcx> for Visitor<'tcx> {
         RecursiveIdHandleStrategy::new(self.hir_map)
     }
 
-    fn visit_fn_def(&mut self, fn_def: &'tcx narxia_hir::hir::FnDef) {
-        let def_id = self.tcx.add_def_id(fn_def.hir_id);
+    fn visit_fn_def(&mut self, fn_id: hir::FnId, fn_def: &'tcx hir::FnDef) {
+        let def_id = self.tcx.add_def_id(fn_id.0);
         self.fn_defs.push(FnDef {
             name: &fn_def.name,
             params: &fn_def.params,
             ret_ty: fn_def.ret_ty.as_ref(),
-            body: &fn_def.body,
+            body: fn_def.body,
             def_id,
         });
     }
