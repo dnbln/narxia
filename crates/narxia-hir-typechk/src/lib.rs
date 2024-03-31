@@ -7,7 +7,6 @@ use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::{self, HirVisitor};
 use narxia_hir::{hir, HirId};
 
-
 pub mod def_id;
 
 pub mod ty;

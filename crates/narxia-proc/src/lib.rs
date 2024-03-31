@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables)] // FIXME: fix
 
-mod _syn;
 mod _hir;
+mod _syn;
 
 #[proc_macro_derive(DeriveT, attributes(T))]
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {

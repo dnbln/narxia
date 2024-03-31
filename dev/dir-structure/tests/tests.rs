@@ -409,8 +409,14 @@ fn clean_dir_writer_newtype() {
     .write_to(&d)
     .unwrap();
 
-    assert_eq!(std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(), "f1");
-    assert_eq!(std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(), "f2");
+    assert_eq!(
+        std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(),
+        "f1"
+    );
+    assert_eq!(
+        std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(),
+        "f2"
+    );
     assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
     std::fs::write(d.join("subdir/f4"), "f4").unwrap();
 
@@ -419,13 +425,19 @@ fn clean_dir_writer_newtype() {
             f1: "f1".to_owned(),
             f2: "f2".to_owned(),
             f3: "f3".to_owned(),
-        }
+        },
     })
     .write_to(&d)
     .unwrap();
 
-    assert_eq!(std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(), "f1");
-    assert_eq!(std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(), "f2");
+    assert_eq!(
+        std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(),
+        "f1"
+    );
+    assert_eq!(
+        std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(),
+        "f2"
+    );
     assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
     assert!(!d.join("subdir/f4").exists());
 }

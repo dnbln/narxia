@@ -60,9 +60,15 @@ fn main() -> miette::Result<()> {
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
-            ctx.db.get_global_ty_ctxt().hir_map_mut_ref().set_current_file(Some(file));
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
-            ctx.db.get_global_ty_ctxt().hir_map_mut_ref().set_current_file(None);
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
             let hir_map = ctx.db.get_global_ty_ctxt().hir_map.borrow();

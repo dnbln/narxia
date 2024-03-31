@@ -55,7 +55,7 @@ fn derive_hir_struct_id_check_for_enum(
     let name_str = name.to_string();
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-    let mut check_code = quote!{};
+    let mut check_code = quote! {};
 
     for variant in &e.variants {
         let variant_name = &variant.ident;

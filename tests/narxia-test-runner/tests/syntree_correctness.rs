@@ -26,11 +26,11 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use owo_colors::OwoColorize;
 use miette::{bail, IntoDiagnostic};
 use narxia_syn::syntree::tests_data::{
     AccessorCalledDataList, AccessorCalledDataReturned, AccessorInfo, ElemRef,
 };
+use owo_colors::OwoColorize;
 
 struct InputFile {
     path: PathBuf,

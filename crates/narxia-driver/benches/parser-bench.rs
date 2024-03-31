@@ -80,7 +80,12 @@ fn make_input(num: usize) -> String {
     "#.repeat(num)
 }
 
-fn run_parser(input: &str) -> (narxia_syn::syntree::GreenTree, Vec<narxia_syn::parse_error::ParseError>) {
+fn run_parser(
+    input: &str,
+) -> (
+    narxia_syn::syntree::GreenTree,
+    Vec<narxia_syn::parse_error::ParseError>,
+) {
     let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(input);
     let mut parser = narxia_syn::parser::Parser::new(&mut ts);
     parser.parse();

@@ -1,4 +1,4 @@
-pub use tracing::{debug, error, info, trace, warn, span, Level};
+pub use tracing::{debug, error, info, span, trace, warn, Level};
 
 #[macro_export]
 macro_rules! d {

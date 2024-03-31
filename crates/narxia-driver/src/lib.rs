@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use ctxt::DriverCtx;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::HirId;
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
@@ -15,6 +14,8 @@ use owo_colors::OwoColorize;
 
 pub mod ctxt;
 pub mod db;
+
+pub use ctxt::DriverCtx;
 
 pub struct DisplayFile<'a>(&'a db::Database, SrcFile);
 

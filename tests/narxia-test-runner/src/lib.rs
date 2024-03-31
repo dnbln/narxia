@@ -1,6 +1,7 @@
 #![feature(internal_output_capture)]
 
-use std::{path::Path, sync::{Arc, Mutex}};
+use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use libtest_mimic::Failed;
 

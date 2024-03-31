@@ -25,10 +25,10 @@
 //! because in the happy case that the buffer has at least 2 tokens, we can
 //! just compare the kinds directly, and we get a tiny performance boost because
 //! they are right next to each other (so a smaller chance of cache miss).
-//! 
+//!
 //! There are some unsafe blocks in this code, as what we are doing is inherently
 //! unsafe, but we are careful to ensure that the invariants are upheld.
-//! 
+//!
 //! Nevertheless, changes to this code should be done with care, and the
 //! unsafe blocks should be reviewed carefully.
 

@@ -1,5 +1,9 @@
-use narxia_proc::{parse_fn_decl, parse_fn};
-use super::{Parser, parse_block, CompletedMarker, parse_list_simple2, AttemptRecoveryLevel, parse_ty_ref, expr, parse_list_rep_simple2, parse_pat};
+use narxia_proc::{parse_fn, parse_fn_decl};
+
+use super::{
+    expr, parse_block, parse_list_rep_simple2, parse_list_simple2, parse_pat, parse_ty_ref,
+    AttemptRecoveryLevel, CompletedMarker, Parser,
+};
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {

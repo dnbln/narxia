@@ -7,42 +7,42 @@
 //!
 //! It is backed by a library called [`rowan`] which is a generic library for
 //! building syntax trees.
-//! 
+//!
 //! This module defines typed nodes for the syntax tree.
 //! It's correctness and completeness are ensured by the `syntree_correctness`
 //! and `syntree_completeness` tests.
-//! 
+//!
 //! # Implementation details
-//! 
+//!
 //! The proc macro's [`syntree_node`] and [`syntree_enum`] are used to define the
 //! typed nodes.
-//! 
+//!
 //! [`syntree_node`] accepts the following syntax:
-//! 
+//!
 //! ```ignore
 //! syntree_node! {
 //!    NodeName = Node_info
 //! }
 //! ```
-//! 
+//!
 //! Where `NodeName` has to match the name of the variant in the [`SyntaxKind`] enum.
-//! 
+//!
 //! `Node_info` can be one of the following:
-//! 
+//!
 //! - "any of": `|[Child1, Child2, ...]`
 //! - "list of": `(Child1 Child2)`
 //! - "optional": `?Child`
 //! - "zero or more": `*Child`
 //! - "token": `name_of_accessor![token_kind]` ([`T![token_kind]`][T] has to be the [`SyntaxKind`] of the token)
-//! 
+//!
 //! [`syntree_enum`] accepts the following syntax:
-//! 
+//!
 //! ```ignore
 //! syntree_enum! {
 //!   EnumName = EnumVariant1 | EnumVariant2 | ...
 //! }
 //! ```
-//! 
+//!
 //! Here, `EnumName` doesn't have to match the name of a variant in the [`SyntaxKind`] enum,
 //! but all the variants have to be created through [`syntree_node`].
 

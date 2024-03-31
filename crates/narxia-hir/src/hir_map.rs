@@ -3,9 +3,9 @@ use std::fmt;
 use narxia_data_structures::FxBTreeMap;
 use narxia_src_db::SrcFile;
 
-use crate::{hir::*, HirSpan};
+use crate::hir::*;
 use crate::visitor::HirVisitor;
-use crate::HirId;
+use crate::{HirId, HirSpan};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HirElem {

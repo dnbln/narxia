@@ -1,5 +1,5 @@
 //! Text token source.
-//! 
+//!
 //! This module contains the implementation of a token source that reads tokens from a text.
 
 use std::ops::RangeInclusive;
@@ -452,7 +452,8 @@ impl<'text> CharInStringTokenParser<'text> {
                 };
                 match c {
                     'x' => {
-                        let end = consume_all(&mut self.chars, [], ['0'..='9', 'a'..='f', 'A'..='F']);
+                        let end =
+                            consume_all(&mut self.chars, [], ['0'..='9', 'a'..='f', 'A'..='F']);
                         r(SyntaxKind::StringLiteralFragEscapeSequenceToken, start, end)
                     }
                     _ => r(
