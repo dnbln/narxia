@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 narxia-hir.workspace = true
 narxia-data-structures.workspace = true
+narxia-src-db.workspace = true

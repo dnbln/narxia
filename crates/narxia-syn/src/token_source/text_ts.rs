@@ -1,3 +1,7 @@
+//! Text token source.
+//! 
+//! This module contains the implementation of a token source that reads tokens from a text.
+
 use std::ops::RangeInclusive;
 
 use super::TokParserState;

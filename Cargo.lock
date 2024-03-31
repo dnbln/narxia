@@ -664,6 +664,7 @@ dependencies = [
 name = "narxia-hir"
 version = "0.1.0"
 dependencies = [
+ "narxia-data-structures",
  "narxia-proc",
  "narxia-src-db",
  "narxia-syn",
@@ -685,6 +686,7 @@ version = "0.1.0"
 dependencies = [
  "narxia-data-structures",
  "narxia-hir",
+ "narxia-src-db",
 ]
 
 [[package]]

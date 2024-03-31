@@ -38,44 +38,46 @@ impl Debug for TyVar {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum TyRef {
+pub enum Ty {
     Primitive(PrimitiveTy),
     Adt(TyAdt),
     TyVar(TyVar),
     Fn(FunTy),
+    Never,
 }
 
-impl Debug for TyRef {
+impl Debug for Ty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TyRef::Primitive(p) => write!(f, "{p:?}"),
-            TyRef::Adt(adt) => write!(f, "{adt:?}"),
-            TyRef::TyVar(ty_var) => write!(f, "{ty_var:?}"),
-            TyRef::Fn(fty) => write!(f, "{fty:?}"),
+            Ty::Primitive(p) => write!(f, "{p:?}"),
+            Ty::Adt(adt) => write!(f, "{adt:?}"),
+            Ty::TyVar(ty_var) => write!(f, "{ty_var:?}"),
+            Ty::Fn(fty) => write!(f, "{fty:?}"),
+            Ty::Never => write!(f, "!"),
         }
     }
 }
 
-impl From<TyVar> for TyRef {
+impl From<TyVar> for Ty {
     fn from(ty_var: TyVar) -> Self {
-        TyRef::TyVar(ty_var)
+        Ty::TyVar(ty_var)
     }
 }
 
-impl From<FunTy> for TyRef {
+impl From<FunTy> for Ty {
     fn from(fty: FunTy) -> Self {
-        TyRef::Fn(fty)
+        Ty::Fn(fty)
     }
 }
 
-impl TyRef {
-    pub const UNIT_TY: TyRef = TyRef::Adt(TyAdt::Unit);
+impl Ty {
+    pub const UNIT_TY: Ty = Ty::Adt(TyAdt::Unit);
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct FunTy {
-    inputs: Vec<TyRef>,
-    output: Box<TyRef>,
+    inputs: Vec<Ty>,
+    output: Box<Ty>,
 }
 
 impl Debug for FunTy {
@@ -89,7 +91,7 @@ impl Debug for FunTy {
         }
         write!(f, ")")?;
 
-        if *self.output != TyRef::UNIT_TY {
+        if *self.output != Ty::UNIT_TY {
             write!(f, " -> {ty:?}", ty = self.output)?
         }
 
@@ -108,14 +110,14 @@ pub enum TyAdt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructTyAdt {
     def_id: DefId,
-    fields: FxHashMap<String, TyRef>,
+    fields: FxHashMap<String, Ty>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructTyAdtKind {
     Zst,
-    Struct { fields: FxHashMap<String, TyRef> },
-    TupleStruct { fields: Vec<TyRef> },
+    Struct { fields: FxHashMap<String, Ty> },
+    TupleStruct { fields: Vec<Ty> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,7 +134,7 @@ pub struct EnumVariantAdt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TupleTyAdt {
     def_id: DefId,
-    fields: Vec<TyRef>,
+    fields: Vec<Ty>,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -158,12 +160,12 @@ impl From<StdTyClass> for TyClass {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BinOpTyClass {
-    pub(crate) rhs: TyRef,
-    pub(crate) output: TyRef,
+    pub(crate) rhs: Ty,
+    pub(crate) output: Ty,
 }
 
 impl BinOpTyClass {
-    pub fn new(rhs: &TyRef, output: &TyRef) -> Self {
+    pub fn new(rhs: &Ty, output: &Ty) -> Self {
         Self {
             rhs: rhs.clone(),
             output: output.clone(),
@@ -237,23 +239,23 @@ pub struct UserDefinedTyClass {
 }
 
 pub(crate) struct FTyBuilder {
-    inputs: Vec<TyRef>,
-    output: TyRef,
+    inputs: Vec<Ty>,
+    output: Ty,
 }
 
 impl FTyBuilder {
     pub fn new() -> Self {
         FTyBuilder {
             inputs: vec![],
-            output: TyRef::UNIT_TY,
+            output: Ty::UNIT_TY,
         }
     }
 
-    pub fn add_input(&mut self, ty: TyRef) {
+    pub fn add_input(&mut self, ty: Ty) {
         self.inputs.push(ty);
     }
 
-    pub fn set_output(&mut self, ty: TyRef) {
+    pub fn set_output(&mut self, ty: Ty) {
         self.output = ty;
     }
 

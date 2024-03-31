@@ -11,3 +11,4 @@ owo-colors.workspace = true
 narxia-proc.workspace = true
 narxia-syn.workspace = true
 narxia-src-db.workspace = true
+narxia-data-structures.workspace = true

@@ -1,13 +1,12 @@
 use core::fmt;
 
-use hir_arena::HirRefArena;
+use hir_map::HirMap;
 use narxia_src_db::SrcFile;
 use narxia_syn::syntree::{self, Token};
 use narxia_syn::text_span::TextSpan;
 
 pub mod hir;
-pub mod hir_arena;
-mod hir_collect_ids;
+pub mod hir_map;
 pub mod lower;
 pub mod visitor;
 pub mod visitor_mut;
@@ -49,39 +48,30 @@ impl fmt::Debug for HirSpan {
 
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Ord, PartialOrd)]
 pub struct HirId {
-    root: SrcFile,
     id: usize,
     #[cfg(hir_id_span)]
     span: HirSpan,
 }
 
+impl AsRef<HirId> for HirId {
+    fn as_ref(&self) -> &HirId {
+        self
+    }
+}
+
 impl HirId {
-    pub fn new_dummy(root: SrcFile, id: usize) -> Self {
+    pub fn new(id: usize) -> Self {
         Self {
-            root,
             id,
             #[cfg(hir_id_span)]
             span: DUMMY_SP,
         }
     }
 
-    pub fn is_dummy(self) -> bool {
-        self.id == usize::MAX
-    }
-
-    pub fn src_file(self) -> SrcFile {
-        self.root
-    }
-
     #[cfg(hir_id_span)]
     pub fn span(self) -> HirSpan {
         self.span
     }
-}
-
-pub fn build_refs_to_arena<'hir, 'arena>(arena: &'arena mut HirRefArena<'hir>, mod_def: &'hir hir::ModDef) {
-    let mut ctxt = hir_collect_ids::HirCollectIdsCtxt::new(arena);
-    hir_collect_ids::collect_ids_mod(&mut ctxt, mod_def);
 }
 
 // TODO: nice display of HIR

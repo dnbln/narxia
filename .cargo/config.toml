@@ -1,3 +1,7 @@
+[alias]
+nt = "nextest run"
+nta = "nt --all"
+
 [unstable]
 codegen-backend = true
 

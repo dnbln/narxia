@@ -1,11 +1,14 @@
 use std::fmt;
 
+use narxia_src_db::SrcFile;
 use owo_colors::{OwoColorize, Style};
 
 use super::*;
 
 pub struct HirDebugContext {
-    get_path_fn: fn(HirId) -> String,
+    get_file_fn: fn(HirId) -> SrcFile,
+    get_path_fn: fn(SrcFile) -> String,
+    get_file_contents_fn: fn(SrcFile) -> String,
 }
 
 thread_local! {
@@ -13,7 +16,9 @@ thread_local! {
 }
 
 pub fn dbg_hir(
-    get_path_fn: fn(HirId) -> String,
+    get_file_fn: fn(HirId) -> SrcFile,
+    get_path_fn: fn(SrcFile) -> String,
+    get_file_contents_fn: fn(SrcFile) -> String,
     cb: impl FnOnce() -> std::fmt::Result,
 ) -> std::fmt::Result {
     DEBUG_CONTEXT.with(move |f| {
@@ -29,7 +34,11 @@ pub fn dbg_hir(
             }
         }
 
-        *f.borrow_mut() = Some(HirDebugContext { get_path_fn });
+        *f.borrow_mut() = Some(HirDebugContext {
+            get_file_fn,
+            get_path_fn,
+            get_file_contents_fn,
+        });
 
         let _guard = HirDebugContextGuard(f);
 
@@ -38,35 +47,62 @@ pub fn dbg_hir(
 }
 
 pub fn display_hir(
-    get_path_fn: fn(HirId) -> String,
+    get_file_fn: fn(HirId) -> SrcFile,
+    get_path_fn: fn(SrcFile) -> String,
+    get_file_contents_fn: fn(SrcFile) -> String,
     cb: impl FnOnce() -> std::fmt::Result,
 ) -> std::fmt::Result {
-    dbg_hir(get_path_fn, cb)
+    dbg_hir(get_file_fn, get_path_fn, get_file_contents_fn, cb)
 }
 
 impl fmt::Debug for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let path = DEBUG_CONTEXT.with(|f| {
+        let r: Option<(String, String)> = DEBUG_CONTEXT.with(|f| {
             let f = f.borrow();
+
             if let Some(ctx) = &*f {
-                Some((ctx.get_path_fn)(*self))
+                let ctx: &HirDebugContext = ctx;
+                let src_file = (ctx.get_file_fn)(*self);
+                Some((
+                    (ctx.get_path_fn)(src_file),
+                    (ctx.get_file_contents_fn)(src_file),
+                ))
             } else {
                 None
             }
         });
-        if let Some(path) = path {
-            #[cfg(hir_id_span)]
-            write!(f, "{path}:{} ~ {}", self.span, self.id)?;
-            #[cfg(not(hir_id_span))]
-            write!(f, "{path}{}", self.id)?;
-        } else {
-            #[cfg(hir_id_span)]
-            write!(f, "HID:{} @{}", self.id, self.span)?;
-            #[cfg(not(hir_id_span))]
-            write!(f, "HID:{}", self.id)?;
+
+        match r {
+            Some((path, contents)) => {
+                #[cfg(hir_id_span)]
+                {
+                    write!(
+                        f,
+                        "{path}:{} {} ~ {}",
+                        self.span.span.get_span_start_line(&contents),
+                        self.span,
+                        self.id
+                    )?;
+                }
+                #[cfg(not(hir_id_span))]
+                write!(f, "{path}{}", self.id)?;
+            }
+
+            None => {
+                #[cfg(hir_id_span)]
+                write!(f, "HID:{} @{}", self.id, self.span)?;
+                #[cfg(not(hir_id_span))]
+                write!(f, "HID:{}", self.id)?;
+            }
         }
 
         Ok(())
+    }
+}
+
+impl fmt::Display for HirId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Debug>::fmt(self, f)
     }
 }
 
@@ -123,13 +159,12 @@ pub fn display_item_list(
 ) -> fmt::Result {
     let newlines = item_list.items.len() > 1;
 
-    for item in &item_list.items {
-        display_item(f, item, hdc)?;
-
-        if newlines {
+    for (i, item) in item_list.items.iter().enumerate() {
+        if i != 0 && newlines {
             writeln!(f)?;
             write!(f, "{:indent$}", "", indent = hdc.depth)?;
         }
+        display_item_id(f, *item, hdc)?;
     }
 
     Ok(())
@@ -144,12 +179,18 @@ impl fmt::Display for ItemList {
 pub fn display_item(f: &mut fmt::Formatter, item: &Item, hdc: HirDisplayContext) -> fmt::Result {
     match &item.kind {
         ItemKind::FnDef(fn_def) => {
-            display_fn_def(f, fn_def, hdc)?;
+            display_fn_id(f, *fn_def, hdc)?;
         }
         ItemKind::Stmt(stmt) => {
-            display_stmt(f, stmt, hdc)?;
+            display_stmt_id(f, *stmt, hdc)?;
         }
     }
+
+    Ok(())
+}
+
+pub fn display_item_id(f: &mut fmt::Formatter, id: ItemId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", id.0)?;
 
     Ok(())
 }
@@ -190,17 +231,10 @@ pub fn display_fn_def(
     fn_def: &FnDef,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(
-        f,
-        "{:indent$}{} {}",
-        "",
-        "fn".keyword(),
-        fn_def.name.text,
-        indent = hdc.depth
-    )?;
+    write!(f, "{} {}", "fn".keyword(), fn_def.name.text,)?;
 
     if let Some(generics) = &fn_def.generics {
-        write!(f, "<")?;
+        write!(f, "{}", "<".punctuation())?;
         if generics.params.len() > 1 {
             write!(f, "\n")?;
             write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
@@ -215,44 +249,56 @@ pub fn display_fn_def(
                     write!(f, "{}", t.text)?;
                 }
                 GenericParamKind::Const(name, ty) => {
-                    write!(f, "{}: ", name.text)?;
+                    write!(f, "{}{} ", name.text, ":".punctuation())?;
                     display_ty(f, ty, hdc.make_child())?;
                 }
             }
 
-            writeln!(f, ",")?;
+            writeln!(f, "{}", ",".punctuation())?;
         }
 
         if generics.params.len() > 1 {
             write!(f, "{:indent$}", "", indent = hdc.depth)?;
         }
 
-        write!(f, ">")?;
+        write!(f, "{}", ">".punctuation())?;
     }
 
-    write!(f, "(")?;
+    write!(f, "{}", "(".punctuation())?;
 
     write!(f, "\n")?;
 
     for param in &fn_def.params {
         write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
         display_param(f, param, hdc.make_child())?;
-        writeln!(f, ",")?;
+        writeln!(f, "{}", ",".punctuation())?;
     }
 
-    write!(f, "{:indent$}) ", "", indent = hdc.depth)?;
+    write!(
+        f,
+        "{:indent$}{} ",
+        "",
+        ")".punctuation(),
+        indent = hdc.depth
+    )?;
 
     if let Some(ret_ty) = &fn_def.ret_ty {
         display_fn_ret_ty(f, ret_ty, hdc)?;
         write!(f, " ")?;
     }
 
-    display_block(f, &fn_def.body, hdc.make_child())?;
+    display_block_id(f, fn_def.body, hdc)?;
 
     Ok(())
 }
 
-fn display_fn_ret_ty(
+pub fn display_fn_id(f: &mut fmt::Formatter, fn_id: FnId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", fn_id.0)?;
+
+    Ok(())
+}
+
+pub fn display_fn_ret_ty(
     f: &mut fmt::Formatter,
     ret_ty: &FnRetTy,
     hdc: HirDisplayContext,
@@ -282,7 +328,7 @@ pub fn display_block(f: &mut fmt::Formatter, block: &Block, hdc: HirDisplayConte
 
     if !attempt_no_line_breaks {
         writeln!(f)?;
-        write!(f, "{:indent$}", "", indent = hdc.depth)?;
+        write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
     }
 
     display_item_list(
@@ -290,12 +336,13 @@ pub fn display_block(f: &mut fmt::Formatter, block: &Block, hdc: HirDisplayConte
         &block.items,
         HirDisplayContext {
             attempt_no_line_breaks,
-            ..hdc
+            ..hdc.make_child()
         },
     )?;
 
     if !attempt_no_line_breaks {
         writeln!(f)?;
+        write!(f, "{:indent$}", "", indent = hdc.depth)?;
     }
 
     write!(f, "{}", "}".punctuation())?;
@@ -307,6 +354,16 @@ impl fmt::Display for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_block(f, self, HirDisplayContext::new())
     }
+}
+
+pub fn display_block_id(
+    f: &mut fmt::Formatter,
+    id: BlockId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
 }
 
 fn display_param(f: &mut fmt::Formatter, param: &FnParam, hdc: HirDisplayContext) -> fmt::Result {
@@ -326,9 +383,9 @@ impl fmt::Display for FnParam {
 fn display_pat(f: &mut fmt::Formatter, pat: &Pat, hdc: HirDisplayContext) -> fmt::Result {
     match &pat.kind {
         PatKind::Ident(ident) => {
-            write!(f, "{}", ident.text)?;
+            write!(f, "{}", ident.text.bright_white().bold())?;
         }
-        PatKind::TupleLike(pats) => {
+        PatKind::Tuple(pats) => {
             write!(f, "(")?;
             for (i, pat) in pats.iter().enumerate() {
                 if i != 0 {
@@ -410,7 +467,7 @@ fn display_ty_generic_arg(
             display_ty(f, ty, hdc)?;
         }
         TyGenericArgKind::ConstVal(val) => {
-            write!(f, "{}", val)?;
+            display_expr_id(f, *val, hdc)?;
         }
     }
 
@@ -454,7 +511,7 @@ impl fmt::Display for PrimitiveTy {
 fn display_stmt(f: &mut fmt::Formatter, stmt: &Stmt, hdc: HirDisplayContext) -> fmt::Result {
     match &stmt.kind {
         StmtKind::ExprStmt(expr) => {
-            display_expr(f, expr, hdc)?;
+            display_expr_id(f, *expr, hdc)?;
         }
         StmtKind::LetStmt(let_stmt) => {
             display_let_stmt(f, let_stmt, hdc)?;
@@ -463,16 +520,10 @@ fn display_stmt(f: &mut fmt::Formatter, stmt: &Stmt, hdc: HirDisplayContext) -> 
             display_assignment_stmt(f, assignment, hdc)?;
         }
         StmtKind::ForStmt(for_stmt) => {
-            write!(f, "for ")?;
-            display_pat(f, &for_stmt.pat, hdc)?;
-            write!(f, " in ")?;
-            display_expr(f, &for_stmt.iter, hdc)?;
-            display_block(f, &for_stmt.body, hdc.make_child())?;
+            display_for_stmt(f, for_stmt, hdc)?;
         }
         StmtKind::WhileStmt(while_stmt) => {
-            write!(f, "while ")?;
-            display_expr(f, &while_stmt.expr, hdc)?;
-            display_block(f, &while_stmt.body, hdc.make_child())?;
+            display_while_stmt(f, while_stmt, hdc)?;
         }
     }
 
@@ -482,6 +533,51 @@ fn display_stmt(f: &mut fmt::Formatter, stmt: &Stmt, hdc: HirDisplayContext) -> 
 impl fmt::Display for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_stmt(f, self, HirDisplayContext::new())
+    }
+}
+
+fn display_stmt_id(f: &mut fmt::Formatter, id: StmtId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+fn display_for_stmt(
+    f: &mut fmt::Formatter,
+    for_stmt: &ForStmt,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{} {}", "for".keyword(), "(".punctuation())?;
+    display_pat(f, &for_stmt.pat, hdc)?;
+    write!(f, " {} ", "in".keyword())?;
+    display_expr_id(f, for_stmt.iter, hdc)?;
+    write!(f, "{} ", ")".punctuation())?;
+    display_block_id(f, for_stmt.body, hdc)?;
+
+    Ok(())
+}
+
+impl fmt::Display for ForStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_for_stmt(f, self, HirDisplayContext::new())
+    }
+}
+
+fn display_while_stmt(
+    f: &mut fmt::Formatter,
+    while_stmt: &WhileStmt,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{} ", "while".keyword())?;
+    display_expr_id(f, while_stmt.expr, hdc)?;
+    display_block_id(f, while_stmt.body, hdc)?;
+
+    Ok(())
+}
+
+impl fmt::Display for WhileStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_while_stmt(f, self, HirDisplayContext::new())
     }
 }
 
@@ -499,7 +595,7 @@ fn display_let_stmt(
     display_pat(f, &let_stmt.pat, hdc)?;
     if let Some(init) = &let_stmt.init {
         write!(f, " {} ", "=".operator())?;
-        display_expr(f, init, hdc)?;
+        display_expr_id(f, *init, hdc)?;
     }
 
     Ok(())
@@ -516,9 +612,9 @@ fn display_assignment_stmt(
     assignment: &AssignmentStmt,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    display_expr(f, &assignment.lhs, hdc)?;
+    display_expr_id(f, assignment.lhs, hdc)?;
     write!(f, " {} ", assignment.op)?;
-    display_expr(f, &assignment.rhs, hdc)?;
+    display_expr_id(f, assignment.rhs, hdc)?;
 
     Ok(())
 }
@@ -535,12 +631,12 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
             display_expr_atom(f, atom, hdc)?;
         }
         ExprKind::Binary(bin) => {
-            display_expr(f, &bin.lhs, hdc)?;
+            display_expr_id(f, bin.lhs, hdc)?;
             write!(f, " {} ", bin.op)?;
-            display_expr(f, &bin.rhs, hdc)?;
+            display_expr_id(f, bin.rhs, hdc)?;
         }
         ExprKind::CallExpr(call) => {
-            display_expr(f, &call.callee, hdc)?;
+            display_expr_id(f, call.callee, hdc)?;
             write!(f, "{}", "(".operator())?;
 
             for (i, arg) in call.args.args.iter().enumerate() {
@@ -548,23 +644,23 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
                     write!(f, ", ")?;
                 }
 
-                display_expr(f, arg, hdc.make_child())?;
+                display_expr_id(f, *arg, hdc.make_child())?;
             }
 
             write!(f, "{}", ")".operator())?;
         }
         ExprKind::IndexExpr(index) => {
-            display_expr(f, &index.base, hdc)?;
+            display_expr_id(f, index.base, hdc)?;
             write!(f, "{}", "[".operator())?;
-            display_expr(f, &index.index, hdc)?;
+            display_expr_id(f, index.index, hdc)?;
             write!(f, "{}", "]".operator())?;
         }
         ExprKind::FieldAccess(field) => {
-            display_expr(f, &field.base, hdc)?;
+            display_expr_id(f, field.base, hdc)?;
             write!(f, "{}{}", ".".operator(), field.field.text)?;
         }
         ExprKind::MethodCall(method) => {
-            display_expr(f, &method.base, hdc)?;
+            display_expr_id(f, method.base, hdc)?;
             write!(
                 f,
                 "{}{}{}",
@@ -578,10 +674,15 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
                     write!(f, ", ")?;
                 }
 
-                display_expr(f, arg, hdc.make_child())?;
+                display_expr_id(f, *arg, hdc.make_child())?;
             }
 
             write!(f, "{}", ")".operator())?;
+        }
+        ExprKind::CustomInfix(infix) => {
+            display_expr_id(f, infix.base, hdc)?;
+            write!(f, " {} ", infix.name)?;
+            display_expr_id(f, infix.arg, hdc)?;
         }
     }
 
@@ -592,6 +693,12 @@ impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_expr(f, self, HirDisplayContext::new())
     }
+}
+
+fn display_expr_id(f: &mut fmt::Formatter, id: ExprId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
 }
 
 fn display_bin_op(f: &mut fmt::Formatter, op: &BinOp) -> fmt::Result {
@@ -630,41 +737,27 @@ fn display_expr_atom(
 ) -> fmt::Result {
     match &atom.kind {
         ExprAtomKind::BlockExpr(block_expr) => {
-            display_block(f, &block_expr.block, hdc.attempt_no_line_breaks())?;
+            display_block_id(f, block_expr.block, hdc.attempt_no_line_breaks())?;
         }
         ExprAtomKind::BreakExpr(b) => {
-            write!(f, "{}", "break".keyword())?;
-            if let Some(x) = &b.expr {
-                write!(f, " ")?;
-                display_expr(f, x, hdc)?;
-            }
+            display_break_expr(f, b, hdc)?;
         }
-        ExprAtomKind::ContinueExpr(_) => {
-            write!(f, "{}", "continue".keyword())?;
+        ExprAtomKind::ContinueExpr(e) => {
+            display_continue_expr(f, e, hdc)?;
         }
         ExprAtomKind::ReturnExpr(r) => {
             write!(f, "{}", "return".keyword())?;
             if let Some(x) = &r.expr {
                 write!(f, " ")?;
-                display_expr(f, x, hdc)?;
+                display_expr_id(f, *x, hdc)?;
             }
         }
         ExprAtomKind::Ident(name) => {
             write!(f, "{}", name.text)?;
         }
-        ExprAtomKind::IfExpr(if_expr) => {
-            write!(f, "if ")?;
-            display_expr(f, &if_expr.cond, hdc)?;
-            display_expr(f, &if_expr.then, hdc.make_child())?;
-
-            if let Some(else_block) = &if_expr.else_ {
-                write!(f, " else ")?;
-                display_expr(f, else_block, hdc.make_child())?;
-            }
-        }
+        ExprAtomKind::IfExpr(if_expr) => {}
         ExprAtomKind::LoopExpr(loop_expr) => {
-            write!(f, "loop ")?;
-            display_block(f, &loop_expr.body, hdc.make_child())?;
+            display_loop_expr(f, loop_expr, hdc)?;
         }
         ExprAtomKind::Num(num) => {
             write!(f, "{}", num)?;
@@ -672,14 +765,14 @@ fn display_expr_atom(
         ExprAtomKind::Str(str_lit) => {
             display_str_literal(f, str_lit, hdc)?;
         }
-        ExprAtomKind::TupleLikeExpr(tuple_like) => {
+        ExprAtomKind::TupleExpr(tuple_like) => {
             write!(f, "(")?;
             for (i, expr) in tuple_like.exprs.iter().enumerate() {
                 if i != 0 {
                     write!(f, ", ")?;
                 }
 
-                display_expr(f, expr, hdc.make_child())?;
+                display_expr_id(f, *expr, hdc.make_child())?;
             }
             write!(f, ")")?;
         }
@@ -723,9 +816,97 @@ impl fmt::Display for ExprAtom {
     }
 }
 
+pub fn display_if_expr(
+    f: &mut fmt::Formatter,
+    if_expr: &IfExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{} ", "if".keyword())?;
+    display_expr_id(f, if_expr.cond, hdc)?;
+    display_expr_id(f, if_expr.then, hdc.make_child())?;
+
+    if let Some(else_block) = &if_expr.else_ {
+        write!(f, " {} ", "else".keyword())?;
+        display_expr_id(f, *else_block, hdc.make_child())?;
+    }
+
+    Ok(())
+}
+
+pub fn display_continue_expr(
+    f: &mut fmt::Formatter,
+    _: &ContinueExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", "continue".keyword())
+}
+
+impl fmt::Display for ContinueExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_continue_expr(f, self, HirDisplayContext::new())
+    }
+}
+
+pub fn display_break_expr(
+    f: &mut fmt::Formatter,
+    break_expr: &BreakExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", "break".keyword())?;
+    if let Some(expr) = &break_expr.expr {
+        write!(f, " ")?;
+        display_expr_id(f, *expr, hdc)?;
+    }
+
+    Ok(())
+}
+
+impl fmt::Display for BreakExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_break_expr(f, self, HirDisplayContext::new())
+    }
+}
+
+pub fn display_return_expr(
+    f: &mut fmt::Formatter,
+    return_expr: &ReturnExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", "return".keyword())?;
+    if let Some(expr) = &return_expr.expr {
+        write!(f, " ")?;
+        display_expr_id(f, *expr, hdc)?;
+    }
+
+    Ok(())
+}
+
+impl fmt::Display for ReturnExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_return_expr(f, self, HirDisplayContext::new())
+    }
+}
+
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.text)
+    }
+}
+
+fn display_loop_expr(
+    f: &mut fmt::Formatter,
+    loop_expr: &LoopExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{} ", "loop".keyword())?;
+    display_block_id(f, loop_expr.body, hdc)?;
+
+    Ok(())
+}
+
+impl fmt::Display for LoopExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_loop_expr(f, self, HirDisplayContext::new())
     }
 }
 
@@ -836,7 +1017,7 @@ fn display_str_literal_display_fragment(
 ) -> fmt::Result {
     write!(f, "{}", fragment.display_token.text().blue())?;
 
-    display_expr(f, &fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
+    display_expr_id(f, fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
 
     Ok(())
 }
@@ -854,7 +1035,7 @@ fn display_str_literal_debug_fragment(
 ) -> fmt::Result {
     write!(f, "{}", fragment.debug_token.text().blue())?;
 
-    display_expr(f, &fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
+    display_expr_id(f, fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
 
     Ok(())
 }

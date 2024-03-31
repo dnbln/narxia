@@ -1,0 +1,15 @@
+use core::intrinsics;
+
+trait Add<Rhs> {
+    type Output;
+
+    fn add(&self, rhs: &Rhs) -> Self::Output;
+}
+
+impl Add<i32> for i32 {
+    type Output = i32;
+
+    fn add(&self, rhs: &i32) -> i32 {
+        intrinsics::add_i32(*self, *rhs)
+    }
+}

@@ -1,3 +1,51 @@
+//! # Syntax Tree
+//!
+//! This module contains the syntax tree of the Narxia language.
+//!
+//! The syntax tree is a tree structure that represents the structure of
+//! the source code.
+//!
+//! It is backed by a library called [`rowan`] which is a generic library for
+//! building syntax trees.
+//! 
+//! This module defines typed nodes for the syntax tree.
+//! It's correctness and completeness are ensured by the `syntree_correctness`
+//! and `syntree_completeness` tests.
+//! 
+//! # Implementation details
+//! 
+//! The proc macro's [`syntree_node`] and [`syntree_enum`] are used to define the
+//! typed nodes.
+//! 
+//! [`syntree_node`] accepts the following syntax:
+//! 
+//! ```ignore
+//! syntree_node! {
+//!    NodeName = Node_info
+//! }
+//! ```
+//! 
+//! Where `NodeName` has to match the name of the variant in the [`SyntaxKind`] enum.
+//! 
+//! `Node_info` can be one of the following:
+//! 
+//! - "any of": `|[Child1, Child2, ...]`
+//! - "list of": `(Child1 Child2)`
+//! - "optional": `?Child`
+//! - "zero or more": `*Child`
+//! - "token": `name_of_accessor![token_kind]` ([`T![token_kind]`][T] has to be the [`SyntaxKind`] of the token)
+//! 
+//! [`syntree_enum`] accepts the following syntax:
+//! 
+//! ```ignore
+//! syntree_enum! {
+//!   EnumName = EnumVariant1 | EnumVariant2 | ...
+//! }
+//! ```
+//! 
+//! Here, `EnumName` doesn't have to match the name of a variant in the [`SyntaxKind`] enum,
+//! but all the variants have to be created through [`syntree_node`].
+
 use std::fmt;
 use std::fmt::{Debug, Formatter};
 
@@ -115,9 +163,7 @@ impl<'a> TreePresenter<'a> {
                     f,
                     "{:width$}{}@{}",
                     "",
-                    self.style
-                        .node_name
-                        .style(format_args!("{:?}", n.kind())),
+                    self.style.node_name.style(format_args!("{:?}", n.kind())),
                     self.style
                         .node_span
                         .style(format_args!("{}", TextSpan::of_node(n))),
@@ -129,15 +175,11 @@ impl<'a> TreePresenter<'a> {
                     f,
                     "{:width$}{}@{} {}",
                     "",
-                    self.style
-                        .token_name
-                        .style(format_args!("{:?}", t.kind())),
+                    self.style.token_name.style(format_args!("{:?}", t.kind())),
                     self.style
                         .token_span
                         .style(format_args!("{}", TextSpan::of(t))),
-                    self.style
-                        .token_text
-                        .style(format_args!("{:?}", t.text())),
+                    self.style.token_text.style(format_args!("{:?}", t.text())),
                     width = self.offset
                 )?;
             }
@@ -481,7 +523,19 @@ syntree_node! {
 }
 
 syntree_enum! {
-    Expr = ExprNode | ExprAtom | BinaryOpExpr | CallExpr | IndexExpr | FieldAccess | MethodCall | Block
+    Expr = ExprNode | ExprAtom | BinaryOpExpr | CallExpr | IndexExpr | FieldAccess | MethodCall | Block | CustomInfixExpr
+}
+
+syntree_node! {
+    CustomInfixExpr = (Expr CustomInfixExprInfix)
+}
+
+syntree_node! {
+    CustomInfixExprInfix = (name![ident] CustomInfixExprInfixArg)
+}
+
+syntree_node! {
+    CustomInfixExprInfixArg = ExprNode
 }
 
 // StringLiteral,

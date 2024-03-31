@@ -1,0 +1,39 @@
+let x = 1
+let y = x + 1
+let z = x + y
+println("$x $y $?z") // prints "1 2 3"
+
+let mut x = 1
+x += 1
+println("$x") // prints "2"
+
+println("${x + y}") // prints "4"
+
+
+loop {
+    break x
+}
+
+loop {
+    continue
+}
+
+fn f() {
+    fn g() {
+        return
+    }
+
+    return
+}
+
+loop {
+    loop {
+        break x
+    }
+}
+
+for (i in 0 until 10) {
+    println("$i")
+    break
+    continue
+}

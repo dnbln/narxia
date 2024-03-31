@@ -1,3 +1,9 @@
+//! Token source module.
+//! 
+//! This module contains the [`TokenSource`] trait and related types.
+//! 
+//! A [`Token`] is a part of the source text. It has a [`SyntaxKind`] and a [`TextSpan`].
+
 use std::fmt;
 use std::fmt::Formatter;
 

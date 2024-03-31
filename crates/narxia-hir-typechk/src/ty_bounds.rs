@@ -1,9 +1,13 @@
 use std::fmt::Debug;
 
-use narxia_data_structures::FxHashMap;
-use narxia_hir::{hir::{self, ModDef}, visitor::{self, HirVisitor}, HirId};
+use narxia_data_structures::{FxBTreeMap, FxHashMap};
+use narxia_hir::hir::{self, ModDef, ModId};
+use narxia_hir::hir_map::HirMap;
+use narxia_hir::visitor::{self, HirVisitor};
+use narxia_hir::HirId;
 
-use crate::ty::{BinOpTyClass, FTyBuilder, PrimitiveTy, StdTyClass, TyClass, TyRef, TyVar};
+use crate::ty::{BinOpTyClass, FTyBuilder, PrimitiveTy, StdTyClass, Ty, TyClass, TyVar};
+use crate::NameResolveResults;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct TyBound {
@@ -24,8 +28,8 @@ impl Debug for TyBound {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum TyBoundKind {
-    TyEq(TyRef, TyRef),
-    TyImplClass { ty: TyRef, klass: TyClass },
+    TyEq(Ty, Ty),
+    TyImplClass { ty: Ty, klass: TyClass },
 }
 
 impl Debug for TyBoundKind {
@@ -45,7 +49,7 @@ struct TyBoundsGenContext<'a> {
 }
 
 impl<'a> TyBoundsGenContext<'a> {
-    fn push_bound_eq(&mut self, hir_id: HirId, ty1: impl Into<TyRef>, ty2: impl Into<TyRef>) {
+    fn push_bound_eq(&mut self, hir_id: HirId, ty1: impl Into<Ty>, ty2: impl Into<Ty>) {
         self.bounds.push_bound(TyBound {
             hir_id,
             kind: TyBoundKind::TyEq(ty1.into(), ty2.into()),
@@ -55,7 +59,7 @@ impl<'a> TyBoundsGenContext<'a> {
     fn push_bound_impl_class(
         &mut self,
         hir_id: HirId,
-        ty: impl Into<TyRef>,
+        ty: impl Into<Ty>,
         klass: impl Into<TyClass>,
     ) {
         self.bounds.push_bound(TyBound {
@@ -85,30 +89,46 @@ impl TyBounds {
     }
 }
 
-struct Visitor<'a> {
+struct Visitor<'a, 'n> {
     ctxt: TyBoundsGenContext<'a>,
     resolv: TyEnvironment,
-    labels: Vec<LabelTyInfo>,
+
+    control_flow_target_tys: FxBTreeMap<HirId, TyVar>,
+    name_resolve_results: &'n NameResolveResults,
+    hir_map: &'a HirMap,
 }
 
 struct LabelTyInfo {
     hir_id: HirId,
     block_hir_id: HirId,
     label: String,
-    ty: TyRef,
+    ty: Ty,
+    kind: LabelKind,
+}
+
+enum LabelKind {
+    Loop,
+    While,
+    Function,
 }
 
 struct TyEnvironment {
-    tys: FxHashMap<HirId, TyRef>,
+    tys: FxHashMap<HirId, Ty>,
 }
 
 impl TyEnvironment {
-    fn insert(&mut self, hir_id: HirId, ty: impl Into<TyRef>) {
+    fn insert(&mut self, hir_id: HirId, ty: impl Into<Ty>) {
         self.tys.insert(hir_id, ty.into());
     }
 }
 
-impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
+impl<'hir, 'name_resolve_results> HirVisitor<'hir> for Visitor<'hir, 'name_resolve_results> {
+    type Strategy = visitor::RecursiveIdHandleStrategy<'hir>;
+
+    fn get_strategy(&self) -> Self::Strategy {
+        visitor::RecursiveIdHandleStrategy::new(self.hir_map)
+    }
+
     fn visit_expr_call_expr(&mut self, hir_id: HirId, call_expr: &'hir hir::CallExpr) {
         visitor::walk_expr_call_expr(self, call_expr);
 
@@ -125,7 +145,7 @@ impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
 
         let out_ty = self.ctxt.new_ty_var();
 
-        fty_builder.set_output(TyRef::TyVar(out_ty));
+        fty_builder.set_output(Ty::TyVar(out_ty));
 
         let fty = fty_builder.build();
 
@@ -133,36 +153,65 @@ impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
         self.resolv.insert(hir_id, out_ty);
     }
 
-    fn visit_expr(&mut self, expr: &'hir hir::Expr) {
+    fn visit_expr(&mut self, expr_id: hir::ExprId, expr: &'hir hir::Expr) {
         let tvar = self.ctxt.new_ty_var();
         self.resolv.insert(expr.hir_id, tvar);
 
-        visitor::walk_expr(self, expr)
+        visitor::walk_expr(self, expr_id, expr)
     }
 
     fn visit_expr_atom(&mut self, hir_id: HirId, atom: &'hir hir::ExprAtom) {
         visitor::walk_expr_atom(self, hir_id, atom);
+
         let t = self.resolv.tys[hir_id].clone();
 
         match &atom.kind {
             hir::ExprAtomKind::Ident(name) => {}
             hir::ExprAtomKind::Str(s) => {
                 self.ctxt
-                    .push_bound_eq(hir_id, t, TyRef::Primitive(PrimitiveTy::Str))
+                    .push_bound_eq(hir_id, t, Ty::Primitive(PrimitiveTy::Str))
             }
             hir::ExprAtomKind::Num(n) => {
                 self.ctxt.push_bound_impl_class(hir_id, t, StdTyClass::Num)
             }
             hir::ExprAtomKind::LoopExpr(_) => {}
-            hir::ExprAtomKind::IfExpr(_) => {}
-            hir::ExprAtomKind::ReturnExpr(_) => {}
+            hir::ExprAtomKind::IfExpr(if_expr) => {
+                let cond_ty = &self.resolv.tys[if_expr.cond.hir_id];
+                self.ctxt
+                    .push_bound_eq(hir_id, cond_ty.clone(), Ty::Primitive(PrimitiveTy::Bool));
+
+                let then_branch_ty = &self.resolv.tys[if_expr.then.hir_id];
+                let else_branch_ty = if_expr.else_.as_ref().map(|it| &self.resolv.tys[it.hir_id]);
+
+                let ty = self.ctxt.new_ty_var();
+
+                match else_branch_ty {
+                    Some(else_branch_ty) => {
+                        self.ctxt.push_bound_eq(hir_id, ty, then_branch_ty.clone());
+                        self.ctxt.push_bound_eq(hir_id, ty, else_branch_ty.clone());
+                    }
+                    None => {
+                        self.ctxt.push_bound_eq(hir_id, ty, Ty::UNIT_TY);
+                    }
+                }
+
+                self.ctxt.push_bound_eq(hir_id, t, ty);
+            }
+            hir::ExprAtomKind::ReturnExpr(r) => {
+                let rty = r
+                    .expr
+                    .as_ref()
+                    .map(|it| &self.resolv.tys[it.hir_id])
+                    .unwrap_or(&Ty::UNIT_TY);
+                self.ctxt.push_bound_eq(hir_id, t, rty.clone());
+            }
             hir::ExprAtomKind::BreakExpr(_) => {}
             hir::ExprAtomKind::ContinueExpr(_) => {}
             hir::ExprAtomKind::BlockExpr(b) => {
                 let bty = &self.resolv.tys[b.block.hir_id];
                 self.ctxt.push_bound_eq(hir_id, t, bty.clone());
             }
-            hir::ExprAtomKind::TupleLikeExpr(tle) => {}
+            hir::ExprAtomKind::TupleExpr(tle) => {}
             hir::ExprAtomKind::LambdaExpr(_) => {}
         }
     }
@@ -337,16 +386,105 @@ impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
                         }),
                     ..
                 } => self.resolv.tys[e.hir_id].clone(),
-                _ => TyRef::UNIT_TY,
+                _ => Ty::UNIT_TY,
             },
-            None => TyRef::UNIT_TY,
+            None => Ty::UNIT_TY,
         };
 
         self.resolv.insert(block.hir_id, last_expr_ty);
     }
+
+    fn visit_fn_def(&mut self, fn_id: hir::FnId, fn_def: &'hir hir::FnDef) {
+        visitor::walk_fn_head(self, fn_def);
+
+        let t = self.ctxt.new_ty_var();
+        let ret_ty = self.ctxt.new_ty_var();
+
+        self.control_flow_target_tys.insert(fn_id.0, ret_ty);
+
+        let mut fn_ty_builder = FTyBuilder::new();
+
+        for param in &fn_def.params {
+            let param_ty = &self.resolv.tys[param.hir_id];
+            fn_ty_builder.add_input(param_ty.clone());
+        }
+
+        let ret_ty_actual_for_bound = match &fn_def.ret_ty {
+            Some(ret_ty) => &self.resolv.tys[ret_ty.hir_id],
+            None => &Ty::UNIT_TY,
+        };
+
+        fn_ty_builder.set_output(Ty::TyVar(ret_ty));
+
+        let fn_ty = fn_ty_builder.build();
+
+        self.ctxt
+            .push_bound_eq(fn_def.hir_id, ret_ty, ret_ty_actual_for_bound.clone());
+
+        self.ctxt.push_bound_eq(fn_def.hir_id, t, fn_ty.clone());
+
+        self.resolv.insert(fn_def.hir_id, fn_ty);
+
+        visitor::walk_block(self, &fn_def.body);
+    }
+
+    fn visit_break_expr(&mut self, break_expr: &'hir hir::BreakExpr) {
+        visitor::walk_break_expr(self, break_expr);
+
+        dbg!(break_expr);
+
+        let target = self.name_resolve_results.resolved_control_flow[break_expr.hir_id];
+
+        dbg!(target);
+        dbg!(&self.control_flow_target_tys);
+        let target_ty = self.control_flow_target_tys[&target];
+
+        let ty = match &break_expr.expr {
+            Some(expr) => self.resolv.tys[expr.hir_id].clone(),
+            None => Ty::UNIT_TY,
+        };
+
+        self.ctxt.push_bound_eq(break_expr.hir_id, ty, target_ty);
+    }
+
+    fn visit_return_expr(&mut self, ret: &'hir hir::ReturnExpr) {
+        visitor::walk_return_expr(self, ret);
+
+        let target_fn = self.name_resolve_results.resolved_control_flow[ret.hir_id];
+        let decl_ret_ty = &self.control_flow_target_tys[target_fn];
+        let actual_ret_ty = match &ret.expr {
+            Some(expr) => &self.resolv.tys[expr.hir_id],
+            None => &Ty::UNIT_TY,
+        };
+
+        self.ctxt
+            .push_bound_eq(ret.hir_id, decl_ret_ty.clone(), actual_ret_ty.clone());
+    }
+
+    fn visit_loop_expr(&mut self, loop_expr: &'hir hir::LoopExpr) {
+        let ty = self.ctxt.new_ty_var();
+
+        self.resolv.insert(loop_expr.hir_id, ty);
+        self.control_flow_target_tys.insert(loop_expr.hir_id, ty);
+
+        visitor::walk_loop_expr(self, loop_expr);
+    }
+
+    fn visit_for_stmt(&mut self, for_stmt: &'hir hir::ForStmt) {
+        let ty = self.ctxt.new_ty_var();
+
+        self.resolv.insert(for_stmt.hir_id, ty);
+        self.control_flow_target_tys.insert(for_stmt.hir_id, ty);
+
+        visitor::walk_for_stmt(self, for_stmt);
+    }
 }
 
-pub fn collect_ty_bounds(hir: &ModDef) -> TyBounds {
+pub fn collect_ty_bounds(
+    mod_id: ModId,
+    hir_map: &HirMap,
+    name_resolve_results: &NameResolveResults,
+) -> TyBounds {
     let mut bounds = TyBounds { bounds: vec![] };
 
     let ctxt = TyBoundsGenContext {
@@ -359,10 +497,12 @@ pub fn collect_ty_bounds(hir: &ModDef) -> TyBounds {
         resolv: TyEnvironment {
             tys: FxHashMap::default(),
         },
-        labels: vec![],
+        control_flow_target_tys: FxBTreeMap::new(),
+        name_resolve_results,
+        hir_map,
     };
 
-    visitor.visit_mod_def(hir);
+    visitor.visit_mod_id(mod_id);
 
     bounds
 }

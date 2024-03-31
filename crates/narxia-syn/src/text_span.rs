@@ -63,6 +63,11 @@ impl TextSpan {
     pub fn range_usize(self) -> std::ops::Range<usize> {
         self.start as usize..self.end as usize
     }
+
+    #[inline]
+    pub fn get_span_start_line(self, text: &str) -> usize {
+        text[..self.start as usize].lines().count() + 1
+    }
 }
 
 impl fmt::Display for TextSpan {

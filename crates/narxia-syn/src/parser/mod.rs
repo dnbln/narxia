@@ -1,3 +1,17 @@
+//! Parser for the Narxia language.
+//! 
+//! The parser is implemented as a recursive descent parser with backtracking.
+//! 
+//! Backtracking is implemented by saving the state of the parser before attempting
+//! to parse a construct that may fail. If the construct fails, the parser is restored
+//! to the saved state and the parser continues parsing.
+//! 
+//! With `debug_assertions` enabled, the parser will attempt to check that the backtracking
+//! mechanism is used correctly, in the right states of the [`ParseEventHandler`].
+//! 
+//! Namely, the parser ensures that all the events that have started since the state
+//! was saved are either completed or rolled back before the state is restored.
+
 use std::fmt;
 
 use narxia_proc::{parse_fn, parse_fn_decl};

@@ -1,8 +1,42 @@
+//! A buffered token source that allows for lookahead of up to 3 tokens.
+//!
+//! This optimizes the token source by not requesting tokens from the underlying source
+//! until the buffer is empty.
+//!
+//! The parser needs to be able to lookahead up to 3 tokens to make decisions, so this
+//! token source is designed to allow for that without compromising performance.
+//!
+//! It was optimized by hand, to be as fast as possible.
+//!
+//! It works by storing up to 3 tokens in a buffer, and then returning them
+//! when requested.
+//!
+//! The buffer is represented by 2 fixed-size arrays, one for the kinds
+//! and one for the spans.
+//!
+//! Because the tokens we get from the underlying source are guaranteed to be
+//! in consecutive spans in the source text, we can store the spans by their
+//! raw offsets, so instead of storing the full `TextSpan` struct, we store
+//! the start and end offsets as `u32`, and the end offset of a token is the
+//! start offset of the next token, so we cut our representation from
+//! 4 * 2* 4 = 32 bytes to 5 * 4 = 20 bytes.
+//!
+//! This also allows us to optimize the [`BufferedTokenSource::at_2`] function,
+//! because in the happy case that the buffer has at least 2 tokens, we can
+//! just compare the kinds directly, and we get a tiny performance boost because
+//! they are right next to each other (so a smaller chance of cache miss).
+//! 
+//! There are some unsafe blocks in this code, as what we are doing is inherently
+//! unsafe, but we are careful to ensure that the invariants are upheld.
+//! 
+//! Nevertheless, changes to this code should be done with care, and the
+//! unsafe blocks should be reviewed carefully.
+
 use std::marker::PhantomData;
 
-use crate::{text_span::TextSpan, syntax_kind::SyntaxKind};
-
 use super::{TokParserState, Token, TokenSource};
+use crate::syntax_kind::SyntaxKind;
+use crate::text_span::TextSpan;
 
 pub(crate) struct BufferedTokenSource<'l, T: TokenSource<'l> + 'l> {
     ts: T,

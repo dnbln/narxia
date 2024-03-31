@@ -1,0 +1,7 @@
+trait Clone {
+    fn clone(&self) -> Self;
+}
+
+trait Copy: Clone {}
+
+trait Sized {}

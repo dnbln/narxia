@@ -4,64 +4,19 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use owo_colors::OwoColorize;
+use ctxt::DriverCtx;
+use narxia_hir::hir_map::HirMap;
 use narxia_hir::HirId;
+use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
 use narxia_src_db::{SrcFile, SrcFileDatabase};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
+use owo_colors::OwoColorize;
 
-#[salsa::db(narxia_src_db::Jar, narxia_syn_db::Jar, narxia_hir_db::Jar)]
-#[derive(Default)]
-pub struct Database {
-    storage: salsa::Storage<Self>,
+pub mod ctxt;
+pub mod db;
 
-    src_file_db: Rc<RefCell<SrcFileDatabase>>,
-}
-
-impl narxia_src_db::Db for Database {
-    fn src_file_db<'db>(&'db self) -> std::cell::Ref<'db, SrcFileDatabase> {
-        self.src_file_db.borrow()
-    }
-
-    fn src_file_db_mut<'db>(&'db self) -> std::cell::RefMut<'db, SrcFileDatabase> {
-        self.src_file_db.borrow_mut()
-    }
-
-    fn src_file_text<'db>(&'db self, span: narxia_src_db::Span) -> String {
-        self.src_file_db.borrow().get_loaded_span(span).to_owned()
-    }
-}
-
-impl salsa::Database for Database {
-    fn salsa_event(&self, _event: salsa::Event) {}
-}
-
-pub struct DriverCtx {
-    pub db: Database,
-}
-
-impl DriverCtx {
-    pub fn initialize() -> Self {
-        Self {
-            db: Database::default(),
-        }
-    }
-
-    pub fn init_log(&self) {
-        init_log();
-    }
-
-    pub fn display_file(&self, file: SrcFile) -> DisplayFile {
-        DisplayFile(&self.db, file)
-    }
-
-    #[track_caller]
-    pub fn trace_file(&self, file: SrcFile) {
-        narxia_log::t!("File contents:\n{}", self.display_file(file));
-    }
-}
-
-pub struct DisplayFile<'a>(&'a Database, SrcFile);
+pub struct DisplayFile<'a>(&'a db::Database, SrcFile);
 
 impl<'a> fmt::Display for DisplayFile<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
@@ -104,10 +59,6 @@ pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -
     parse_file_and_assert_no_errors(ctx, file)
 }
 
-pub fn lower_syn_file(ctx: &DriverCtx, file: SynFile) -> narxia_hir_db::HirFile {
-    narxia_hir_db::lower_file(&ctx.db, file)
-}
-
 pub fn init_log() {
     narxia_log_impl::init();
 }
@@ -117,100 +68,91 @@ pub struct HirDebugImpl<'hir, 'ctxt, H> {
     context: &'ctxt DriverCtx,
 }
 
+fn dbg_impl_code<H>(
+    dbg_impl: &HirDebugImpl<H>,
+    fmt: &mut fmt::Formatter,
+    f: impl FnOnce(&H, &mut fmt::Formatter) -> fmt::Result,
+) -> fmt::Result {
+    let hir = dbg_impl.hir;
+    let context = dbg_impl.context;
+
+    thread_local! {
+        static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
+    }
+
+    DRIVER_CTXT.with(|f| {
+        if !f.borrow().is_null() {
+            panic!("Driver context already set");
+        }
+
+        *f.borrow_mut() = context as *const DriverCtx;
+    });
+
+    struct ContextResetGuard;
+
+    impl Drop for ContextResetGuard {
+        fn drop(&mut self) {
+            DRIVER_CTXT.with(|f| {
+                *f.borrow_mut() = core::ptr::null();
+            });
+        }
+    }
+
+    let _guard = ContextResetGuard;
+
+    fn debug_hir_id_get_src_file(hir_id: HirId) -> SrcFile {
+        DRIVER_CTXT.with(|f| {
+            let f = f.borrow();
+            let ctx: &DriverCtx = unsafe { &**f };
+            ctx.db.lookup_hir_id_file(hir_id)
+        })
+    }
+
+    fn debug_hir_id_path_callback(src_file: SrcFile) -> String {
+        DRIVER_CTXT.with(|f| {
+            let f = f.borrow();
+            let ctx: &DriverCtx = unsafe { &**f };
+            format!("{}", src_file.get_presentable_path(&ctx.db).display())
+        })
+    }
+
+    fn debug_file_contents_callback(file: SrcFile) -> String {
+        DRIVER_CTXT.with(|f| {
+            let f = f.borrow();
+            let ctx: &DriverCtx = unsafe { &**f };
+            file.get_text(&ctx.db)
+        })
+    }
+
+    narxia_hir::hir::dbg_hir(
+        debug_hir_id_get_src_file,
+        debug_hir_id_path_callback,
+        debug_file_contents_callback,
+        || f(hir, fmt),
+    )
+}
+
 impl<'hir, 'ctxt, H: std::fmt::Debug> std::fmt::Debug for HirDebugImpl<'hir, 'ctxt, H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let hir = &self.hir;
-        let context = self.context;
-
-        thread_local! {
-            static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
-        }
-    
-        DRIVER_CTXT.with(|f| {
-            if !f.borrow().is_null() {
-                panic!("Driver context already set");
-            }
-
-            *f.borrow_mut() = context as *const DriverCtx;
-        });
-
-        struct ContextResetGuard;
-
-        impl Drop for ContextResetGuard {
-            fn drop(&mut self) {
-                DRIVER_CTXT.with(|f| {
-                    *f.borrow_mut() = core::ptr::null();
-                });
-            }
-        }
-
-        let _guard = ContextResetGuard;
-    
-        fn debug_hir_id_path_callback(hir_id: HirId) -> String {
-            DRIVER_CTXT.with(|f| {
-                let f = f.borrow();
-                let ctx = unsafe { &**f };
-                let db = &ctx.db;
-                format!("{}", hir_id.src_file().get_presentable_path(db).display())
-            })
-        }
-    
-        narxia_hir::hir::dbg_hir(debug_hir_id_path_callback, || {
-            write!(f, "{:?}", hir)
-        })
+        dbg_impl_code(self, f, |hir, f| write!(f, "{:?}", hir))
     }
 }
 
 impl<'hir, 'ctxt, H: std::fmt::Display> std::fmt::Display for HirDebugImpl<'hir, 'ctxt, H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let hir = &self.hir;
-        let context = self.context;
-
-        thread_local! {
-            static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
-        }
-    
-        DRIVER_CTXT.with(|f| {
-            if !f.borrow().is_null() {
-                panic!("Driver context already set");
-            }
-
-            *f.borrow_mut() = context as *const DriverCtx;
-        });
-
-        struct ContextResetGuard;
-
-        impl Drop for ContextResetGuard {
-            fn drop(&mut self) {
-                DRIVER_CTXT.with(|f| {
-                    *f.borrow_mut() = core::ptr::null();
-                });
-            }
-        }
-
-        let _guard = ContextResetGuard;
-    
-        fn debug_hir_id_path_callback(hir_id: HirId) -> String {
-            DRIVER_CTXT.with(|f| {
-                let f = f.borrow();
-                let ctx = unsafe { &**f };
-                let db = &ctx.db;
-                format!("{}", hir_id.src_file().get_presentable_path(db).display())
-            })
-        }
-    
-        narxia_hir::hir::dbg_hir(debug_hir_id_path_callback, || {
-            write!(f, "{}", hir)
-        })
+        dbg_impl_code(self, f, |hir, f| write!(f, "{}", hir))
     }
 }
 
 pub trait HirDbg {
-    fn hir_dbg<'hir, 'ctxt>(&'hir self, context: &'ctxt DriverCtx) -> HirDebugImpl<'hir, 'ctxt, Self> where Self: std::fmt::Debug + Sized {
-        HirDebugImpl {
-            hir: self,
-            context,
-        }
+    fn hir_dbg<'hir, 'ctxt>(
+        &'hir self,
+        context: &'ctxt DriverCtx,
+    ) -> HirDebugImpl<'hir, 'ctxt, Self>
+    where
+        Self: std::fmt::Debug + Sized,
+    {
+        HirDebugImpl { hir: self, context }
     }
 }
 
