@@ -1,6 +1,5 @@
 #![allow(dead_code, unused_imports, unused_variables)] // FIXME: fix
 
-mod _hir;
 mod _syn;
 
 #[proc_macro_derive(DeriveT, attributes(T))]
@@ -29,9 +28,4 @@ pub fn syntree_node(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro]
 pub fn syntree_enum(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     _syn::syntree_enum(input)
-}
-
-#[proc_macro_derive(HirStructIdCheck, attributes(hir))]
-pub fn derive_hir_struct_id_check(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    _hir::derive_hir_struct_id_check(item)
 }
