@@ -227,9 +227,16 @@ pub enum NumLit {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct IfExpr {
+    pub if_kw: HirSpan,
     pub cond: ExprId,
     pub then: ExprId,
-    pub else_: Option<ExprId>,
+    pub else_: Option<IfExprElseClause>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct IfExprElseClause {
+    pub else_kw: HirSpan,
+    pub expr: ExprId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

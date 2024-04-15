@@ -37,4 +37,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 [This blog post][blog post] goes a bit more in-depth about
 the more advanced features of the library.
 
-[blog post]: https://blog.dnbln.dev/dir-structure/
+[blog post]: https://dnbln.dev/blog/dir-structure

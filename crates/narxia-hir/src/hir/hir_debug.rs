@@ -827,7 +827,7 @@ pub fn display_if_expr(
 
     if let Some(else_block) = &if_expr.else_ {
         write!(f, " {} ", "else".keyword())?;
-        display_expr_id(f, *else_block, hdc.make_child())?;
+        display_expr_id(f, else_block.expr, hdc.make_child())?;
     }
 
     Ok(())

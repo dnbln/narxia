@@ -752,9 +752,26 @@ fn lower_if_expr(hir_lower_ctxt: &mut HirLowerCtxt, if_expr: &syntree::IfExpr) -
     );
     let else_ = if_expr
         .get_else_clause()
-        .as_ref()
-        .map(|it| lower_expr_node(hir_lower_ctxt, &it.get_expr_node().unwrap()));
-    IfExpr { cond, then, else_ }
+        .map(|it| lower_if_expr_else_clause(hir_lower_ctxt, &it));
+    IfExpr {
+        if_kw: HirSpan::of(&if_expr.get_if_kw()),
+        cond,
+        then,
+        else_,
+    }
+}
+
+fn lower_if_expr_else_clause(
+    hir_lower_ctxt: &mut HirLowerCtxt,
+    if_expr_else_clause: &syntree::ElseClause,
+) -> IfExprElseClause {
+    IfExprElseClause {
+        else_kw: HirSpan::of(&if_expr_else_clause.get_else_kw()),
+        expr: lower_expr_node(
+            hir_lower_ctxt,
+            &if_expr_else_clause.get_expr_node().unwrap(),
+        ),
+    }
 }
 
 fn lower_return_expr(

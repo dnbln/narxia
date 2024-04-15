@@ -94,6 +94,7 @@
 use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::fs::File;
+use std::ops::{Deref, DerefMut};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -978,6 +979,148 @@ where
         self.0.write_to(path)
     }
 }
+
+/// A versioned value. This is a wrapper around a value that will keep track of
+/// how many times it has been changed. This is useful to not write the value
+/// to disk if it hasn't changed.
+///
+/// You can get a reference to the value via its [`Deref`] implementation, and
+/// you can get a mutable reference to the value via its [`DerefMut`] implementation.
+///
+/// The version is incremented every time [`DerefMut::deref_mut`] is called.
+///
+/// Alternatively, for [`Eq`] types, you can use the [`Versioned::edit_eq_check`]
+/// method to edit the value, and it will increment the version if the value has changed.
+///
+/// # Example
+///
+/// ```
+/// use dir_structure::VersionedString;
+///
+/// let mut v = VersionedString::new("value".to_owned(), "path");
+/// assert!(v.is_clean());
+/// assert!(!v.is_dirty());
+/// 
+/// *v = "new value".to_owned();
+/// assert!(v.is_dirty());
+/// ```
+#[derive(Debug, Clone, Hash)]
+pub struct Versioned<T: DirStructureItem> {
+    value: T,
+    version: usize,
+    path: PathBuf,
+}
+
+impl<T: DirStructureItem> Versioned<T> {
+    const DEFAULT_VERSION: usize = 0;
+
+    /// Creates a new [`Versioned`] with the specified value.
+    ///
+    /// The version is set to the default value.
+    pub fn new(value: T, path: impl Into<PathBuf>) -> Self {
+        Self {
+            value: value.into(),
+            version: Self::DEFAULT_VERSION,
+            path: path.into(),
+        }
+    }
+
+    /// Creates a new [`Versioned`] with the specified value, and in a dirty state.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dir_structure::VersionedString;
+    ///
+    /// let v = VersionedString::new_dirty("value".to_owned(), "path");
+    /// assert!(v.is_dirty());
+    /// ```
+    pub fn new_dirty(value: T, path: impl Into<PathBuf>) -> Self {
+        Self {
+            value: value.into(),
+            version: Self::DEFAULT_VERSION + 1,
+            path: path.into(),
+        }
+    }
+
+    /// Checks if the value has been changed.
+    pub fn is_dirty(&self) -> bool {
+        !self.is_clean()
+    }
+
+    /// Checks if the value has not been changed.
+    pub fn is_clean(&self) -> bool {
+        self.version == Self::DEFAULT_VERSION
+    }
+
+    /// Edits the value using the provided closure, and increments the version
+    /// if the value has changed.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use dir_structure::VersionedString;
+    ///
+    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    ///
+    /// v.edit_eq_check(|s| *s = "value".to_owned());
+    /// assert!(v.is_clean());
+    /// v.edit_eq_check(|s| *s = "new value".to_owned());
+    /// assert!(v.is_dirty());
+    /// ```
+    pub fn edit_eq_check(&mut self, f: impl FnOnce(&mut T))
+    where
+        T: Eq + Clone,
+    {
+        let copy = self.value.clone();
+
+        f(&mut self.value);
+
+        if copy != self.value {
+            self.version += 1;
+        }
+    }
+}
+
+impl<T: DirStructureItem> ReadFrom for Versioned<T> {
+    fn read_from(path: &Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        T::read_from(path).map(|it| Self::new(it, path))
+    }
+}
+
+impl<T: DirStructureItem> WriteTo for Versioned<T> {
+    fn write_to(&self, path: &Path) -> Result<()> {
+        if self.path == path && self.is_clean() {
+            return Ok(());
+        }
+
+        self.value.write_to(path)
+    }
+}
+
+impl<T: DirStructureItem> Deref for Versioned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T: DirStructureItem> DerefMut for Versioned<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // We will assume that the value has changed, if `deref_mut` was called.
+        // So we increment the version.
+        self.version += 1;
+
+        &mut self.value
+    }
+}
+
+pub type VersionedString = Versioned<String>;
+pub type VersionedBytes = Versioned<Vec<u8>>;
 
 // Impls for std types.
 

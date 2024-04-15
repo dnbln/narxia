@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use dir_structure::{DirChild, DirChildren, ReadFrom, WriteTo};
+use dir_structure::{
+    DirChild, DirChildren, DirStructureItem, ReadFrom, Versioned, VersionedString, WriteTo,
+};
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -440,4 +442,94 @@ fn clean_dir_writer_newtype() {
     );
     assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
     assert!(!d.join("subdir/f4").exists());
+}
+
+#[test]
+fn versioned_works() {
+    #[derive(dir_structure::DirStructure)]
+    struct Dir {
+        #[dir_structure(path = "f1.txt")]
+        f1: VersionedString,
+    }
+
+    let p = test_dir("versioned_works");
+
+    let d = p.join("dir");
+    std::fs::create_dir_all(&d).unwrap();
+    std::fs::write(d.join("f1.txt"), "f1").unwrap();
+
+    let dir = Dir::read_from(&d).unwrap();
+    assert_eq!(*dir.f1, "f1");
+
+    dir.write_to(&d).unwrap();
+
+    let mut dir = Dir::read_from(&d).unwrap();
+
+    assert_eq!(*dir.f1, "f1");
+
+    *dir.f1 = "f2".to_owned();
+
+    dir.write_to(&d).unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
+}
+
+#[test]
+fn versioned_doesnt_call_write_if_not_changed() {
+    struct WriteCounter<T> {
+        count: std::cell::Cell<usize>,
+        inner: T,
+    }
+
+    impl<T: DirStructureItem> ReadFrom for WriteCounter<T> {
+        fn read_from(path: &Path) -> dir_structure::Result<Self> {
+            Ok(Self {
+                count: std::cell::Cell::new(0),
+                inner: T::read_from(path)?,
+            })
+        }
+    }
+
+    impl<T: DirStructureItem> WriteTo for WriteCounter<T> {
+        fn write_to(&self, path: &Path) -> dir_structure::Result<()> {
+            self.count.set(self.count.get() + 1);
+            self.inner.write_to(path)
+        }
+    }
+
+    #[derive(dir_structure::DirStructure)]
+    struct Dir {
+        #[dir_structure(path = "f1.txt")]
+        f1: Versioned<WriteCounter<String>>,
+    }
+
+    let p = test_dir("versioned_doesnt_call_write_if_not_changed");
+    let d = p.join("dir");
+
+    let dir = Dir {
+        f1: Versioned::new_dirty(
+            WriteCounter {
+                count: std::cell::Cell::new(0),
+                inner: "f1".to_owned(),
+            },
+            d.join("f1.txt"),
+        ),
+    };
+
+    dir.write_to(&d).unwrap();
+
+    let mut dir = Dir::read_from(&d).unwrap();
+
+    assert_eq!(dir.f1.count.get(), 0);
+
+    dir.write_to(&d).unwrap();
+
+    assert_eq!(dir.f1.count.get(), 0);
+
+    dir.f1.inner = "f2".to_owned();
+
+    dir.write_to(&d).unwrap();
+
+    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
+    assert_eq!(dir.f1.count.get(), 1);
 }

@@ -1,5 +1,5 @@
 use crate::hir_map::HirMap;
-use crate::{hir, HirId};
+use crate::{hir, HirId, HirSpan};
 
 pub(crate) trait IdHandleStrategy<'hir, V: HirVisitor<'hir> + ?Sized>
 where
@@ -265,7 +265,15 @@ pub trait HirVisitor<'hir> {
     }
 
     fn visit_if_expr(&mut self, expr_id: hir::ExprId, if_expr: &'hir hir::IfExpr) {
-        walk_if_expr(self, if_expr)
+        walk_if_expr(self, expr_id, if_expr)
+    }
+
+    fn visit_if_expr_else_clause(
+        &mut self,
+        expr_id: hir::ExprId,
+        else_clause: &'hir hir::IfExprElseClause,
+    ) {
+        walk_if_expr_else_clause(self, else_clause)
     }
 
     fn visit_tuple_like_expr(
@@ -293,6 +301,14 @@ pub trait HirVisitor<'hir> {
     }
 
     fn visit_hir_id(&mut self, hir_id: HirId) {
+        // Nothing to do.
+        #[cfg(hir_id_span)]
+        {
+            self.visit_span(hir_id.span);
+        }
+    }
+
+    fn visit_span(&mut self, span: HirSpan) {
         // Nothing to do.
     }
 
@@ -640,13 +656,22 @@ pub fn walk_loop_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_if_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    expr_id: hir::ExprId,
     if_expr: &'hir hir::IfExpr,
 ) {
     if_expr.cond.accept(visitor);
     if_expr.then.accept(visitor);
-    if let Some(else_clause) = if_expr.else_ {
-        else_clause.accept(visitor);
+    if let Some(else_clause) = &if_expr.else_ {
+        else_clause.accept(expr_id, visitor);
     }
+}
+
+pub fn walk_if_expr_else_clause<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    else_clause: &'hir hir::IfExprElseClause,
+) {
+    else_clause.else_kw.accept(visitor);
+    else_clause.expr.accept(visitor);
 }
 
 pub fn walk_tuple_like_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
@@ -824,6 +849,9 @@ impl_visitable_id! {
     visit_block_id(hir::BlockId),
     visit_fn_id(hir::FnId),
     visit_mod_id(hir::ModId),
+
+    visit_hir_id(HirId),
+    visit_span(HirSpan),
 }
 
 macro_rules! impl_id_visitable {
@@ -863,6 +891,7 @@ impl_id_visitable! {
     visit_continue_expr [hir::ExprId] (hir::ContinueExpr),
     visit_loop_expr [hir::ExprId] (hir::LoopExpr),
     visit_if_expr [hir::ExprId] (hir::IfExpr),
+    visit_if_expr_else_clause [hir::ExprId] (hir::IfExprElseClause),
     visit_tuple_like_expr [hir::ExprId] (hir::TupleExpr),
     visit_lambda_expr [hir::ExprId] (hir::LambdaExpr),
 }
