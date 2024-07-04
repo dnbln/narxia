@@ -141,6 +141,21 @@ impl HirMap {
         }
     }
 
+    pub fn get_ty_ref(&self, at: TyRefId) -> &TyRef {
+        match self.get(at.0) {
+            HirElem::TyRef(t) => t,
+            x => panic!("Expected TyRef, found {x:?}"),
+        }
+    }
+
+    pub fn get_lambda_expr(&self, at: LambdaExprId) -> &LambdaExpr {
+        let expr = self.get_expr(at.0);
+        match &expr.kind {
+            ExprKind::Atom(ExprAtom {kind: ExprAtomKind::LambdaExpr(lambda), ..}) => lambda,
+            x => panic!("Expected LambdaExpr, found {x:?}"),
+        }
+    }
+
     fn update_parent(&mut self, at: HirId, parent: HirId) {
         self.parents[at.id] = parent;
     }
@@ -229,6 +244,21 @@ impl<'hir> crate::visitor::IdHandleStrategy<'hir, ParentUpdateVisitor<'hir>> for
 
         let mod_def = visitor.hir_map.get_mod(mod_id);
         visitor.visit_mod_def(mod_id, mod_def);
+
+        visitor.stack.pop();
+    }
+
+    fn handle_ty_ref_id(
+        &self,
+        visitor: &mut ParentUpdateVisitor<'hir>,
+        ty_ref_id: crate::hir::TyRefId,
+    ) {
+        visitor.visit_hir_id(ty_ref_id.0);
+
+        visitor.stack.push(ty_ref_id.0);
+
+        let ty_ref = visitor.hir_map.get_ty_ref(ty_ref_id);
+        visitor.visit_ty_ref(ty_ref_id, ty_ref);
 
         visitor.stack.pop();
     }

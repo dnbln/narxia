@@ -11,6 +11,7 @@ where
     fn handle_stmt_id(&self, visitor: &mut V, stmt_id: hir::StmtId);
     fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId);
     fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId);
+    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId);
 }
 
 pub struct DoNothingIdHandleStrategy;
@@ -27,6 +28,8 @@ impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for DoNothingIdHandleS
     fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId) {}
 
     fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {}
+    
+    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {}
 }
 
 pub struct ShallowIdHandleStrategy;
@@ -53,6 +56,10 @@ impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for ShallowIdHandleStr
 
     fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {
         visitor.visit_hir_id(mod_id.0);
+    }
+    
+    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {
+        visitor.visit_hir_id(ty_ref_id.0);
     }
 }
 
@@ -93,6 +100,11 @@ impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for RecursiveIdHandleS
     fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {
         visitor.visit_hir_id(mod_id.0);
         self.0.get_mod(mod_id).accept(mod_id, visitor);
+    }
+    
+    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {
+        visitor.visit_hir_id(ty_ref_id.0);
+        self.0.get_ty_ref(ty_ref_id).accept(ty_ref_id, visitor);
     }
 }
 
@@ -165,7 +177,7 @@ pub trait HirVisitor<'hir> {
         walk_block_expr(self, block_expr)
     }
 
-    fn visit_ty_ref(&mut self, ty_ref: &'hir hir::TyRef) {
+    fn visit_ty_ref(&mut self, ty_ref_id: hir::TyRefId, ty_ref: &'hir hir::TyRef) {
         walk_ty_ref(self, ty_ref)
     }
 
@@ -334,6 +346,10 @@ pub trait HirVisitor<'hir> {
 
     fn visit_mod_id(&mut self, mod_id: hir::ModId) {
         self.get_strategy().handle_mod_id(self, mod_id)
+    }
+
+    fn visit_ty_ref_id(&mut self, ty_ref_id: hir::TyRefId) {
+        self.get_strategy().handle_ty_ref_id(self, ty_ref_id)
     }
 }
 
@@ -816,7 +832,6 @@ impl_visitable! {
     visit_item_list(hir::ItemList),
     visit_fn_param(hir::FnParam),
     visit_fn_ret_ty(hir::FnRetTy),
-    visit_ty_ref(hir::TyRef),
     visit_pat(hir::Pat),
     visit_ty_generic_args(hir::TyGenericArgs),
     visit_ty_generic_arg(hir::TyGenericArg),
@@ -849,6 +864,7 @@ impl_visitable_id! {
     visit_block_id(hir::BlockId),
     visit_fn_id(hir::FnId),
     visit_mod_id(hir::ModId),
+    visit_ty_ref_id(hir::TyRefId),
 
     visit_hir_id(HirId),
     visit_span(HirSpan),
@@ -894,4 +910,5 @@ impl_id_visitable! {
     visit_if_expr_else_clause [hir::ExprId] (hir::IfExprElseClause),
     visit_tuple_like_expr [hir::ExprId] (hir::TupleExpr),
     visit_lambda_expr [hir::ExprId] (hir::LambdaExpr),
+    visit_ty_ref [hir::TyRefId] (hir::TyRef),
 }

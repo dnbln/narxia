@@ -1,0 +1,8 @@
+[package]
+name = "narxia-hiri"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+narxia-data-structures.workspace = true
+narxia-hir.workspace = true

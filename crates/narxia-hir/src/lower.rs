@@ -34,35 +34,6 @@ impl<'arena> HirLowerCtxt<'arena> {
     fn push_ref(&mut self, elem: HirElem, span: HirSpan) -> HirId {
         self.hir_ref_arena.push_ref(elem, span)
     }
-
-    #[cfg(hir_id_span)]
-    fn dummy_hir_id<T: HasHirSpan>(&self, v: &T) -> HirId {
-        HirId {
-            id: usize::MAX,
-            span: T::span(v),
-        }
-    }
-
-    #[cfg(not(hir_id_span))]
-    fn dummy_hir_id(&self) -> HirId {
-        HirId {
-            root: self.src_file,
-            id: usize::MAX,
-        }
-    }
-}
-
-macro_rules! dummy_hir_id {
-    ($ctxt:expr, $v:expr) => {{
-        #[cfg(hir_id_span)]
-        {
-            HirLowerCtxt::dummy_hir_id($ctxt, $v)
-        }
-        #[cfg(not(hir_id_span))]
-        {
-            HirLowerCtxt::dummy_hir_id($ctxt)
-        }
-    }};
 }
 
 fn lower_binop(binop: &syntree::BinOp) -> BinOp {
@@ -472,7 +443,6 @@ fn lower_block(hir_lower_ctxt: &mut HirLowerCtxt, block: &syntree::Block) -> Blo
 }
 
 fn lower_stmt(hir_lower_ctxt: &mut HirLowerCtxt, stmt: &syntree::Stmt) -> StmtId {
-    let hir_id = dummy_hir_id!(hir_lower_ctxt, stmt);
     let hir_stmt = if let Some(expr) = stmt.get_expr_node() {
         Stmt {
             kind: StmtKind::ExprStmt(lower_expr_node(hir_lower_ctxt, &expr)),
@@ -686,8 +656,9 @@ fn lower_pat(hir_lower_ctxt: &mut HirLowerCtxt, pat: &syntree::Pat) -> Pat {
     }
 }
 
-fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRef {
-    if let Some(name) = ty_ref.get_ident() {
+fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRefId {
+    let span = HirSpan::of_node(ty_ref);
+    let ty_ref = if let Some(name) = ty_ref.get_ident() {
         let name = lower_ident(hir_lower_ctxt, &name);
         let kind = match name.text.as_str() {
             "i8" => TyRefKind::Primitive(PrimitiveTy::I8),
@@ -706,19 +677,19 @@ fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> T
             "bool" => TyRefKind::Primitive(PrimitiveTy::Bool),
             _ => TyRefKind::Named(name, TyGenericArgs { args: vec![] }), // TODO: do
         };
-        TyRef {
-            kind,
-            span: HirSpan::of_node(ty_ref),
-        }
+
+        TyRef { kind, span }
     } else if let Some(fn_ty) = ty_ref.get_fn_ty() {
         let fn_ty = lower_fn_ty(hir_lower_ctxt, &fn_ty);
         TyRef {
             kind: TyRefKind::Fn(fn_ty),
-            span: HirSpan::of_node(ty_ref),
+            span,
         }
     } else {
         todo!()
-    }
+    };
+
+    TyRefId(hir_lower_ctxt.push_ref(HirElem::TyRef(ty_ref), span))
 }
 
 fn lower_fn_ty(hir_lower_ctxt: &mut HirLowerCtxt, fn_ty: &syntree::FnTy) -> FnTy {
@@ -727,14 +698,14 @@ fn lower_fn_ty(hir_lower_ctxt: &mut HirLowerCtxt, fn_ty: &syntree::FnTy) -> FnTy
     });
     let ret_ty = fn_ty
         .get_fn_ty_ret_ty()
-        .map(|r| Box::new(lower_ty_ref(hir_lower_ctxt, &r.get_ty_ref().unwrap())));
+        .map(|r| lower_ty_ref(hir_lower_ctxt, &r.get_ty_ref().unwrap()));
     FnTy { params, ret_ty }
 }
 
 fn lower_fn_ty_params(
     hir_lower_ctxt: &mut HirLowerCtxt,
     fn_ty_param_tys: &syntree::FnTyParamTys,
-) -> Vec<TyRef> {
+) -> Vec<TyRefId> {
     fn_ty_param_tys
         .get_ty_ref_list()
         .map(|it| lower_ty_ref(hir_lower_ctxt, &it))

@@ -21,6 +21,7 @@ narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
 narxia-hir-db = { path = "crates/narxia-hir-db" }
 narxia-hir-typechk = { path = "crates/narxia-hir-typechk" }
+narxia-hiri = { path = "crates/narxia-hiri" }
 narxia-log = { path = "crates/narxia-log" }
 narxia-log-impl = { path = "crates/narxia-log-impl" }
 narxia-proc = { path = "crates/narxia-proc" }

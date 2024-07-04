@@ -1,3 +1,5 @@
+#![feature(let_chains)]
+
 use std::fmt::Debug;
 
 use def_id::DefId;
@@ -14,6 +16,7 @@ pub mod tyctxt;
 mod fn_collection;
 mod tydef_collection;
 mod tyinfer;
+pub mod ty_bounds;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaceBase {
@@ -36,3 +39,4 @@ pub struct Place {
     pub place_base: PlaceBase,
     pub projections: Vec<Projection>,
 }
+

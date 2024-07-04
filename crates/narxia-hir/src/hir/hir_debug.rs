@@ -250,7 +250,7 @@ pub fn display_fn_def(
                 }
                 GenericParamKind::Const(name, ty) => {
                     write!(f, "{}{} ", name.text, ":".punctuation())?;
-                    display_ty(f, ty, hdc.make_child())?;
+                    display_ty_ref_id(f, *ty, hdc.make_child())?;
                 }
             }
 
@@ -304,7 +304,7 @@ pub fn display_fn_ret_ty(
     hdc: HirDisplayContext,
 ) -> fmt::Result {
     write!(f, "{} ", "->".punctuation())?;
-    display_ty(f, &ret_ty.ty, hdc)?;
+    display_ty_ref_id(f, ret_ty.ty, hdc)?;
 
     Ok(())
 }
@@ -368,8 +368,8 @@ pub fn display_block_id(
 
 fn display_param(f: &mut fmt::Formatter, param: &FnParam, hdc: HirDisplayContext) -> fmt::Result {
     display_pat(f, &param.pat, hdc)?;
-    write!(f, ": ")?;
-    display_ty(f, &param.ty, hdc)?;
+    write!(f, "{} ", ":".punctuation())?;
+    display_ty_ref_id(f, param.ty, hdc)?;
 
     Ok(())
 }
@@ -386,15 +386,15 @@ fn display_pat(f: &mut fmt::Formatter, pat: &Pat, hdc: HirDisplayContext) -> fmt
             write!(f, "{}", ident.text.bright_white().bold())?;
         }
         PatKind::Tuple(pats) => {
-            write!(f, "(")?;
+            write!(f, "{}", "(".punctuation())?;
             for (i, pat) in pats.iter().enumerate() {
                 if i != 0 {
-                    write!(f, ", ")?;
+                    write!(f, "{} ", ",".punctuation())?;
                 }
 
                 display_pat(f, pat, hdc.make_child())?;
             }
-            write!(f, ")")?;
+            write!(f, "{}", ")".punctuation())?;
         }
         PatKind::Wildcard(_) => {
             write!(f, "_")?;
@@ -410,21 +410,33 @@ impl fmt::Display for Pat {
     }
 }
 
+fn display_ty_ref_id(f: &mut fmt::Formatter, id: TyRefId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+impl fmt::Display for TyRefId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_ty_ref_id(f, *self, HirDisplayContext::new())
+    }
+}
+
 fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt::Result {
     match &ty.kind {
         TyRefKind::Named(ident, generic_args) => {
             write!(f, "{}", ident.text)?;
 
             if !generic_args.args.is_empty() {
-                write!(f, "<")?;
+                write!(f, "{}", "<".punctuation())?;
                 for (i, arg) in generic_args.args.iter().enumerate() {
                     if i != 0 {
-                        write!(f, ", ")?;
+                        write!(f, "{} ", ",".punctuation())?;
                     }
 
                     display_ty_generic_arg(f, arg, hdc.make_child())?;
                 }
-                write!(f, ">")?;
+                write!(f, "{}", ">".punctuation())?;
             }
         }
         TyRefKind::Primitive(primitive) => {
@@ -437,13 +449,13 @@ fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt
                     write!(f, ", ")?;
                 }
 
-                display_ty(f, param, hdc.make_child())?;
+                display_ty_ref_id(f, *param, hdc.make_child())?;
             }
             write!(f, ")")?;
 
             if let Some(ret_ty) = &fn_ty.ret_ty {
                 write!(f, " -> ")?;
-                display_ty(f, ret_ty, hdc.make_child())?;
+                display_ty_ref_id(f, *ret_ty, hdc.make_child())?;
             }
         }
     }
@@ -464,7 +476,7 @@ fn display_ty_generic_arg(
 ) -> fmt::Result {
     match &arg.kind {
         TyGenericArgKind::Type(ty) => {
-            display_ty(f, ty, hdc)?;
+            display_ty_ref_id(f, *ty, hdc)?;
         }
         TyGenericArgKind::ConstVal(val) => {
             display_expr_id(f, *val, hdc)?;
@@ -641,7 +653,7 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
 
             for (i, arg) in call.args.args.iter().enumerate() {
                 if i != 0 {
-                    write!(f, ", ")?;
+                    write!(f, "{} ", ",".punctuation())?;
                 }
 
                 display_expr_id(f, *arg, hdc.make_child())?;
@@ -755,7 +767,9 @@ fn display_expr_atom(
         ExprAtomKind::Ident(name) => {
             write!(f, "{}", name.text)?;
         }
-        ExprAtomKind::IfExpr(if_expr) => {}
+        ExprAtomKind::IfExpr(if_expr) => {
+            display_if_expr(f, if_expr, hdc)?;
+        }
         ExprAtomKind::LoopExpr(loop_expr) => {
             display_loop_expr(f, loop_expr, hdc)?;
         }
@@ -777,37 +791,49 @@ fn display_expr_atom(
             write!(f, ")")?;
         }
         ExprAtomKind::LambdaExpr(l) => {
-            write!(f, "{}", "{".punctuation())?;
-            if l.body.items.len() > 1 {
-                writeln!(f)?;
-                write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
-            }
-            if let Some(pl) = &l.lambda_param_list {
-                for (i, param) in pl.params.iter().enumerate() {
-                    if i != 0 {
-                        write!(f, ", ")?;
-                    }
-
-                    display_lambda_param(f, param, hdc.make_child())?;
-                }
-
-                if l.body.items.len() > 1 {
-                    writeln!(f, " {}", "->".punctuation())?;
-                    write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
-                } else {
-                    write!(f, " {} ", "->".punctuation())?;
-                }
-            }
-            display_item_list(f, &l.body, hdc.make_child())?;
-            if l.body.items.len() > 1 {
-                writeln!(f)?;
-                write!(f, "{:indent$}", "", indent = hdc.depth)?;
-            }
-            write!(f, "{}", "}".punctuation())?;
+            display_lambda_expr(f, l, hdc)?;
         }
     }
 
     Ok(())
+}
+
+fn display_lambda_expr(f: &mut fmt::Formatter, l: &LambdaExpr, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", "{".punctuation())?;
+    if l.body.items.len() > 1 {
+        writeln!(f)?;
+        write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
+    }
+    if let Some(pl) = &l.lambda_param_list {
+        for (i, param) in pl.params.iter().enumerate() {
+            if i != 0 {
+                write!(f, "{} ", ",".punctuation())?;
+            }
+
+            display_lambda_param(f, param, hdc.make_child())?;
+        }
+
+        if l.body.items.len() > 1 {
+            writeln!(f, " {}", "->".punctuation())?;
+            write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
+        } else {
+            write!(f, " {} ", "->".punctuation())?;
+        }
+    }
+    display_item_list(f, &l.body, hdc.make_child())?;
+    if l.body.items.len() > 1 {
+        writeln!(f)?;
+        write!(f, "{:indent$}", "", indent = hdc.depth)?;
+    }
+    write!(f, "{}", "}".punctuation())?;
+
+    Ok(())
+}
+
+impl fmt::Display for LambdaExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_lambda_expr(f, self, HirDisplayContext::new())
+    }
 }
 
 impl fmt::Display for ExprAtom {
@@ -918,8 +944,8 @@ fn display_lambda_param(
     display_pat(f, &param.pat, hdc)?;
 
     if let Some(ty) = &param.ty {
-        write!(f, ": ")?;
-        display_ty(f, &ty, hdc)?;
+        write!(f, "{} ", ":".punctuation())?;
+        display_ty_ref_id(f, *ty, hdc)?;
     }
 
     Ok(())

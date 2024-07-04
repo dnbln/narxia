@@ -8,10 +8,26 @@ mod hir_debug;
 
 pub use hir_debug::*;
 
+pub trait HirIdNewtype {
+    fn hir_id(&self) -> HirId;
+}
+
+impl HirIdNewtype for HirId {
+    fn hir_id(&self) -> HirId {
+        *self
+    }
+}
+
 macro_rules! hir_id_newtype {
     ($name:ident, $t:ty) => {
-        #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+        #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
         pub struct $name(pub HirId);
+
+        impl HirIdNewtype for $name {
+            fn hir_id(&self) -> HirId {
+                self.0
+            }
+        }
     };
 }
 
@@ -80,14 +96,14 @@ pub struct GenericParam {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum GenericParamKind {
     Type(Ident),
-    Const(Ident, TyRef),
+    Const(Ident, TyRefId),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnParam {
     pub param_span: HirSpan,
     pub pat: Pat,
-    pub ty: TyRef,
+    pub ty: TyRefId,
     pub default: Option<ExprId>,
 }
 
@@ -95,7 +111,7 @@ pub struct FnParam {
 pub struct FnRetTy {
     pub span: HirSpan,
     pub arrow_span: HirSpan,
-    pub ty: TyRef,
+    pub ty: TyRefId,
 }
 
 hir_id_newtype!(ExprId, Expr);
@@ -166,6 +182,15 @@ pub struct LambdaExpr {
     pub body: ItemList,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord, Copy)]
+pub struct LambdaExprId(pub ExprId);
+
+impl HirIdNewtype for LambdaExprId {
+    fn hir_id(&self) -> HirId {
+        self.0.hir_id()
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LambdaParamList {
     pub params: Vec<LambdaParam>,
@@ -174,7 +199,7 @@ pub struct LambdaParamList {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LambdaParam {
     pub pat: Pat,
-    pub ty: Option<TyRef>,
+    pub ty: Option<TyRefId>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -223,6 +248,101 @@ pub enum NumLit {
     Oct(Token),
     Dec(Token),
     Hex(Token),
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum NumLitSize {
+    I8,
+    I16,
+    I32,
+    I64,
+    I128,
+    U8,
+    U16,
+    U32,
+    U64,
+    U128,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum NumLitValue {
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    I128(i128),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
+}
+
+impl NumLit {
+    pub fn parse_to_size(&self, size: NumLitSize) -> NumLitValue {
+        match size {
+            NumLitSize::I8 => match self {
+                NumLit::Bin(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I8(i8::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::I16 => match self {
+                NumLit::Bin(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I16(i16::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::I32 => match self {
+                NumLit::Bin(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I32(i32::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::I64 => match self {
+                NumLit::Bin(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I64(i64::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::I128 => match self {
+                NumLit::Bin(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I128(i128::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::U8 => match self {
+                NumLit::Bin(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U8(u8::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::U16 => match self {
+                NumLit::Bin(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U16(u16::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::U32 => match self {
+                NumLit::Bin(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U32(u32::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::U64 => match self {
+                NumLit::Bin(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U64(u64::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+            NumLitSize::U128 => match self {
+                NumLit::Bin(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U128(u128::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 16).unwrap()),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -351,7 +471,7 @@ pub enum AssignmentOp {
 pub struct LetStmt {
     pub mutability: LetMutability,
     pub pat: Pat,
-    pub ty: Option<TyRef>,
+    pub ty: Option<TyRefId>,
     pub init: Option<ExprId>,
 }
 
@@ -391,6 +511,8 @@ pub struct TyRef {
     pub span: HirSpan,
     pub kind: TyRefKind,
 }
+
+hir_id_newtype!(TyRefId, TyRef);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TyRefKind {
@@ -432,11 +554,11 @@ pub struct TyGenericArg {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum TyGenericArgKind {
     ConstVal(ExprId),
-    Type(TyRef),
+    Type(TyRefId),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnTy {
-    pub params: Vec<TyRef>,
-    pub ret_ty: Option<Box<TyRef>>,
+    pub params: Vec<TyRefId>,
+    pub ret_ty: Option<TyRefId>,
 }

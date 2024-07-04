@@ -15,6 +15,10 @@ enum NarxiaDriverCommand {
     DisplayHir(NarxiaDriverDisplayHirCommand),
     #[clap(name = "display-hir-debug")]
     DisplayHirDebug(NarxiaDriverDisplayHirDebugCommand),
+    #[clap(name = "display-ty-bounds")]
+    DisplayTyBounds(NarxiaDriverDisplayTyBoundsCommand),
+    #[clap(name = "hiri")]
+    Hiri(NarxiaDriverHiriCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -29,6 +33,16 @@ pub struct NarxiaDriverDisplayHirCommand {
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverDisplayHirDebugCommand {
+    file: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct NarxiaDriverDisplayTyBoundsCommand {
+    file: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct NarxiaDriverHiriCommand {
     file: PathBuf,
 }
 
@@ -84,9 +98,79 @@ fn main() -> miette::Result<()> {
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
 
             println!("{:?}", hir.mod_def(&ctx.db).hir_dbg(&ctx));
+        }
+        NarxiaDriverCommand::DisplayTyBounds(display_ty_bounds_cmd) => {
+            narxia_log::i!("Display type bounds command: {display_ty_bounds_cmd:?}");
+
+            let file = display_ty_bounds_cmd.file;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+
+            ctx.trace_file(file);
+
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+            
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
+
+            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
+
+            let hir_mod = hir.mod_def(&ctx.db);
+            let hir_map = ctx.db.get_global_ty_ctxt().hir_map.borrow();
+
+            let names = narxia_hir_typechk::ty_bounds::resolve_names(hir_mod, &hir_map);
+            let bounds = narxia_hir_typechk::ty_bounds::collect_ty_bounds(hir_mod, &hir_map, &names);
+
+            for bound in &bounds.bounds {
+                println!("{:?}", bound);
+                println!("@ {}", hir_map.get(bound.hir_id).hir_dbg(&ctx));
+            }
+        }
+
+        NarxiaDriverCommand::Hiri(hiri_cmd) => {
+            narxia_log::i!("HIRI command: {hiri_cmd:?}");
+
+            let file = hiri_cmd.file;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+
+            ctx.trace_file(file);
+
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+            
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
+
+            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
+
+            let hir_mod = hir.mod_def(&ctx.db);
+
+            let hir_map = ctx.db.get_global_ty_ctxt().hir_map.borrow();
+
+            let mut ictx = narxia_hiri::InterpContext::new(&*hir_map);
+
+            narxia_hiri::interp_mod(&mut ictx, hir_map.get_mod(hir_mod));
         }
     }
 

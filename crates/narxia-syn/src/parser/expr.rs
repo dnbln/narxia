@@ -232,7 +232,7 @@ fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
             p.expect(T![ident]);
             let s = p.state();
             p.skip_ws_wc();
-            if p.at(T!['(']) {
+            if p.at(T!['(']) || p.at(T!['{']) {
                 parse_call_expr_args(p);
                 m = p.ev.end(m0, SyntaxKind::MethodCall);
             } else {
