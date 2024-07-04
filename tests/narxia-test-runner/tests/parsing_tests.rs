@@ -26,7 +26,7 @@ enum TestMode {
 
 impl TestMode {
     fn get_behavior() -> Self {
-        match std::env::var("NARXIA_TEST_MODE").as_deref() {
+        match std::env::var("NARXIA_PARSER_SNAPSHOTS_TEST_MODE").as_deref() {
             Ok("overwrite") => Self::Overwrite,
             Ok("compare") => Self::Compare,
             _ => Self::Compare,

@@ -452,12 +452,11 @@ Root@0..328
   Item@293..307
     Stmt@293..307
       Expr@293..307
-        CallExpr@293..307
-          FieldAccess@293..296
-            ExprAtom@293..294
-              IDENT@293..294 "a"
-            DOT@294..295 "."
-            IDENT@295..296 "f"
+        MethodCall@293..307
+          ExprAtom@293..294
+            IDENT@293..294 "a"
+          DOT@294..295 "."
+          IDENT@295..296 "f"
           COMPOSED_TRIVIA@296..297 " "
           CallExprArgs@297..307
             CallExprArgLambda@297..307

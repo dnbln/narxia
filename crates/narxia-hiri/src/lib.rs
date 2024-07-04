@@ -857,7 +857,7 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                     match internal_fn {
                         InternalFunctionsDef::PRINT => {
                             let arg = interp_expr_id(ctx, call.args.args[0])?;
-                            println!("{}", interp_display_impl(ctx, &arg));
+                            print!("{}", interp_display_impl(ctx, &arg));
                             Ok(InterpValue::Unit)
                         }
                         InternalFunctionsDef::PRINTLN => {
