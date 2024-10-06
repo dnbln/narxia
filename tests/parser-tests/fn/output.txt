@@ -1,6 +1,6 @@
-Root@0..14
-  Item@0..14
-    FnDef@0..14
+Root@0..13
+  Item@0..13
+    FnDef@0..13
       FnHead@0..9
         FN_KW@0..2 "fn"
         COMPOSED_TRIVIA@2..3 " "
@@ -10,7 +10,7 @@ Root@0..14
           L_PAREN@7..8 "("
           R_PAREN@8..9 ")"
       COMPOSED_TRIVIA@9..10 " "
-      Block@10..14
+      Block@10..13
         L_BRACE@10..11 "{"
-        COMPOSED_TRIVIA@11..13 "\r\n"
-        R_BRACE@13..14 "}"
+        COMPOSED_TRIVIA@11..12 "\n"
+        R_BRACE@12..13 "}"

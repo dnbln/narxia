@@ -1,3 +1,14 @@
+//! Lowering the syntree to the HIR.
+//!
+//! The HIR is a high-level intermediate representation of the source code.
+//! It is a tree-like structure that represents the source code in a more
+//! abstract way than the syntax tree.
+//!
+//! The HIR is used to perform type checking and other analyses on the source
+//! code.
+//!
+//! This module contains the code that lowers the syntax tree to the HIR.
+
 use narxia_src_db::SrcFile;
 use narxia_syn::syntree;
 use narxia_syn::syntree::{Token, TreeNode};

@@ -1,4 +1,4 @@
-Root@0..22
+Root@0..21
   Item@0..20
     Stmt@0..20
       Expr@0..20
@@ -31,4 +31,4 @@ Root@0..22
               Expr@19..20
                 ExprAtom@19..20
                   IDENT@19..20 "b"
-  COMPOSED_TRIVIA@20..22 "\r\n"
+  COMPOSED_TRIVIA@20..21 "\n"

@@ -1,4 +1,4 @@
-Root@0..96
+Root@0..87
   Item@0..11
     Stmt@0..11
       LetStmt@0..11
@@ -18,108 +18,108 @@ Root@0..96
                   NumLit@9..10
                     NUM_DEC@9..10 "1"
               R_PAREN@10..11 ")"
-  COMPOSED_TRIVIA@11..13 "\r\n"
-  Item@13..30
-    Stmt@13..30
-      LetStmt@13..30
-        LET_KW@13..16 "let"
-        COMPOSED_TRIVIA@16..17 " "
-        Pat@17..18
-          IDENT@17..18 "x"
-        COMPOSED_TRIVIA@18..19 " "
-        EQ@19..20 "="
-        COMPOSED_TRIVIA@20..21 " "
-        Expr@21..30
-          ExprAtom@21..30
-            TupleLikeExpr@21..30
-              L_PAREN@21..22 "("
-              Expr@22..23
-                ExprAtom@22..23
-                  NumLit@22..23
-                    NUM_DEC@22..23 "1"
-              COMMA@23..24 ","
-              COMPOSED_TRIVIA@24..25 " "
-              Expr@25..26
-                ExprAtom@25..26
-                  NumLit@25..26
-                    NUM_DEC@25..26 "2"
-              COMMA@26..27 ","
-              COMPOSED_TRIVIA@27..28 " "
-              Expr@28..29
-                ExprAtom@28..29
-                  NumLit@28..29
-                    NUM_DEC@28..29 "3"
-              R_PAREN@29..30 ")"
-  COMPOSED_TRIVIA@30..32 "\r\n"
-  Item@32..48
-    Stmt@32..48
-      LetStmt@32..48
-        LET_KW@32..35 "let"
+  COMPOSED_TRIVIA@11..12 "\n"
+  Item@12..29
+    Stmt@12..29
+      LetStmt@12..29
+        LET_KW@12..15 "let"
+        COMPOSED_TRIVIA@15..16 " "
+        Pat@16..17
+          IDENT@16..17 "x"
+        COMPOSED_TRIVIA@17..18 " "
+        EQ@18..19 "="
+        COMPOSED_TRIVIA@19..20 " "
+        Expr@20..29
+          ExprAtom@20..29
+            TupleLikeExpr@20..29
+              L_PAREN@20..21 "("
+              Expr@21..22
+                ExprAtom@21..22
+                  NumLit@21..22
+                    NUM_DEC@21..22 "1"
+              COMMA@22..23 ","
+              COMPOSED_TRIVIA@23..24 " "
+              Expr@24..25
+                ExprAtom@24..25
+                  NumLit@24..25
+                    NUM_DEC@24..25 "2"
+              COMMA@25..26 ","
+              COMPOSED_TRIVIA@26..27 " "
+              Expr@27..28
+                ExprAtom@27..28
+                  NumLit@27..28
+                    NUM_DEC@27..28 "3"
+              R_PAREN@28..29 ")"
+  COMPOSED_TRIVIA@29..30 "\n"
+  Item@30..46
+    Stmt@30..46
+      LetStmt@30..46
+        LET_KW@30..33 "let"
+        COMPOSED_TRIVIA@33..34 " "
+        Pat@34..35
+          IDENT@34..35 "x"
         COMPOSED_TRIVIA@35..36 " "
-        Pat@36..37
-          IDENT@36..37 "x"
+        EQ@36..37 "="
         COMPOSED_TRIVIA@37..38 " "
-        EQ@38..39 "="
-        COMPOSED_TRIVIA@39..40 " "
-        Expr@40..48
-          ExprAtom@40..48
-            TupleLikeExpr@40..48
-              L_PAREN@40..41 "("
+        Expr@38..46
+          ExprAtom@38..46
+            TupleLikeExpr@38..46
+              L_PAREN@38..39 "("
+              Expr@39..40
+                ExprAtom@39..40
+                  NumLit@39..40
+                    NUM_DEC@39..40 "1"
+              COMMA@40..41 ","
               Expr@41..42
                 ExprAtom@41..42
                   NumLit@41..42
-                    NUM_DEC@41..42 "1"
+                    NUM_DEC@41..42 "2"
               COMMA@42..43 ","
               Expr@43..44
                 ExprAtom@43..44
                   NumLit@43..44
-                    NUM_DEC@43..44 "2"
+                    NUM_DEC@43..44 "3"
               COMMA@44..45 ","
-              Expr@45..46
-                ExprAtom@45..46
-                  NumLit@45..46
-                    NUM_DEC@45..46 "3"
-              COMMA@46..47 ","
-              R_PAREN@47..48 ")"
-  COMPOSED_TRIVIA@48..50 "\r\n"
-  Item@50..94
-    Stmt@50..94
-      LetStmt@50..94
-        LET_KW@50..53 "let"
-        COMPOSED_TRIVIA@53..54 " "
-        Pat@54..55
-          IDENT@54..55 "x"
-        COMPOSED_TRIVIA@55..56 " "
-        EQ@56..57 "="
-        COMPOSED_TRIVIA@57..58 " "
-        Expr@58..94
-          ExprAtom@58..94
-            TupleLikeExpr@58..94
-              L_PAREN@58..59 "("
-              COMPOSED_TRIVIA@59..65 "\r\n    "
-              Expr@65..66
-                ExprAtom@65..66
-                  NumLit@65..66
-                    NUM_DEC@65..66 "1"
-              COMMA@66..67 ","
-              COMPOSED_TRIVIA@67..73 "\r\n    "
-              Expr@73..74
-                ExprAtom@73..74
-                  NumLit@73..74
-                    NUM_DEC@73..74 "2"
-              COMMA@74..75 ","
-              COMPOSED_TRIVIA@75..81 "\r\n    "
-              Expr@81..82
-                ExprAtom@81..82
-                  NumLit@81..82
-                    NUM_DEC@81..82 "3"
-              COMMA@82..83 ","
-              COMPOSED_TRIVIA@83..89 "\r\n    "
-              Expr@89..90
-                ExprAtom@89..90
-                  NumLit@89..90
-                    NUM_DEC@89..90 "4"
-              COMMA@90..91 ","
-              COMPOSED_TRIVIA@91..93 "\r\n"
-              R_PAREN@93..94 ")"
-  COMPOSED_TRIVIA@94..96 "\r\n"
+              R_PAREN@45..46 ")"
+  COMPOSED_TRIVIA@46..47 "\n"
+  Item@47..86
+    Stmt@47..86
+      LetStmt@47..86
+        LET_KW@47..50 "let"
+        COMPOSED_TRIVIA@50..51 " "
+        Pat@51..52
+          IDENT@51..52 "x"
+        COMPOSED_TRIVIA@52..53 " "
+        EQ@53..54 "="
+        COMPOSED_TRIVIA@54..55 " "
+        Expr@55..86
+          ExprAtom@55..86
+            TupleLikeExpr@55..86
+              L_PAREN@55..56 "("
+              COMPOSED_TRIVIA@56..61 "\n    "
+              Expr@61..62
+                ExprAtom@61..62
+                  NumLit@61..62
+                    NUM_DEC@61..62 "1"
+              COMMA@62..63 ","
+              COMPOSED_TRIVIA@63..68 "\n    "
+              Expr@68..69
+                ExprAtom@68..69
+                  NumLit@68..69
+                    NUM_DEC@68..69 "2"
+              COMMA@69..70 ","
+              COMPOSED_TRIVIA@70..75 "\n    "
+              Expr@75..76
+                ExprAtom@75..76
+                  NumLit@75..76
+                    NUM_DEC@75..76 "3"
+              COMMA@76..77 ","
+              COMPOSED_TRIVIA@77..82 "\n    "
+              Expr@82..83
+                ExprAtom@82..83
+                  NumLit@82..83
+                    NUM_DEC@82..83 "4"
+              COMMA@83..84 ","
+              COMPOSED_TRIVIA@84..85 "\n"
+              R_PAREN@85..86 ")"
+  COMPOSED_TRIVIA@86..87 "\n"

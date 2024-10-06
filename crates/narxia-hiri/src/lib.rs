@@ -53,7 +53,12 @@ impl<'a> InterpContext<'a> {
 
     fn decl_internal_fn(&mut self, name: &str, id: InternalFnId) {
         let id = self.push_store(InterpValue::InternalFn(id));
-        self.environment.insert(Name { name: name.to_string() }, id);
+        self.environment.insert(
+            Name {
+                name: name.to_string(),
+            },
+            id,
+        );
     }
 
     fn declare_internal_functions(&mut self) {
@@ -853,20 +858,18 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
             match callee {
                 InterpValue::Fn(fn_id) => Ok(InterpValue::Unit),
                 InterpValue::Lambda(lambda) => Ok(InterpValue::Unit),
-                InterpValue::InternalFn(internal_fn) => {
-                    match internal_fn {
-                        InternalFunctionsDef::PRINT => {
-                            let arg = interp_expr_id(ctx, call.args.args[0])?;
-                            print!("{}", interp_display_impl(ctx, &arg));
-                            Ok(InterpValue::Unit)
-                        }
-                        InternalFunctionsDef::PRINTLN => {
-                            let arg = interp_expr_id(ctx, call.args.args[0])?;
-                            println!("{}", interp_display_impl(ctx, &arg));
-                            Ok(InterpValue::Unit)
-                        }
-                        _ => todo!(),
+                InterpValue::InternalFn(internal_fn) => match internal_fn {
+                    InternalFunctionsDef::PRINT => {
+                        let arg = interp_expr_id(ctx, call.args.args[0])?;
+                        print!("{}", interp_display_impl(ctx, &arg));
+                        Ok(InterpValue::Unit)
                     }
+                    InternalFunctionsDef::PRINTLN => {
+                        let arg = interp_expr_id(ctx, call.args.args[0])?;
+                        println!("{}", interp_display_impl(ctx, &arg));
+                        Ok(InterpValue::Unit)
+                    }
+                    _ => todo!(),
                 },
                 x => panic!("Expected function or lambda, got {:?}", x),
             }

@@ -151,7 +151,10 @@ impl HirMap {
     pub fn get_lambda_expr(&self, at: LambdaExprId) -> &LambdaExpr {
         let expr = self.get_expr(at.0);
         match &expr.kind {
-            ExprKind::Atom(ExprAtom {kind: ExprAtomKind::LambdaExpr(lambda), ..}) => lambda,
+            ExprKind::Atom(ExprAtom {
+                kind: ExprAtomKind::LambdaExpr(lambda),
+                ..
+            }) => lambda,
             x => panic!("Expected LambdaExpr, found {x:?}"),
         }
     }
@@ -175,106 +178,21 @@ struct ParentUpdateVisitor<'hir> {
     parents: FxBTreeMap<HirId, HirId>,
 }
 
-struct VisIdStrategy;
-
-impl<'hir> crate::visitor::IdHandleStrategy<'hir, ParentUpdateVisitor<'hir>> for VisIdStrategy {
-    fn handle_item_id(&self, visitor: &mut ParentUpdateVisitor<'hir>, item_id: crate::hir::ItemId) {
-        visitor.visit_hir_id(item_id.0);
-
-        visitor.stack.push(item_id.0);
-
-        let item = visitor.hir_map.get_item(item_id);
-        visitor.visit_item(item_id, item);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_block_id(
-        &self,
-        visitor: &mut ParentUpdateVisitor<'hir>,
-        block_id: crate::hir::BlockId,
-    ) {
-        visitor.visit_hir_id(block_id.0);
-
-        visitor.stack.push(block_id.0);
-
-        let block = visitor.hir_map.get_block(block_id);
-        visitor.visit_block(block_id, block);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_expr_id(&self, visitor: &mut ParentUpdateVisitor<'hir>, expr_id: crate::hir::ExprId) {
-        visitor.visit_hir_id(expr_id.0);
-
-        visitor.stack.push(expr_id.0);
-
-        let expr = visitor.hir_map.get_expr(expr_id);
-        visitor.visit_expr(expr_id, expr);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_stmt_id(&self, visitor: &mut ParentUpdateVisitor<'hir>, stmt_id: crate::hir::StmtId) {
-        visitor.visit_hir_id(stmt_id.0);
-
-        visitor.stack.push(stmt_id.0);
-
-        let stmt = visitor.hir_map.get_stmt(stmt_id);
-        visitor.visit_stmt(stmt_id, stmt);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_fn_id(&self, visitor: &mut ParentUpdateVisitor<'hir>, fn_id: crate::hir::FnId) {
-        visitor.visit_hir_id(fn_id.0);
-
-        visitor.stack.push(fn_id.0);
-
-        let fn_def = visitor.hir_map.get_fn(fn_id);
-        visitor.visit_fn_def(fn_id, fn_def);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_mod_id(&self, visitor: &mut ParentUpdateVisitor<'hir>, mod_id: crate::hir::ModId) {
-        visitor.visit_hir_id(mod_id.0);
-
-        visitor.stack.push(mod_id.0);
-
-        let mod_def = visitor.hir_map.get_mod(mod_id);
-        visitor.visit_mod_def(mod_id, mod_def);
-
-        visitor.stack.pop();
-    }
-
-    fn handle_ty_ref_id(
-        &self,
-        visitor: &mut ParentUpdateVisitor<'hir>,
-        ty_ref_id: crate::hir::TyRefId,
-    ) {
-        visitor.visit_hir_id(ty_ref_id.0);
-
-        visitor.stack.push(ty_ref_id.0);
-
-        let ty_ref = visitor.hir_map.get_ty_ref(ty_ref_id);
-        visitor.visit_ty_ref(ty_ref_id, ty_ref);
-
-        visitor.stack.pop();
-    }
-}
-
 impl<'hir> HirVisitor<'hir> for ParentUpdateVisitor<'hir> {
-    type Strategy = VisIdStrategy;
-
-    fn get_strategy(&self) -> Self::Strategy {
-        VisIdStrategy
+    fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q) {
+        q(self, self.hir_map);
     }
 
     fn visit_hir_id(&mut self, hir_id: HirId) {
         if let Some(parent) = self.stack.last() {
             self.parents.insert(hir_id, *parent);
         }
+
+        self.stack.push(hir_id);
+    }
+
+    fn end_visit_hir_id(&mut self, _hir_id: HirId) {
+        self.stack.pop();
     }
 }
 

@@ -59,7 +59,7 @@ fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::R
                 .context("Cannot read expected tree")?;
             if tree_str != expected {
                 bail!(
-                    "Tree does not match expected output.\nExpected:\n{}\nActual:\n{}",
+                    "Tree does not match expected output.\nExpected:\n{}\nActual:\n{}\nRun with NARXIA_PARSER_SNAPSHOTS_TEST_MODE=overwrite to update the expected output.\n",
                     expected,
                     tree_fancy_str
                 );

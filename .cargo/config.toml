@@ -12,6 +12,7 @@ codegen-backend = true
 [target.'cfg(debug_assertions)']
 rustflags = [
     "--cfg", "hir_id_span",
+    "--cfg", "hir_id_deeptree",
 ]
 
 [target.'cfg(all())']

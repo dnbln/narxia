@@ -13,6 +13,6 @@ fn f(num: i32) -> i32 {
     return num + 1
 }
 
-fn call_fn(num: i32, call: fn(i32) -> i32) -> i32 {
-    return call(num)
+fn call_fn<T, U>(arg: T, call: fn(T) -> U) -> U {
+    return call(arg)
 }

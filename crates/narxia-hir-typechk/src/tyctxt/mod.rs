@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::ops::DerefMut;
 
 use narxia_hir::hir_map::{HirElem, HirMap};
+use narxia_hir::visitor::HirMapQ;
 use narxia_hir::HirId;
 use narxia_src_db::SrcFile;
 
@@ -24,6 +25,10 @@ impl GlobalTyCtxt {
             def_ids: RefCell::new(Vec::new()),
             hir_map: RefCell::new(HirMap::new()),
         }
+    }
+
+    pub fn make_ty_ctxt(&self) -> TyCtxt {
+        TyCtxt::new(self)
     }
 
     fn add_def_id(&self, target_hir: HirId) -> DefId {
@@ -63,11 +68,37 @@ impl<'tcx> TyCtxt<'tcx> {
         Self { global_ctxt }
     }
 
-    pub fn add_def_id(&self, target_hir: HirId) -> DefId {
+    pub fn add_def_id(self, target_hir: HirId) -> DefId {
         self.global_ctxt.add_def_id(target_hir)
     }
 
-    pub fn hir_map(&self) -> std::cell::Ref<'_, HirMap> {
-        self.global_ctxt.hir_map.borrow()
+    pub fn hir_map(self) -> GlobalHirMapRef<'tcx> {
+        GlobalHirMapRef(self.global_ctxt.hir_map.borrow())
+    }
+}
+
+pub struct GlobalHirMapRef<'tcx>(std::cell::Ref<'tcx, HirMap>);
+
+impl std::ops::Deref for GlobalHirMapRef<'_> {
+    type Target = HirMap;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
+impl<'tcx> GlobalHirMapRef<'tcx> {
+    pub fn clone_ref(&self) -> Self {
+        Self(std::cell::Ref::clone(&self.0))
+    }
+
+    pub fn get_hir_map(&self) -> &HirMap {
+        &*self.0
+    }
+}
+
+impl<'tcx> HirMapQ<'tcx> for &'tcx GlobalHirMapRef<'tcx> {
+    fn run_hir_map_query<T: 'tcx, Q: FnOnce(&'tcx HirMap) -> T>(&self, q: Q) -> T {
+        q(&*self.0)
     }
 }

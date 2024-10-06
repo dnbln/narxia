@@ -6,7 +6,7 @@ use narxia_hir::HirId;
 use crate::def_id::DefId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PrimitiveTy {
+pub enum TyPrimitive {
     Bool,
     Char,
     F32,
@@ -39,10 +39,10 @@ impl Debug for TyVar {
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Ty {
-    Primitive(PrimitiveTy),
+    Primitive(TyPrimitive),
     Adt(TyAdt),
     TyVar(TyVar),
-    Fn(FunTy),
+    Fn(TyFun),
     Never,
 }
 
@@ -64,8 +64,8 @@ impl From<TyVar> for Ty {
     }
 }
 
-impl From<FunTy> for Ty {
-    fn from(fty: FunTy) -> Self {
+impl From<TyFun> for Ty {
+    fn from(fty: TyFun) -> Self {
         Ty::Fn(fty)
     }
 }
@@ -75,12 +75,12 @@ impl Ty {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct FunTy {
+pub struct TyFun {
     inputs: Vec<Ty>,
     output: Box<Ty>,
 }
 
-impl Debug for FunTy {
+impl Debug for TyFun {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(")?;
         for (i, ty) in self.inputs.iter().enumerate() {
@@ -177,18 +177,21 @@ impl BinOpTyClass {
 pub enum StdTyClass {
     Display,
     Debug,
-    Num,
+    NumLiteral,
+    Clone,
+    Copy,
+    Movable,
+    InPlaceConstructible,
+    Sized,
     BinPlus(BinOpTyClass),
     BinMinus(BinOpTyClass),
     Mul(BinOpTyClass),
     Div(BinOpTyClass),
     Mod(BinOpTyClass),
+    PartialEq(BinOpTyClass),
     Eq(BinOpTyClass),
-    Neq(BinOpTyClass),
-    Lt(BinOpTyClass),
-    LtEq(BinOpTyClass),
-    Gt(BinOpTyClass),
-    GtEq(BinOpTyClass),
+    PartialOrd(BinOpTyClass),
+    Ord(BinOpTyClass),
     And(BinOpTyClass),
     Or(BinOpTyClass),
     BitAnd(BinOpTyClass),
@@ -212,18 +215,21 @@ impl Debug for StdTyClass {
         match self {
             StdTyClass::Display => write!(f, "{{display}}"),
             StdTyClass::Debug => write!(f, "{{debug}}"),
-            StdTyClass::Num => write!(f, "{{num}}"),
+            StdTyClass::Copy => write!(f, "Copy"),
+            StdTyClass::Clone => write!(f, "Clone"),
+            StdTyClass::Movable => write!(f, "Movable"),
+            StdTyClass::Sized => write!(f, "Sized"),
+            StdTyClass::InPlaceConstructible => write!(f, "InPlaceConstructible"),
+            StdTyClass::NumLiteral => write!(f, "{{num}}"),
             StdTyClass::BinPlus(op) => write_bin_op!(f, "(+)", op),
             StdTyClass::BinMinus(op) => write_bin_op!(f, "(-)", op),
             StdTyClass::Mul(op) => write_bin_op!(f, "(*)", op),
             StdTyClass::Div(op) => write_bin_op!(f, "(/)", op),
             StdTyClass::Mod(op) => write_bin_op!(f, "(%)", op),
-            StdTyClass::Eq(op) => write_bin_op!(f, "(==)", op),
-            StdTyClass::Neq(op) => write_bin_op!(f, "(!=)", op),
-            StdTyClass::Lt(op) => write_bin_op!(f, "(<)", op),
-            StdTyClass::LtEq(op) => write_bin_op!(f, "(<=)", op),
-            StdTyClass::Gt(op) => write_bin_op!(f, "(>)", op),
-            StdTyClass::GtEq(op) => write_bin_op!(f, "(>=)", op),
+            StdTyClass::PartialEq(op) => write_bin_op!(f, "PEq", op),
+            StdTyClass::Eq(op) => write_bin_op!(f, "Eq", op),
+            StdTyClass::PartialOrd(op) => write_bin_op!(f, "POrd", op),
+            StdTyClass::Ord(op) => write_bin_op!(f, "Ord", op),
             StdTyClass::And(op) => write_bin_op!(f, "(&&)", op),
             StdTyClass::Or(op) => write_bin_op!(f, "(||)", op),
             StdTyClass::BitAnd(op) => write_bin_op!(f, "(&)", op),
@@ -259,8 +265,8 @@ impl FTyBuilder {
         self.output = ty;
     }
 
-    pub fn build(self) -> FunTy {
-        FunTy {
+    pub fn build(self) -> TyFun {
+        TyFun {
             inputs: self.inputs,
             output: Box::new(self.output),
         }

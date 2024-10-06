@@ -4,11 +4,13 @@ use narxia_src_db::SrcFile;
 use owo_colors::{OwoColorize, Style};
 
 use super::*;
+use crate::hir_map::HirElem;
 
 pub struct HirDebugContext {
     get_file_fn: fn(HirId) -> SrcFile,
     get_path_fn: fn(SrcFile) -> String,
     get_file_contents_fn: fn(SrcFile) -> String,
+    hir_map_lookup_fn: fn(HirId) -> HirElem,
 }
 
 thread_local! {
@@ -19,6 +21,7 @@ pub fn dbg_hir(
     get_file_fn: fn(HirId) -> SrcFile,
     get_path_fn: fn(SrcFile) -> String,
     get_file_contents_fn: fn(SrcFile) -> String,
+    hir_map_lookup_fn: fn(HirId) -> HirElem,
     cb: impl FnOnce() -> std::fmt::Result,
 ) -> std::fmt::Result {
     DEBUG_CONTEXT.with(move |f| {
@@ -38,6 +41,7 @@ pub fn dbg_hir(
             get_file_fn,
             get_path_fn,
             get_file_contents_fn,
+            hir_map_lookup_fn,
         });
 
         let _guard = HirDebugContextGuard(f);
@@ -50,28 +54,59 @@ pub fn display_hir(
     get_file_fn: fn(HirId) -> SrcFile,
     get_path_fn: fn(SrcFile) -> String,
     get_file_contents_fn: fn(SrcFile) -> String,
+    hir_map_lookup_fn: fn(HirId) -> HirElem,
     cb: impl FnOnce() -> std::fmt::Result,
 ) -> std::fmt::Result {
-    dbg_hir(get_file_fn, get_path_fn, get_file_contents_fn, cb)
+    dbg_hir(
+        get_file_fn,
+        get_path_fn,
+        get_file_contents_fn,
+        hir_map_lookup_fn,
+        cb,
+    )
 }
 
 impl fmt::Debug for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let r: Option<(String, String)> = DEBUG_CONTEXT.with(|f| {
+        #[cfg(hir_id_deeptree)]
+        type T = Option<(HirElem,)>;
+        #[cfg(not(hir_id_deeptree))]
+        type T = Option<(String, String)>;
+
+        let r: T = DEBUG_CONTEXT.with(|f| {
             let f = f.borrow();
 
             if let Some(ctx) = &*f {
                 let ctx: &HirDebugContext = ctx;
+                #[cfg(not(hir_id_deeptree))]
                 let src_file = (ctx.get_file_fn)(*self);
                 Some((
+                    #[cfg(not(hir_id_deeptree))]
                     (ctx.get_path_fn)(src_file),
+                    #[cfg(not(hir_id_deeptree))]
                     (ctx.get_file_contents_fn)(src_file),
+                    #[cfg(hir_id_deeptree)]
+                    (ctx.hir_map_lookup_fn)(*self),
                 ))
             } else {
                 None
             }
         });
 
+        #[cfg(hir_id_deeptree)]
+        match r {
+            Some((elem,)) => {
+                write!(f, "{}", elem)?;
+            }
+            None => {
+                #[cfg(hir_id_span)]
+                write!(f, "HID:{} @{}", self.id, self.span)?;
+                #[cfg(not(hir_id_span))]
+                write!(f, "HID:{}", self.id)?;
+            }
+        }
+
+        #[cfg(not(hir_id_deeptree))]
         match r {
             Some((path, contents)) => {
                 #[cfg(hir_id_span)]
@@ -201,28 +236,51 @@ impl fmt::Display for Item {
     }
 }
 
-trait Styling: Sized {
-    fn keyword(self) -> owo_colors::Styled<Self>;
-    fn operator(self) -> owo_colors::Styled<Self>;
-    fn punctuation(self) -> owo_colors::Styled<Self>;
-    fn num(self) -> owo_colors::Styled<Self>;
+pub trait Styling {
+    fn keyword(&self) -> owo_colors::Styled<&Self>;
+    fn operator(&self) -> owo_colors::Styled<&Self>;
+    fn punctuation(&self) -> owo_colors::Styled<&Self>;
+    fn num(&self) -> owo_colors::Styled<&Self>;
+    fn fn_name(&self) -> owo_colors::Styled<&Self>;
+    fn var_name(&self) -> owo_colors::Styled<&Self>;
+    fn mut_var_name(&self) -> owo_colors::Styled<&Self>;
+    fn ty_name(&self) -> owo_colors::Styled<&Self>;
 }
 
-impl<'a> Styling for &'a str {
-    fn keyword(self) -> owo_colors::Styled<Self> {
+impl<T> Styling for T
+where
+    T: fmt::Display,
+{
+    fn keyword(&self) -> owo_colors::Styled<&Self> {
         Style::new().bright_blue().style(self)
     }
 
-    fn operator(self) -> owo_colors::Styled<Self> {
+    fn operator(&self) -> owo_colors::Styled<&Self> {
         Style::new().bright_magenta().style(self)
     }
 
-    fn punctuation(self) -> owo_colors::Styled<Self> {
+    fn punctuation(&self) -> owo_colors::Styled<&Self> {
         Style::new().bright_purple().style(self)
     }
 
-    fn num(self) -> owo_colors::Styled<Self> {
+    fn num(&self) -> owo_colors::Styled<&Self> {
         Style::new().cyan().dimmed().style(self)
+    }
+
+    fn fn_name(&self) -> owo_colors::Styled<&Self> {
+        Style::new().bright_white().bold().style(self)
+    }
+
+    fn var_name(&self) -> owo_colors::Styled<&Self> {
+        Style::new().bright_green().style(self)
+    }
+
+    fn mut_var_name(&self) -> owo_colors::Styled<&Self> {
+        Style::new().bright_green().italic().style(self)
+    }
+
+    fn ty_name(&self) -> owo_colors::Styled<&Self> {
+        Style::new().bright_yellow().style(self)
     }
 }
 
@@ -231,7 +289,7 @@ pub fn display_fn_def(
     fn_def: &FnDef,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(f, "{} {}", "fn".keyword(), fn_def.name.text,)?;
+    write!(f, "{} {}", "fn".keyword(), fn_def.name.text.fn_name())?;
 
     if let Some(generics) = &fn_def.generics {
         write!(f, "{}", "<".punctuation())?;
@@ -383,7 +441,7 @@ impl fmt::Display for FnParam {
 fn display_pat(f: &mut fmt::Formatter, pat: &Pat, hdc: HirDisplayContext) -> fmt::Result {
     match &pat.kind {
         PatKind::Ident(ident) => {
-            write!(f, "{}", ident.text.bright_white().bold())?;
+            write!(f, "{}", ident.text.var_name())?;
         }
         PatKind::Tuple(pats) => {
             write!(f, "{}", "(".punctuation())?;
@@ -425,7 +483,7 @@ impl fmt::Display for TyRefId {
 fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt::Result {
     match &ty.kind {
         TyRefKind::Named(ident, generic_args) => {
-            write!(f, "{}", ident.text)?;
+            write!(f, "{}", ident.text.ty_name())?;
 
             if !generic_args.args.is_empty() {
                 write!(f, "{}", "<".punctuation())?;
@@ -443,18 +501,18 @@ fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt
             write!(f, "{}", primitive)?;
         }
         TyRefKind::Fn(fn_ty) => {
-            write!(f, "{}(", "fn".keyword())?;
+            write!(f, "{}{}", "fn".keyword(), "(".punctuation())?;
             for (i, param) in fn_ty.params.iter().enumerate() {
                 if i != 0 {
-                    write!(f, ", ")?;
+                    write!(f, "{} ", ",".punctuation())?;
                 }
 
                 display_ty_ref_id(f, *param, hdc.make_child())?;
             }
-            write!(f, ")")?;
+            write!(f, "{}", ")".punctuation())?;
 
             if let Some(ret_ty) = &fn_ty.ret_ty {
-                write!(f, " -> ")?;
+                write!(f, " {} ", "->".punctuation())?;
                 display_ty_ref_id(f, *ret_ty, hdc.make_child())?;
             }
         }
@@ -511,7 +569,7 @@ fn display_primitive_ty(f: &mut fmt::Formatter, primitive: &PrimitiveTy) -> fmt:
         PrimitiveTy::Str => "str",
     };
 
-    write!(f, "{}", primitive_str.bright_white())
+    write!(f, "{}", primitive_str.ty_name())
 }
 
 impl fmt::Display for PrimitiveTy {
@@ -683,7 +741,7 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
 
             for (i, arg) in method.args.args.iter().enumerate() {
                 if i != 0 {
-                    write!(f, ", ")?;
+                    write!(f, "{} ", ",".punctuation())?;
                 }
 
                 display_expr_id(f, *arg, hdc.make_child())?;
@@ -798,7 +856,11 @@ fn display_expr_atom(
     Ok(())
 }
 
-fn display_lambda_expr(f: &mut fmt::Formatter, l: &LambdaExpr, hdc: HirDisplayContext) -> fmt::Result {
+fn display_lambda_expr(
+    f: &mut fmt::Formatter,
+    l: &LambdaExpr,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
     write!(f, "{}", "{".punctuation())?;
     if l.body.items.len() > 1 {
         writeln!(f)?;

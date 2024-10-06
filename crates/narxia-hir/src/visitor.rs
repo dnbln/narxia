@@ -1,117 +1,21 @@
+use std::marker::PhantomData;
+
+use crate::hir::HirIdNewtype;
 use crate::hir_map::HirMap;
 use crate::{hir, HirId, HirSpan};
 
-pub(crate) trait IdHandleStrategy<'hir, V: HirVisitor<'hir> + ?Sized>
-where
-    Self: Sized,
-{
-    fn handle_item_id(&self, visitor: &mut V, item_id: hir::ItemId);
-    fn handle_block_id(&self, visitor: &mut V, block_id: hir::BlockId);
-    fn handle_expr_id(&self, visitor: &mut V, expr_id: hir::ExprId);
-    fn handle_stmt_id(&self, visitor: &mut V, stmt_id: hir::StmtId);
-    fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId);
-    fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId);
-    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId);
+pub trait HirMapQ<'hir> {
+    fn run_hir_map_query<T: 'hir, Q: FnOnce(&'hir HirMap) -> T>(&self, q: Q) -> T;
 }
 
-pub struct DoNothingIdHandleStrategy;
-
-impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for DoNothingIdHandleStrategy {
-    fn handle_item_id(&self, _visitor: &mut V, _item_id: hir::ItemId) {}
-
-    fn handle_block_id(&self, _visitor: &mut V, _block_id: hir::BlockId) {}
-
-    fn handle_expr_id(&self, _visitor: &mut V, _expr_id: hir::ExprId) {}
-
-    fn handle_stmt_id(&self, _visitor: &mut V, _stmt_id: hir::StmtId) {}
-
-    fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId) {}
-
-    fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {}
-    
-    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {}
-}
-
-pub struct ShallowIdHandleStrategy;
-impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for ShallowIdHandleStrategy {
-    fn handle_item_id(&self, visitor: &mut V, item_id: hir::ItemId) {
-        visitor.visit_hir_id(item_id.0);
-    }
-
-    fn handle_block_id(&self, visitor: &mut V, block_id: hir::BlockId) {
-        visitor.visit_hir_id(block_id.0);
-    }
-
-    fn handle_expr_id(&self, visitor: &mut V, expr_id: hir::ExprId) {
-        visitor.visit_hir_id(expr_id.0);
-    }
-
-    fn handle_stmt_id(&self, visitor: &mut V, stmt_id: hir::StmtId) {
-        visitor.visit_hir_id(stmt_id.0);
-    }
-
-    fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId) {
-        visitor.visit_hir_id(fn_id.0);
-    }
-
-    fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {
-        visitor.visit_hir_id(mod_id.0);
-    }
-    
-    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {
-        visitor.visit_hir_id(ty_ref_id.0);
-    }
-}
-
-pub struct RecursiveIdHandleStrategy<'hir>(&'hir HirMap);
-
-impl<'hir> RecursiveIdHandleStrategy<'hir> {
-    pub fn new(hir_map: &'hir HirMap) -> Self {
-        Self(hir_map)
-    }
-}
-
-impl<'hir, V: HirVisitor<'hir>> IdHandleStrategy<'hir, V> for RecursiveIdHandleStrategy<'hir> {
-    fn handle_item_id(&self, visitor: &mut V, item_id: hir::ItemId) {
-        visitor.visit_hir_id(item_id.0);
-        self.0.get_item(item_id).accept(item_id, visitor);
-    }
-
-    fn handle_block_id(&self, visitor: &mut V, block_id: hir::BlockId) {
-        visitor.visit_hir_id(block_id.0);
-        self.0.get_block(block_id).accept(block_id, visitor);
-    }
-
-    fn handle_expr_id(&self, visitor: &mut V, expr_id: hir::ExprId) {
-        visitor.visit_hir_id(expr_id.0);
-        self.0.get_expr(expr_id).accept(expr_id, visitor);
-    }
-
-    fn handle_stmt_id(&self, visitor: &mut V, stmt_id: hir::StmtId) {
-        visitor.visit_hir_id(stmt_id.0);
-        self.0.get_stmt(stmt_id).accept(stmt_id, visitor);
-    }
-
-    fn handle_fn_id(&self, visitor: &mut V, fn_id: hir::FnId) {
-        visitor.visit_hir_id(fn_id.0);
-        self.0.get_fn(fn_id).accept(fn_id, visitor);
-    }
-
-    fn handle_mod_id(&self, visitor: &mut V, mod_id: hir::ModId) {
-        visitor.visit_hir_id(mod_id.0);
-        self.0.get_mod(mod_id).accept(mod_id, visitor);
-    }
-    
-    fn handle_ty_ref_id(&self, visitor: &mut V, ty_ref_id: hir::TyRefId) {
-        visitor.visit_hir_id(ty_ref_id.0);
-        self.0.get_ty_ref(ty_ref_id).accept(ty_ref_id, visitor);
+impl<'hir> HirMapQ<'hir> for &'hir HirMap {
+    fn run_hir_map_query<T: 'hir, Q: FnOnce(&'hir HirMap) -> T>(&self, q: Q) -> T {
+        q(self)
     }
 }
 
 pub trait HirVisitor<'hir> {
-    type Strategy: IdHandleStrategy<'hir, Self>;
-
-    fn get_strategy(&self) -> Self::Strategy;
+    fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q);
 
     fn visit_mod_def(&mut self, mod_id: hir::ModId, mod_def: &'hir hir::ModDef) {
         walk_mod_def(self, mod_def)
@@ -320,36 +224,56 @@ pub trait HirVisitor<'hir> {
         }
     }
 
+    #[inline(always)]
+    fn end_visit_hir_id(&mut self, hir_id: HirId) {
+        // Nothing to do.
+    }
+
+    #[inline(always)]
     fn visit_span(&mut self, span: HirSpan) {
         // Nothing to do.
     }
 
     fn visit_expr_id(&mut self, expr_id: hir::ExprId) {
-        self.get_strategy().handle_expr_id(self, expr_id)
+        self.visit_hir_id(expr_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_expr(expr_id).accept(expr_id, v));
+        self.end_visit_hir_id(expr_id.hir_id());
     }
 
     fn visit_item_id(&mut self, item_id: hir::ItemId) {
-        self.get_strategy().handle_item_id(self, item_id)
+        self.visit_hir_id(item_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_item(item_id).accept(item_id, v));
+        self.end_visit_hir_id(item_id.hir_id());
     }
 
     fn visit_stmt_id(&mut self, stmt_id: hir::StmtId) {
-        self.get_strategy().handle_stmt_id(self, stmt_id)
+        self.visit_hir_id(stmt_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_stmt(stmt_id).accept(stmt_id, v));
+        self.end_visit_hir_id(stmt_id.hir_id());
     }
 
     fn visit_block_id(&mut self, block_id: hir::BlockId) {
-        self.get_strategy().handle_block_id(self, block_id)
+        self.visit_hir_id(block_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_block(block_id).accept(block_id, v));
+        self.end_visit_hir_id(block_id.hir_id());
     }
 
     fn visit_fn_id(&mut self, fn_id: hir::FnId) {
-        self.get_strategy().handle_fn_id(self, fn_id)
+        self.visit_hir_id(fn_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_fn(fn_id).accept(fn_id, v));
+        self.end_visit_hir_id(fn_id.hir_id());
     }
 
     fn visit_mod_id(&mut self, mod_id: hir::ModId) {
-        self.get_strategy().handle_mod_id(self, mod_id)
+        self.visit_hir_id(mod_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_mod(mod_id).accept(mod_id, v));
+        self.end_visit_hir_id(mod_id.hir_id());
     }
 
     fn visit_ty_ref_id(&mut self, ty_ref_id: hir::TyRefId) {
-        self.get_strategy().handle_ty_ref_id(self, ty_ref_id)
+        self.visit_hir_id(ty_ref_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_ty_ref(ty_ref_id).accept(ty_ref_id, v));
+        self.end_visit_hir_id(ty_ref_id.hir_id());
     }
 }
 

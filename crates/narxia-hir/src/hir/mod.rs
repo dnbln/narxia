@@ -1,3 +1,7 @@
+//! The high-level intermediate representation (HIR) of the Narxia compiler.
+//!
+//! The HIR is a tree-like structure that represents the source code in a more structured and abstract way than the raw syntax tree.
+
 use std::fmt;
 
 use narxia_syn::syntree::Token;
@@ -291,25 +295,37 @@ impl NumLit {
                 NumLit::Bin(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I16(i16::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::I32 => match self {
                 NumLit::Bin(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I32(i32::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::I64 => match self {
                 NumLit::Bin(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I64(i64::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::I128 => match self {
-                NumLit::Bin(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Bin(t) => {
+                    NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 2).unwrap())
+                }
+                NumLit::Oct(t) => {
+                    NumLitValue::I128(i128::from_str_radix(&t.text()[1..], 8).unwrap())
+                }
                 NumLit::Dec(t) => NumLitValue::I128(i128::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::U8 => match self {
                 NumLit::Bin(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[2..], 2).unwrap()),
@@ -321,25 +337,37 @@ impl NumLit {
                 NumLit::Bin(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U16(u16::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::U32 => match self {
                 NumLit::Bin(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U32(u32::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::U64 => match self {
                 NumLit::Bin(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U64(u64::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
             NumLitSize::U128 => match self {
-                NumLit::Bin(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[1..], 8).unwrap()),
+                NumLit::Bin(t) => {
+                    NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 2).unwrap())
+                }
+                NumLit::Oct(t) => {
+                    NumLitValue::U128(u128::from_str_radix(&t.text()[1..], 8).unwrap())
+                }
                 NumLit::Dec(t) => NumLitValue::U128(u128::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Hex(t) => {
+                    NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 16).unwrap())
+                }
             },
         }
     }

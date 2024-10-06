@@ -20,6 +20,8 @@ pub enum SyntaxKind {
     #[T(end_string)]
     END_STRING,
     // Keywords
+    #[T(module)]
+    MODULE_KW,
     #[T(fn)]
     FN_KW,
     #[T(let)]
@@ -53,6 +55,8 @@ pub enum SyntaxKind {
     #[T(in)]
     IN_KW,
     // Punctuation
+    #[T(#)]
+    HASH,
     #[T('(')]
     L_PAREN,
     #[T(')')]
@@ -146,7 +150,19 @@ pub enum SyntaxKind {
 
     // Nodes
     Root,
+    AttrList,
+    Attr,
+    AttrName,
+    AttrMeta,
+    AttrMetaItem,
+    AttrMetaItemName,
+    AttrMetaItemEq,
+    AttrMetaItemCall,
+
     Item,
+    Module,
+    ModuleName,
+    ModuleBody,
     FnDef,
     FnHead,
     FnName,

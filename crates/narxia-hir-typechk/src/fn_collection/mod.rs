@@ -1,13 +1,22 @@
-use narxia_hir::{hir::{self, Block, BlockId, FnParam, FnRetTy, Ident}, hir_map::HirMap, visitor::{HirVisitor, RecursiveIdHandleStrategy}};
+use core::fmt;
 
-use crate::{def_id::DefId, tyctxt::TyCtxt};
+use narxia_hir::hir::{self, HirIdNewtype, ModId};
+use narxia_hir::hir_map::HirMap;
+use narxia_hir::visitor::HirVisitor;
 
+use crate::def_id::DefId;
+use crate::tyctxt::TyCtxt;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FnDef<'hir> {
-    pub name: &'hir Ident,
-    pub params: &'hir [FnParam],
-    pub ret_ty: Option<&'hir FnRetTy>,
-    pub body: BlockId,
+    pub hir: &'hir hir::FnDef,
     pub def_id: DefId,
+}
+
+impl fmt::Display for FnDef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        <hir::FnDef as fmt::Display>::fmt(self.hir, f)
+    }
 }
 
 struct Visitor<'tcx> {
@@ -17,20 +26,30 @@ struct Visitor<'tcx> {
 }
 
 impl<'tcx> HirVisitor<'tcx> for Visitor<'tcx> {
-    type Strategy = RecursiveIdHandleStrategy<'tcx>;
-
-    fn get_strategy(&self) -> Self::Strategy {
-        RecursiveIdHandleStrategy::new(self.hir_map)
+    fn q_id_strategy<Q: FnOnce(&mut Self, &'tcx HirMap)>(&mut self, q: Q) {
+        q(self, self.hir_map);
     }
 
     fn visit_fn_def(&mut self, fn_id: hir::FnId, fn_def: &'tcx hir::FnDef) {
-        let def_id = self.tcx.add_def_id(fn_id.0);
+        let def_id = self.tcx.add_def_id(fn_id.hir_id());
         self.fn_defs.push(FnDef {
-            name: &fn_def.name,
-            params: &fn_def.params,
-            ret_ty: fn_def.ret_ty.as_ref(),
-            body: fn_def.body,
+            hir: fn_def,
             def_id,
         });
     }
+}
+
+pub fn collect_fns<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_map: &'tcx HirMap,
+    module: ModId,
+) -> Vec<FnDef<'tcx>> {
+    let mod_def = hir_map.get_mod(module);
+    let mut visitor = Visitor {
+        fn_defs: Vec::new(),
+        hir_map,
+        tcx,
+    };
+    visitor.visit_mod_def(module, mod_def);
+    visitor.fn_defs
 }

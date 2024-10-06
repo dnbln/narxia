@@ -367,7 +367,55 @@ syntree_node! {
 }
 
 syntree_node! {
-    Item = |[FnDef, Stmt]
+    Item = (?AttrList |[Module, FnDef, Stmt])
+}
+
+syntree_node! {
+    AttrList = *Attr
+}
+
+syntree_node! {
+    Attr = (hash![#] AttrName ?AttrMeta)
+}
+
+syntree_node! {
+    AttrName = ident![ident]
+}
+
+syntree_node! {
+    AttrMeta = (lbracket!['['] *|[AttrMetaItem, comma![,]] rbracket![']'])
+}
+
+syntree_node! {
+    AttrMetaItem = (AttrMetaItemName ?|[AttrMetaItemEq, AttrMetaItemCall])
+}
+
+syntree_node! {
+    AttrMetaItemName = ident![ident]
+}
+
+// syntree_enum! {
+//     AttrMetaItemValue = AttrMetaItemEq | AttrMetaItemCall
+// }
+
+syntree_node! {
+    AttrMetaItemEq = (eq![=] ExprNode)
+}
+
+syntree_node! {
+    AttrMetaItemCall = (lparen!['('] *|[AttrMetaItem, comma![,]] rparen![')'])
+}
+
+syntree_node! {
+    Module = (module_kw![module] ModuleName |[ModuleBody, semi![;]])
+}
+
+syntree_node! {
+    ModuleName = ident![ident]
+}
+
+syntree_node! {
+    ModuleBody = (lbrace!['{'] *|[Item, newline![newline]] rbrace!['}'])
 }
 
 syntree_node! {

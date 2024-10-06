@@ -1,4 +1,4 @@
-Root@0..123
+Root@0..122
   Item@0..121
     Stmt@0..121
       LetStmt@0..121
@@ -205,4 +205,4 @@ Root@0..123
             COMPOSED_TRIVIA@119..120 " "
             ExprAtom@120..121
               IDENT@120..121 "e"
-  COMPOSED_TRIVIA@121..123 "\r\n"
+  COMPOSED_TRIVIA@121..122 "\n"

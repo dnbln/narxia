@@ -1,6 +1,6 @@
-Root@0..43
-  Item@0..43
-    FnDef@0..43
+Root@0..40
+  Item@0..40
+    FnDef@0..40
       FnHead@0..9
         FN_KW@0..2 "fn"
         COMPOSED_TRIVIA@2..3 " "
@@ -10,32 +10,31 @@ Root@0..43
           L_PAREN@7..8 "("
           R_PAREN@8..9 ")"
       COMPOSED_TRIVIA@9..10 " "
-      Block@10..43
+      Block@10..40
         L_BRACE@10..11 "{"
-        COMPOSED_TRIVIA@11..17 "\r\n    "
-        Item@17..40
-          Stmt@17..40
-            WhileStmt@17..40
-              WHILE_KW@17..22 "while"
-              COMPOSED_TRIVIA@22..23 " "
-              WhileCondition@23..31
-                L_PAREN@23..24 "("
-                Expr@24..30
-                  BinaryOpExpr@24..30
-                    ExprAtom@24..25
-                      IDENT@24..25 "a"
-                    COMPOSED_TRIVIA@25..26 " "
-                    BinaryOpExprOp@26..28
-                      EQ2@26..28 "=="
-                    COMPOSED_TRIVIA@28..29 " "
-                    ExprAtom@29..30
-                      IDENT@29..30 "b"
-                R_PAREN@30..31 ")"
-              COMPOSED_TRIVIA@31..32 " "
-              Block@32..40
-                L_BRACE@32..33 "{"
-                COMPOSED_TRIVIA@33..39 "\r\n    "
-                R_BRACE@39..40 "}"
-        COMPOSED_TRIVIA@40..41 "\r"
-        NEWLINE@41..42 "\n"
-        R_BRACE@42..43 "}"
+        COMPOSED_TRIVIA@11..16 "\n    "
+        Item@16..38
+          Stmt@16..38
+            WhileStmt@16..38
+              WHILE_KW@16..21 "while"
+              COMPOSED_TRIVIA@21..22 " "
+              WhileCondition@22..30
+                L_PAREN@22..23 "("
+                Expr@23..29
+                  BinaryOpExpr@23..29
+                    ExprAtom@23..24
+                      IDENT@23..24 "a"
+                    COMPOSED_TRIVIA@24..25 " "
+                    BinaryOpExprOp@25..27
+                      EQ2@25..27 "=="
+                    COMPOSED_TRIVIA@27..28 " "
+                    ExprAtom@28..29
+                      IDENT@28..29 "b"
+                R_PAREN@29..30 ")"
+              COMPOSED_TRIVIA@30..31 " "
+              Block@31..38
+                L_BRACE@31..32 "{"
+                COMPOSED_TRIVIA@32..37 "\n    "
+                R_BRACE@37..38 "}"
+        NEWLINE@38..39 "\n"
+        R_BRACE@39..40 "}"

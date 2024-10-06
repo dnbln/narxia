@@ -1,4 +1,4 @@
-Root@0..16
+Root@0..14
   Item@0..5
     Stmt@0..5
       AssignmentStmt@0..5
@@ -14,23 +14,23 @@ Root@0..16
           Expr@4..5
             ExprAtom@4..5
               IDENT@4..5 "y"
-  COMPOSED_TRIVIA@5..7 "\r\n"
-  Item@7..14
-    Stmt@7..14
-      AssignmentStmt@7..14
-        AssignmentLhs@7..10
-          Expr@7..10
-            FieldAccess@7..10
-              ExprAtom@7..8
-                IDENT@7..8 "x"
-              DOT@8..9 "."
-              IDENT@9..10 "y"
-        COMPOSED_TRIVIA@10..11 " "
-        AssignmentOpAndRhsExpr@11..14
-          AssignmentOp@11..12
-            EQ@11..12 "="
-          COMPOSED_TRIVIA@12..13 " "
-          Expr@13..14
-            ExprAtom@13..14
-              IDENT@13..14 "z"
-  COMPOSED_TRIVIA@14..16 "\r\n"
+  COMPOSED_TRIVIA@5..6 "\n"
+  Item@6..13
+    Stmt@6..13
+      AssignmentStmt@6..13
+        AssignmentLhs@6..9
+          Expr@6..9
+            FieldAccess@6..9
+              ExprAtom@6..7
+                IDENT@6..7 "x"
+              DOT@7..8 "."
+              IDENT@8..9 "y"
+        COMPOSED_TRIVIA@9..10 " "
+        AssignmentOpAndRhsExpr@10..13
+          AssignmentOp@10..11
+            EQ@10..11 "="
+          COMPOSED_TRIVIA@11..12 " "
+          Expr@12..13
+            ExprAtom@12..13
+              IDENT@12..13 "z"
+  COMPOSED_TRIVIA@13..14 "\n"

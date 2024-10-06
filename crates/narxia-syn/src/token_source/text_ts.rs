@@ -5,7 +5,7 @@
 use std::ops::RangeInclusive;
 
 use super::TokParserState;
-use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::{SyntaxKind, T};
 use crate::text_span::TextSpan;
 use crate::token_source::{Token, TokenError, TokenSource};
 
@@ -232,22 +232,23 @@ impl<'text> CharTokenParser<'text> {
                 let end = consume_all(&mut self.chars, ['_'], ['a'..='z', 'A'..='Z', '0'..='9']);
                 let t = &self.text[start..end];
                 let kind = match t {
-                    "fn" => SyntaxKind::FN_KW,
-                    "let" => SyntaxKind::LET_KW,
-                    "if" => SyntaxKind::IF_KW,
-                    "else" => SyntaxKind::ELSE_KW,
-                    "while" => SyntaxKind::WHILE_KW,
-                    "loop" => SyntaxKind::LOOP_KW,
-                    "for" => SyntaxKind::FOR_KW,
-                    "in" => SyntaxKind::IN_KW,
-                    "break" => SyntaxKind::BREAK_KW,
-                    "continue" => SyntaxKind::CONTINUE_KW,
-                    "return" => SyntaxKind::RETURN_KW,
-                    "true" => SyntaxKind::TRUE_KW,
-                    "false" => SyntaxKind::FALSE_KW,
-                    "const" => SyntaxKind::CONST_KW,
-                    "mut" => SyntaxKind::MUT_KW,
-                    _ => SyntaxKind::IDENT,
+                    "module" => T![module],
+                    "fn" => T![fn],
+                    "let" => T![let],
+                    "if" => T![if],
+                    "else" => T![else],
+                    "while" => T![while],
+                    "loop" => T![loop],
+                    "for" => T![for],
+                    "in" => T![in],
+                    "break" => T![break],
+                    "continue" => T![continue],
+                    "return" => T![return],
+                    "true" => T![true],
+                    "false" => T![false],
+                    "const" => T![const],
+                    "mut" => T![mut],
+                    _ => T![ident],
                 };
                 r(kind, start, end)
             }
@@ -276,9 +277,10 @@ impl<'text> CharTokenParser<'text> {
                 r(SyntaxKind::WHITESPACE, start, end)
             }
             '\n' => r1(SyntaxKind::NEWLINE, start),
-            '+' => r1(SyntaxKind::PLUS, start),
-            '-' => r1(SyntaxKind::MINUS, start),
-            '*' => r1(SyntaxKind::ASTERISK, start),
+            '#' => r1(T![#], start),
+            '+' => r1(T![+], start),
+            '-' => r1(T![-], start),
+            '*' => r1(T![*], start),
             '/' => {
                 let (end, kind) = match self.chars.next() {
                     Some((_, '/')) => {
@@ -296,28 +298,28 @@ impl<'text> CharTokenParser<'text> {
                             }
                         }
                     },
-                    _ => (start + 1, SyntaxKind::SLASH),
+                    _ => (start + 1, T![/]),
                 };
                 r(kind, start, end)
             }
-            '%' => r1(SyntaxKind::PERCENT, start),
-            '=' => r1(SyntaxKind::EQ, start),
-            '!' => r1(SyntaxKind::BANG, start),
-            '<' => r1(SyntaxKind::LT, start),
-            '>' => r1(SyntaxKind::GT, start),
-            '(' => r1(SyntaxKind::L_PAREN, start),
-            ')' => r1(SyntaxKind::R_PAREN, start),
-            '{' => r1(SyntaxKind::L_BRACE, start),
-            '}' => r1(SyntaxKind::R_BRACE, start),
-            '[' => r1(SyntaxKind::L_BRACK, start),
-            ']' => r1(SyntaxKind::R_BRACK, start),
-            ';' => r1(SyntaxKind::SEMI, start),
-            ':' => r1(SyntaxKind::COLON, start),
-            ',' => r1(SyntaxKind::COMMA, start),
-            '.' => r1(SyntaxKind::DOT, start),
-            '&' => r1(SyntaxKind::AMP, start),
-            '|' => r1(SyntaxKind::PIPE, start),
-            '^' => r1(SyntaxKind::CARET, start),
+            '%' => r1(T![%], start),
+            '=' => r1(T![=], start),
+            '!' => r1(T![!], start),
+            '<' => r1(T![<], start),
+            '>' => r1(T![>], start),
+            '(' => r1(T!['('], start),
+            ')' => r1(T![')'], start),
+            '{' => r1(T!['{'], start),
+            '}' => r1(T!['}'], start),
+            '[' => r1(T!['['], start),
+            ']' => r1(T![']'], start),
+            ';' => r1(T![;], start),
+            ':' => r1(T![:], start),
+            ',' => r1(T![,], start),
+            '.' => r1(T![.], start),
+            '&' => r1(T![&], start),
+            '|' => r1(T![|], start),
+            '^' => r1(T![^], start),
             '"' => {
                 // let mut escaped = false;
                 // let end = loop {

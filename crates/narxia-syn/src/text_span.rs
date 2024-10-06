@@ -66,7 +66,7 @@ impl TextSpan {
 
     #[inline]
     pub fn get_span_start_line(self, text: &str) -> usize {
-        text[..self.start as usize].lines().count() + 1
+        text[..self.start as usize].lines().count()
     }
 }
 

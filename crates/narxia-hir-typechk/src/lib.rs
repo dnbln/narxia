@@ -2,21 +2,16 @@
 
 use std::fmt::Debug;
 
-use def_id::DefId;
-use narxia_data_structures::FxBTreeMap;
-use narxia_hir::hir::{Ident, ModDef, ModId};
-use narxia_hir::hir_map::HirMap;
-use narxia_hir::visitor::{self, HirVisitor};
-use narxia_hir::{hir, HirId};
+use narxia_hir::HirId;
 
 pub mod def_id;
 
+pub mod fn_collection;
+pub mod scope_rules;
 pub mod ty;
 pub mod tyctxt;
-mod fn_collection;
 mod tydef_collection;
 mod tyinfer;
-pub mod ty_bounds;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaceBase {
@@ -39,4 +34,3 @@ pub struct Place {
     pub place_base: PlaceBase,
     pub projections: Vec<Projection>,
 }
-

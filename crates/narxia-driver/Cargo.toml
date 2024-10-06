@@ -10,6 +10,7 @@ clap.workspace = true
 owo-colors.workspace = true
 miette.workspace = true
 salsa.workspace = true
+human-panic.workspace = true
 
 narxia-log.workspace = true
 narxia-log-impl.workspace = true

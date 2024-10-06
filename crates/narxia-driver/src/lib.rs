@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{fmt, io};
 
-use narxia_hir::hir_map::HirMap;
+use narxia_hir::hir_map::{HirElem, HirMap};
 use narxia_hir::HirId;
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
 use narxia_src_db::{SrcFile, SrcFileDatabase};
@@ -62,6 +62,16 @@ pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -
 
 pub fn init_log() {
     narxia_log_impl::init();
+}
+
+pub fn init_panic_hook() {
+    human_panic::setup_panic!(human_panic::Metadata::new(
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )
+    .authors("Dinu Blanovschi <git@dnbln.dev>")
+    .homepage("dnbln.dev")
+    .support("- Open a support request via a GitHub issue to https://github.com/dnbln/narxia"));
 }
 
 pub struct HirDebugImpl<'hir, 'ctxt, H> {
@@ -125,10 +135,24 @@ fn dbg_impl_code<H>(
         })
     }
 
+    fn debug_get_hir_element(hir_id: HirId) -> HirElem {
+        DRIVER_CTXT.with(|f| {
+            let f = f.borrow();
+            let ctx: &DriverCtx = unsafe { &**f };
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map
+                .borrow()
+                .get(hir_id)
+                .clone()
+        })
+    }
+
     narxia_hir::hir::dbg_hir(
         debug_hir_id_get_src_file,
         debug_hir_id_path_callback,
         debug_file_contents_callback,
+        debug_get_hir_element,
         || f(hir, fmt),
     )
 }

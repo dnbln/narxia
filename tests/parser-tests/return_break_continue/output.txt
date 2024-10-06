@@ -1,51 +1,51 @@
-Root@0..54
+Root@0..48
   Item@0..8
     Stmt@0..8
       Expr@0..8
         ExprAtom@0..8
           ContinueExpr@0..8
             CONTINUE_KW@0..8 "continue"
-  COMPOSED_TRIVIA@8..10 "\r\n"
-  Item@10..18
-    Stmt@10..18
-      Expr@10..18
-        ExprAtom@10..18
-          ContinueExpr@10..18
-            CONTINUE_KW@10..18 "continue"
-  COMPOSED_TRIVIA@18..20 "\r\n"
-  Item@20..25
-    Stmt@20..25
-      Expr@20..25
-        ExprAtom@20..25
-          BreakExpr@20..25
-            BREAK_KW@20..25 "break"
-  COMPOSED_TRIVIA@25..27 "\r\n"
-  Item@27..34
-    Stmt@27..34
-      Expr@27..34
-        ExprAtom@27..34
-          BreakExpr@27..34
-            BREAK_KW@27..32 "break"
-            COMPOSED_TRIVIA@32..33 " "
-            Expr@33..34
-              ExprAtom@33..34
-                IDENT@33..34 "x"
-  COMPOSED_TRIVIA@34..36 "\r\n"
-  Item@36..42
-    Stmt@36..42
-      Expr@36..42
-        ExprAtom@36..42
-          ReturnExpr@36..42
-            RETURN_KW@36..42 "return"
-  COMPOSED_TRIVIA@42..44 "\r\n"
-  Item@44..52
-    Stmt@44..52
-      Expr@44..52
-        ExprAtom@44..52
-          ReturnExpr@44..52
-            RETURN_KW@44..50 "return"
-            COMPOSED_TRIVIA@50..51 " "
-            Expr@51..52
-              ExprAtom@51..52
-                IDENT@51..52 "x"
-  COMPOSED_TRIVIA@52..54 "\r\n"
+  COMPOSED_TRIVIA@8..9 "\n"
+  Item@9..17
+    Stmt@9..17
+      Expr@9..17
+        ExprAtom@9..17
+          ContinueExpr@9..17
+            CONTINUE_KW@9..17 "continue"
+  COMPOSED_TRIVIA@17..18 "\n"
+  Item@18..23
+    Stmt@18..23
+      Expr@18..23
+        ExprAtom@18..23
+          BreakExpr@18..23
+            BREAK_KW@18..23 "break"
+  COMPOSED_TRIVIA@23..24 "\n"
+  Item@24..31
+    Stmt@24..31
+      Expr@24..31
+        ExprAtom@24..31
+          BreakExpr@24..31
+            BREAK_KW@24..29 "break"
+            COMPOSED_TRIVIA@29..30 " "
+            Expr@30..31
+              ExprAtom@30..31
+                IDENT@30..31 "x"
+  COMPOSED_TRIVIA@31..32 "\n"
+  Item@32..38
+    Stmt@32..38
+      Expr@32..38
+        ExprAtom@32..38
+          ReturnExpr@32..38
+            RETURN_KW@32..38 "return"
+  COMPOSED_TRIVIA@38..39 "\n"
+  Item@39..47
+    Stmt@39..47
+      Expr@39..47
+        ExprAtom@39..47
+          ReturnExpr@39..47
+            RETURN_KW@39..45 "return"
+            COMPOSED_TRIVIA@45..46 " "
+            Expr@46..47
+              ExprAtom@46..47
+                IDENT@46..47 "x"
+  COMPOSED_TRIVIA@47..48 "\n"

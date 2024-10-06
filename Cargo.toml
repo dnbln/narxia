@@ -32,10 +32,12 @@ narxia-syn-db = { path = "crates/narxia-syn-db" }
 dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.4" }
 dir-structure = { path = "dev/dir-structure", version = "0.1.4" }
 
+bumpalo = "3.6.0"
 clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 owo-colors = "4.0.0"
 bitflags = "2"
+human-panic = "2.0.0"
 libtest-mimic = "0.7.0"
 miette = { version = "7.2.0", features = ["fancy"] }
 path-absolutize = "3.1.1"

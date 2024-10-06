@@ -309,7 +309,9 @@ impl<'a> Parser<'a> {
         let m = self.ev.begin();
         while let Some(token_kind) = self.ts.lookahead0_kind() {
             match token_kind {
-                T![fn]
+                T![#]
+                | T![module]
+                | T![fn]
                 | T![const]
                 | T![let]
                 | T![ident]
@@ -430,12 +432,100 @@ impl<'a> Parser<'a> {
     }
 }
 
+parse_fn_decl! {parse_attr_meta_item_name: AttrMetaItemName ::= $![ident]}
+
+parse_fn_decl! {parse_attr_meta_item_eq: AttrMetaItemEq ::= $![=] $/ws:wcn $expr::parse_expr()}
+
+parse_fn_decl! {parse_attr_meta_item_call: AttrMetaItemCall ::= $parse_list_simple2(T!['('], parse_attr_meta_item, T![,], T![')'], AttemptRecoveryLevel::Shallow)}
+
+parse_fn_decl! {
+    parse_attr_meta_item: AttrMetaItem ::=
+        $parse_attr_meta_item_name()
+        $/state:s1
+        $/ws:wcn
+        $/match {
+            [=] => {
+                $parse_attr_meta_item_eq()
+            }
+            ['('] => {
+                $parse_attr_meta_item_call()
+            }
+            _ => {
+                $/restore_state:s1
+            }
+        }
+}
+
+parse_fn_decl! {
+    parse_attr_name: AttrName ::= $![ident]
+}
+
+parse_fn_decl! {
+    parse_attr_meta: AttrMeta ::=
+        $parse_list_simple2(
+            T!['['],
+            parse_attr_meta_item,
+            T![,],
+            T![']'],
+            AttemptRecoveryLevel::Shallow,
+        )
+}
+
+parse_fn_decl! {
+    parse_attr: Attr ::=
+        $![#]
+        $parse_attr_name()
+        $/state:s1
+        $/ws:wc
+        $/if at['['] {
+            $parse_attr_meta()
+        }
+        $/else {
+            $/restore_state:s1
+        }
+}
+
+#[parse_fn]
+fn parse_attr_list(p: &mut Parser) -> CompletedMarker {
+    let m = p.ev.begin();
+    while p.at(T![#]) {
+        parse_attr(p);
+        p.skip_ws_wcn();
+        if p.is_recovering() {
+            return p.ev.end(m, SyntaxKind::AttrList);
+        }
+    }
+    p.ev.end(m, SyntaxKind::AttrList)
+}
+
 parse_fn_decl! {
     parse_item: Item ::=
+        $/if at[#] {
+            $parse_attr_list()
+        }
         $/match {
+            [module] => {$parse_mod()}
             [fn] => {$fun::parse_fn_def()}
             [let] [while] [for] [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$stmt::parse_stmt()}
         }
+}
+
+parse_fn_decl! {
+    parse_module_name: ModuleName ::= $![ident]
+}
+
+parse_fn_decl! {
+    parse_mod: Module ::= $![module] $/ws:wcn $parse_module_name() $/ws:wcn $/match {
+        [;]!
+        ['{'] => {$parse_mod_body()}
+    }
+}
+
+parse_fn_decl! {
+    parse_mod_body: ModuleBody ::=
+        $!['{']
+        $parse_block_insides()
+        $!['}']
 }
 
 fn parse_list_rep<E: NotAttemptingRecovery>(
