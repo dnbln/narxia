@@ -47,15 +47,6 @@ struct ScopeRulesVisitor<'hir> {
 /// that satisfies the predicate, rather than the first.
 ///
 /// If the iterator is empty or no elements satisfy the predicate, `None` is returned.
-///
-/// # Examples
-///
-/// ```
-/// let v = vec![1, 2, 3, 4, 5];
-/// assert_eq!(last_filter_map(v.iter(), |&x| Some(x)), Some(5));
-/// assert_eq!(last_filter_map(v.iter(), |&x| x == 3).unwrap(), 3);
-/// assert_eq!(last_filter_map(v.iter(), |&x| x == 6), None);
-/// ```
 fn last_filter_map<I, T, U, F>(iter: I, f: F) -> Option<U>
 where
     F: FnMut(T) -> Option<U>,
@@ -112,4 +103,25 @@ pub fn collect_scope_violations<'hir>(
     };
     visitor.visit_mod_def(mod_id, hir_map.get_mod(mod_id));
     visitor.violations
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn last_filter_map() {
+        let v = vec![1, 2, 3, 4, 5];
+        assert_eq!(super::last_filter_map(v.iter(), |&x| Some(x)), Some(5));
+        assert_eq!(
+            super::last_filter_map(v.iter(), |&x| (x == 3).then_some(x)).unwrap(),
+            3
+        );
+        assert_eq!(
+            super::last_filter_map(v.iter(), |&x| (x == 6).then_some(x)),
+            None
+        );
+        assert_eq!(
+            super::last_filter_map(v.iter(), |&x| (x % 2 == 0).then_some(x)),
+            Some(4)
+        );
+    }
 }
