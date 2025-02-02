@@ -1,13 +1,11 @@
 use std::cell::RefCell;
 use std::fmt::Formatter;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::{fmt, io};
 
-use narxia_hir::hir_map::{HirElem, HirMap};
+use narxia_hir::hir_map::HirElem;
 use narxia_hir::HirId;
-use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
-use narxia_src_db::{FilePathInfo, SrcFile, SrcFileDatabase};
+use narxia_src_db::{FilePathInfo, SrcFile};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
 use owo_colors::OwoColorize;

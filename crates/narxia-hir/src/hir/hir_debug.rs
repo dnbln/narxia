@@ -4,7 +4,7 @@ use narxia_src_db::SrcFile;
 use owo_colors::{OwoColorize, Style};
 
 use super::*;
-use crate::hir_map::{HirElem, HirMap};
+use crate::hir_map::HirElem;
 
 pub struct HirDebugContext {
     get_file_fn: fn(HirId) -> SrcFile,

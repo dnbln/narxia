@@ -1,5 +1,4 @@
-use std::fmt::{Debug, Display};
-use std::sync::Arc;
+use std::fmt::Debug;
 use std::{fmt, io};
 
 use owo_colors::{OwoColorize, Style};

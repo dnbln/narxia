@@ -1,4 +1,3 @@
-use std::ops::DerefMut;
 use std::sync::{Arc, RwLock};
 
 use narxia_hir::hir_map::{HirElem, HirMap};

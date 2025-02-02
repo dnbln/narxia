@@ -1,10 +1,7 @@
 #![feature(trait_upcasting)]
 
-use std::ops::DerefMut;
 
-use narxia_hir::hir::ModDef;
-use narxia_hir::hir_map::{HirElem, HirMap};
-use narxia_hir::HirId;
+use narxia_hir::hir_map::HirMap;
 
 #[salsa::db]
 pub trait HirDb: salsa::Database + narxia_syn_db::SynDb {

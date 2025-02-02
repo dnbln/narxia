@@ -3,8 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use miette::IntoDiagnostic;
 use narxia_driver::ctxt::DriverCtx;
-use narxia_driver::{db, HirDbg};
-use narxia_hir::hir_map::HirMap;
+use narxia_driver::HirDbg;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

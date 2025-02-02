@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 
 use crate::hir::HirIdNewtype;
 use crate::hir_map::HirMap;

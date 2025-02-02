@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use narxia_data_structures::FxHashMap;
-use narxia_hir::HirId;
 
 use crate::def_id::DefId;
 

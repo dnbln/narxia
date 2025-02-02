@@ -3,8 +3,6 @@
 
 use core::fmt;
 
-use hir_map::HirMap;
-use narxia_src_db::SrcFile;
 use narxia_syn::syntree::{self, Token};
 use narxia_syn::text_span::TextSpan;
 

@@ -1,6 +1,4 @@
-use std::cell::RefCell;
 use std::io;
-use std::rc::Rc;
 
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
 use narxia_src_db::{FilePathInfo, Span, SrcFileDatabase};

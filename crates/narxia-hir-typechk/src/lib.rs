@@ -2,7 +2,7 @@
 
 use std::fmt::Debug;
 
-use narxia_hir::{hir, visitor::HirVisitor, HirId};
+use narxia_hir::HirId;
 
 pub mod def_id;
 

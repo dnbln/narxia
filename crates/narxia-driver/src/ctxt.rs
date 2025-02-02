@@ -1,4 +1,3 @@
-use narxia_hir_typechk::tyctxt::{GlobalTyCtxt, TyCtxt};
 use narxia_src_db::SrcFile;
 
 use crate::db::Database;

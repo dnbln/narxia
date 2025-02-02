@@ -2,10 +2,9 @@ use core::fmt;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::{io, path};
+use std::io;
 
 use path_absolutize::Absolutize;
-use salsa::Database;
 
 struct SrcFileDatabaseInner {
     db: String,
