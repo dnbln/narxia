@@ -407,13 +407,13 @@ fn lower_expr_atom(hir_lower_ctxt: &mut HirLowerCtxt, atom: &syntree::ExprAtom) 
 
 fn lower_num_literal(hir_lower_ctxt: &mut HirLowerCtxt, num_lit: &syntree::NumLit) -> NumLit {
     if let Some(num_bin) = num_lit.get_num_bin() {
-        NumLit::Bin(num_bin)
+        NumLit::Bin(Tk::from_token(&num_bin))
     } else if let Some(num_oct) = num_lit.get_num_oct() {
-        NumLit::Oct(num_oct)
+        NumLit::Oct(Tk::from_token(&num_oct))
     } else if let Some(num_dec) = num_lit.get_num_dec() {
-        NumLit::Dec(num_dec)
+        NumLit::Dec(Tk::from_token(&num_dec))
     } else if let Some(num_hex) = num_lit.get_num_hex() {
-        NumLit::Hex(num_hex)
+        NumLit::Hex(Tk::from_token(&num_hex))
     } else {
         todo!()
     }
@@ -579,7 +579,7 @@ fn lower_str_literal_fragment(
 ) -> StrLiteralFragment {
     match fragment {
         syntree::StringLiteralFragment::StringLiteralFragTextPart(t) => StrLiteralFragment {
-            kind: StrLiteralFragmentKind::Text(t.get_string_literal_frag_text_part()),
+            kind: StrLiteralFragmentKind::Text(Tk::from_token(&t.get_string_literal_frag_text_part())),
             span: HirSpan::of_node(fragment),
         },
         syntree::StringLiteralFragment::StringLiteralFragEscapedChar(e) => {
@@ -599,7 +599,7 @@ fn lower_str_literal_fragment(
                 x => x,
             };
             StrLiteralFragment {
-                kind: StrLiteralFragmentKind::EscapedChar(t, c),
+                kind: StrLiteralFragmentKind::EscapedChar(Tk::from_token(&t), c),
                 span: HirSpan::of_node(fragment),
             }
         }
@@ -608,7 +608,7 @@ fn lower_str_literal_fragment(
         }
         syntree::StringLiteralFragment::StringLiteralFragDisplay(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Display(StrLiteralDisplayFragment {
-                display_token: e.get_display_tok(),
+                display_token: Tk::from_token(&e.get_display_tok()),
                 span: HirSpan::of_node(fragment),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
@@ -619,7 +619,7 @@ fn lower_str_literal_fragment(
         },
         syntree::StringLiteralFragment::StringLiteralFragDebug(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Debug(StrLiteralDebugFragment {
-                debug_token: e.get_debug_tok(),
+                debug_token: Tk::from_token(&e.get_debug_tok()),
                 span: HirSpan::of_node(fragment),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
@@ -736,7 +736,7 @@ fn lower_if_expr(hir_lower_ctxt: &mut HirLowerCtxt, if_expr: &syntree::IfExpr) -
         .get_else_clause()
         .map(|it| lower_if_expr_else_clause(hir_lower_ctxt, &it));
     IfExpr {
-        if_kw: HirSpan::of(&if_expr.get_if_kw()),
+        if_kw: IfKw::from_token(&if_expr.get_if_kw()),
         cond,
         then,
         else_,
@@ -748,7 +748,7 @@ fn lower_if_expr_else_clause(
     if_expr_else_clause: &syntree::ElseClause,
 ) -> IfExprElseClause {
     IfExprElseClause {
-        else_kw: HirSpan::of(&if_expr_else_clause.get_else_kw()),
+        else_kw: ElseKw::from_token(&if_expr_else_clause.get_else_kw()),
         expr: lower_expr_node(
             hir_lower_ctxt,
             &if_expr_else_clause.get_expr_node().unwrap(),
@@ -760,7 +760,7 @@ fn lower_return_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     return_expr: &syntree::ReturnExpr,
 ) -> ReturnExpr {
-    let return_kw = return_expr.get_return_kw();
+    let return_kw = ReturnKw::from_token(&return_expr.get_return_kw());
     let expr = return_expr
         .get_expr_node()
         .map(|it| lower_expr_node(hir_lower_ctxt, &it));
@@ -771,7 +771,7 @@ fn lower_break_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     break_expr: &syntree::BreakExpr,
 ) -> BreakExpr {
-    let break_kw = break_expr.get_break_kw();
+    let break_kw = BreakKw::from_token(&break_expr.get_break_kw());
     let expr = break_expr
         .get_expr_node()
         .map(|it| lower_expr_node(hir_lower_ctxt, &it));
@@ -782,7 +782,7 @@ fn lower_continue_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     continue_expr: &syntree::ContinueExpr,
 ) -> ContinueExpr {
-    let continue_kw = continue_expr.get_continue_kw();
+    let continue_kw = ContinueKw::from_token(&continue_expr.get_continue_kw());
 
     ContinueExpr { continue_kw }
 }

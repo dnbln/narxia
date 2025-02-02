@@ -1,7 +1,12 @@
 [package]
 name = "narxia-driver"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,6 +22,7 @@ narxia-log-impl.workspace = true
 narxia-src-db.workspace = true
 narxia-syn.workspace = true
 narxia-syn-db.workspace = true
+narxia-data-structures.workspace = true
 narxia-hir.workspace = true
 narxia-hir-db.workspace = true
 narxia-hir-typechk.workspace = true

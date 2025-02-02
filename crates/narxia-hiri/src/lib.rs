@@ -221,7 +221,7 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                 for fragment in &s.fragments {
                     match &fragment.kind {
                         StrLiteralFragmentKind::Text(t) => {
-                            constructed_string.push_str(t.text());
+                            constructed_string.push_str(&t.text);
                         }
                         StrLiteralFragmentKind::EscapedChar(_, c) => {
                             constructed_string.push(*c);

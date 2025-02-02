@@ -4,6 +4,7 @@
 
 use std::fmt;
 
+use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree::Token;
 
 use crate::{HirId, HirSpan};
@@ -30,6 +31,51 @@ macro_rules! hir_id_newtype {
         impl HirIdNewtype for $name {
             fn hir_id(&self) -> HirId {
                 self.0
+            }
+        }
+    };
+}
+
+pub(crate) trait ConstToken {
+    const KIND: SyntaxKind;
+
+    fn from_span(span: HirSpan) -> Self;
+    fn from_token(token: &Token) -> Self
+    where
+        Self: Sized,
+    {
+        debug_assert_eq!(token.kind(), Self::KIND);
+        debug_assert_eq!(token.text(), Self::text());
+        debug_assert_eq!(HirSpan::of(token).span.len_usize(), Self::text().len());
+
+        let span = HirSpan::of(token);
+        Self::from_span(span)
+    }
+
+    fn span(&self) -> HirSpan;
+    fn text() -> &'static str;
+}
+
+macro_rules! const_token {
+    ($name:ident, $kind:ident, $text:literal) => {
+        #[derive(Debug, Eq, PartialEq, Clone, Copy)]
+        pub struct $name {
+            pub span: HirSpan,
+        }
+
+        impl ConstToken for $name {
+            const KIND: SyntaxKind = SyntaxKind::$kind;
+
+            fn from_span(span: HirSpan) -> Self {
+                Self { span }
+            }
+
+            fn span(&self) -> HirSpan {
+                self.span
+            }
+
+            fn text() -> &'static str {
+                $text
             }
         }
     };
@@ -248,10 +294,10 @@ pub enum ExprAtomKind {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum NumLit {
-    Bin(Token),
-    Oct(Token),
-    Dec(Token),
-    Hex(Token),
+    Bin(Tk),
+    Oct(Tk),
+    Dec(Tk),
+    Hex(Tk),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -286,96 +332,119 @@ impl NumLit {
     pub fn parse_to_size(&self, size: NumLitSize) -> NumLitValue {
         match size {
             NumLitSize::I8 => match self {
-                NumLit::Bin(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::I8(i8::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::I8(i8::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Bin(t) => NumLitValue::I8(i8::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I8(i8::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I8(i8::from_str_radix(&t.text, 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::I8(i8::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::I16 => match self {
-                NumLit::Bin(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::I16(i16::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::I16(i16::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::I16(i16::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I16(i16::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I16(i16::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::I16(i16::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::I16(i16::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::I32 => match self {
-                NumLit::Bin(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::I32(i32::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::I32(i32::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::I32(i32::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I32(i32::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I32(i32::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::I32(i32::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::I32(i32::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::I64 => match self {
-                NumLit::Bin(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::I64(i64::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::I64(i64::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::I64(i64::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I64(i64::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I64(i64::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::I64(i64::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::I64(i64::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::I128 => match self {
                 NumLit::Bin(t) => {
-                    NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 2).unwrap())
+                    NumLitValue::I128(i128::from_str_radix(&t.text[2..], 2).unwrap())
                 }
                 NumLit::Oct(t) => {
-                    NumLitValue::I128(i128::from_str_radix(&t.text()[1..], 8).unwrap())
+                    NumLitValue::I128(i128::from_str_radix(&t.text[1..], 8).unwrap())
                 }
-                NumLit::Dec(t) => NumLitValue::I128(i128::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Dec(t) => NumLitValue::I128(i128::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::I128(i128::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::I128(i128::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::U8 => match self {
-                NumLit::Bin(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::U8(u8::from_str_radix(&t.text(), 10).unwrap()),
-                NumLit::Hex(t) => NumLitValue::U8(u8::from_str_radix(&t.text()[2..], 16).unwrap()),
+                NumLit::Bin(t) => NumLitValue::U8(u8::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U8(u8::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U8(u8::from_str_radix(&t.text, 10).unwrap()),
+                NumLit::Hex(t) => NumLitValue::U8(u8::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::U16 => match self {
-                NumLit::Bin(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::U16(u16::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::U16(u16::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::U16(u16::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U16(u16::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U16(u16::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::U16(u16::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::U16(u16::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::U32 => match self {
-                NumLit::Bin(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::U32(u32::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::U32(u32::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::U32(u32::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U32(u32::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U32(u32::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::U32(u32::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::U32(u32::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::U64 => match self {
-                NumLit::Bin(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 2).unwrap()),
-                NumLit::Oct(t) => NumLitValue::U64(u64::from_str_radix(&t.text()[1..], 8).unwrap()),
-                NumLit::Dec(t) => NumLitValue::U64(u64::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Bin(t) => NumLitValue::U64(u64::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U64(u64::from_str_radix(&t.text[1..], 8).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U64(u64::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::U64(u64::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::U64(u64::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
             NumLitSize::U128 => match self {
                 NumLit::Bin(t) => {
-                    NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 2).unwrap())
+                    NumLitValue::U128(u128::from_str_radix(&t.text[2..], 2).unwrap())
                 }
                 NumLit::Oct(t) => {
-                    NumLitValue::U128(u128::from_str_radix(&t.text()[1..], 8).unwrap())
+                    NumLitValue::U128(u128::from_str_radix(&t.text[1..], 8).unwrap())
                 }
-                NumLit::Dec(t) => NumLitValue::U128(u128::from_str_radix(&t.text(), 10).unwrap()),
+                NumLit::Dec(t) => NumLitValue::U128(u128::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
-                    NumLitValue::U128(u128::from_str_radix(&t.text()[2..], 16).unwrap())
+                    NumLitValue::U128(u128::from_str_radix(&t.text[2..], 16).unwrap())
                 }
             },
         }
     }
 }
 
+const_token!(IfKw, IF_KW, "if");
+const_token!(ElseKw, ELSE_KW, "else");
+const_token!(ReturnKw, RETURN_KW, "return");
+const_token!(BreakKw, BREAK_KW, "break");
+const_token!(ContinueKw, CONTINUE_KW, "continue");
+
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+pub struct Tk {
+    pub span: HirSpan,
+    pub kind: SyntaxKind,
+    pub text: String,
+}
+
+impl Tk {
+    pub(crate) fn from_token(token: &Token) -> Self {
+        Self {
+            span: HirSpan::of(token),
+            kind: token.kind(),
+            text: token.text().to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct IfExpr {
-    pub if_kw: HirSpan,
+    pub if_kw: IfKw,
     pub cond: ExprId,
     pub then: ExprId,
     pub else_: Option<IfExprElseClause>,
@@ -383,25 +452,25 @@ pub struct IfExpr {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct IfExprElseClause {
-    pub else_kw: HirSpan,
+    pub else_kw: ElseKw,
     pub expr: ExprId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ReturnExpr {
-    pub return_kw: Token,
+    pub return_kw: ReturnKw,
     pub expr: Option<ExprId>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BreakExpr {
-    pub break_kw: Token,
+    pub break_kw: BreakKw,
     pub expr: Option<ExprId>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ContinueExpr {
-    pub continue_kw: Token,
+    pub continue_kw: ContinueKw,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -418,23 +487,23 @@ pub struct StrLiteralFragment {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StrLiteralFragmentKind {
-    Text(Token),
-    EscapedChar(Token, char),
-    EscapeSequence(Token, char),
+    Text(Tk),
+    EscapedChar(Tk, char),
+    EscapeSequence(Tk, char),
     Display(StrLiteralDisplayFragment),
     Debug(StrLiteralDebugFragment),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteralDisplayFragment {
-    pub display_token: Token,
+    pub display_token: Tk,
     pub span: HirSpan,
     pub expr: ExprId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteralDebugFragment {
-    pub debug_token: Token,
+    pub debug_token: Tk,
     pub span: HirSpan,
     pub expr: ExprId,
 }

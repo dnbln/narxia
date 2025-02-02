@@ -68,6 +68,16 @@ impl TextSpan {
     pub fn get_span_start_line(self, text: &str) -> usize {
         text[..self.start as usize].lines().count()
     }
+
+    #[inline]
+    pub fn len(self) -> u32 {
+        self.end - self.start
+    }
+
+    #[inline]
+    pub fn len_usize(self) -> usize {
+        self.len() as usize
+    }
 }
 
 impl fmt::Display for TextSpan {

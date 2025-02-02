@@ -101,8 +101,8 @@ fn expand_dir_structure_for_field(
         };
 
         quote! {{
-            let __translated__path = #actual_path_expr;
-            let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFrom>::read_from(&__translated__path)?;
+            let __translated_path = #actual_path_expr;
+            let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFrom>::read_from(&__translated_path)?;
             #end_expr
         }}
     };
@@ -132,7 +132,7 @@ fn expand_dir_structure_for_field(
 
 fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let name = &st.ident;
-    let path_param_name = format_ident!("__DIR_STRUCTURE_PATH");
+    let path_param_name = format_ident!("__dir_structure_path");
     let (impl_generics, ty_generics, where_clause) = st.generics.split_for_impl();
 
     let mut field_read_impls = Vec::new();

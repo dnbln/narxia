@@ -14,6 +14,35 @@ impl<'hir> HirMapQ<'hir> for &'hir HirMap {
     }
 }
 
+macro_rules! const_token_visit_fns {
+    ($($visit_name:ident -> $walk_name:ident -> $kw_ty:path),* $(,)?) => {
+        macro_rules! const_token_visit_fns_decl_visits {
+            () => {
+                $(
+                    fn $visit_name(&mut self, kw: &'hir $kw_ty) {
+                        $walk_name(self, kw)
+                    }
+                )*
+            };
+        }
+
+        macro_rules! const_token_visit_fns_decl_walks {
+            () => {
+                $(
+                    fn $walk_name<'hir, V: HirVisitor<'hir> + ?Sized>(vis: &mut V, kw: &'hir $kw_ty) {
+                        vis.visit_span(kw.span);
+                    }
+                )*
+            };
+        }
+    };
+}
+
+const_token_visit_fns! {
+    visit_if_kw -> walk_if_kw -> hir::IfKw,
+    visit_else_kw -> walk_else_kw -> hir::ElseKw,
+}
+
 pub trait HirVisitor<'hir> {
     fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q);
 
@@ -240,6 +269,8 @@ pub trait HirVisitor<'hir> {
         self.end_visit_hir_id(expr_id.hir_id());
     }
 
+    const_token_visit_fns_decl_visits! {}
+
     fn visit_item_id(&mut self, item_id: hir::ItemId) {
         self.visit_hir_id(item_id.hir_id());
         self.q_id_strategy(|v, hm| hm.get_item(item_id).accept(item_id, v));
@@ -276,6 +307,8 @@ pub trait HirVisitor<'hir> {
         self.end_visit_hir_id(ty_ref_id.hir_id());
     }
 }
+
+const_token_visit_fns_decl_walks!();
 
 pub fn walk_mod_def<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
@@ -767,6 +800,8 @@ impl_visitable! {
     visit_call_args(hir::CallExprArgs),
     visit_lambda_param_list(hir::LambdaParamList),
     visit_lambda_param(hir::LambdaParam),
+    visit_if_kw(hir::IfKw),
+    visit_else_kw(hir::ElseKw),
 }
 
 macro_rules! impl_visitable_id {

@@ -64,7 +64,7 @@ impl fmt::Display for HirElem {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct HirMap {
     buffer: Vec<HirElem>,
     parents: Vec<HirId>,

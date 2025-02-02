@@ -87,7 +87,7 @@ fn main() -> miette::Result<()> {
                 .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
-            let hir_map = ctx.db.get_global_ty_ctxt().hir_map.borrow();
+            let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
 
             println!("{}", hir_map.get_mod(hir_mod).hir_dbg(&ctx));
         }
@@ -147,9 +147,13 @@ fn main() -> miette::Result<()> {
             let file = hiri_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
 
+            narxia_log::i!("Read file");
+
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+
+            narxia_log::i!("Parsed file");
 
             ctx.db
                 .get_global_ty_ctxt()
@@ -157,6 +161,7 @@ fn main() -> miette::Result<()> {
                 .set_current_file(Some(file));
 
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            narxia_log::i!("Lowered file");
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
@@ -164,7 +169,7 @@ fn main() -> miette::Result<()> {
 
             let hir_mod = hir.mod_def(&ctx.db);
 
-            let hir_map = ctx.db.get_global_ty_ctxt().hir_map.borrow();
+            let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
 
             let mut ictx = narxia_hiri::InterpContext::new(&*hir_map);
 

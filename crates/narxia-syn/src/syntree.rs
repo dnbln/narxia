@@ -78,6 +78,7 @@ impl Debug for SynTree {
     }
 }
 
+#[derive(Clone, PartialEq)]
 pub struct GreenTree {
     root: rowan::GreenNode,
 }
@@ -85,6 +86,29 @@ pub struct GreenTree {
 impl GreenTree {
     pub(crate) fn new(root: rowan::GreenNode) -> Self {
         Self { root }
+    }
+
+    pub fn root(&self) -> &rowan::GreenNode {
+        &self.root
+    }
+
+    pub fn red_owned(self) -> SynTree {
+        SynTree::new(self)
+    }
+
+    pub fn red(&self) -> SynTree {
+        self.clone().red_owned()
+    }
+}
+
+impl fmt::Debug for GreenTree {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        TreePresenter {
+            root: SyntaxElementRef::Node(&Node::new_root(self.root.clone())),
+            offset: 0,
+            style: Default::default(),
+        }
+        .fmt_node(f)
     }
 }
 

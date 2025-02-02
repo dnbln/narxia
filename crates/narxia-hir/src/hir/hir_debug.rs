@@ -1015,10 +1015,10 @@ fn display_lambda_param(
 
 fn display_num_lit(f: &mut fmt::Formatter, num_lit: &NumLit) -> fmt::Result {
     match num_lit {
-        NumLit::Bin(token) => write!(f, "{}", token.text().num()),
-        NumLit::Oct(token) => write!(f, "{}", token.text().num()),
-        NumLit::Dec(token) => write!(f, "{}", token.text().num()),
-        NumLit::Hex(token) => write!(f, "{}", token.text().num()),
+        NumLit::Bin(token) => write!(f, "{}", token.text.num()),
+        NumLit::Oct(token) => write!(f, "{}", token.text.num()),
+        NumLit::Dec(token) => write!(f, "{}", token.text.num()),
+        NumLit::Hex(token) => write!(f, "{}", token.text.num()),
     }
 }
 
@@ -1078,9 +1078,9 @@ fn display_str_literal_fragment(
     hdc: HirDisplayContext,
 ) -> fmt::Result {
     match &fragment.kind {
-        StrLiteralFragmentKind::Text(text) => write!(f, "{}", text.text().green())?,
-        StrLiteralFragmentKind::EscapeSequence(t, _) => write!(f, "{}", t.text().yellow())?,
-        StrLiteralFragmentKind::EscapedChar(t, _) => write!(f, "{}", t.text().yellow())?,
+        StrLiteralFragmentKind::Text(text) => write!(f, "{}", text.text.green())?,
+        StrLiteralFragmentKind::EscapeSequence(t, _) => write!(f, "{}", t.text.yellow())?,
+        StrLiteralFragmentKind::EscapedChar(t, _) => write!(f, "{}", t.text.yellow())?,
         StrLiteralFragmentKind::Display(display) => {
             display_str_literal_display_fragment(f, display, hdc)?;
         }
@@ -1103,7 +1103,7 @@ fn display_str_literal_display_fragment(
     fragment: &StrLiteralDisplayFragment,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(f, "{}", fragment.display_token.text().blue())?;
+    write!(f, "{}", fragment.display_token.text.blue())?;
 
     display_expr_id(f, fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
 
@@ -1121,7 +1121,7 @@ fn display_str_literal_debug_fragment(
     fragment: &StrLiteralDebugFragment,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(f, "{}", fragment.debug_token.text().blue())?;
+    write!(f, "{}", fragment.debug_token.text.blue())?;
 
     display_expr_id(f, fragment.expr, hdc.make_child().attempt_no_line_breaks())?;
 

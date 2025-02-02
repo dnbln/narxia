@@ -3,6 +3,15 @@ members = ["crates/*", "dev/*", "tests/narxia-test-runner"]
 default-members = ["crates/narxia-driver"]
 resolver = "2"
 
+[workspace.package]
+version = "0.0.0"
+publish = false
+edition = "2021"
+homepage = "https://dnbln.dev/narxia"
+repository = "https://github.com/dnbln/narxia"
+description = "A programming language for distributed systems."
+keywords = ["narxia", "programming-language"]
+
 [profile.release]
 debug = true
 
@@ -37,6 +46,7 @@ clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 owo-colors = "4.0.0"
 bitflags = "2"
+dashmap = "4.0.1"
 human-panic = "2.0.0"
 libtest-mimic = "0.7.0"
 miette = { version = "7.2.0", features = ["fancy"] }

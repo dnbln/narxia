@@ -1,9 +1,14 @@
 [package]
 name = "salsa"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "d4a94fbf07bb837f3d9d0a4caa5db4d5db29243f", package = "salsa-2022" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "88dc597fc90c6d45f7d25479d51536ba9310bbc1", package = "salsa" }

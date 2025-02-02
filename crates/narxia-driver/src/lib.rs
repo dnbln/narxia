@@ -7,7 +7,7 @@ use std::{fmt, io};
 use narxia_hir::hir_map::{HirElem, HirMap};
 use narxia_hir::HirId;
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
-use narxia_src_db::{SrcFile, SrcFileDatabase};
+use narxia_src_db::{FilePathInfo, SrcFile, SrcFileDatabase};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
 use owo_colors::OwoColorize;
@@ -21,28 +21,28 @@ pub struct DisplayFile<'a>(&'a db::Database, SrcFile);
 
 impl<'a> fmt::Display for DisplayFile<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        self.1.with_text(self.0, |text| {
-            write!(
-                f,
-                "{}\n{}\n{}",
-                ">>>>".bright_blue(),
-                text.bright_white().bold(),
-                "<<<<".bright_blue(),
-            )
-        })
+        let text = self.1.get_text(self.0);
+
+        write!(
+            f,
+            "{}\n{}\n{}",
+            ">>>>".bright_blue(),
+            text.bright_white().bold(),
+            "<<<<".bright_blue(),
+        )
     }
 }
 
 pub fn read_file(ctx: &DriverCtx, file: PathBuf) -> io::Result<SrcFile> {
-    narxia_src_db::load_from_disk(&ctx.db, file)
+    narxia_src_db::load_from_disk(&ctx.db, FilePathInfo::new_from_short(file))
 }
 
 pub fn parse_file(ctx: &DriverCtx, file: SrcFile) -> SynFile {
     parse_file_with_diagnostics(ctx, file).0
 }
 
-pub fn load_file(ctx: &DriverCtx, p: PathBuf, contents: String) -> SrcFile {
-    narxia_src_db::load_from_memory(&ctx.db, p, contents)
+pub fn load_file(ctx: &DriverCtx, p: PathBuf, contents: &str) -> SrcFile {
+    narxia_src_db::load_from_memory(&ctx.db, FilePathInfo::new_from_short(p), contents)
 }
 
 pub fn parse_file_with_diagnostics(ctx: &DriverCtx, file: SrcFile) -> (SynFile, Vec<ParseError>) {
@@ -141,8 +141,8 @@ fn dbg_impl_code<H>(
             let ctx: &DriverCtx = unsafe { &**f };
             ctx.db
                 .get_global_ty_ctxt()
-                .hir_map
-                .borrow()
+                .make_ty_ctxt()
+                .hir_map()
                 .get(hir_id)
                 .clone()
         })

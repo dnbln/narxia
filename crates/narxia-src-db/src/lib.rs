@@ -1,12 +1,50 @@
-use std::io;
+use core::fmt;
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
+use std::{io, path};
 
 use path_absolutize::Absolutize;
-use salsa::DbWithJar;
+use salsa::Database;
 
-pub struct SrcFileDatabase {
+struct SrcFileDatabaseInner {
     db: String,
-    loader: Box<dyn Fn(&Path) -> std::io::Result<String>>,
+    files: Vec<(FilePathInfo, Span)>,
+    loader: Box<dyn Fn(&Path) -> std::io::Result<String> + Send + Sync>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilePathInfo {
+    short_path: Option<PathBuf>,
+    full_path: PathBuf,
+}
+
+impl FilePathInfo {
+    pub fn new(short_path: Option<PathBuf>, full_path: PathBuf) -> Self {
+        Self {
+            short_path,
+            full_path,
+        }
+    }
+
+    pub fn new_from_short(path: PathBuf) -> Self {
+        let p_abs = path
+            .absolutize()
+            .unwrap_or(Cow::Borrowed(&path))
+            .to_path_buf();
+        Self::new(Some(path), p_abs)
+    }
+}
+
+#[derive(Clone)]
+pub struct SrcFileDatabase {
+    inner: Arc<RwLock<SrcFileDatabaseInner>>,
+}
+
+impl fmt::Debug for SrcFileDatabase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SrcFileDatabase")
+    }
 }
 
 impl Default for SrcFileDatabase {
@@ -16,42 +54,74 @@ impl Default for SrcFileDatabase {
 }
 
 impl SrcFileDatabase {
-    pub fn new_with_loader(loader: Box<dyn Fn(&Path) -> std::io::Result<String>>) -> Self {
+    pub fn new_with_loader(loader: Box<dyn Fn(&Path) -> std::io::Result<String> + Send + Sync>) -> Self {
         Self {
-            db: String::new(),
-            loader,
+            inner: Arc::new(RwLock::new(SrcFileDatabaseInner {
+                db: String::new(),
+                files: Vec::new(),
+                loader,
+            })),
         }
     }
 
-    pub fn load_file(&mut self, path: impl AsRef<Path>) -> std::io::Result<Span> {
-        let text = (self.loader)(path.as_ref())?;
-        Ok(self.load_file_from_memory(&text))
+    pub fn load_file(&self, path: FilePathInfo) -> std::io::Result<Span> {
+        let inner = self.inner.read().unwrap();
+        let text = (inner.loader)(&path.full_path)?;
+        drop(inner);
+
+        Ok(self.load_file_from_memory(path, &text))
     }
 
-    pub fn load_file_from_memory(&mut self, text: &str) -> Span {
-        let start_index = self.db.len();
-        self.db += &text;
-        let end_index = self.db.len();
+    pub fn load_file_from_memory(&self, path: FilePathInfo, text: &str) -> Span {
+        let mut inner_lock = self.inner.write().unwrap();
+
+        let start_index = inner_lock.db.len();
+        inner_lock.db += &text;
+        let end_index = inner_lock.db.len();
+
+        inner_lock.files.push((
+            path,
+            Span {
+                lo: start_index,
+                hi: end_index,
+            },
+        ));
+
         Span {
             lo: start_index,
             hi: end_index,
         }
     }
 
-    pub fn get_loaded_span(&self, span: Span) -> &str {
-        debug_assert!(span.hi <= self.db.len());
+    pub fn get_loaded_span(&self, span: Span) -> String {
+        let inner = self.inner.read().unwrap();
 
-        &self.db[span.lo..span.hi]
+        debug_assert!(span.hi <= inner.db.len());
+
+        inner.db[span.lo..span.hi].to_owned()
+    }
+
+    pub fn get_file_path(&self, span: Span) -> FilePathInfo {
+        let inner = self.inner.read().unwrap();
+
+        inner
+            .files
+            .iter()
+            .find(|(_, s)| s.fully_contains(span))
+            .map(|(p, _)| p.clone())
+            .unwrap()
     }
 }
 
 #[salsa::input]
 pub struct SrcFile {
-    #[return_ref]
-    pub short_path: Option<PathBuf>,
-    #[return_ref]
-    pub full_path: PathBuf,
     pub db_span: Span,
+}
+
+impl SrcFile {
+    pub fn path(&self, db: &dyn SrcDb) -> FilePathInfo {
+        db.src_file_path(self.db_span(db))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -60,46 +130,40 @@ pub struct Span {
     hi: usize,
 }
 
+impl Span {
+    pub fn fully_contains(&self, other: Span) -> bool {
+        self.lo <= other.lo && self.hi >= other.hi
+    }
+}
+
 impl SrcFile {
-    pub fn get_presentable_path<'a>(&self, db: &'a dyn Db) -> &'a PathBuf {
-        self.short_path(db)
-            .as_ref()
-            .unwrap_or_else(|| self.full_path(db))
+    pub fn get_presentable_path<'a>(&self, db: &'a dyn SrcDb) -> PathBuf {
+        let fp = self.path(db);
+
+        fp.short_path.unwrap_or_else(|| fp.full_path)
     }
 
-    pub fn get_text<'a>(&self, db: &'a dyn Db) -> String {
+    pub fn get_text<'a>(&self, db: &'a dyn SrcDb) -> String {
         let db_span = self.db_span(db);
         db.src_file_text(db_span)
     }
-
-    pub fn with_text<F, T: 'static>(&self, db: &dyn Db, f: F) -> T
-    where
-        F: for<'a> FnOnce(&'a str) -> T,
-    {
-        let span = self.db_span(db);
-        let refr = db.src_file_db();
-        let result = f(refr.get_loaded_span(span));
-        result
-    }
 }
 
-pub trait Db: DbWithJar<Jar> {
+#[salsa::db]
+pub trait SrcDb: salsa::Database {
     fn src_file_text<'db>(&'db self, span: Span) -> String;
-    fn src_file_db<'db>(&'db self) -> std::cell::Ref<'db, SrcFileDatabase>;
-    fn src_file_db_mut<'db>(&'db self) -> std::cell::RefMut<'db, SrcFileDatabase>;
+    fn src_file_path<'db>(&'db self, span: Span) -> FilePathInfo;
+
+    fn src_load_file<'db>(&'db self, path: FilePathInfo) -> io::Result<Span>;
+    fn src_load_file_inmemory<'db>(&'db self, path: FilePathInfo, text: &str) -> Span;
 }
 
-#[salsa::jar(db = Db)]
-pub struct Jar(SrcFile);
-
-pub fn load_from_disk(db: &dyn Db, path: PathBuf) -> io::Result<SrcFile> {
-    let text = std::fs::read_to_string(&path)?;
-    Ok(load_from_memory(db, path, text))
+pub fn load_from_disk(db: &dyn SrcDb, path: FilePathInfo) -> io::Result<SrcFile> {
+    let span = db.src_load_file(path.clone())?;
+    Ok(SrcFile::new(db, span))
 }
 
-pub fn load_from_memory(db: &dyn Db, path: PathBuf, contents: String) -> SrcFile {
-    let short_path = path.clone();
-    let full_path = path.absolutize().unwrap().into_owned();
-    let span = db.src_file_db_mut().load_file_from_memory(&contents);
-    SrcFile::new(db, Some(short_path), full_path, span)
+pub fn load_from_memory(db: &dyn SrcDb, path: FilePathInfo, contents: &str) -> SrcFile {
+    let span = db.src_load_file_inmemory(path.clone(), contents);
+    SrcFile::new(db, span)
 }

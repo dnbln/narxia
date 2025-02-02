@@ -1,5 +1,5 @@
-use std::cell::RefCell;
 use std::ops::DerefMut;
+use std::sync::{Arc, RwLock};
 
 use narxia_hir::hir_map::{HirElem, HirMap};
 use narxia_hir::visitor::HirMapQ;
@@ -8,9 +8,14 @@ use narxia_src_db::SrcFile;
 
 use crate::def_id::DefId;
 
+pub struct GlobalTyCtxtInner {
+    def_ids: RwLock<Vec<HirId>>,
+    pub hir_map: RwLock<HirMap>,
+}
+
+#[derive(Clone)]
 pub struct GlobalTyCtxt {
-    def_ids: RefCell<Vec<HirId>>,
-    pub hir_map: RefCell<HirMap>,
+    inner: Arc<GlobalTyCtxtInner>,
 }
 
 impl Default for GlobalTyCtxt {
@@ -22,8 +27,10 @@ impl Default for GlobalTyCtxt {
 impl GlobalTyCtxt {
     pub fn new() -> Self {
         Self {
-            def_ids: RefCell::new(Vec::new()),
-            hir_map: RefCell::new(HirMap::new()),
+            inner: Arc::new(GlobalTyCtxtInner {
+                def_ids: RwLock::new(Vec::new()),
+                hir_map: RwLock::new(HirMap::new()),
+            }),
         }
     }
 
@@ -32,29 +39,29 @@ impl GlobalTyCtxt {
     }
 
     fn add_def_id(&self, target_hir: HirId) -> DefId {
-        let mut rf = self.def_ids.borrow_mut();
+        let mut rf = self.inner.def_ids.write().unwrap();
         let idx = rf.len();
         rf.push(target_hir);
         DefId { idx }
     }
 
     fn lookup_def_id(&self, def_id: DefId) -> HirId {
-        self.def_ids.borrow()[def_id.idx]
+        self.inner.def_ids.read().unwrap()[def_id.idx]
     }
 
     fn lookup_def(&self, def_id: DefId) -> HirElem {
-        self.hir_map
-            .borrow()
+        self.make_ty_ctxt()
+            .hir_map()
             .get(self.lookup_def_id(def_id))
             .clone()
     }
 
-    pub fn hir_map_mut_ref(&self) -> std::cell::RefMut<HirMap> {
-        self.hir_map.borrow_mut()
+    pub fn hir_map_mut_ref(&self) -> std::sync::RwLockWriteGuard<HirMap> {
+        self.inner.hir_map.write().unwrap()
     }
 
     pub fn get_file_of(&self, hir_id: HirId) -> SrcFile {
-        self.hir_map.borrow().get_file(hir_id)
+        self.make_ty_ctxt().hir_map().get_file(hir_id)
     }
 }
 
@@ -73,11 +80,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_map(self) -> GlobalHirMapRef<'tcx> {
-        GlobalHirMapRef(self.global_ctxt.hir_map.borrow())
+        GlobalHirMapRef(self.global_ctxt.inner.hir_map.read().unwrap())
     }
 }
 
-pub struct GlobalHirMapRef<'tcx>(std::cell::Ref<'tcx, HirMap>);
+pub struct GlobalHirMapRef<'tcx>(std::sync::RwLockReadGuard<'tcx, HirMap>);
 
 impl std::ops::Deref for GlobalHirMapRef<'_> {
     type Target = HirMap;
@@ -88,10 +95,6 @@ impl std::ops::Deref for GlobalHirMapRef<'_> {
 }
 
 impl<'tcx> GlobalHirMapRef<'tcx> {
-    pub fn clone_ref(&self) -> Self {
-        Self(std::cell::Ref::clone(&self.0))
-    }
-
     pub fn get_hir_map(&self) -> &HirMap {
         &*self.0
     }
