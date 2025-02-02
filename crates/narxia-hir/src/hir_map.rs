@@ -24,6 +24,7 @@ pub enum HirElem {
     Stmt(Stmt),
     ForStmt(ForStmt),
     WhileStmt(WhileStmt),
+    UseStmt(UseStmt),
     Block(Block),
     TyRef(TyRef),
     TyGenericArg(TyGenericArg),
@@ -52,6 +53,7 @@ impl fmt::Display for HirElem {
             Self::Stmt(s) => write!(f, "{}", s),
             Self::ForStmt(for_stmt) => write!(f, "{}", for_stmt),
             Self::WhileStmt(w) => write!(f, "{}", w),
+            Self::UseStmt(u) => write!(f, "{}", u),
             Self::Block(b) => write!(f, "{}", b),
             Self::TyRef(t) => write!(f, "{}", t),
             Self::TyGenericArg(t) => write!(f, "{}", t),
@@ -145,6 +147,13 @@ impl HirMap {
         match self.get(at.0) {
             HirElem::TyRef(t) => t,
             x => panic!("Expected TyRef, found {x:?}"),
+        }
+    }
+
+    pub fn get_use_stmt(&self, at: UseStmtId) -> &UseStmt {
+        match self.get(at.0) {
+            HirElem::UseStmt(u) => u,
+            x => panic!("Expected UseStmt, found {x:?}"),
         }
     }
 

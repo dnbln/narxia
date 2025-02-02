@@ -1,0 +1,84 @@
+Root@0..91
+  Item@0..11
+    UseStmt@0..11
+      USE_KW@0..3 "use"
+      COMPOSED_TRIVIA@3..4 " "
+      UsePath@4..11
+        UsePathSegmentAndPath@4..11
+          UsePathSegment@4..11
+            IDENT@4..11 "println"
+  COMPOSED_TRIVIA@11..12 "\n"
+  Item@12..67
+    UseStmt@12..67
+      USE_KW@12..15 "use"
+      COMPOSED_TRIVIA@15..16 " "
+      UsePath@16..67
+        UsePathSegmentAndPath@16..67
+          UsePathSegment@16..23
+            IDENT@16..23 "println"
+          UsePathContinuation@23..67
+            UsePathColonContinuation@23..67
+              COLON2@23..25 "::"
+              UsePath@25..67
+                UsePathSegmentAndPath@25..67
+                  UsePathSegment@25..29
+                    IDENT@25..29 "aaaa"
+                  UsePathContinuation@29..67
+                    UsePathColonContinuation@29..67
+                      COLON2@29..31 "::"
+                      UsePath@31..67
+                        UsePathList@31..67
+                          L_BRACE@31..32 "{"
+                          COMPOSED_TRIVIA@32..37 "\n    "
+                          UsePath@37..43
+                            UsePathSegmentAndPath@37..43
+                              UsePathSegment@37..38
+                                IDENT@37..38 "a"
+                              COMPOSED_TRIVIA@38..39 " "
+                              UsePathContinuation@39..43
+                                UseAlias@39..43
+                                  AS_KW@39..41 "as"
+                                  COMPOSED_TRIVIA@41..42 " "
+                                  IDENT@42..43 "b"
+                          COMPOSED_TRIVIA@43..48 "\n    "
+                          UsePath@48..54
+                            UsePathSegmentAndPath@48..54
+                              UsePathSegment@48..49
+                                IDENT@48..49 "b"
+                              COMPOSED_TRIVIA@49..50 " "
+                              UsePathContinuation@50..54
+                                UseAlias@50..54
+                                  AS_KW@50..52 "as"
+                                  COMPOSED_TRIVIA@52..53 " "
+                                  IDENT@53..54 "c"
+                          COMPOSED_TRIVIA@54..59 "\n    "
+                          UsePath@59..65
+                            UsePathSegmentAndPath@59..65
+                              UsePathSegment@59..60
+                                IDENT@59..60 "c"
+                              COMPOSED_TRIVIA@60..61 " "
+                              UsePathContinuation@61..65
+                                UseAlias@61..65
+                                  AS_KW@61..63 "as"
+                                  COMPOSED_TRIVIA@63..64 " "
+                                  IDENT@64..65 "a"
+                          COMPOSED_TRIVIA@65..66 "\n"
+                          R_BRACE@66..67 "}"
+  COMPOSED_TRIVIA@67..69 "\n\n"
+  Item@69..91
+    Stmt@69..91
+      Expr@69..91
+        CallExpr@69..91
+          ExprAtom@69..76
+            IDENT@69..76 "println"
+          CallExprArgs@76..91
+            CallExprArgsList@76..91
+              L_PAREN@76..77 "("
+              Expr@77..90
+                ExprAtom@77..90
+                  StringLiteral@77..90
+                    BEGIN_STRING@77..78 "\""
+                    StringLiteralFragTextPart@78..89
+                      StringLiteralFragTextPartToken@78..89 "Hello world"
+                    END_STRING@89..90 "\""
+              R_PAREN@90..91 ")"

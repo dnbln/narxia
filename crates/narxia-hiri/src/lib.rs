@@ -140,6 +140,8 @@ pub fn interp_mod(ctx: &mut InterpContext, mod_def: &ModDef) {
             ItemKind::Stmt(stmt_id) => {
                 interp_stmt(ctx, ctx.hir_map.get_stmt(*stmt_id)).unwrap();
             }
+            ItemKind::UseStmt(_) => {}
+            ItemKind::ModDef(_) => {}
         }
     }
 }
@@ -910,6 +912,8 @@ fn interp_block(ctx: &mut InterpContext, block: &Block) -> CFResult {
             ItemKind::FnDef(fn_id) => {
                 def_fn(ctx, *fn_id);
             }
+            ItemKind::UseStmt(_) => {}
+            ItemKind::ModDef(_) => {}
         }
     }
 

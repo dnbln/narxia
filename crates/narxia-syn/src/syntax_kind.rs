@@ -54,6 +54,8 @@ pub enum SyntaxKind {
     FALSE_KW,
     #[T(in)]
     IN_KW,
+    #[T(use)]
+    USE_KW,
     // Punctuation
     #[T(#)]
     HASH,
@@ -134,6 +136,8 @@ pub enum SyntaxKind {
     PIPE_EQ,
     #[T(^=)]
     CARET_EQ,
+    #[T(::)]
+    COLON2,
     // Others
     #[T(whitespace)]
     WHITESPACE,
@@ -266,6 +270,15 @@ pub enum SyntaxKind {
 
     StringLiteralFragDisplay,
     StringLiteralFragDebug,
+
+    UseStmt,
+    UsePath,
+    UsePathSegment,
+    UsePathSegmentAndPath,
+    UsePathContinuation,
+    UsePathColonContinuation,
+    UseAlias,
+    UsePathList,
 
     #[doc(hidden)]
     __TOMBSTONE,

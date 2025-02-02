@@ -813,6 +813,7 @@ fn match_is_optimizable(extra: &MatchExtra) -> bool {
         quote! {&=},
         quote! {|=},
         quote! {^=},
+        quote! {::},
     ];
 
     extra.arms.iter().all(|arm| {

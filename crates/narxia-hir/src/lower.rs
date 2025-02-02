@@ -10,6 +10,7 @@
 //! This module contains the code that lowers the syntax tree to the HIR.
 
 use narxia_src_db::SrcFile;
+use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
 use narxia_syn::syntree::{Token, TreeNode};
 
@@ -93,11 +94,26 @@ fn lower_item_list(
 }
 
 fn lower_mod_def_impl(hir_lower_ctxt: &mut HirLowerCtxt, root: syntree::Root) -> ModId {
+    lower_mod_def_from_item_list(
+        hir_lower_ctxt,
+        root.get_item_list(),
+        Ident::new_virtual("__inline_mod"),
+        root.span(),
+    )
+}
+
+fn lower_mod_def_from_item_list(
+    hir_lower_ctxt: &mut HirLowerCtxt,
+    item_list: impl Iterator<Item = syntree::Item>,
+    name: Ident,
+    span: HirSpan,
+) -> ModId {
     let mod_def = ModDef {
-        items: lower_item_list(hir_lower_ctxt, root.get_item_list()),
+        name,
+        items: lower_item_list(hir_lower_ctxt, item_list),
     };
 
-    ModId(hir_lower_ctxt.push_ref(HirElem::Mod(mod_def), root.span()))
+    ModId(hir_lower_ctxt.push_ref(HirElem::Mod(mod_def), span))
 }
 
 fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> ItemId {
@@ -109,10 +125,110 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> ItemId
         Item {
             kind: ItemKind::Stmt(lower_stmt(hir_lower_ctxt, &stmt)),
         }
+    } else if let Some(use_stmt) = item.get_use_stmt() {
+        Item {
+            kind: ItemKind::UseStmt(lower_use_stmt(hir_lower_ctxt, &use_stmt)),
+        }
+    } else if let Some(mod_def) = item.get_module() {
+        let name = lower_ident(
+            hir_lower_ctxt,
+            &mod_def.get_module_name().unwrap().get_ident(),
+        );
+        let mod_id = if let Some(mod_body) = mod_def.get_module_body() {
+            lower_mod_def_from_item_list(
+                hir_lower_ctxt,
+                mod_body.get_item_list(),
+                name,
+                item.span(),
+            )
+        } else {
+            todo!()
+        };
+        Item {
+            kind: ItemKind::ModDef(mod_id),
+        }
     } else {
         todo!()
     };
     ItemId(hir_lower_ctxt.push_ref(HirElem::Item(hir_item), item.span()))
+}
+
+fn lower_use_stmt(hir_lower_ctxt: &mut HirLowerCtxt, use_stmt: &syntree::UseStmt) -> UseStmtId {
+    let paths = lower_use_path(hir_lower_ctxt, &use_stmt.get_use_path().unwrap());
+    UseStmtId(hir_lower_ctxt.push_ref(
+        HirElem::UseStmt(UseStmt {
+            paths,
+            span: use_stmt.span(),
+        }),
+        use_stmt.span(),
+    ))
+}
+
+fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath) -> Vec<UsePath> {
+    if let Some(segment_and_path) = use_path.get_use_path_segment_and_path() {
+        let segment = lower_ident(
+            hir_lower_ctxt,
+            &segment_and_path.get_use_path_segment().get_ident(),
+        );
+        let segment = UsePathSegment { ident: segment };
+        if let Some(ext) = segment_and_path.get_use_path_continuation() {
+            if let Some(continuation) = ext.get_use_path_colon_continuation() {
+                let mut paths =
+                    lower_use_path(hir_lower_ctxt, &continuation.get_use_path().unwrap());
+                for path in paths.iter_mut() {
+                    path.segments.insert(0, segment.clone());
+                }
+                paths
+            } else if let Some(alias) = ext.get_use_alias() {
+                let as_kw = AsKw::from_token(&alias.get_as_kw());
+
+                vec![UsePath {
+                    segments: vec![segment],
+                    alias: Some(UseAlias {
+                        as_kw,
+                        alias: lower_ident(hir_lower_ctxt, &alias.get_ident().unwrap()),
+                    }),
+                }]
+            } else {
+                todo!()
+            }
+        } else {
+            vec![UsePath {
+                segments: vec![segment],
+                alias: None,
+            }]
+        }
+    } else if let Some(l) = use_path.get_use_path_list() {
+        l.get_use_path_list()
+            .flat_map(|it| lower_use_path(hir_lower_ctxt, &it))
+            .collect()
+    } else {
+        todo!()
+    }
+}
+
+fn lower_lbrace(lbrace: &Token) -> LBrace {
+    if lbrace.kind() != SyntaxKind::L_BRACE {
+        panic!("Expected '{{', found {:?}", lbrace);
+    }
+
+    LBrace::from_token(lbrace)
+}
+
+fn lower_rbrace(rbrace: &Token) -> RBrace {
+    if rbrace.kind() != SyntaxKind::R_BRACE {
+        panic!("Expected '}}', found {:?}", rbrace);
+    }
+
+    RBrace::from_token(rbrace)
+}
+
+fn lower_colon2(colon2: &Token) -> Colon2 {
+    if colon2.kind() != SyntaxKind::COLON2 {
+        panic!("Expected '::', found {:?}", colon2);
+    }
+
+    Colon2::from_token(colon2)
 }
 
 fn lower_fn_def(hir_lower_ctxt: &mut HirLowerCtxt, fn_def: &syntree::FnDef) -> FnId {
@@ -579,7 +695,9 @@ fn lower_str_literal_fragment(
 ) -> StrLiteralFragment {
     match fragment {
         syntree::StringLiteralFragment::StringLiteralFragTextPart(t) => StrLiteralFragment {
-            kind: StrLiteralFragmentKind::Text(Tk::from_token(&t.get_string_literal_frag_text_part())),
+            kind: StrLiteralFragmentKind::Text(Tk::from_token(
+                &t.get_string_literal_frag_text_part(),
+            )),
             span: HirSpan::of_node(fragment),
         },
         syntree::StringLiteralFragment::StringLiteralFragEscapedChar(e) => {

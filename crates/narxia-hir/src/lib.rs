@@ -1,3 +1,6 @@
+#![feature(try_blocks)]
+#![feature(let_chains)]
+
 use core::fmt;
 
 use hir_map::HirMap;

@@ -113,12 +113,12 @@ fn check_all(input_files: Vec<InputFile>) -> miette::Result<()> {
         let id = InputFileId(id);
         let ctx = narxia_driver::DriverCtx::initialize();
         let src_file =
-            narxia_driver::load_file(&ctx, input_file.path.clone(), input_file.contents.clone());
+            narxia_driver::load_file(&ctx, input_file.path.clone(), &input_file.contents.clone());
         let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
         let tree = syn_file.tree(&ctx.db);
 
         let mut acdl = AccessorCalledDataList::new();
-        tree.get_root().call_accessors(&mut acdl);
+        tree.red().get_root().call_accessors(&mut acdl);
         global_called_list.join(id, acdl);
     }
 

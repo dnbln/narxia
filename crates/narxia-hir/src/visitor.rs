@@ -269,6 +269,22 @@ pub trait HirVisitor<'hir> {
         self.end_visit_hir_id(expr_id.hir_id());
     }
 
+    fn visit_use_stmt(&mut self, use_stmt_id: hir::UseStmtId, use_stmt: &'hir hir::UseStmt) {
+        walk_use_stmt(self, use_stmt)
+    }
+
+    fn visit_use_path_segment(&mut self, use_path_segment: &'hir hir::UsePathSegment) {
+        walk_use_path_segment(self, use_path_segment)
+    }
+
+    fn visit_use_path(&mut self, use_path: &'hir hir::UsePath) {
+        walk_use_path(self, use_path)
+    }
+
+    fn visit_use_alias(&mut self, use_alias: &'hir hir::UseAlias) {
+        walk_use_alias(self, use_alias)
+    }
+
     const_token_visit_fns_decl_visits! {}
 
     fn visit_item_id(&mut self, item_id: hir::ItemId) {
@@ -306,6 +322,12 @@ pub trait HirVisitor<'hir> {
         self.q_id_strategy(|v, hm| hm.get_ty_ref(ty_ref_id).accept(ty_ref_id, v));
         self.end_visit_hir_id(ty_ref_id.hir_id());
     }
+
+    fn visit_use_stmt_id(&mut self, use_stmt_id: hir::UseStmtId) {
+        self.visit_hir_id(use_stmt_id.hir_id());
+        self.q_id_strategy(|v, hm| hm.get_use_stmt(use_stmt_id).accept(use_stmt_id, v));
+        self.end_visit_hir_id(use_stmt_id.hir_id());
+    }
 }
 
 const_token_visit_fns_decl_walks!();
@@ -333,6 +355,12 @@ pub fn walk_item<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, item: &'hi
         }
         hir::ItemKind::Stmt(stmt) => {
             stmt.accept(visitor);
+        }
+        hir::ItemKind::UseStmt(use_stmt) => {
+            use_stmt.accept(visitor);
+        }
+        hir::ItemKind::ModDef(mod_def) => {
+            mod_def.accept(visitor);
         }
     }
 }
@@ -758,6 +786,42 @@ pub fn walk_fn_ty_ref<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, fn_ty
     }
 }
 
+pub fn walk_use_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    use_stmt: &'hir hir::UseStmt,
+) {
+    for path in &use_stmt.paths {
+        path.accept(visitor);
+    }
+}
+
+pub fn walk_use_path<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    use_path: &'hir hir::UsePath,
+) {
+    for segment in &use_path.segments {
+        segment.accept(visitor);
+    }
+
+    if let Some(alias) = &use_path.alias {
+        alias.accept(visitor);
+    }
+}
+
+pub fn walk_use_path_segment<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    use_path_segment: &'hir hir::UsePathSegment,
+) {
+    use_path_segment.ident.accept(visitor);
+}
+
+pub fn walk_use_alias<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    use_alias: &'hir hir::UseAlias,
+) {
+    use_alias.alias.accept(visitor);
+}
+
 pub trait Visitable<'hir> {
     fn accept<V: HirVisitor<'hir> + ?Sized>(&'hir self, visitor: &mut V);
 }
@@ -802,6 +866,9 @@ impl_visitable! {
     visit_lambda_param(hir::LambdaParam),
     visit_if_kw(hir::IfKw),
     visit_else_kw(hir::ElseKw),
+    visit_use_path(hir::UsePath),
+    visit_use_path_segment(hir::UsePathSegment),
+    visit_use_alias(hir::UseAlias),
 }
 
 macro_rules! impl_visitable_id {
@@ -824,6 +891,7 @@ impl_visitable_id! {
     visit_fn_id(hir::FnId),
     visit_mod_id(hir::ModId),
     visit_ty_ref_id(hir::TyRefId),
+    visit_use_stmt_id(hir::UseStmtId),
 
     visit_hir_id(HirId),
     visit_span(HirSpan),
@@ -870,4 +938,5 @@ impl_id_visitable! {
     visit_tuple_like_expr [hir::ExprId] (hir::TupleExpr),
     visit_lambda_expr [hir::ExprId] (hir::LambdaExpr),
     visit_ty_ref [hir::TyRefId] (hir::TyRef),
+    visit_use_stmt [hir::UseStmtId] (hir::UseStmt),
 }

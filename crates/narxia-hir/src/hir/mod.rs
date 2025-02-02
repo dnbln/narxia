@@ -7,7 +7,7 @@ use std::fmt;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree::Token;
 
-use crate::{HirId, HirSpan};
+use crate::{HirId, HirSpan, DUMMY_SP};
 
 mod hir_debug;
 
@@ -92,6 +92,7 @@ hir_id_newtype!(ModId, ModDef);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ModDef {
+    pub name: Ident,
     pub items: ItemList,
 }
 
@@ -104,12 +105,53 @@ pub struct Item {
 pub enum ItemKind {
     FnDef(FnId),
     Stmt(StmtId),
+    UseStmt(UseStmtId),
+
+    ModDef(ModId),
+}
+
+hir_id_newtype!(UseStmtId, UseStmt);
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct UseStmt {
+    pub span: HirSpan,
+    pub paths: Vec<UsePath>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct UsePath {
+    pub segments: Vec<UsePathSegment>,
+    pub alias: Option<UseAlias>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct UseAlias {
+    pub as_kw: AsKw,
+    pub alias: Ident,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct UsePathSegment {
+    pub ident: Ident,
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Clone)]
 pub struct Ident {
     pub span: HirSpan,
     pub text: String,
+}
+
+impl Ident {
+    pub fn new(span: impl Into<HirSpan>, text: impl Into<String>) -> Self {
+        Self {
+            span: span.into(),
+            text: text.into(),
+        }
+    }
+
+    pub fn new_virtual(text: impl Into<String>) -> Self {
+        Self::new(DUMMY_SP, text)
+    }
 }
 
 impl fmt::Debug for Ident {
@@ -341,33 +383,23 @@ impl NumLit {
                 NumLit::Bin(t) => NumLitValue::I16(i16::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I16(i16::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I16(i16::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::I16(i16::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::I16(i16::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::I32 => match self {
                 NumLit::Bin(t) => NumLitValue::I32(i32::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I32(i32::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I32(i32::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::I32(i32::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::I32(i32::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::I64 => match self {
                 NumLit::Bin(t) => NumLitValue::I64(i64::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::I64(i64::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I64(i64::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::I64(i64::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::I64(i64::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::I128 => match self {
-                NumLit::Bin(t) => {
-                    NumLitValue::I128(i128::from_str_radix(&t.text[2..], 2).unwrap())
-                }
-                NumLit::Oct(t) => {
-                    NumLitValue::I128(i128::from_str_radix(&t.text[1..], 8).unwrap())
-                }
+                NumLit::Bin(t) => NumLitValue::I128(i128::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::I128(i128::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::I128(i128::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
                     NumLitValue::I128(i128::from_str_radix(&t.text[2..], 16).unwrap())
@@ -383,33 +415,23 @@ impl NumLit {
                 NumLit::Bin(t) => NumLitValue::U16(u16::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U16(u16::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U16(u16::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::U16(u16::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::U16(u16::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::U32 => match self {
                 NumLit::Bin(t) => NumLitValue::U32(u32::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U32(u32::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U32(u32::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::U32(u32::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::U32(u32::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::U64 => match self {
                 NumLit::Bin(t) => NumLitValue::U64(u64::from_str_radix(&t.text[2..], 2).unwrap()),
                 NumLit::Oct(t) => NumLitValue::U64(u64::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U64(u64::from_str_radix(&t.text, 10).unwrap()),
-                NumLit::Hex(t) => {
-                    NumLitValue::U64(u64::from_str_radix(&t.text[2..], 16).unwrap())
-                }
+                NumLit::Hex(t) => NumLitValue::U64(u64::from_str_radix(&t.text[2..], 16).unwrap()),
             },
             NumLitSize::U128 => match self {
-                NumLit::Bin(t) => {
-                    NumLitValue::U128(u128::from_str_radix(&t.text[2..], 2).unwrap())
-                }
-                NumLit::Oct(t) => {
-                    NumLitValue::U128(u128::from_str_radix(&t.text[1..], 8).unwrap())
-                }
+                NumLit::Bin(t) => NumLitValue::U128(u128::from_str_radix(&t.text[2..], 2).unwrap()),
+                NumLit::Oct(t) => NumLitValue::U128(u128::from_str_radix(&t.text[1..], 8).unwrap()),
                 NumLit::Dec(t) => NumLitValue::U128(u128::from_str_radix(&t.text, 10).unwrap()),
                 NumLit::Hex(t) => {
                     NumLitValue::U128(u128::from_str_radix(&t.text[2..], 16).unwrap())
@@ -424,6 +446,11 @@ const_token!(ElseKw, ELSE_KW, "else");
 const_token!(ReturnKw, RETURN_KW, "return");
 const_token!(BreakKw, BREAK_KW, "break");
 const_token!(ContinueKw, CONTINUE_KW, "continue");
+const_token!(AsKw, AS_KW, "as");
+
+const_token!(Colon2, COLON2, "::");
+const_token!(LBrace, L_BRACE, "{");
+const_token!(RBrace, R_BRACE, "}");
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Tk {

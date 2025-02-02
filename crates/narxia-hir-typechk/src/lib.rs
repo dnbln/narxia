@@ -2,16 +2,15 @@
 
 use std::fmt::Debug;
 
-use narxia_hir::HirId;
+use narxia_hir::{hir, visitor::HirVisitor, HirId};
 
 pub mod def_id;
 
-pub mod fn_collection;
-pub mod scope_rules;
 pub mod ty;
 pub mod tyctxt;
-mod tydef_collection;
 mod tyinfer;
+
+pub mod sema;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlaceBase {

@@ -8,8 +8,29 @@ use narxia_src_db::SrcFile;
 
 use crate::def_id::DefId;
 
+struct DefMap {
+    def_ids: Vec<HirId>,
+}
+
+impl DefMap {
+    fn add_def_id(&mut self, target_hir: HirId) -> DefId {
+        let idx = self.def_ids.len();
+        self.def_ids.push(target_hir);
+        DefId { idx }
+    }
+
+    fn lookup_def_id(&self, def_id: DefId) -> HirId {
+        self.def_ids[def_id.idx]
+    }
+
+    fn lookup_hir_id_def(&self, hir_id: HirId) -> Option<DefId> {
+        let idx = self.def_ids.iter().position(|&x| x == hir_id)?;
+        Some(DefId { idx })
+    }
+}
+
 pub struct GlobalTyCtxtInner {
-    def_ids: RwLock<Vec<HirId>>,
+    def_map: RwLock<DefMap>,
     pub hir_map: RwLock<HirMap>,
 }
 
@@ -28,7 +49,9 @@ impl GlobalTyCtxt {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(GlobalTyCtxtInner {
-                def_ids: RwLock::new(Vec::new()),
+                def_map: RwLock::new(DefMap {
+                    def_ids: Vec::new(),
+                }),
                 hir_map: RwLock::new(HirMap::new()),
             }),
         }
@@ -39,14 +62,12 @@ impl GlobalTyCtxt {
     }
 
     fn add_def_id(&self, target_hir: HirId) -> DefId {
-        let mut rf = self.inner.def_ids.write().unwrap();
-        let idx = rf.len();
-        rf.push(target_hir);
-        DefId { idx }
+        let mut rf = self.inner.def_map.write().unwrap();
+        rf.add_def_id(target_hir)
     }
 
     fn lookup_def_id(&self, def_id: DefId) -> HirId {
-        self.inner.def_ids.read().unwrap()[def_id.idx]
+        self.inner.def_map.read().unwrap().lookup_def_id(def_id)
     }
 
     fn lookup_def(&self, def_id: DefId) -> HirElem {
@@ -54,6 +75,11 @@ impl GlobalTyCtxt {
             .hir_map()
             .get(self.lookup_def_id(def_id))
             .clone()
+    }
+
+    fn lookup_hir_id_def(&self, hir_id: HirId) -> Option<DefId> {
+        let rf = self.inner.def_map.read().unwrap();
+        rf.lookup_hir_id_def(hir_id)
     }
 
     pub fn hir_map_mut_ref(&self) -> std::sync::RwLockWriteGuard<HirMap> {

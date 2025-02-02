@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Display};
+use std::sync::Arc;
 use std::{fmt, io};
 
 use owo_colors::{OwoColorize, Style};
@@ -12,20 +13,12 @@ use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::Layer;
 
 struct NarxiaLayerConfig {
-    min_level: Level,
-    max_level: Level,
     ignore_outside_logging: bool,
 }
 
 impl Default for NarxiaLayerConfig {
     fn default() -> Self {
         Self {
-            max_level: if cfg!(debug_assertions) {
-                Level::TRACE
-            } else {
-                Level::INFO
-            },
-            min_level: Level::ERROR,
             ignore_outside_logging: true,
         }
     }
@@ -60,18 +53,6 @@ where
             cfg,
             _pd: std::marker::PhantomData,
         }
-    }
-
-    fn should_pass_event(&self, event: &Event<'_>) -> bool {
-        // this comparison should be inverted
-        // ----
-        // the more verbose levels are supposed to compare greater than the less verbose ones
-        // error is supposed to be the lowest
-        //
-        // <https://github.com/tokio-rs/tracing/blob/6b272c6c4ed02bef9c8409b8fbe0db6bc87abc12/tracing-core/src/metadata.rs#L623-L650>
-        let l = event.metadata().level();
-
-        &self.cfg.min_level <= l && l <= &self.cfg.max_level
     }
 
     fn style_field<Wr>(
@@ -245,10 +226,6 @@ where
     fn on_new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<S>) {}
 
     fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
-        if !self.should_pass_event(event) {
-            return;
-        }
-
         self.format_event_and_write(event, ctx).unwrap();
     }
 
@@ -258,6 +235,7 @@ where
 pub fn init() {
     tracing_subscriber::Registry::default()
         .with(NarxiaLayer::new(io::stderr, NarxiaLayerConfig::default()))
+        .with(tracing_subscriber::EnvFilter::from_env("NARXIA_LOG"))
         // .with(
         //     tracing_subscriber::fmt::layer()
         //         .pretty()

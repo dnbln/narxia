@@ -1,4 +1,6 @@
 module a {
     fn f() -> i32 {0}
 }
-module b;
+
+module b 
+

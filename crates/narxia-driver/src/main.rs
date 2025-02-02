@@ -15,10 +15,10 @@ enum NarxiaDriverCommand {
     DisplayHir(NarxiaDriverDisplayHirCommand),
     #[clap(name = "display-hir-debug")]
     DisplayHirDebug(NarxiaDriverDisplayHirDebugCommand),
-    #[clap(name = "display-fns")]
-    DisplayFns(NarxiaDriverDisplayFnsCommand),
     #[clap(name = "hiri")]
     Hiri(NarxiaDriverHiriCommand),
+    #[clap(name = "sema-analysis")]
+    SemaAnalysis(NarxiaDriverSemaAnalysisCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -37,12 +37,12 @@ pub struct NarxiaDriverDisplayHirDebugCommand {
 }
 
 #[derive(Parser, Debug)]
-pub struct NarxiaDriverDisplayFnsCommand {
+pub struct NarxiaDriverHiriCommand {
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
-pub struct NarxiaDriverHiriCommand {
+pub struct NarxiaDriverSemaAnalysisCommand {
     file: PathBuf,
 }
 
@@ -51,6 +51,8 @@ fn main() -> miette::Result<()> {
 
     let ctx = DriverCtx::initialize();
     ctx.init_log();
+
+    let tcx = ctx.db.get_global_ty_ctxt().make_ty_ctxt();
 
     let _span = narxia_log::span!(narxia_log::Level::INFO, "main").entered();
 
@@ -87,7 +89,7 @@ fn main() -> miette::Result<()> {
                 .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
-            let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
+            let hir_map = tcx.hir_map();
 
             println!("{}", hir_map.get_mod(hir_mod).hir_dbg(&ctx));
         }
@@ -112,32 +114,53 @@ fn main() -> miette::Result<()> {
 
             println!("{:?}", hir.mod_def(&ctx.db).hir_dbg(&ctx));
         }
-        NarxiaDriverCommand::DisplayFns(display_fns_cmd) => {
-            narxia_log::i!("Display functions command: {display_fns_cmd:?}");
 
-            let file = display_fns_cmd.file;
+        NarxiaDriverCommand::SemaAnalysis(sema_cmd) => {
+            narxia_log::i!("Sema analysis command: {sema_cmd:?}");
+
+            let file = sema_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
 
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+
+            narxia_log::i!("Parsed file");
+
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
                 .set_current_file(Some(file));
+
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            narxia_log::i!("Lowered file");
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
                 .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
-            let tcx = ctx.db.get_global_ty_ctxt().make_ty_ctxt();
-            let hir_map = tcx.hir_map();
-            let fns = narxia_hir_typechk::fn_collection::collect_fns(tcx, &hir_map, hir_mod);
 
-            for fn_ in fns {
-                println!("{}", fn_.hir_dbg(&ctx));
+            let prog_structure = narxia_hir_typechk::sema::build_program_structure(tcx, hir_mod);
+
+            println!("{:?}", prog_structure);
+
+            for scope in prog_structure.scopes() {
+                let parent = prog_structure.parent(scope);
+                let self_scope = prog_structure.self_element(scope);
+
+                if let Some(self_scope) = self_scope {
+                    let hir_parent = parent
+                        .and_then(|parent| prog_structure.self_element(parent))
+                        .map(|parent| prog_structure.element(parent));
+                    let hir_self = prog_structure.element(self_scope);
+
+                    println!("Scope: {:?}", hir_self.hir_dbg(&ctx));
+                    
+                    if let Some(hir_parent) = hir_parent {
+                        println!("Parent: {:?}", hir_parent.hir_dbg(&ctx));
+                    }
+                }
             }
         }
 
@@ -169,7 +192,7 @@ fn main() -> miette::Result<()> {
 
             let hir_mod = hir.mod_def(&ctx.db);
 
-            let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
+            let hir_map = tcx.hir_map();
 
             let mut ictx = narxia_hiri::InterpContext::new(&*hir_map);
 

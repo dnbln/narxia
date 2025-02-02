@@ -233,6 +233,8 @@ impl<'text> CharTokenParser<'text> {
                 let t = &self.text[start..end];
                 let kind = match t {
                     "module" => T![module],
+                    "use" => T![use],
+                    "as" => T![as],
                     "fn" => T![fn],
                     "let" => T![let],
                     "if" => T![if],

@@ -391,7 +391,39 @@ syntree_node! {
 }
 
 syntree_node! {
-    Item = (?AttrList |[Module, FnDef, Stmt])
+    Item = (?AttrList |[Module, FnDef, Stmt, UseStmt])
+}
+
+syntree_node! {
+    UseStmt = (use_kw![use] UsePath)
+}
+
+syntree_node! {
+    UsePath = |[UsePathSegmentAndPath, UsePathList]
+}
+
+syntree_node! {
+    UsePathSegmentAndPath = (UsePathSegment ?UsePathContinuation)
+}
+
+syntree_node! {
+    UsePathContinuation = |[UseAlias, UsePathColonContinuation]
+}
+
+syntree_node! {
+    UseAlias = (as_kw![as] ident![ident])
+}
+
+syntree_node! {
+    UsePathColonContinuation = (colon![::] UsePath)
+}
+
+syntree_node! {
+    UsePathSegment = ident![ident]
+}
+
+syntree_node! {
+    UsePathList = (lbrace!['{'] *UsePath rbrace!['}'])
 }
 
 syntree_node! {
@@ -431,7 +463,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    Module = (module_kw![module] ModuleName |[ModuleBody, semi![;]])
+    Module = (module_kw![module] ModuleName ?ModuleBody)
 }
 
 syntree_node! {

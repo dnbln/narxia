@@ -223,6 +223,7 @@ impl<'a> Parser<'a> {
             T![&=] => self.expect_2(T![&], T![=], T![&=]),
             T![|=] => self.expect_2(T![|], T![=], T![|=]),
             T![^=] => self.expect_2(T![^], T![=], T![^=]),
+            T![::] => self.expect_2(T![:], T![:], T![::]),
             k => self.expect_1(k),
         }
     }
@@ -276,6 +277,7 @@ impl<'a> Parser<'a> {
             T![&=] => self.at2(T![&], T![=]),
             T![|=] => self.at2(T![|], T![=]),
             T![^=] => self.at2(T![^], T![=]),
+            T![::] => self.at2(T![:], T![:]),
             k => self.ts.at_1(k),
         }
     }
@@ -332,7 +334,9 @@ impl<'a> Parser<'a> {
                 | T![return]
                 | T![break]
                 | T![continue]
-                | T![if] => {
+                | T![if]
+                | T![module]
+                | T![use] => {
                     parse_item(self);
                 }
                 T![whitespace] | T![newline] => {
@@ -388,7 +392,7 @@ impl<'a> Parser<'a> {
             writeln!(
                 w,
                 "    {}  {} {}",
-                "+{i}".style(styling.token_offset),
+                format_args!("+{i}").style(styling.token_offset),
                 tok.dbg_fmt_colorized(styling),
                 format_args!("{:?}", self.ts.get_token_text(&tok)).style(styling.token_text),
             )?;
@@ -506,8 +510,86 @@ parse_fn_decl! {
         $/match {
             [module] => {$parse_mod()}
             [fn] => {$fun::parse_fn_def()}
+            [use] => {$parse_use()}
             [let] [while] [for] [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] [return] [continue] [break] ['('] ['{'] => {$stmt::parse_stmt()}
         }
+}
+
+parse_fn_decl! {
+    parse_use: UseStmt ::= $![use] $/ws:wcn $parse_use_path()
+}
+
+parse_fn_decl! {
+    parse_use_path: UsePath ::= $/match {
+        [ident] => {
+            $parse_use_path_segment_and_path()
+        }
+        ['{'] => {$parse_use_path_list()}
+    }
+}
+
+parse_fn_decl! {
+    parse_use_path_segment_and_path: UsePathSegmentAndPath ::= 
+        $parse_use_path_segment()
+        $/state:s1
+        $/ws:wcn
+        $/match {
+            [::] [as] => {
+                $parse_use_continuation()
+            }
+            _ => {
+                $/restore_state:s1
+            }
+        }
+}
+
+parse_fn_decl! {
+    parse_use_continuation: UsePathContinuation ::=
+        $/match {
+            [::]  => {
+                $parse_use_path_colon_continuation()
+            }
+            [as] => {
+                $parse_use_alias()
+            }
+        }
+}
+
+parse_fn_decl! {
+    parse_use_path_colon_continuation: UsePathColonContinuation ::=
+        $![::]
+        $/ws:wcn
+        $parse_use_path()
+}
+
+parse_fn_decl! {
+    parse_use_alias: UseAlias ::= $![as] $/ws:wcn $![ident]
+}
+
+parse_fn_decl! {
+    parse_use_path_list: UsePathList ::=
+        $!['{']
+        $/ws:wcn
+        $repeat_until(
+            T!['}'],
+            parse_use_path,
+        )
+}
+
+#[parse_fn]
+fn repeat_until(p: &mut Parser, end: SyntaxKind, mut parse: impl FnMut(&mut Parser) -> CompletedMarker) {
+    while !p.at(end) {
+        parse(p);
+        p.skip_ws_wcn();
+        if p.is_recovering() {
+            return;
+        }
+    }
+    p.expect(end);
+}
+
+parse_fn_decl! {
+    parse_use_path_segment: UsePathSegment ::= $![ident]
 }
 
 parse_fn_decl! {
@@ -515,10 +597,18 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
-    parse_mod: Module ::= $![module] $/ws:wcn $parse_module_name() $/ws:wcn $/match {
-        [;]!
-        ['{'] => {$parse_mod_body()}
-    }
+    parse_mod: Module ::=
+        $![module]
+        $/ws:wcn
+        $parse_module_name()
+        $/state:s1
+        $/ws:wc
+        $/match {
+            ['{'] => {$parse_mod_body()}
+            _ => {
+                $/restore_state:s1
+            }
+        }
 }
 
 parse_fn_decl! {

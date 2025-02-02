@@ -59,17 +59,17 @@ fn acdl_contains(acdl: &AccessorCalledDataList, chk: impl Fn(&ElemRef) -> bool) 
 fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize();
     let input = test.input.perform_read().into_diagnostic()?;
-    let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), input.0);
+    let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
     let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
 
     let tree = syn_file.tree(&ctx.db);
     let mut acdl = AccessorCalledDataList::new();
-    tree.get_root().call_accessors(&mut acdl);
+    tree.red().get_root().call_accessors(&mut acdl);
 
     let mut missing = Vec::new();
     let mut missing_tokens = Vec::new();
 
-    for node in tree.get_root().get_node().descendants_with_tokens() {
+    for node in tree.red().get_root().get_node().descendants_with_tokens() {
         match node {
             narxia_syn::syntree::SyntaxElement::Node(node) => {
                 if node.kind() != SyntaxKind::Root && !acdl_contains(&acdl, node_chk(&node)) {
@@ -88,7 +88,7 @@ fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
         eprintln!(
             "{:?}",
             narxia_syn::syntree::CustomTreePresenter::new(
-                narxia_syn::syntree::SyntaxElementRef::Node(tree.get_root().get_node()),
+                narxia_syn::syntree::SyntaxElementRef::Node(tree.red().get_root().get_node()),
                 narxia_syn::syntree::Offset::new(0),
                 2,
                 &|f, offset, node| {

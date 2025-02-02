@@ -4,7 +4,7 @@ use narxia_src_db::SrcFile;
 use owo_colors::{OwoColorize, Style};
 
 use super::*;
-use crate::hir_map::HirElem;
+use crate::hir_map::{HirElem, HirMap};
 
 pub struct HirDebugContext {
     get_file_fn: fn(HirId) -> SrcFile,
@@ -176,7 +176,18 @@ pub fn display_mod_def(
     mod_def: &ModDef,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    display_item_list(f, &mod_def.items, hdc)?;
+    write!(f, "{:indent$}", "", indent = hdc.depth)?;
+    writeln!(
+        f,
+        "{} {} {}",
+        "module".keyword(),
+        mod_def.name.text,
+        "{".punctuation()
+    )?;
+    display_item_list(f, &mod_def.items, hdc.make_child())?;
+    writeln!(f)?;
+    write!(f, "{:indent$}", "", indent = hdc.depth)?;
+    write!(f, "{}", "}".punctuation())?;
 
     Ok(())
 }
@@ -219,9 +230,65 @@ pub fn display_item(f: &mut fmt::Formatter, item: &Item, hdc: HirDisplayContext)
         ItemKind::Stmt(stmt) => {
             display_stmt_id(f, *stmt, hdc)?;
         }
+        ItemKind::UseStmt(use_stmt) => {
+            display_use_stmt_id(f, *use_stmt, hdc)?;
+        }
+        ItemKind::ModDef(mod_id) => {
+            display_mod_id(f, *mod_id, hdc)?;
+        }
     }
 
     Ok(())
+}
+
+fn display_mod_id(f: &mut fmt::Formatter, mod_id: ModId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", mod_id.0)?;
+
+    Ok(())
+}
+
+pub fn display_use_path(
+    f: &mut fmt::Formatter,
+    path: &UsePath,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{:indent$}", "", indent = hdc.depth)?;
+    for (i, segment) in path.segments.iter().enumerate() {
+        if i != 0 {
+            write!(f, "{}", "::".punctuation())?;
+        }
+
+        write!(f, "{}", segment.ident.text)?;
+    }
+
+    if let Some(use_alias) = &path.alias {
+        write!(f, " {} {}", "as".keyword(), use_alias.alias.text)?;
+    }
+
+    Ok(())
+}
+
+pub fn display_use_stmt(
+    f: &mut fmt::Formatter,
+    use_stmt: &UseStmt,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{} {}", "use".keyword(), "{".punctuation())?;
+    for path in &use_stmt.paths {
+        writeln!(f)?;
+        display_use_path(f, path, hdc.make_child())?;
+    }
+    writeln!(f)?;
+    write!(f, "{:indent$}", "", indent = hdc.depth)?;
+    write!(f, "{}", "}".punctuation())?;
+
+    Ok(())
+}
+
+impl fmt::Display for UseStmt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_use_stmt(f, self, HirDisplayContext::new())
+    }
 }
 
 pub fn display_item_id(f: &mut fmt::Formatter, id: ItemId, hdc: HirDisplayContext) -> fmt::Result {
@@ -607,6 +674,16 @@ impl fmt::Display for Stmt {
 }
 
 fn display_stmt_id(f: &mut fmt::Formatter, id: StmtId, hdc: HirDisplayContext) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+fn display_use_stmt_id(
+    f: &mut fmt::Formatter,
+    id: UseStmtId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
     write!(f, "{}", id.0)?;
 
     Ok(())
