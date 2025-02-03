@@ -56,7 +56,7 @@ fn acdl_contains(acdl: &AccessorCalledDataList, chk: impl Fn(&ElemRef) -> bool) 
 }
 
 fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
-    let ctx = narxia_driver::DriverCtx::initialize();
+    let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let input = test.input.perform_read().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
     let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
