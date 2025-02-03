@@ -79,11 +79,6 @@ fn run_test(test: ParserTestSingleFolder) -> miette::Result<()> {
 
     visitor.visit_mod_id(mod_def);
 
-    println!("Original:");
-    println!("{}", orig);
-    println!("Result:");
-    println!("{}", visitor.buffer);
-
     if !visitor.buffer.trim().is_empty() {
         let old = orig.char_indices().collect::<Vec<_>>();
         let new = visitor.buffer.chars().collect::<Vec<_>>();
