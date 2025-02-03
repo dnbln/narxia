@@ -5,9 +5,8 @@ nta = "nt --all"
 [unstable]
 codegen-backend = true
 
-# FIXME: use once cranelift gets distributed with rustup on windows
-# [profile.dev]
-# codegen-backend = "cranelift"
+[profile.dev]
+codegen-backend = "cranelift"
 
 [target.'cfg(debug_assertions)']
 rustflags = [

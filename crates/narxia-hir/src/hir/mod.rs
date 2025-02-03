@@ -39,6 +39,13 @@ macro_rules! hir_id_newtype {
 pub(crate) trait ConstToken {
     const KIND: SyntaxKind;
 
+    fn make_virtual() -> Self
+    where
+        Self: Sized,
+    {
+        Self::from_span(DUMMY_SP)
+    }
+
     fn from_span(span: HirSpan) -> Self;
     fn from_token(token: &Token) -> Self
     where
@@ -90,15 +97,81 @@ pub struct ItemList {
 
 hir_id_newtype!(ModId, ModDef);
 
+const_token!(ModuleKw, MODULE_KW, "module");
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ModDef {
+    pub mod_kw: ModuleKw,
     pub name: Ident,
+    pub body: Option<ModBody>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct ModBody {
+    pub lbrace: LBrace,
     pub items: ItemList,
+    pub rbrace: RBrace,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Item {
+    pub attrs: AttrList,
     pub kind: ItemKind,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct AttrList {
+    pub attrs: Vec<Attr>,
+}
+
+impl AttrList {
+    pub fn new() -> Self {
+        Self { attrs: Vec::new() }
+    }
+}
+
+const_token!(Hash, HASH, "#");
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct Attr {
+    pub span: HirSpan,
+    pub hash: Hash,
+    pub name: Ident,
+    pub meta: Option<AttrMeta>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct AttrMeta {
+    pub lbrack: LBracket,
+    pub meta_list: Vec<AttrMetaItem>,
+    pub rbrack: RBracket,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct AttrMetaItem {
+    pub span: HirSpan,
+    pub name: Ident,
+    pub kind: AttrMetaItemKind,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum AttrMetaItemKind {
+    Eq(AttrMetaItemEq),
+    Call(AttrMetaItemCall),
+    NameOnly,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct AttrMetaItemEq {
+    pub eq: Eq,
+    pub expr: ExprId,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct AttrMetaItemCall {
+    pub lparen: LParen,
+    pub meta_list: Vec<AttrMetaItem>,
+    pub rparen: RParen,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
@@ -112,15 +185,18 @@ pub enum ItemKind {
 
 hir_id_newtype!(UseStmtId, UseStmt);
 
+const_token!(UseKw, USE_KW, "use");
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UseStmt {
+    pub use_kw: UseKw,
     pub span: HirSpan,
-    pub paths: Vec<UsePath>,
+    pub path: UsePath,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UsePath {
-    pub segments: Vec<UsePathSegment>,
+    pub segments: Vec<UsePathSegmentId>,
     pub alias: Option<UseAlias>,
 }
 
@@ -129,6 +205,8 @@ pub struct UseAlias {
     pub as_kw: AsKw,
     pub alias: Ident,
 }
+
+hir_id_newtype!(UsePathSegmentId, UsePathSegment);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UsePathSegment {
@@ -154,6 +232,12 @@ impl Ident {
     }
 }
 
+pub struct SpecialIdents;
+
+impl SpecialIdents {
+    pub const ROOT_MODULE: &'static str = "___nrx_root_module";
+}
+
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} @ {}", self.text, self.span)
@@ -162,11 +246,14 @@ impl fmt::Debug for Ident {
 
 hir_id_newtype!(FnId, FnDef);
 
+const_token!(FnKw, FN_KW, "fn");
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnDef {
+    pub fn_kw: FnKw,
     pub name: Ident,
     pub generics: Option<GenericParams>,
-    pub params: Vec<FnParam>,
+    pub params: Option<FnParamList>,
     pub ret_ty: Option<FnRetTy>,
     pub body: BlockId,
 }
@@ -175,8 +262,10 @@ hir_id_newtype!(BlockId, Block);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct GenericParams {
-    pub span: HirSpan,
+    pub langle: LAngle,
     pub params: Vec<GenericParam>,
+    pub rangle: RAngle,
+    pub span: HirSpan,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -187,22 +276,52 @@ pub struct GenericParam {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum GenericParamKind {
-    Type(Ident),
-    Const(Ident, TyRefId),
+    Type(GenericParamTy),
+    Const(GenericParamConst),
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GenericParamTy {
+    pub name: Ident,
+    pub bounds: Option<GenericParamTyBounds>,
+    pub default: Option<(Eq, TyRefId)>,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GenericParamConst {
+    pub const_kw: ConstKw,
+    pub name: Ident,
+    pub colon: Colon,
+    pub ty: TyRefId,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct GenericParamTyBounds {
+    pub colon: Colon,
+    pub bounds: Vec<TyRefId>,
+    pub span: HirSpan,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct FnParamList {
+    pub lparen: LParen,
+    pub params: Vec<FnParam>,
+    pub rparen: RParen,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnParam {
     pub param_span: HirSpan,
     pub pat: Pat,
+    pub colon: Colon,
     pub ty: TyRefId,
-    pub default: Option<ExprId>,
+    pub default: Option<(Eq, ExprId)>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnRetTy {
     pub span: HirSpan,
-    pub arrow_span: HirSpan,
+    pub arrow: ThinArrow,
     pub ty: TyRefId,
 }
 
@@ -246,32 +365,40 @@ pub struct CallExpr {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct CallExprArgs {
+    pub lparen: Option<LParen>,
     pub args: Vec<ExprId>,
+    pub rparen: Option<RParen>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct IndexExpr {
     pub base: ExprId,
+    pub lbrack: LBracket,
     pub index: ExprId,
+    pub rbrack: RBracket,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FieldAccess {
     pub base: ExprId,
+    pub dot: Dot,
     pub field: Ident,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct MethodCall {
     pub base: ExprId,
+    pub dot: Dot,
     pub method: Ident,
     pub args: CallExprArgs,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LambdaExpr {
+    pub lbrace: LBrace,
     pub lambda_param_list: Option<LambdaParamList>,
     pub body: ItemList,
+    pub rbrace: RBrace,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, PartialOrd, Ord, Copy)]
@@ -286,32 +413,33 @@ impl HirIdNewtype for LambdaExprId {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LambdaParamList {
     pub params: Vec<LambdaParam>,
+    pub arrow: ThinArrow,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LambdaParam {
     pub pat: Pat,
-    pub ty: Option<TyRefId>,
+    pub ty: Option<(Colon, TyRefId)>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub enum BinOp {
-    Add(HirSpan),
-    Sub(HirSpan),
-    Mul(HirSpan),
-    Div(HirSpan),
-    Mod(HirSpan),
-    Eq(HirSpan),
-    Neq(HirSpan),
-    Lt(HirSpan),
-    LtEq(HirSpan),
-    Gt(HirSpan),
-    GtEq(HirSpan),
-    And(HirSpan),
-    Or(HirSpan),
-    BitAnd(HirSpan),
-    BitOr(HirSpan),
-    Xor(HirSpan),
+    Add(Plus),
+    Sub(Minus),
+    Mul(Asterisk),
+    Div(Slash),
+    Mod(Percent),
+    Eq(Eq2),
+    Neq(Neq),
+    Lt(LAngle),
+    LtEq(LEq),
+    Gt(RAngle),
+    GtEq(GEq),
+    And(Amp2),
+    Or(Pipe2),
+    BitAnd(Amp),
+    BitOr(Pipe),
+    Xor(Caret),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -447,10 +575,52 @@ const_token!(ReturnKw, RETURN_KW, "return");
 const_token!(BreakKw, BREAK_KW, "break");
 const_token!(ContinueKw, CONTINUE_KW, "continue");
 const_token!(AsKw, AS_KW, "as");
+const_token!(ConstKw, CONST_KW, "const");
+const_token!(ForKw, FOR_KW, "for");
+const_token!(InKw, IN_KW, "in");
+const_token!(WhileKw, WHILE_KW, "while");
+const_token!(LoopKw, LOOP_KW, "loop");
+const_token!(TrueKw, TRUE_KW, "true");
+const_token!(FalseKw, FALSE_KW, "false");
 
+const_token!(Dot, DOT, ".");
+const_token!(Comma, COMMA, ",");
 const_token!(Colon2, COLON2, "::");
+const_token!(Colon, COLON, ":");
+const_token!(ThinArrow, THIN_ARROW, "->");
+const_token!(FatArrow, FAT_ARROW, "=>");
 const_token!(LBrace, L_BRACE, "{");
 const_token!(RBrace, R_BRACE, "}");
+const_token!(LParen, L_PAREN, "(");
+const_token!(RParen, R_PAREN, ")");
+const_token!(LBracket, L_BRACK, "[");
+const_token!(RBracket, R_BRACK, "]");
+const_token!(LAngle, L_ANGLE, "<");
+const_token!(RAngle, R_ANGLE, ">");
+
+const_token!(Eq, EQ, "=");
+const_token!(PlusEq, PLUS_EQ, "+=");
+const_token!(MinusEq, MINUS_EQ, "-=");
+const_token!(AsteriskEq, ASTERISK_EQ, "*=");
+const_token!(SlashEq, SLASH_EQ, "/=");
+const_token!(PercentEq, PERCENT_EQ, "%=");
+const_token!(AmpEq, AMP_EQ, "&=");
+const_token!(PipeEq, PIPE_EQ, "|=");
+const_token!(CaretEq, CARET_EQ, "^=");
+const_token!(Plus, PLUS, "+");
+const_token!(Minus, MINUS, "-");
+const_token!(Asterisk, ASTERISK, "*");
+const_token!(Slash, SLASH, "/");
+const_token!(Percent, PERCENT, "%");
+const_token!(Amp, AMP, "&");
+const_token!(Pipe, PIPE, "|");
+const_token!(Caret, CARET, "^");
+const_token!(Eq2, EQ2, "==");
+const_token!(Neq, NEQ, "!=");
+const_token!(LEq, LE, "<=");
+const_token!(GEq, GE, ">=");
+const_token!(Amp2, AMP2, "&&");
+const_token!(Pipe2, PIPE2, "||");
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Tk {
@@ -472,7 +642,9 @@ impl Tk {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct IfExpr {
     pub if_kw: IfKw,
+    pub lparen: LParen,
     pub cond: ExprId,
+    pub rparen: RParen,
     pub then: ExprId,
     pub else_: Option<IfExprElseClause>,
 }
@@ -500,10 +672,15 @@ pub struct ContinueExpr {
     pub continue_kw: ContinueKw,
 }
 
+const_token!(LQuote, BEGIN_STRING, "\"");
+const_token!(RQuote, END_STRING, "\"");
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteral {
+    pub lquote: LQuote,
     pub span: HirSpan,
     pub fragments: Vec<StrLiteralFragment>,
+    pub rquote: RQuote,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -514,11 +691,16 @@ pub struct StrLiteralFragment {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StrLiteralFragmentKind {
-    Text(Tk),
+    Text(StrLiteralTextFragment),
     EscapedChar(Tk, char),
     EscapeSequence(Tk, char),
     Display(StrLiteralDisplayFragment),
     Debug(StrLiteralDebugFragment),
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct StrLiteralTextFragment {
+    pub token: Tk,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -537,6 +719,7 @@ pub struct StrLiteralDebugFragment {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LoopExpr {
+    pub loop_kw: LoopKw,
     pub body: BlockId,
 }
 
@@ -547,12 +730,16 @@ pub struct BlockExpr {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Block {
+    pub lbrace: LBrace,
     pub items: ItemList,
+    pub rbrace: RBrace,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TupleExpr {
+    pub lparen: LParen,
     pub exprs: Vec<ExprId>,
+    pub rparen: RParen,
 }
 
 hir_id_newtype!(StmtId, Stmt);
@@ -580,41 +767,52 @@ pub struct AssignmentStmt {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum AssignmentOp {
-    Assign(HirSpan),
-    AddAssign(HirSpan),
-    SubAssign(HirSpan),
-    MulAssign(HirSpan),
-    DivAssign(HirSpan),
-    ModAssign(HirSpan),
-    BitAndAssign(HirSpan),
-    BitOrAssign(HirSpan),
-    BitXorAssign(HirSpan),
+    Assign(Eq),
+    AddAssign(PlusEq),
+    SubAssign(MinusEq),
+    MulAssign(AsteriskEq),
+    DivAssign(SlashEq),
+    ModAssign(PercentEq),
+    BitAndAssign(AmpEq),
+    BitOrAssign(PipeEq),
+    BitXorAssign(CaretEq),
 }
+
+const_token!(LetKw, LET_KW, "let");
+const_token!(MutKw, MUT_KW, "mut");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LetStmt {
+    pub let_kw: LetKw,
     pub mutability: LetMutability,
     pub pat: Pat,
-    pub ty: Option<TyRefId>,
-    pub init: Option<ExprId>,
+    pub ty: Option<(Colon, TyRefId)>,
+    pub init: Option<(Eq, ExprId)>,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum LetMutability {
     Imm,
-    Mut(HirSpan),
+    Mut(MutKw),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ForStmt {
+    pub for_kw: ForKw,
+    pub lparen: LParen,
     pub pat: Pat,
+    pub in_kw: InKw,
     pub iter: ExprId,
+    pub rparen: RParen,
     pub body: BlockId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct WhileStmt {
+    pub while_kw: WhileKw,
+    pub lparen: LParen,
     pub expr: ExprId,
+    pub rparen: RParen,
     pub body: BlockId,
 }
 
@@ -646,7 +844,13 @@ pub enum TyRefKind {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub enum PrimitiveTy {
+pub struct PrimitiveTy {
+    pub ident: Ident,
+    pub kind: PrimitiveTyKind,
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
+pub enum PrimitiveTyKind {
     I8,
     I16,
     I32,
@@ -683,6 +887,9 @@ pub enum TyGenericArgKind {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnTy {
+    pub fn_kw: FnKw,
+    pub lparen: LParen,
     pub params: Vec<TyRefId>,
-    pub ret_ty: Option<TyRefId>,
+    pub rparen: RParen,
+    pub ret_ty: Option<(ThinArrow, TyRefId)>,
 }

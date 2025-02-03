@@ -527,7 +527,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    FnHead = (fn_kw![fn] FnName ?GenericParamList FnParamList ?FnRetTy)
+    FnHead = (fn_kw![fn] FnName ?GenericParamList ?FnParamList ?FnRetTy)
 }
 
 syntree_node! {
@@ -950,7 +950,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    CallExprArgsList = ?(lparen!['('] *|[ExprNode, comma![,]] rparen![')'])
+    CallExprArgsList = (lparen!['('] *|[ExprNode, comma![,]] rparen![')'])
 }
 
 syntree_node! {
@@ -962,7 +962,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    LambdaParamList = (*|[LambdaParam, comma![,]] rarrow![->])
+    LambdaParamList = (*|[LambdaParam, comma![,]] arrow![->])
 }
 
 syntree_node! {

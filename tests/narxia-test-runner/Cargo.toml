@@ -10,6 +10,7 @@ owo-colors.workspace = true
 libtest-mimic.workspace = true
 dir-structure.workspace = true
 miette.workspace = true
+similar.workspace = true
 
 narxia-driver.workspace = true
 narxia-hir.workspace = true
@@ -28,4 +29,19 @@ path = "tests/syntree_correctness.rs"
 [[test]]
 name = "syntree_completeness"
 path = "tests/syntree_completeness.rs"
+harness = false
+
+[[test]]
+name = "no_orphans_after_parent_compute"
+path = "tests/no_orphans_after_parent_compute.rs"
+harness = false
+
+[[test]]
+name = "visitor_visits_all_hir_ids"
+path = "tests/visitor_visits_all_hir_ids.rs"
+harness = false
+
+[[test]]
+name = "visitor_visits_all_non_whitespace_text"
+path = "tests/visitor_visits_all_non_whitespace_text.rs"
 harness = false

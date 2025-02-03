@@ -25,6 +25,7 @@ pub enum HirElem {
     ForStmt(ForStmt),
     WhileStmt(WhileStmt),
     UseStmt(UseStmt),
+    UsePathSegment(UsePathSegment),
     Block(Block),
     TyRef(TyRef),
     TyGenericArg(TyGenericArg),
@@ -54,6 +55,7 @@ impl fmt::Display for HirElem {
             Self::ForStmt(for_stmt) => write!(f, "{}", for_stmt),
             Self::WhileStmt(w) => write!(f, "{}", w),
             Self::UseStmt(u) => write!(f, "{}", u),
+            Self::UsePathSegment(u) => write!(f, "{}", u),
             Self::Block(b) => write!(f, "{}", b),
             Self::TyRef(t) => write!(f, "{}", t),
             Self::TyGenericArg(t) => write!(f, "{}", t),
@@ -88,11 +90,18 @@ impl HirMap {
         self.current_file = file;
     }
 
+    pub fn next_hir_id(&self) -> HirId {
+        HirId::new(self.buffer.len())
+    }
+
     pub fn push_ref(&mut self, r: HirElem, span: HirSpan) -> HirId {
-        let mut id = HirId::new(self.buffer.len());
-        id.span = span;
+        let mut id = self.next_hir_id();
+        #[cfg(hir_id_span)]
+        {
+            id.span = span;
+        }
         self.buffer.push(r);
-        self.parents.push(HirId::new(0));
+        self.parents.push(HirId::ORPHAN_HIRID);
         self.files.push(self.current_file.unwrap());
         id
     }
@@ -154,6 +163,13 @@ impl HirMap {
         match self.get(at.0) {
             HirElem::UseStmt(u) => u,
             x => panic!("Expected UseStmt, found {x:?}"),
+        }
+    }
+
+    pub fn get_use_segment(&self, at: UsePathSegmentId) -> &UsePathSegment {
+        match self.get(at.0) {
+            HirElem::UsePathSegment(u) => u,
+            x => panic!("Expected UsePathSegment, found {x:?}"),
         }
     }
 

@@ -33,6 +33,24 @@ impl HirSpan {
             span: TextSpan::of(token),
         }
     }
+
+    pub fn get_start(self) -> usize {
+        self.get_range().start
+    }
+
+    pub fn get_end(self) -> usize {
+        self.get_range().end
+    }
+
+    pub fn get_range(self) -> core::ops::Range<usize> {
+        self.span.range_usize()
+    }
+
+    pub fn join(self, other: Self) -> Self {
+        Self {
+            span: self.span.join(other.span),
+        }
+    }
 }
 
 impl fmt::Display for HirSpan {
@@ -61,7 +79,9 @@ impl AsRef<HirId> for HirId {
 }
 
 impl HirId {
-    pub fn new(id: usize) -> Self {
+    pub const ORPHAN_HIRID: Self = Self::new(usize::MAX);
+
+    pub const fn new(id: usize) -> Self {
         Self {
             id,
             #[cfg(hir_id_span)]
@@ -70,8 +90,16 @@ impl HirId {
     }
 
     #[cfg(hir_id_span)]
-    pub fn span(self) -> HirSpan {
+    pub const fn span(self) -> HirSpan {
         self.span
+    }
+
+    pub const fn is_orphan_parent(self) -> bool {
+        self.id == usize::MAX
+    }
+
+    pub const fn as_usize(self) -> usize {
+        self.id
     }
 }
 

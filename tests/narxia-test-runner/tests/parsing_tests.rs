@@ -13,7 +13,6 @@
 // - Compare: The parser will compare the pretty-printed version of the parse tree with the
 //   contents of the `output.txt` file. If they don't match, the test fails.
 
-use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, Context, IntoDiagnostic};
 use narxia_syn::syntree::TreePresenterStyle;
 use narxia_test_runner::parser_tests::ParserTestSingleFolder;
@@ -34,8 +33,8 @@ impl TestMode {
     }
 }
 
-fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::Result<()> {
-    let ctx = narxia_driver::DriverCtx::initialize();
+fn run_test(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::Result<()> {
+    let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let input = test.input.perform_read().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
     let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(&ctx, src_file);
@@ -70,16 +69,6 @@ fn run_test_impl(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::R
     Ok(())
 }
 
-fn run_test(test: ParserTestSingleFolder) -> Result<(), Failed> {
-    let test_mode = TestMode::get_behavior();
-    run_test_impl(test, test_mode).map_err(Failed::from)
-}
-
-narxia_test_runner::parser_test_trials!(collect_trials, run_test);
-
-fn main() -> miette::Result<()> {
-    let args = Arguments::from_args();
-    let trails = collect_trials()?;
-
-    libtest_mimic::run(&args, trails).exit();
-}
+narxia_test_runner::test_main_parser_tests_foreach!(|test| {
+    run_test(test, TestMode::get_behavior())
+});

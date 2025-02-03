@@ -335,7 +335,6 @@ impl<'a> Parser<'a> {
                 | T![break]
                 | T![continue]
                 | T![if]
-                | T![module]
                 | T![use] => {
                     parse_item(self);
                 }

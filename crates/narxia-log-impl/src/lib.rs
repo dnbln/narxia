@@ -8,7 +8,7 @@ use tracing::{Event, Id, Level, Metadata, Subscriber};
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::layer::{Context, SubscriberExt};
 use tracing_subscriber::registry::{LookupSpan, SpanRef};
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::util::{SubscriberInitExt, TryInitError};
 use tracing_subscriber::Layer;
 
 struct NarxiaLayerConfig {
@@ -231,7 +231,7 @@ where
     fn on_enter(&self, id: &Id, ctx: Context<S>) {}
 }
 
-pub fn init() {
+pub fn try_init() -> Result<(), TryInitError> {
     tracing_subscriber::Registry::default()
         .with(NarxiaLayer::new(io::stderr, NarxiaLayerConfig::default()))
         .with(tracing_subscriber::EnvFilter::from_env("NARXIA_LOG"))
@@ -242,5 +242,14 @@ pub fn init() {
         //         .with_line_number(true)
         //         .with_ansi(true),
         // )
-        .init();
+        .try_init()
+}
+
+#[track_caller]
+pub fn init() {
+    try_init().expect(
+        "
+    Failed to initialize logging.
+    ",
+    );
 }

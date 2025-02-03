@@ -116,6 +116,40 @@ impl ProgramStructure {
     pub fn element(&self, elem: ElemId) -> HirId {
         self.scope_tree[elem].hir_id
     }
+
+    pub fn scope_of_hir_node(&self, hir_id: HirId) -> Option<ScopeId> {
+        let elem_id = ElemId(
+            self.scope_tree
+                .elements
+                .iter()
+                .position(|it| it.hir_id == hir_id)?,
+        );
+
+        Some(ScopeId(
+            self.scope_tree
+                .scopes
+                .iter()
+                .position(|scope| scope.self_elem == Some(elem_id))?,
+        ))
+    }
+
+    pub fn parent_scope_of_hir_node(&self, hir_map: &HirMap, hir_id: HirId) -> Option<ScopeId> {
+        let mut current = hir_id;
+
+        loop {
+            let parent = hir_map.get_parent(current);
+
+            if parent.is_orphan_parent() {
+                return None;
+            }
+
+            if let Some(scope) = self.scope_of_hir_node(parent) {
+                return Some(scope);
+            }
+
+            current = parent;
+        }
+    }
 }
 
 struct ProgramStructureVisitor<'hir> {
@@ -144,6 +178,19 @@ macro_rules! scope_creating_elements {
     };
 }
 
+macro_rules! scope_adding_elements {
+    ($($vis_name:ident ($id:ty, $t:ty) => $walk_name:ident $($id_use:expr)? ;)*) => {
+        $(
+            fn $vis_name(&mut self, id: $id, t: &'hir $t) {
+                let last_scope = self.stack.last().copied();
+                let _self_elem = self.program_structure.scope_tree.push_scope_element(last_scope, scope_elem(id));
+
+                vis::$walk_name(self, $(if $id_use == () {id}else{id},)? t);
+            }
+        )*
+    };
+}
+
 impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
     fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q) {
         q(self, self.hir_map);
@@ -153,6 +200,10 @@ impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
         visit_mod_def(hir::ModId, hir::ModDef) => walk_mod_def;
         visit_fn_def(hir::FnId, hir::FnDef) => walk_fn_def;
         visit_block(hir::BlockId, hir::Block) => walk_block;
+    }
+
+    scope_adding_elements! {
+        visit_use_stmt(hir::UseStmtId, hir::UseStmt) => walk_use_stmt;
     }
 }
 
@@ -173,15 +224,18 @@ pub fn build_program_structure<'tcx>(tcx: TyCtxt<'tcx>, mod_id: hir::ModId) -> P
     visitor.program_structure
 }
 
-struct SemanticAnalysisResult {
-    program_structure: ProgramStructure,
+#[derive(Debug)]
+pub struct SemanticAnalysisResult {
+    pub program_structure: ProgramStructure,
     scope_names: Vec<ScopeDefinedNamesBuffer>,
 }
 
+#[derive(Debug)]
 struct ScopeDefinedNamesBuffer {
     names: Vec<ScopeDefinedName>,
 }
 
+#[derive(Debug)]
 struct ScopeDefinedName {
     name: String,
     def_id: DefId,
@@ -206,10 +260,35 @@ pub fn analyze_program_structure<'tcx>(
                 let hir_id = program_structure.element(elem);
                 let def_id = tcx.add_def_id(hir_id);
 
-                names.push(ScopeDefinedName {
-                    name: format!("Aaa"),
-                    def_id,
-                });
+                let hir_map = tcx.hir_map();
+                let hir_elem = hir_map.get(hir_id);
+
+                match hir_elem {
+                    narxia_hir::hir_map::HirElem::Mod(mod_def) => {
+                        names.push(ScopeDefinedName {
+                            name: mod_def.name.text.clone(),
+                            def_id,
+                        });
+                    }
+                    narxia_hir::hir_map::HirElem::Fn(fn_def) => {
+                        names.push(ScopeDefinedName {
+                            name: fn_def.name.text.clone(),
+                            def_id,
+                        });
+                    }
+                    narxia_hir::hir_map::HirElem::UseStmt(use_stmt) => {
+                        let path = &use_stmt.path;
+
+                        let imported_name = use_path_imported_name(&*hir_map, path);
+
+                        names.push(ScopeDefinedName {
+                            name: imported_name,
+                            def_id,
+                        });
+                    }
+                    narxia_hir::hir_map::HirElem::Block(block) => {}
+                    _ => todo!(),
+                }
             }
 
             ScopeDefinedNamesBuffer { names }
@@ -219,5 +298,58 @@ pub fn analyze_program_structure<'tcx>(
     SemanticAnalysisResult {
         program_structure,
         scope_names,
+    }
+}
+
+fn use_path_imported_name(hir_map: &HirMap, path: &hir::UsePath) -> String {
+    path.alias.as_ref().map_or_else(
+        || {
+            hir_map
+                .get_use_segment(*path.segments.last().unwrap())
+                .ident
+                .text
+                .clone()
+        },
+        |alias| alias.alias.text.clone(),
+    )
+}
+
+fn resolve_names<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mod_id: hir::ModId,
+    analysis_results: &SemanticAnalysisResult,
+) {
+    let hir_map = tcx.hir_map();
+
+    for scope in analysis_results.program_structure.scopes() {
+        for elem in analysis_results
+            .program_structure
+            .children(scope)
+            .filter_map(|scope| analysis_results.program_structure.self_element(scope))
+            .chain(analysis_results.program_structure.elements(scope))
+        {
+            let hir_id = analysis_results.program_structure.element(elem);
+            let def_id = tcx.add_def_id(hir_id);
+
+            let hir_elem = hir_map.get(hir_id);
+
+            match hir_elem {
+                narxia_hir::hir_map::HirElem::Mod(mod_def) => {
+                    tcx.add_def_id(hir_id);
+                }
+                narxia_hir::hir_map::HirElem::Fn(fn_def) => {
+                    tcx.add_def_id(hir_id);
+                }
+                narxia_hir::hir_map::HirElem::UseStmt(use_stmt) => {
+                    let path = &use_stmt.path;
+
+                    let imported_name = use_path_imported_name(&*hir_map, path);
+
+                    tcx.add_def_id(hir_id);
+                }
+                narxia_hir::hir_map::HirElem::Block(block) => {}
+                _ => todo!(),
+            }
+        }
     }
 }

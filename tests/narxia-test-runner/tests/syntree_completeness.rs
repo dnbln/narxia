@@ -14,7 +14,6 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
-use libtest_mimic::{Arguments, Failed, Trial};
 use miette::{bail, IntoDiagnostic};
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree::tests_data::{
@@ -145,14 +144,6 @@ fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
     Ok(())
 }
 
-fn run_test_wrap(test: ParserTestSingleFolder) -> Result<(), Failed> {
-    run_for_test(test).map_err(Failed::from)
-}
-
-narxia_test_runner::parser_test_trials!(collect_trials, run_test_wrap);
-
-fn main() -> miette::Result<()> {
-    let args = Arguments::from_args();
-    let trials = collect_trials()?;
-    libtest_mimic::run(&args, trials).exit();
-}
+narxia_test_runner::test_main_parser_tests_foreach!(|test| {
+    run_for_test(test)
+});

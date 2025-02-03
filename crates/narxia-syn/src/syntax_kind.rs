@@ -91,9 +91,9 @@ pub enum SyntaxKind {
     #[T(!=)]
     NEQ,
     #[T(>)]
-    GT,
+    R_ANGLE,
     #[T(<)]
-    LT,
+    L_ANGLE,
     #[T(>=)]
     GE,
     #[T(<=)]

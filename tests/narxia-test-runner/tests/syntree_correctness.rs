@@ -100,6 +100,7 @@ impl AllCalledData {
 }
 
 fn check_all(input_files: Vec<InputFile>) -> miette::Result<()> {
+    let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let mut global_called_list = AllCalledData::new();
     for (id, input_file) in input_files.iter().enumerate() {
         eprintln!(
@@ -111,7 +112,6 @@ fn check_all(input_files: Vec<InputFile>) -> miette::Result<()> {
         eprintln!("{}", "<<<".bright_white());
 
         let id = InputFileId(id);
-        let ctx = narxia_driver::DriverCtx::initialize();
         let src_file =
             narxia_driver::load_file(&ctx, input_file.path.clone(), &input_file.contents.clone());
         let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);

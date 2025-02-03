@@ -1,9 +1,3 @@
-module prelude {
-    use println::aaaa::{
-        a as b
-        b as c
-        c as a
-    }
-}
+fn a -> T {
 
-println("Hello world")
+}

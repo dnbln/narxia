@@ -131,7 +131,7 @@ enum InterpValue {
 }
 
 pub fn interp_mod(ctx: &mut InterpContext, mod_def: &ModDef) {
-    for item_id in &mod_def.items.items {
+    for item_id in &mod_def.body.as_ref().unwrap().items.items {
         let item = ctx.hir_map.get_item(*item_id);
         match &item.kind {
             ItemKind::FnDef(fn_id) => {
@@ -162,7 +162,7 @@ fn interp_stmt(ctx: &mut InterpContext, stmt: &Stmt) -> CFResult {
         StmtKind::ExprStmt(expr_id) => interp_expr_id(ctx, *expr_id),
         StmtKind::LetStmt(let_stmt) => {
             let init = match let_stmt.init {
-                Some(expr_id) => interp_expr_id(ctx, expr_id)?,
+                Some((_, expr_id)) => interp_expr_id(ctx, expr_id)?,
                 None => InterpValue::Unit,
             };
             let place_id = ctx.push_store(init);
@@ -223,7 +223,7 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                 for fragment in &s.fragments {
                     match &fragment.kind {
                         StrLiteralFragmentKind::Text(t) => {
-                            constructed_string.push_str(&t.text);
+                            constructed_string.push_str(&t.token.text);
                         }
                         StrLiteralFragmentKind::EscapedChar(_, c) => {
                             constructed_string.push(*c);

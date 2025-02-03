@@ -58,10 +58,6 @@ pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -
     parse_file_and_assert_no_errors(ctx, file)
 }
 
-pub fn init_log() {
-    narxia_log_impl::init();
-}
-
 pub fn init_panic_hook() {
     human_panic::setup_panic!(human_panic::Metadata::new(
         env!("CARGO_PKG_NAME"),

@@ -78,6 +78,14 @@ impl TextSpan {
     pub fn len_usize(self) -> usize {
         self.len() as usize
     }
+
+    #[inline]
+    pub fn join(self, other: Self) -> Self {
+        Self {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
 }
 
 impl fmt::Display for TextSpan {

@@ -177,17 +177,15 @@ pub fn display_mod_def(
     hdc: HirDisplayContext,
 ) -> fmt::Result {
     write!(f, "{:indent$}", "", indent = hdc.depth)?;
-    writeln!(
-        f,
-        "{} {} {}",
-        "module".keyword(),
-        mod_def.name.text,
-        "{".punctuation()
-    )?;
-    display_item_list(f, &mod_def.items, hdc.make_child())?;
+    write!(f, "{} {}", "module".keyword(), mod_def.name.text,)?;
+    if let Some(body) = &mod_def.body {
+        writeln!(f, "{}", "{".punctuation());
+        display_item_list(f, &body.items, hdc.make_child())?;
+        writeln!(f)?;
+        write!(f, "{:indent$}", "", indent = hdc.depth)?;
+        write!(f, "{}", "}".punctuation())?;
+    }
     writeln!(f)?;
-    write!(f, "{:indent$}", "", indent = hdc.depth)?;
-    write!(f, "{}", "}".punctuation())?;
 
     Ok(())
 }
@@ -203,13 +201,12 @@ pub fn display_item_list(
     item_list: &ItemList,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    let newlines = item_list.items.len() > 1;
-
     for (i, item) in item_list.items.iter().enumerate() {
-        if i != 0 && newlines {
+        if i != 0 {
             writeln!(f)?;
-            write!(f, "{:indent$}", "", indent = hdc.depth)?;
         }
+
+        write!(f, "{:indent$}", "", indent = hdc.depth)?;
         display_item_id(f, *item, hdc)?;
     }
 
@@ -252,13 +249,12 @@ pub fn display_use_path(
     path: &UsePath,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(f, "{:indent$}", "", indent = hdc.depth)?;
     for (i, segment) in path.segments.iter().enumerate() {
         if i != 0 {
             write!(f, "{}", "::".punctuation())?;
         }
 
-        write!(f, "{}", segment.ident.text)?;
+        display_use_path_segment_id(f, *segment, hdc)?;
     }
 
     if let Some(use_alias) = &path.alias {
@@ -268,19 +264,45 @@ pub fn display_use_path(
     Ok(())
 }
 
+impl fmt::Display for UsePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_use_path(f, self, HirDisplayContext::new())
+    }
+}
+
+fn display_use_path_segment_id(
+    f: &mut fmt::Formatter,
+    id: UsePathSegmentId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+fn display_use_path_segment(
+    f: &mut fmt::Formatter,
+    segment: &UsePathSegment,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", segment.ident.text)?;
+
+    Ok(())
+}
+
+impl fmt::Display for UsePathSegment {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_use_path_segment(f, self, HirDisplayContext::new())
+    }
+}
+
 pub fn display_use_stmt(
     f: &mut fmt::Formatter,
     use_stmt: &UseStmt,
     hdc: HirDisplayContext,
 ) -> fmt::Result {
-    write!(f, "{} {}", "use".keyword(), "{".punctuation())?;
-    for path in &use_stmt.paths {
-        writeln!(f)?;
-        display_use_path(f, path, hdc.make_child())?;
-    }
-    writeln!(f)?;
-    write!(f, "{:indent$}", "", indent = hdc.depth)?;
-    write!(f, "{}", "}".punctuation())?;
+    write!(f, "{} ", "use".keyword())?;
+    display_use_path(f, &use_stmt.path, hdc.make_child())?;
 
     Ok(())
 }
@@ -370,11 +392,42 @@ pub fn display_fn_def(
             }
 
             match &param.kind {
-                GenericParamKind::Type(t) => {
-                    write!(f, "{}", t.text)?;
+                GenericParamKind::Type(GenericParamTy {
+                    name,
+                    bounds,
+                    default,
+                }) => {
+                    write!(f, "{}", name.text)?;
+
+                    if let Some(bounds) = bounds {
+                        write!(f, "{} ", ":".punctuation())?;
+                        for (i, bound) in bounds.bounds.iter().enumerate() {
+                            if i != 0 {
+                                write!(f, "{}", "+".punctuation())?;
+                            }
+
+                            display_ty_ref_id(f, *bound, hdc.make_child())?;
+                        }
+                    }
+
+                    if let Some((_, default)) = default {
+                        write!(f, " {} ", "=")?;
+                        display_ty_ref_id(f, *default, hdc.make_child())?;
+                    }
                 }
-                GenericParamKind::Const(name, ty) => {
-                    write!(f, "{}{} ", name.text, ":".punctuation())?;
+                GenericParamKind::Const(GenericParamConst {
+                    const_kw: _,
+                    name,
+                    colon: _,
+                    ty,
+                }) => {
+                    write!(
+                        f,
+                        "{} {}{} ",
+                        "const".keyword(),
+                        name.text,
+                        ":".punctuation()
+                    )?;
                     display_ty_ref_id(f, *ty, hdc.make_child())?;
                 }
             }
@@ -389,23 +442,25 @@ pub fn display_fn_def(
         write!(f, "{}", ">".punctuation())?;
     }
 
-    write!(f, "{}", "(".punctuation())?;
+    if let Some(params) = &fn_def.params {
+        write!(f, "{}", "(".punctuation())?;
 
-    write!(f, "\n")?;
+        write!(f, "\n")?;
 
-    for param in &fn_def.params {
-        write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
-        display_param(f, param, hdc.make_child())?;
-        writeln!(f, "{}", ",".punctuation())?;
+        for param in &params.params {
+            write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
+            display_param(f, param, hdc.make_child())?;
+            writeln!(f, "{}", ",".punctuation())?;
+        }
+
+        write!(
+            f,
+            "{:indent$}{} ",
+            "",
+            ")".punctuation(),
+            indent = hdc.depth
+        )?;
     }
-
-    write!(
-        f,
-        "{:indent$}{} ",
-        "",
-        ")".punctuation(),
-        indent = hdc.depth
-    )?;
 
     if let Some(ret_ty) = &fn_def.ret_ty {
         display_fn_ret_ty(f, ret_ty, hdc)?;
@@ -578,7 +633,7 @@ fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt
             }
             write!(f, "{}", ")".punctuation())?;
 
-            if let Some(ret_ty) = &fn_ty.ret_ty {
+            if let Some((_, ret_ty)) = &fn_ty.ret_ty {
                 write!(f, " {} ", "->".punctuation())?;
                 display_ty_ref_id(f, *ret_ty, hdc.make_child())?;
             }
@@ -618,22 +673,22 @@ impl fmt::Display for TyGenericArg {
 }
 
 fn display_primitive_ty(f: &mut fmt::Formatter, primitive: &PrimitiveTy) -> fmt::Result {
-    let primitive_str = match primitive {
-        PrimitiveTy::Bool => "bool",
-        PrimitiveTy::I8 => "i8",
-        PrimitiveTy::I16 => "i16",
-        PrimitiveTy::I32 => "i32",
-        PrimitiveTy::I64 => "i64",
-        PrimitiveTy::I128 => "i128",
-        PrimitiveTy::U8 => "u8",
-        PrimitiveTy::U16 => "u16",
-        PrimitiveTy::U32 => "u32",
-        PrimitiveTy::U64 => "u64",
-        PrimitiveTy::U128 => "u128",
-        PrimitiveTy::F32 => "f32",
-        PrimitiveTy::F64 => "f64",
-        PrimitiveTy::Char => "char",
-        PrimitiveTy::Str => "str",
+    let primitive_str = match primitive.kind {
+        PrimitiveTyKind::Bool => "bool",
+        PrimitiveTyKind::I8 => "i8",
+        PrimitiveTyKind::I16 => "i16",
+        PrimitiveTyKind::I32 => "i32",
+        PrimitiveTyKind::I64 => "i64",
+        PrimitiveTyKind::I128 => "i128",
+        PrimitiveTyKind::U8 => "u8",
+        PrimitiveTyKind::U16 => "u16",
+        PrimitiveTyKind::U32 => "u32",
+        PrimitiveTyKind::U64 => "u64",
+        PrimitiveTyKind::U128 => "u128",
+        PrimitiveTyKind::F32 => "f32",
+        PrimitiveTyKind::F64 => "f64",
+        PrimitiveTyKind::Char => "char",
+        PrimitiveTyKind::Str => "str",
     };
 
     write!(f, "{}", primitive_str.ty_name())
@@ -740,7 +795,13 @@ fn display_let_stmt(
     }
 
     display_pat(f, &let_stmt.pat, hdc)?;
-    if let Some(init) = &let_stmt.init {
+
+    if let Some((_colon, ty)) = &let_stmt.ty {
+        write!(f, "{} ", ":".punctuation())?;
+        display_ty_ref_id(f, *ty, hdc)?;
+    }
+
+    if let Some((_eq, init)) = &let_stmt.init {
         write!(f, " {} ", "=".operator())?;
         display_expr_id(f, *init, hdc)?;
     }
@@ -1082,7 +1143,7 @@ fn display_lambda_param(
 ) -> fmt::Result {
     display_pat(f, &param.pat, hdc)?;
 
-    if let Some(ty) = &param.ty {
+    if let Some((_, ty)) = &param.ty {
         write!(f, "{} ", ":".punctuation())?;
         display_ty_ref_id(f, *ty, hdc)?;
     }
@@ -1155,7 +1216,7 @@ fn display_str_literal_fragment(
     hdc: HirDisplayContext,
 ) -> fmt::Result {
     match &fragment.kind {
-        StrLiteralFragmentKind::Text(text) => write!(f, "{}", text.text.green())?,
+        StrLiteralFragmentKind::Text(text) => write!(f, "{}", text.token.text.green())?,
         StrLiteralFragmentKind::EscapeSequence(t, _) => write!(f, "{}", t.text.yellow())?,
         StrLiteralFragmentKind::EscapedChar(t, _) => write!(f, "{}", t.text.yellow())?,
         StrLiteralFragmentKind::Display(display) => {

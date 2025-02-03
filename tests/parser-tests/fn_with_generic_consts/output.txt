@@ -7,7 +7,7 @@ Root@0..29
         FnName@3..4
           IDENT@3..4 "f"
         GenericParamList@4..17
-          LT@4..5 "<"
+          L_ANGLE@4..5 "<"
           GenericParam@5..16
             GenericConstParam@5..16
               CONST_KW@5..10 "const"
@@ -18,7 +18,7 @@ Root@0..29
               COMPOSED_TRIVIA@13..14 " "
               TyRef@14..16
                 IDENT@14..16 "Ty"
-          GT@16..17 ">"
+          R_ANGLE@16..17 ">"
         FnParamList@17..25
           L_PAREN@17..18 "("
           FnParam@18..24

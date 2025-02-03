@@ -8,13 +8,23 @@ pub struct DriverCtx {
 
 impl DriverCtx {
     pub fn initialize() -> Self {
-        Self {
+        let cx = Self {
             db: Database::default(),
-        }
+        };
+
+        narxia_log_impl::init();
+
+        cx
     }
 
-    pub fn init_log(&self) {
-        crate::init_log();
+    pub fn initialize_in_test() -> Self {
+        let cx = Self {
+            db: Database::default(),
+        };
+
+        let _ = narxia_log_impl::try_init();
+
+        cx
     }
 
     pub fn display_file(&self, file: SrcFile) -> crate::DisplayFile {
@@ -24,5 +34,10 @@ impl DriverCtx {
     #[track_caller]
     pub fn trace_file(&self, file: SrcFile) {
         narxia_log::t!("File contents:\n{}", self.display_file(file));
+    }
+
+    #[track_caller]
+    pub fn trace_hir_file(&self, file: narxia_hir_db::HirFile) {
+        self.trace_file(file.file(&self.db).file(&self.db));
     }
 }

@@ -49,7 +49,6 @@ fn main() -> miette::Result<()> {
     narxia_driver::init_panic_hook();
 
     let ctx = DriverCtx::initialize();
-    ctx.init_log();
 
     let tcx = ctx.db.get_global_ty_ctxt().make_ty_ctxt();
 
@@ -140,22 +139,23 @@ fn main() -> miette::Result<()> {
 
             let hir_mod = hir.mod_def(&ctx.db);
 
-            let prog_structure = narxia_hir_typechk::sema::build_program_structure(tcx, hir_mod);
+            let analysis_results = narxia_hir_typechk::sema::analyze_program_structure(tcx, hir_mod);
 
-            println!("{:?}", prog_structure);
+            println!("{:?}", analysis_results);
 
-            for scope in prog_structure.scopes() {
-                let parent = prog_structure.parent(scope);
-                let self_scope = prog_structure.self_element(scope);
+            for scope in analysis_results.program_structure.scopes() {
+                let parent = analysis_results.program_structure.parent(scope);
+                let self_scope = analysis_results.program_structure.self_element(scope);
 
                 if let Some(self_scope) = self_scope {
+                    let hir_self = analysis_results.program_structure.element(self_scope);
+
                     let hir_parent = parent
-                        .and_then(|parent| prog_structure.self_element(parent))
-                        .map(|parent| prog_structure.element(parent));
-                    let hir_self = prog_structure.element(self_scope);
+                        .and_then(|parent| analysis_results.program_structure.self_element(parent))
+                        .map(|parent| analysis_results.program_structure.element(parent));
 
                     println!("Scope: {:?}", hir_self.hir_dbg(&ctx));
-                    
+
                     if let Some(hir_parent) = hir_parent {
                         println!("Parent: {:?}", hir_parent.hir_dbg(&ctx));
                     }

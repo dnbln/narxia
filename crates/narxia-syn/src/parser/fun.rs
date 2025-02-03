@@ -23,7 +23,9 @@ parse_fn_decl! {
             $parse_generic_param_list()
             $/ws:wcn
         }
-        $parse_fn_param_list()
+        $/if at['('] {
+            $parse_fn_param_list()
+        }
         $/state:s1
         $/ws:wcn
         $/if at[->] {
