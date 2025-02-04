@@ -1,0 +1,12 @@
+Root@0..71
+  COMPOSED_TRIVIA@0..61 "// test let-stmt-mut at crates/narxia-syn/src/parser/stmt.rs\n"
+  Item@61..70
+    Stmt@61..70
+      LetStmt@61..70
+        LET_KW@61..64 "let"
+        COMPOSED_TRIVIA@64..65 " "
+        MUT_KW@65..68 "mut"
+        COMPOSED_TRIVIA@68..69 " "
+        Pat@69..70
+          IDENT@69..70 "x"
+  COMPOSED_TRIVIA@70..71 "\n"

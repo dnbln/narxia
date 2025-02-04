@@ -1,0 +1,3 @@
+// test fn-with-generic-ty-bound-default at crates/narxia-syn/src/parser/fun.rs
+fn f<T: Copy+Clone = i32>(v: T) {
+}

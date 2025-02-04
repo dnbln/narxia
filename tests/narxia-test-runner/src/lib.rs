@@ -1,17 +1,11 @@
 #![feature(internal_output_capture)]
 
+pub extern crate narxia_dir_structures;
+
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use libtest_mimic::Failed;
-
-pub fn ws_root() -> &'static Path {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-}
 
 pub fn run_trial(
     nocapture: bool,
@@ -39,68 +33,45 @@ pub fn run_trial(
 }
 
 pub mod parser_tests {
-    use std::path::PathBuf;
-
-    use dir_structure::{
-        DeferredRead, DeferredReadOrOwn, DirStructure, DirStructureItem, FileString,
-    };
+    use dir_structure::DirStructureItem;
     use miette::{bail, IntoDiagnostic};
+    use narxia_dir_structures::{parser_tests_dir, ParserTestSingleFolder};
     use narxia_driver::DriverCtx;
     use narxia_hir_db::HirFile;
 
-    use crate::ws_root;
-
-    pub fn parser_tests_dir() -> PathBuf {
-        ws_root().join("tests/parser-tests")
-    }
-
-    pub const INPUT_FILE_NAME: &str = "input.nrx";
-    pub const OUTPUT_FILE_NAME: &str = "output.txt";
-
-    #[derive(DirStructure, Clone)]
-    pub struct ParserTestSingleFolder {
-        #[dir_structure(path = "input.nrx")]
-        pub input: DeferredRead<FileString>,
-        #[dir_structure(path = "output.txt")]
-        pub output: Option<DeferredReadOrOwn<FileString>>,
-        pub self_path: PathBuf,
-    }
-
-    impl ParserTestSingleFolder {
-        pub fn input_file_path(&self) -> PathBuf {
-            self.self_path.join(INPUT_FILE_NAME)
+    pub fn lower_to_hir<'db>(
+        folder: &mut ParserTestSingleFolder,
+        ctx: &'db DriverCtx,
+    ) -> miette::Result<HirFile<'db>> {
+        let input = folder
+            .input
+            .perform_and_store_read()
+            .into_diagnostic()?
+            .clone();
+        let src_file = narxia_driver::load_file(ctx, folder.input_file_path(), &input.0);
+        ctx.trace_file(src_file);
+        let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(ctx, src_file);
+        if !errors.is_empty() {
+            bail!("Errors: {errors:?}");
         }
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(Some(src_file));
+        let hir = narxia_hir_db::lower_file(&ctx.db, syn_file);
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(None);
 
-        pub fn output_file_path(&self) -> PathBuf {
-            self.self_path.join(OUTPUT_FILE_NAME)
-        }
+        let mod_id = hir.mod_def(&ctx.db);
 
-        pub fn lower_to_hir<'db>(&self, ctx: &'db DriverCtx) -> miette::Result<HirFile<'db>> {
-            let input = self.input.perform_read().into_diagnostic()?;
-            let src_file = narxia_driver::load_file(ctx, self.input_file_path(), &input.0);
-            let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(ctx, src_file);
-            if !errors.is_empty() {
-                bail!("Errors: {errors:?}");
-            }
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(src_file));
-            let hir = narxia_hir_db::lower_file(&ctx.db, syn_file);
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
+        narxia_hir::hir_map::hir_map_update_parents_in_mod(
+            &mut *ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
+            mod_id,
+        );
 
-            let mod_id = hir.mod_def(&ctx.db);
-
-            narxia_hir::hir_map::hir_map_update_parents_in_mod(
-                &mut *ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
-                mod_id,
-            );
-
-            Ok(hir)
-        }
+        Ok(hir)
     }
 
     dir_structure::dir_children_wrapper!(pub ParserTestsFolder ParserTestSingleFolder);
@@ -141,7 +112,7 @@ macro_rules! parser_test_trials {
 #[macro_export]
 macro_rules! test_main_parser_tests_foreach {
     (|$name:ident| { $($do:tt)* }) => {
-        fn __trial($name: $crate::parser_tests::ParserTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_dir_structures::ParserTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
 

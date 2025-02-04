@@ -5,9 +5,13 @@ use miette::IntoDiagnostic;
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
 
+/// Compiler for narxia.
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version)]
 enum NarxiaDriverCommand {
+    /// Parse the given file.
+    /// 
+    /// This command will parse the given file and print the resulting syntax tree.
     #[clap(name = "parse")]
     Parse(NarxiaDriverParseCommand),
     #[clap(name = "display-hir")]

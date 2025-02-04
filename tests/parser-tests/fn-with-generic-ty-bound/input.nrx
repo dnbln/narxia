@@ -1,0 +1,3 @@
+// test fn-with-generic-ty-bound at crates/narxia-syn/src/parser/fun.rs
+fn f<T: Copy+Clone>(v: T) {
+}

@@ -1,0 +1,2 @@
+// test num-lit-bin at crates/narxia-syn/src/parser/expr.rs
+let x = 0b01_00

@@ -1,0 +1,2 @@
+// test num-lit-all at crates/narxia-syn/src/parser/expr.rs
+let x = 123_456_789 + 0b01_00 + 01_234_567 + 0x3_abc_def

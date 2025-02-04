@@ -1,0 +1,36 @@
+Root@0..99
+  COMPOSED_TRIVIA@0..68 "// test while-stmt-in-block at crates/narxia-syn/src/parser/stmt.rs\n"
+  Item@68..98
+    Stmt@68..98
+      Expr@68..98
+        ExprAtom@68..98
+          BlockExpr@68..98
+            Block@68..98
+              L_BRACE@68..69 "{"
+              COMPOSED_TRIVIA@69..74 "\n    "
+              Item@74..96
+                Stmt@74..96
+                  WhileStmt@74..96
+                    WHILE_KW@74..79 "while"
+                    COMPOSED_TRIVIA@79..80 " "
+                    WhileCondition@80..88
+                      L_PAREN@80..81 "("
+                      Expr@81..87
+                        BinaryOpExpr@81..87
+                          ExprAtom@81..82
+                            IDENT@81..82 "a"
+                          COMPOSED_TRIVIA@82..83 " "
+                          BinaryOpExprOp@83..85
+                            EQ2@83..85 "=="
+                          COMPOSED_TRIVIA@85..86 " "
+                          ExprAtom@86..87
+                            IDENT@86..87 "b"
+                      R_PAREN@87..88 ")"
+                    COMPOSED_TRIVIA@88..89 " "
+                    Block@89..96
+                      L_BRACE@89..90 "{"
+                      COMPOSED_TRIVIA@90..95 "\n    "
+                      R_BRACE@95..96 "}"
+              NEWLINE@96..97 "\n"
+              R_BRACE@97..98 "}"
+  COMPOSED_TRIVIA@98..99 "\n"

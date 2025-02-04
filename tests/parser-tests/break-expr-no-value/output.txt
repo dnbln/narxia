@@ -1,0 +1,9 @@
+Root@0..74
+  COMPOSED_TRIVIA@0..68 "// test break-expr-no-value at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@68..73
+    Stmt@68..73
+      Expr@68..73
+        ExprAtom@68..73
+          BreakExpr@68..73
+            BREAK_KW@68..73 "break"
+  COMPOSED_TRIVIA@73..74 "\n"

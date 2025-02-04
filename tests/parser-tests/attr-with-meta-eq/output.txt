@@ -1,0 +1,37 @@
+Root@0..91
+  COMPOSED_TRIVIA@0..65 "// test attr-with-meta-eq at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@65..90
+    AttrList@65..81
+      Attr@65..80
+        HASH@65..66 "#"
+        AttrName@66..70
+          IDENT@66..70 "attr"
+        AttrMeta@70..80
+          L_BRACK@70..71 "["
+          AttrMetaItem@71..79
+            AttrMetaItemName@71..75
+              IDENT@71..75 "meta"
+            COMPOSED_TRIVIA@75..76 " "
+            AttrMetaItemEq@76..79
+              EQ@76..77 "="
+              COMPOSED_TRIVIA@77..78 " "
+              Expr@78..79
+                ExprAtom@78..79
+                  NumLit@78..79
+                    NUM_DEC@78..79 "1"
+          R_BRACK@79..80 "]"
+      COMPOSED_TRIVIA@80..81 "\n"
+    FnDef@81..90
+      FnHead@81..87
+        FN_KW@81..83 "fn"
+        COMPOSED_TRIVIA@83..84 " "
+        FnName@84..85
+          IDENT@84..85 "f"
+        FnParamList@85..87
+          L_PAREN@85..86 "("
+          R_PAREN@86..87 ")"
+      COMPOSED_TRIVIA@87..88 " "
+      Block@88..90
+        L_BRACE@88..89 "{"
+        R_BRACE@89..90 "}"
+  COMPOSED_TRIVIA@90..91 "\n"

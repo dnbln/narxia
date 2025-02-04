@@ -1,0 +1,3 @@
+// test return-expr-with-value-on-newline at crates/narxia-syn/src/parser/expr.rs
+return
+1

@@ -1,47 +1,9 @@
-Root@0..47
-  Item@0..34
-    Module@0..34
-      MODULE_KW@0..6 "module"
-      COMPOSED_TRIVIA@6..7 " "
-      ModuleName@7..8
-        IDENT@7..8 "a"
-      COMPOSED_TRIVIA@8..9 " "
-      ModuleBody@9..34
-        L_BRACE@9..10 "{"
-        COMPOSED_TRIVIA@10..15 "\n    "
-        Item@15..32
-          FnDef@15..32
-            FnHead@15..28
-              FN_KW@15..17 "fn"
-              COMPOSED_TRIVIA@17..18 " "
-              FnName@18..19
-                IDENT@18..19 "f"
-              FnParamList@19..21
-                L_PAREN@19..20 "("
-                R_PAREN@20..21 ")"
-              COMPOSED_TRIVIA@21..22 " "
-              FnRetTy@22..28
-                THIN_ARROW@22..24 "->"
-                COMPOSED_TRIVIA@24..25 " "
-                TyRef@25..28
-                  IDENT@25..28 "i32"
-            COMPOSED_TRIVIA@28..29 " "
-            Block@29..32
-              L_BRACE@29..30 "{"
-              Item@30..31
-                Stmt@30..31
-                  Expr@30..31
-                    ExprAtom@30..31
-                      NumLit@30..31
-                        NUM_DEC@30..31 "0"
-              R_BRACE@31..32 "}"
-        NEWLINE@32..33 "\n"
-        R_BRACE@33..34 "}"
-  COMPOSED_TRIVIA@34..36 "\n\n"
-  Item@36..44
-    Module@36..44
-      MODULE_KW@36..42 "module"
-      COMPOSED_TRIVIA@42..43 " "
-      ModuleName@43..44
-        IDENT@43..44 "b"
-  COMPOSED_TRIVIA@44..47 " \n\n"
+Root@0..63
+  COMPOSED_TRIVIA@0..54 "// test module at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@54..62
+    Module@54..62
+      MODULE_KW@54..60 "module"
+      COMPOSED_TRIVIA@60..61 " "
+      ModuleName@61..62
+        IDENT@61..62 "a"
+  COMPOSED_TRIVIA@62..63 "\n"

@@ -1,0 +1,39 @@
+Root@0..98
+  COMPOSED_TRIVIA@0..69 "// test fn-with-generic-const at crates/narxia-syn/src/parser/fun.rs\n"
+  Item@69..97
+    FnDef@69..97
+      FnHead@69..94
+        FN_KW@69..71 "fn"
+        COMPOSED_TRIVIA@71..72 " "
+        FnName@72..73
+          IDENT@72..73 "f"
+        GenericParamList@73..86
+          L_ANGLE@73..74 "<"
+          GenericParam@74..85
+            GenericConstParam@74..85
+              CONST_KW@74..79 "const"
+              COMPOSED_TRIVIA@79..80 " "
+              GenericConstParamName@80..81
+                IDENT@80..81 "V"
+              COLON@81..82 ":"
+              COMPOSED_TRIVIA@82..83 " "
+              TyRef@83..85
+                IDENT@83..85 "Ty"
+          R_ANGLE@85..86 ">"
+        FnParamList@86..94
+          L_PAREN@86..87 "("
+          FnParam@87..93
+            FnParamName@87..88
+              Pat@87..88
+                IDENT@87..88 "a"
+            COLON@88..89 ":"
+            COMPOSED_TRIVIA@89..90 " "
+            FnParamTy@90..93
+              TyRef@90..93
+                IDENT@90..93 "i32"
+          R_PAREN@93..94 ")"
+      COMPOSED_TRIVIA@94..95 " "
+      Block@95..97
+        L_BRACE@95..96 "{"
+        R_BRACE@96..97 "}"
+  COMPOSED_TRIVIA@97..98 "\n"

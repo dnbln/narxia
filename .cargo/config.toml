@@ -1,6 +1,8 @@
 [alias]
 nt = "nextest run"
 nta = "nt --all"
+nexus = "run -p nexus --"
+nexusr = "run -p nexus --release --"
 
 [unstable]
 codegen-backend = true

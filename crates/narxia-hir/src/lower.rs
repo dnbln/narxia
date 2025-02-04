@@ -487,7 +487,11 @@ fn lower_ty_param_bounds(
         .get_generic_ty_param_bound_list()
         .map(|it| lower_ty_ref(hir_lower_ctxt, &it.get_ty_ref()))
         .collect();
-    GenericParamTyBounds { colon, bounds, span: colon.span().join(bound_list.span()) }
+    GenericParamTyBounds {
+        colon,
+        bounds,
+        span: colon.span().join(bound_list.span()),
+    }
 }
 
 fn lower_fn_ret_ty(hir_lower_ctxt: &mut HirLowerCtxt, ret_ty: &syntree::FnRetTy) -> FnRetTy {
@@ -794,6 +798,10 @@ fn lower_expr_atom(hir_lower_ctxt: &mut HirLowerCtxt, atom: &syntree::ExprAtom) 
     } else if let Some(tuple_like) = atom.get_tuple_like_expr() {
         ExprAtom {
             kind: ExprAtomKind::TupleExpr(lower_tuple_like_expr(hir_lower_ctxt, &tuple_like)),
+        }
+    } else if let Some(lambda_expr) = atom.get_lambda_expr() {
+        ExprAtom {
+            kind: ExprAtomKind::LambdaExpr(lower_lambda_expr(hir_lower_ctxt, &lambda_expr)),
         }
     } else {
         todo!()

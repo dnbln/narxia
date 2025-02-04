@@ -1,0 +1,6 @@
+// test call-with-simple-lambda-explicit-param-block at crates/narxia-syn/src/parser/expr.rs
+f { it ->
+    call();
+    call2();
+    it
+}

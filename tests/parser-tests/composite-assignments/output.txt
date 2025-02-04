@@ -1,152 +1,153 @@
-Root@0..66
-  Item@0..9
-    Stmt@0..9
-      LetStmt@0..9
-        LET_KW@0..3 "let"
-        COMPOSED_TRIVIA@3..4 " "
-        Pat@4..5
-          IDENT@4..5 "x"
-        COMPOSED_TRIVIA@5..6 " "
-        EQ@6..7 "="
-        COMPOSED_TRIVIA@7..8 " "
-        Expr@8..9
-          ExprAtom@8..9
-            NumLit@8..9
-              NUM_DEC@8..9 "1"
-  COMPOSED_TRIVIA@9..10 "\n"
-  Item@10..16
-    Stmt@10..16
-      AssignmentStmt@10..16
-        AssignmentLhs@10..11
-          Expr@10..11
-            ExprAtom@10..11
-              IDENT@10..11 "x"
-        COMPOSED_TRIVIA@11..12 " "
-        AssignmentOpAndRhsExpr@12..16
-          AssignmentOp@12..14
-            PLUS_EQ@12..14 "+="
-          COMPOSED_TRIVIA@14..15 " "
-          Expr@15..16
-            ExprAtom@15..16
-              NumLit@15..16
-                NUM_DEC@15..16 "1"
-  COMPOSED_TRIVIA@16..17 "\n"
-  Item@17..23
-    Stmt@17..23
-      AssignmentStmt@17..23
-        AssignmentLhs@17..18
-          Expr@17..18
-            ExprAtom@17..18
-              IDENT@17..18 "x"
-        COMPOSED_TRIVIA@18..19 " "
-        AssignmentOpAndRhsExpr@19..23
-          AssignmentOp@19..21
-            MINUS_EQ@19..21 "-="
-          COMPOSED_TRIVIA@21..22 " "
-          Expr@22..23
-            ExprAtom@22..23
-              NumLit@22..23
-                NUM_DEC@22..23 "1"
-  COMPOSED_TRIVIA@23..24 "\n"
-  Item@24..30
-    Stmt@24..30
-      AssignmentStmt@24..30
-        AssignmentLhs@24..25
-          Expr@24..25
-            ExprAtom@24..25
-              IDENT@24..25 "x"
-        COMPOSED_TRIVIA@25..26 " "
-        AssignmentOpAndRhsExpr@26..30
-          AssignmentOp@26..28
-            ASTERISK_EQ@26..28 "*="
-          COMPOSED_TRIVIA@28..29 " "
-          Expr@29..30
-            ExprAtom@29..30
-              NumLit@29..30
-                NUM_DEC@29..30 "1"
-  COMPOSED_TRIVIA@30..31 "\n"
-  Item@31..37
-    Stmt@31..37
-      AssignmentStmt@31..37
-        AssignmentLhs@31..32
-          Expr@31..32
-            ExprAtom@31..32
-              IDENT@31..32 "x"
-        COMPOSED_TRIVIA@32..33 " "
-        AssignmentOpAndRhsExpr@33..37
-          AssignmentOp@33..35
-            SLASH_EQ@33..35 "/="
-          COMPOSED_TRIVIA@35..36 " "
-          Expr@36..37
-            ExprAtom@36..37
-              NumLit@36..37
-                NUM_DEC@36..37 "1"
-  COMPOSED_TRIVIA@37..38 "\n"
-  Item@38..44
-    Stmt@38..44
-      AssignmentStmt@38..44
-        AssignmentLhs@38..39
-          Expr@38..39
-            ExprAtom@38..39
-              IDENT@38..39 "x"
-        COMPOSED_TRIVIA@39..40 " "
-        AssignmentOpAndRhsExpr@40..44
-          AssignmentOp@40..42
-            PERCENT_EQ@40..42 "%="
-          COMPOSED_TRIVIA@42..43 " "
-          Expr@43..44
-            ExprAtom@43..44
-              NumLit@43..44
-                NUM_DEC@43..44 "1"
-  COMPOSED_TRIVIA@44..45 "\n"
-  Item@45..51
-    Stmt@45..51
-      AssignmentStmt@45..51
-        AssignmentLhs@45..46
-          Expr@45..46
-            ExprAtom@45..46
-              IDENT@45..46 "x"
-        COMPOSED_TRIVIA@46..47 " "
-        AssignmentOpAndRhsExpr@47..51
-          AssignmentOp@47..49
-            AMP_EQ@47..49 "&="
-          COMPOSED_TRIVIA@49..50 " "
-          Expr@50..51
-            ExprAtom@50..51
-              NumLit@50..51
-                NUM_DEC@50..51 "1"
-  COMPOSED_TRIVIA@51..52 "\n"
-  Item@52..58
-    Stmt@52..58
-      AssignmentStmt@52..58
-        AssignmentLhs@52..53
-          Expr@52..53
-            ExprAtom@52..53
-              IDENT@52..53 "x"
-        COMPOSED_TRIVIA@53..54 " "
-        AssignmentOpAndRhsExpr@54..58
-          AssignmentOp@54..56
-            PIPE_EQ@54..56 "|="
-          COMPOSED_TRIVIA@56..57 " "
-          Expr@57..58
-            ExprAtom@57..58
-              NumLit@57..58
-                NUM_DEC@57..58 "1"
-  COMPOSED_TRIVIA@58..59 "\n"
-  Item@59..65
-    Stmt@59..65
-      AssignmentStmt@59..65
-        AssignmentLhs@59..60
-          Expr@59..60
-            ExprAtom@59..60
-              IDENT@59..60 "x"
-        COMPOSED_TRIVIA@60..61 " "
-        AssignmentOpAndRhsExpr@61..65
-          AssignmentOp@61..63
-            CARET_EQ@61..63 "^="
-          COMPOSED_TRIVIA@63..64 " "
-          Expr@64..65
-            ExprAtom@64..65
-              NumLit@64..65
-                NUM_DEC@64..65 "1"
-  COMPOSED_TRIVIA@65..66 "\n"
+Root@0..136
+  COMPOSED_TRIVIA@0..70 "// test composite-assignments at crates/narxia-syn/src/parser/stmt.rs\n"
+  Item@70..79
+    Stmt@70..79
+      LetStmt@70..79
+        LET_KW@70..73 "let"
+        COMPOSED_TRIVIA@73..74 " "
+        Pat@74..75
+          IDENT@74..75 "x"
+        COMPOSED_TRIVIA@75..76 " "
+        EQ@76..77 "="
+        COMPOSED_TRIVIA@77..78 " "
+        Expr@78..79
+          ExprAtom@78..79
+            NumLit@78..79
+              NUM_DEC@78..79 "1"
+  COMPOSED_TRIVIA@79..80 "\n"
+  Item@80..86
+    Stmt@80..86
+      AssignmentStmt@80..86
+        AssignmentLhs@80..81
+          Expr@80..81
+            ExprAtom@80..81
+              IDENT@80..81 "x"
+        COMPOSED_TRIVIA@81..82 " "
+        AssignmentOpAndRhsExpr@82..86
+          AssignmentOp@82..84
+            PLUS_EQ@82..84 "+="
+          COMPOSED_TRIVIA@84..85 " "
+          Expr@85..86
+            ExprAtom@85..86
+              NumLit@85..86
+                NUM_DEC@85..86 "1"
+  COMPOSED_TRIVIA@86..87 "\n"
+  Item@87..93
+    Stmt@87..93
+      AssignmentStmt@87..93
+        AssignmentLhs@87..88
+          Expr@87..88
+            ExprAtom@87..88
+              IDENT@87..88 "x"
+        COMPOSED_TRIVIA@88..89 " "
+        AssignmentOpAndRhsExpr@89..93
+          AssignmentOp@89..91
+            MINUS_EQ@89..91 "-="
+          COMPOSED_TRIVIA@91..92 " "
+          Expr@92..93
+            ExprAtom@92..93
+              NumLit@92..93
+                NUM_DEC@92..93 "1"
+  COMPOSED_TRIVIA@93..94 "\n"
+  Item@94..100
+    Stmt@94..100
+      AssignmentStmt@94..100
+        AssignmentLhs@94..95
+          Expr@94..95
+            ExprAtom@94..95
+              IDENT@94..95 "x"
+        COMPOSED_TRIVIA@95..96 " "
+        AssignmentOpAndRhsExpr@96..100
+          AssignmentOp@96..98
+            ASTERISK_EQ@96..98 "*="
+          COMPOSED_TRIVIA@98..99 " "
+          Expr@99..100
+            ExprAtom@99..100
+              NumLit@99..100
+                NUM_DEC@99..100 "1"
+  COMPOSED_TRIVIA@100..101 "\n"
+  Item@101..107
+    Stmt@101..107
+      AssignmentStmt@101..107
+        AssignmentLhs@101..102
+          Expr@101..102
+            ExprAtom@101..102
+              IDENT@101..102 "x"
+        COMPOSED_TRIVIA@102..103 " "
+        AssignmentOpAndRhsExpr@103..107
+          AssignmentOp@103..105
+            SLASH_EQ@103..105 "/="
+          COMPOSED_TRIVIA@105..106 " "
+          Expr@106..107
+            ExprAtom@106..107
+              NumLit@106..107
+                NUM_DEC@106..107 "1"
+  COMPOSED_TRIVIA@107..108 "\n"
+  Item@108..114
+    Stmt@108..114
+      AssignmentStmt@108..114
+        AssignmentLhs@108..109
+          Expr@108..109
+            ExprAtom@108..109
+              IDENT@108..109 "x"
+        COMPOSED_TRIVIA@109..110 " "
+        AssignmentOpAndRhsExpr@110..114
+          AssignmentOp@110..112
+            PERCENT_EQ@110..112 "%="
+          COMPOSED_TRIVIA@112..113 " "
+          Expr@113..114
+            ExprAtom@113..114
+              NumLit@113..114
+                NUM_DEC@113..114 "1"
+  COMPOSED_TRIVIA@114..115 "\n"
+  Item@115..121
+    Stmt@115..121
+      AssignmentStmt@115..121
+        AssignmentLhs@115..116
+          Expr@115..116
+            ExprAtom@115..116
+              IDENT@115..116 "x"
+        COMPOSED_TRIVIA@116..117 " "
+        AssignmentOpAndRhsExpr@117..121
+          AssignmentOp@117..119
+            AMP_EQ@117..119 "&="
+          COMPOSED_TRIVIA@119..120 " "
+          Expr@120..121
+            ExprAtom@120..121
+              NumLit@120..121
+                NUM_DEC@120..121 "1"
+  COMPOSED_TRIVIA@121..122 "\n"
+  Item@122..128
+    Stmt@122..128
+      AssignmentStmt@122..128
+        AssignmentLhs@122..123
+          Expr@122..123
+            ExprAtom@122..123
+              IDENT@122..123 "x"
+        COMPOSED_TRIVIA@123..124 " "
+        AssignmentOpAndRhsExpr@124..128
+          AssignmentOp@124..126
+            PIPE_EQ@124..126 "|="
+          COMPOSED_TRIVIA@126..127 " "
+          Expr@127..128
+            ExprAtom@127..128
+              NumLit@127..128
+                NUM_DEC@127..128 "1"
+  COMPOSED_TRIVIA@128..129 "\n"
+  Item@129..135
+    Stmt@129..135
+      AssignmentStmt@129..135
+        AssignmentLhs@129..130
+          Expr@129..130
+            ExprAtom@129..130
+              IDENT@129..130 "x"
+        COMPOSED_TRIVIA@130..131 " "
+        AssignmentOpAndRhsExpr@131..135
+          AssignmentOp@131..133
+            CARET_EQ@131..133 "^="
+          COMPOSED_TRIVIA@133..134 " "
+          Expr@134..135
+            ExprAtom@134..135
+              NumLit@134..135
+                NUM_DEC@134..135 "1"
+  COMPOSED_TRIVIA@135..136 "\n"

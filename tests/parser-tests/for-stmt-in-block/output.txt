@@ -1,0 +1,40 @@
+Root@0..97
+  COMPOSED_TRIVIA@0..66 "// test for-stmt-in-block at crates/narxia-syn/src/parser/stmt.rs\n"
+  Item@66..96
+    Stmt@66..96
+      Expr@66..96
+        ExprAtom@66..96
+          BlockExpr@66..96
+            Block@66..96
+              L_BRACE@66..67 "{"
+              COMPOSED_TRIVIA@67..72 "\n    "
+              Item@72..94
+                Stmt@72..94
+                  ForStmt@72..94
+                    FOR_KW@72..75 "for"
+                    COMPOSED_TRIVIA@75..76 " "
+                    L_PAREN@76..77 "("
+                    ForPat@77..78
+                      Pat@77..78
+                        IDENT@77..78 "i"
+                    COMPOSED_TRIVIA@78..79 " "
+                    IN_KW@79..81 "in"
+                    COMPOSED_TRIVIA@81..82 " "
+                    ForInExpr@82..85
+                      Expr@82..85
+                        CallExpr@82..85
+                          ExprAtom@82..83
+                            IDENT@82..83 "f"
+                          CallExprArgs@83..85
+                            CallExprArgsList@83..85
+                              L_PAREN@83..84 "("
+                              R_PAREN@84..85 ")"
+                    R_PAREN@85..86 ")"
+                    COMPOSED_TRIVIA@86..87 " "
+                    Block@87..94
+                      L_BRACE@87..88 "{"
+                      COMPOSED_TRIVIA@88..93 "\n    "
+                      R_BRACE@93..94 "}"
+              NEWLINE@94..95 "\n"
+              R_BRACE@95..96 "}"
+  COMPOSED_TRIVIA@96..97 "\n"

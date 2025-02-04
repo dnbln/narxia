@@ -1,0 +1,66 @@
+Root@0..116
+  COMPOSED_TRIVIA@0..64 "// test block-with-semis at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@64..115
+    Stmt@64..115
+      Expr@64..115
+        ExprAtom@64..115
+          BlockExpr@64..115
+            Block@64..115
+              L_BRACE@64..65 "{"
+              COMPOSED_TRIVIA@65..66 " "
+              Item@66..75
+                Stmt@66..75
+                  LetStmt@66..75
+                    LET_KW@66..69 "let"
+                    COMPOSED_TRIVIA@69..70 " "
+                    Pat@70..71
+                      IDENT@70..71 "x"
+                    COMPOSED_TRIVIA@71..72 " "
+                    EQ@72..73 "="
+                    COMPOSED_TRIVIA@73..74 " "
+                    Expr@74..75
+                      ExprAtom@74..75
+                        IDENT@74..75 "a"
+              SEMI@75..76 ";"
+              COMPOSED_TRIVIA@76..77 " "
+              Item@77..86
+                Stmt@77..86
+                  LetStmt@77..86
+                    LET_KW@77..80 "let"
+                    COMPOSED_TRIVIA@80..81 " "
+                    Pat@81..82
+                      IDENT@81..82 "y"
+                    COMPOSED_TRIVIA@82..83 " "
+                    EQ@83..84 "="
+                    COMPOSED_TRIVIA@84..85 " "
+                    Expr@85..86
+                      ExprAtom@85..86
+                        IDENT@85..86 "b"
+              SEMI@86..87 ";"
+              SEMI@87..88 ";"
+              SEMI@88..89 ";"
+              NEWLINE@89..90 "\n"
+              COMPOSED_TRIVIA@90..95 "     "
+              SEMI@95..96 ";"
+              SEMI@96..97 ";"
+              NEWLINE@97..98 "\n"
+              COMPOSED_TRIVIA@98..103 "     "
+              SEMI@103..104 ";"
+              SEMI@104..105 ";"
+              NEWLINE@105..106 "\n"
+              COMPOSED_TRIVIA@106..108 "  "
+              Item@108..113
+                Stmt@108..113
+                  Expr@108..113
+                    BinaryOpExpr@108..113
+                      ExprAtom@108..109
+                        IDENT@108..109 "x"
+                      COMPOSED_TRIVIA@109..110 " "
+                      BinaryOpExprOp@110..111
+                        PLUS@110..111 "+"
+                      COMPOSED_TRIVIA@111..112 " "
+                      ExprAtom@112..113
+                        IDENT@112..113 "y"
+              COMPOSED_TRIVIA@113..114 " "
+              R_BRACE@114..115 "}"
+  COMPOSED_TRIVIA@115..116 "\n"

@@ -1,0 +1,2 @@
+// test method-call-with-simple-lambda-after-empty-call-args at crates/narxia-syn/src/parser/expr.rs
+a.f() { it + a }

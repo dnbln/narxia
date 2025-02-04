@@ -1,0 +1,4 @@
+// test if-expr-in-block at crates/narxia-syn/src/parser/expr.rs
+{
+    if (a == b) a else b
+}

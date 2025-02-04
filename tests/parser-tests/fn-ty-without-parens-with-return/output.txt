@@ -1,0 +1,21 @@
+Root@0..97
+  COMPOSED_TRIVIA@0..80 "// test fn-ty-without-parens-with-return at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@80..96
+    Stmt@80..96
+      LetStmt@80..96
+        LET_KW@80..83 "let"
+        COMPOSED_TRIVIA@83..84 " "
+        Pat@84..85
+          IDENT@84..85 "x"
+        COLON@85..86 ":"
+        COMPOSED_TRIVIA@86..87 " "
+        TyRef@87..96
+          FnTy@87..96
+            FN_KW@87..89 "fn"
+            COMPOSED_TRIVIA@89..90 " "
+            FnTyRetTy@90..96
+              THIN_ARROW@90..92 "->"
+              COMPOSED_TRIVIA@92..93 " "
+              TyRef@93..96
+                IDENT@93..96 "i32"
+  COMPOSED_TRIVIA@96..97 "\n"

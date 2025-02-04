@@ -1,0 +1,2 @@
+// test call-with-multi-args-and-lambda at crates/narxia-syn/src/parser/expr.rs
+f(a, b, c) { it + a }

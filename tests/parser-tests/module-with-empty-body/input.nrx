@@ -1,0 +1,2 @@
+// test module-with-empty-body at crates/narxia-syn/src/parser/mod.rs
+module a {}

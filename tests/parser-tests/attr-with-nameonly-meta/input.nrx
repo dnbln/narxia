@@ -1,0 +1,3 @@
+// test attr-with-nameonly-meta at crates/narxia-syn/src/parser/mod.rs
+#attr[meta]
+fn f() {}

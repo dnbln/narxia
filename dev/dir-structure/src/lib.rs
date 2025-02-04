@@ -677,6 +677,12 @@ impl From<FileBytes> for Vec<u8> {
     }
 }
 
+impl From<Vec<u8>> for FileBytes {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}
+
 impl NewtypeToInner for FileBytes {
     type Inner = Vec<u8>;
 
@@ -719,6 +725,12 @@ impl FileString {
 impl From<FileString> for String {
     fn from(value: FileString) -> Self {
         value.0
+    }
+}
+
+impl From<String> for FileString {
+    fn from(value: String) -> Self {
+        Self(value)
     }
 }
 

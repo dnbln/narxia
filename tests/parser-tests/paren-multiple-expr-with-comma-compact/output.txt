@@ -1,0 +1,33 @@
+Root@0..104
+  COMPOSED_TRIVIA@0..87 "// test paren-multiple-expr-with-comma-compact at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@87..103
+    Stmt@87..103
+      LetStmt@87..103
+        LET_KW@87..90 "let"
+        COMPOSED_TRIVIA@90..91 " "
+        Pat@91..92
+          IDENT@91..92 "x"
+        COMPOSED_TRIVIA@92..93 " "
+        EQ@93..94 "="
+        COMPOSED_TRIVIA@94..95 " "
+        Expr@95..103
+          ExprAtom@95..103
+            TupleLikeExpr@95..103
+              L_PAREN@95..96 "("
+              Expr@96..97
+                ExprAtom@96..97
+                  NumLit@96..97
+                    NUM_DEC@96..97 "1"
+              COMMA@97..98 ","
+              Expr@98..99
+                ExprAtom@98..99
+                  NumLit@98..99
+                    NUM_DEC@98..99 "2"
+              COMMA@99..100 ","
+              Expr@100..101
+                ExprAtom@100..101
+                  NumLit@100..101
+                    NUM_DEC@100..101 "3"
+              COMMA@101..102 ","
+              R_PAREN@102..103 ")"
+  COMPOSED_TRIVIA@103..104 "\n"

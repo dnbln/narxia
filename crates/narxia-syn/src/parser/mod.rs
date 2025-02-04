@@ -12,6 +12,9 @@
 //! Namely, the parser ensures that all the events that have started since the state
 //! was saved are either completed or rolled back before the state is restored.
 
+// parser-test:hello-world
+// println("Hello, world!")
+
 use std::fmt;
 
 use narxia_proc::{parse_fn, parse_fn_decl};
@@ -338,7 +341,7 @@ impl<'a> Parser<'a> {
                 | T![use] => {
                     parse_item(self);
                 }
-                T![whitespace] | T![newline] => {
+                T![whitespace] | T![newline] | T![comment] => {
                     self.skip_ws_wcn();
                 }
                 T![;] => {
@@ -475,6 +478,53 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:attr
+    // #attr
+    // fn f() {}
+
+    // parser-test:attr2
+    // #attr2
+    // fn f() {}
+
+    // parser-test:attr-with-nameonly-meta
+    // #attr[meta]
+    // fn f() {}
+
+    // parser-test:attr-with-meta-eq
+    // #attr[meta = 1]
+    // fn f() {}
+
+    // parser-test:attr-with-multiple-meta-eq
+    // #attr[meta = 1, meta2 = 2]
+    // fn f() {}
+
+    // parser-test:attr-with-multiple-meta-eq2
+    // #attr[meta = 1, meta2 = 2, meta3 = 3]
+    // fn f() {}
+
+    // parser-test:attr-with-multiple-meta-eq-expressions
+    // #attr[meta = 1, meta2 = {let x = 1; x}, meta3 = "x"]
+    // fn f() {}
+
+    // parser-test:attr-with-meta-call
+    // #attr[meta(a = 1, b = 2, c = 3)]
+    // fn f() {}
+
+    // parser-test:attr-with-meta-call-with-eq
+    // #attr[meta(v = 1, v2 = 2)]
+    // fn f() {}
+
+    // parser-test:attr-with-multiple-meta-call-expressions
+    // #attr[
+    //     meta(a=1, b=2, c="3", d={4}, e, f=6, g=7, h=8, i="9", j=10+2),
+    //     meta2(a=1-3, b=0*2, c=3, d=4, e=5, f=6, g=7, h=8, i=9, j=10)
+    // ]
+    // fn f() {}
+
+    // parser-test:attr-with-multiple-meta-eq-and-call-expressions
+    // #attr[meta(v, v2 = 1, v3 = {let x = 1; x}, v4(v5 = 1, v6 = 2, v7 = {2}, v8(v9)))]
+    // fn f() {}
+
     parse_attr: Attr ::=
         $![#]
         $parse_attr_name()
@@ -515,6 +565,24 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:simple-use-stmt
+    // use println
+
+    // parser-test:simple-use-stmt-with-alias
+    // use println as p
+
+    // parser-test:simple-use-stmt-with-list
+    // use {println}
+
+    // parser-test:simple-use-stmt-with-list-in-path
+    // use println::{a b}
+
+    // parser-test:simple-use-stmt-with-list-in-path-and-alias
+    // use println::aaaa::{
+    //     a as b
+    //     b as c
+    //     c as a
+    // }
     parse_use: UseStmt ::= $![use] $/ws:wcn $parse_use_path()
 }
 
@@ -528,7 +596,7 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
-    parse_use_path_segment_and_path: UsePathSegmentAndPath ::= 
+    parse_use_path_segment_and_path: UsePathSegmentAndPath ::=
         $parse_use_path_segment()
         $/state:s1
         $/ws:wcn
@@ -576,7 +644,11 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn repeat_until(p: &mut Parser, end: SyntaxKind, mut parse: impl FnMut(&mut Parser) -> CompletedMarker) {
+fn repeat_until(
+    p: &mut Parser,
+    end: SyntaxKind,
+    mut parse: impl FnMut(&mut Parser) -> CompletedMarker,
+) {
     while !p.at(end) {
         parse(p);
         p.skip_ws_wcn();
@@ -596,6 +668,17 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:module
+    // module a
+
+    // parser-test:module-with-empty-body
+    // module a {}
+
+    // parser-test:module-with-body-and-items
+    // module a {
+    //     fn f() {}
+    // }
+
     parse_mod: Module ::=
         $![module]
         $/ws:wcn
@@ -886,6 +969,30 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:fn-ty
+    // let x: fn()
+
+    // parser-test:fn-ty-without-parens
+    // let x: fn
+
+    // parser-test:fn-ty-with-return
+    // let x: fn() -> i32
+
+    // parser-test:fn-ty-without-parens-with-return
+    // let x: fn -> i32
+
+    // parser-test:fn-ty-with-param
+    // let x: fn(i32)
+
+    // parser-test:fn-ty-with-param-and-return
+    // let x: fn(i32) -> i32
+
+    // parser-test:fn-ty-with-params
+    // let x: fn(i32, i32)
+
+    // parser-test:fn-ty-with-params-and-return
+    // let x: fn(i32, i32) -> i32
+
     parse_fn_ty: FnTy ::=
         $![fn]
         $/state:s1
@@ -924,6 +1031,13 @@ fn parse_block_insides(p: &mut Parser) {
     if !p.at(T!['}']) {
         loop {
             p.skip_ws_wc();
+
+            // parser-test:block-with-semis
+            // { let x = a; let y = b;;;
+            //      ;;
+            //      ;;
+            //   x + y }
+
             while p.at(T![;]) || p.at(T![newline]) {
                 if p.at(T![;]) {
                     p.expect(T![;]);

@@ -1,0 +1,2 @@
+// test paren-multiple-expr at crates/narxia-syn/src/parser/expr.rs
+let x = (1, 2, 3)

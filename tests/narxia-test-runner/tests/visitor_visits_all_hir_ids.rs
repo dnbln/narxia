@@ -2,7 +2,8 @@ use miette::bail;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::HirId;
-use narxia_test_runner::parser_tests::ParserTestSingleFolder;
+use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_test_runner::parser_tests::lower_to_hir;
 
 struct Visitor<'hir> {
     hir_map: &'hir narxia_hir::hir_map::HirMap,
@@ -19,9 +20,9 @@ impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
     }
 }
 
-fn run_test(test: ParserTestSingleFolder) -> miette::Result<()> {
+fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
-    let hir = test.lower_to_hir(&ctx)?;
+    let hir = lower_to_hir(&mut test, &ctx)?;
     ctx.trace_hir_file(hir);
 
     let mod_def = hir.mod_def(&ctx.db);

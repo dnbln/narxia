@@ -1,0 +1,5 @@
+// test while-stmt-in-block at crates/narxia-syn/src/parser/stmt.rs
+{
+    while (a == b) {
+    }
+}

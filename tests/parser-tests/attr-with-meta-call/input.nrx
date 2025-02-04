@@ -1,0 +1,3 @@
+// test attr-with-meta-call at crates/narxia-syn/src/parser/mod.rs
+#attr[meta(a = 1, b = 2, c = 3)]
+fn f() {}

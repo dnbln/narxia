@@ -1,1 +1,0 @@
-{ let x = a; let y = b; x + y }

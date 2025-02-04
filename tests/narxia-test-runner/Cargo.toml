@@ -12,6 +12,7 @@ dir-structure.workspace = true
 miette.workspace = true
 similar.workspace = true
 
+narxia-dir-structures.workspace = true
 narxia-driver.workspace = true
 narxia-hir.workspace = true
 narxia-hir-db.workspace = true

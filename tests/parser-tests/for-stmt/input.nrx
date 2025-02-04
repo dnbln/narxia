@@ -1,0 +1,3 @@
+// test for-stmt at crates/narxia-syn/src/parser/stmt.rs
+for (i in f()) {
+}

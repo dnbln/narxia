@@ -1,0 +1,4 @@
+// test module-with-body-and-items at crates/narxia-syn/src/parser/mod.rs
+module a {
+    fn f() {}
+}

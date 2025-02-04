@@ -1,0 +1,32 @@
+Root@0..103
+  COMPOSED_TRIVIA@0..88 "// test call-with-simple-lambda-after-call-args at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@88..102
+    Stmt@88..102
+      Expr@88..102
+        CallExpr@88..102
+          ExprAtom@88..89
+            IDENT@88..89 "f"
+          CallExprArgs@89..102
+            CallExprArgsList@89..91
+              L_PAREN@89..90 "("
+              R_PAREN@90..91 ")"
+            COMPOSED_TRIVIA@91..92 " "
+            CallExprArgLambda@92..102
+              LambdaExpr@92..102
+                L_BRACE@92..93 "{"
+                COMPOSED_TRIVIA@93..94 " "
+                Item@94..100
+                  Stmt@94..100
+                    Expr@94..100
+                      BinaryOpExpr@94..100
+                        ExprAtom@94..96
+                          IDENT@94..96 "it"
+                        COMPOSED_TRIVIA@96..97 " "
+                        BinaryOpExprOp@97..98
+                          PLUS@97..98 "+"
+                        COMPOSED_TRIVIA@98..99 " "
+                        ExprAtom@99..100
+                          IDENT@99..100 "a"
+                COMPOSED_TRIVIA@100..101 " "
+                R_BRACE@101..102 "}"
+  COMPOSED_TRIVIA@102..103 "\n"

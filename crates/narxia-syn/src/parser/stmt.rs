@@ -15,6 +15,21 @@ parse_fn_decl! {
 
 #[parse_fn]
 fn parse_expr_potential_assignment(p: &mut Parser) {
+    // parser-test:assignment
+    // x = y
+    // x.y = z
+
+    // parser-test:composite-assignments
+    // let x = 1
+    // x += 1
+    // x -= 1
+    // x *= 1
+    // x /= 1
+    // x %= 1
+    // x &= 1
+    // x |= 1
+    // x ^= 1
+
     let expr = expr::parse_expr(p);
     let s = p.state();
     let lhs = p.ev.precede_completed(&expr);
@@ -51,6 +66,16 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:for-stmt
+    // for (i in f()) {
+    // }
+
+    // parser-test:for-stmt-in-block
+    // {
+    //     for (i in f()) {
+    //     }
+    // }
+
     parse_for_stmt: ForStmt ::=
         $![for]
         $/ws:wcn
@@ -76,6 +101,16 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:while-stmt
+    // while (a == b) {
+    // }
+
+    // parser-test:while-stmt-in-block
+    // {
+    //     while (a == b) {
+    //     }
+    // }
+
     parse_while_stmt: WhileStmt ::=
         $![while]
         $/ws:wcn
@@ -94,6 +129,27 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:let-stmt
+    // let x
+
+    // parser-test:let-stmt-mut
+    // let mut x
+
+    // parser-test:let-stmt-with-ty
+    // let x: i32
+
+    // parser-test:let-stmt-with-init
+    // let x = 1
+
+    // parser-test:let-stmt-mut-with-init
+    // let mut x = 1
+
+    // parser-test:let-stmt-with-ty-and-init
+    // let x: i32 = 1
+
+    // parser-test:let-stmt-mut-with-ty-and-init
+    // let mut x: i32 = 1
+
     parse_let_stmt: LetStmt ::=
         $![let]
         $/ws:wcn

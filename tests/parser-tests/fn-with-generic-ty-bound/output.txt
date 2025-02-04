@@ -1,0 +1,44 @@
+Root@0..102
+  COMPOSED_TRIVIA@0..72 "// test fn-with-generic-ty-bound at crates/narxia-syn/src/parser/fun.rs\n"
+  Item@72..101
+    FnDef@72..101
+      FnHead@72..97
+        FN_KW@72..74 "fn"
+        COMPOSED_TRIVIA@74..75 " "
+        FnName@75..76
+          IDENT@75..76 "f"
+        GenericParamList@76..91
+          L_ANGLE@76..77 "<"
+          GenericParam@77..90
+            GenericTyParam@77..90
+              GenericTyParamName@77..78
+                IDENT@77..78 "T"
+              COLON@78..79 ":"
+              COMPOSED_TRIVIA@79..80 " "
+              GenericTyParamBoundList@80..90
+                GenericTyParamBound@80..84
+                  TyRef@80..84
+                    IDENT@80..84 "Copy"
+                PLUS@84..85 "+"
+                GenericTyParamBound@85..90
+                  TyRef@85..90
+                    IDENT@85..90 "Clone"
+          R_ANGLE@90..91 ">"
+        FnParamList@91..97
+          L_PAREN@91..92 "("
+          FnParam@92..96
+            FnParamName@92..93
+              Pat@92..93
+                IDENT@92..93 "v"
+            COLON@93..94 ":"
+            COMPOSED_TRIVIA@94..95 " "
+            FnParamTy@95..96
+              TyRef@95..96
+                IDENT@95..96 "T"
+          R_PAREN@96..97 ")"
+      COMPOSED_TRIVIA@97..98 " "
+      Block@98..101
+        L_BRACE@98..99 "{"
+        COMPOSED_TRIVIA@99..100 "\n"
+        R_BRACE@100..101 "}"
+  COMPOSED_TRIVIA@101..102 "\n"

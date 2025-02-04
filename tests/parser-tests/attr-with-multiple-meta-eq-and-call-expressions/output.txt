@@ -1,0 +1,148 @@
+Root@0..187
+  COMPOSED_TRIVIA@0..95 "// test attr-with-multiple-meta-eq-and-call-expressions at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@95..186
+    AttrList@95..177
+      Attr@95..176
+        HASH@95..96 "#"
+        AttrName@96..100
+          IDENT@96..100 "attr"
+        AttrMeta@100..176
+          L_BRACK@100..101 "["
+          AttrMetaItem@101..175
+            AttrMetaItemName@101..105
+              IDENT@101..105 "meta"
+            AttrMetaItemCall@105..175
+              L_PAREN@105..106 "("
+              AttrMetaItem@106..107
+                AttrMetaItemName@106..107
+                  IDENT@106..107 "v"
+              COMMA@107..108 ","
+              COMPOSED_TRIVIA@108..109 " "
+              AttrMetaItem@109..115
+                AttrMetaItemName@109..111
+                  IDENT@109..111 "v2"
+                COMPOSED_TRIVIA@111..112 " "
+                AttrMetaItemEq@112..115
+                  EQ@112..113 "="
+                  COMPOSED_TRIVIA@113..114 " "
+                  Expr@114..115
+                    ExprAtom@114..115
+                      NumLit@114..115
+                        NUM_DEC@114..115 "1"
+              COMMA@115..116 ","
+              COMPOSED_TRIVIA@116..117 " "
+              AttrMetaItem@117..136
+                AttrMetaItemName@117..119
+                  IDENT@117..119 "v3"
+                COMPOSED_TRIVIA@119..120 " "
+                AttrMetaItemEq@120..136
+                  EQ@120..121 "="
+                  COMPOSED_TRIVIA@121..122 " "
+                  Expr@122..136
+                    ExprAtom@122..136
+                      BlockExpr@122..136
+                        Block@122..136
+                          L_BRACE@122..123 "{"
+                          Item@123..132
+                            Stmt@123..132
+                              LetStmt@123..132
+                                LET_KW@123..126 "let"
+                                COMPOSED_TRIVIA@126..127 " "
+                                Pat@127..128
+                                  IDENT@127..128 "x"
+                                COMPOSED_TRIVIA@128..129 " "
+                                EQ@129..130 "="
+                                COMPOSED_TRIVIA@130..131 " "
+                                Expr@131..132
+                                  ExprAtom@131..132
+                                    NumLit@131..132
+                                      NUM_DEC@131..132 "1"
+                          SEMI@132..133 ";"
+                          COMPOSED_TRIVIA@133..134 " "
+                          Item@134..135
+                            Stmt@134..135
+                              Expr@134..135
+                                ExprAtom@134..135
+                                  IDENT@134..135 "x"
+                          R_BRACE@135..136 "}"
+              COMMA@136..137 ","
+              COMPOSED_TRIVIA@137..138 " "
+              AttrMetaItem@138..174
+                AttrMetaItemName@138..140
+                  IDENT@138..140 "v4"
+                AttrMetaItemCall@140..174
+                  L_PAREN@140..141 "("
+                  AttrMetaItem@141..147
+                    AttrMetaItemName@141..143
+                      IDENT@141..143 "v5"
+                    COMPOSED_TRIVIA@143..144 " "
+                    AttrMetaItemEq@144..147
+                      EQ@144..145 "="
+                      COMPOSED_TRIVIA@145..146 " "
+                      Expr@146..147
+                        ExprAtom@146..147
+                          NumLit@146..147
+                            NUM_DEC@146..147 "1"
+                  COMMA@147..148 ","
+                  COMPOSED_TRIVIA@148..149 " "
+                  AttrMetaItem@149..155
+                    AttrMetaItemName@149..151
+                      IDENT@149..151 "v6"
+                    COMPOSED_TRIVIA@151..152 " "
+                    AttrMetaItemEq@152..155
+                      EQ@152..153 "="
+                      COMPOSED_TRIVIA@153..154 " "
+                      Expr@154..155
+                        ExprAtom@154..155
+                          NumLit@154..155
+                            NUM_DEC@154..155 "2"
+                  COMMA@155..156 ","
+                  COMPOSED_TRIVIA@156..157 " "
+                  AttrMetaItem@157..165
+                    AttrMetaItemName@157..159
+                      IDENT@157..159 "v7"
+                    COMPOSED_TRIVIA@159..160 " "
+                    AttrMetaItemEq@160..165
+                      EQ@160..161 "="
+                      COMPOSED_TRIVIA@161..162 " "
+                      Expr@162..165
+                        ExprAtom@162..165
+                          BlockExpr@162..165
+                            Block@162..165
+                              L_BRACE@162..163 "{"
+                              Item@163..164
+                                Stmt@163..164
+                                  Expr@163..164
+                                    ExprAtom@163..164
+                                      NumLit@163..164
+                                        NUM_DEC@163..164 "2"
+                              R_BRACE@164..165 "}"
+                  COMMA@165..166 ","
+                  COMPOSED_TRIVIA@166..167 " "
+                  AttrMetaItem@167..173
+                    AttrMetaItemName@167..169
+                      IDENT@167..169 "v8"
+                    AttrMetaItemCall@169..173
+                      L_PAREN@169..170 "("
+                      AttrMetaItem@170..172
+                        AttrMetaItemName@170..172
+                          IDENT@170..172 "v9"
+                      R_PAREN@172..173 ")"
+                  R_PAREN@173..174 ")"
+              R_PAREN@174..175 ")"
+          R_BRACK@175..176 "]"
+      COMPOSED_TRIVIA@176..177 "\n"
+    FnDef@177..186
+      FnHead@177..183
+        FN_KW@177..179 "fn"
+        COMPOSED_TRIVIA@179..180 " "
+        FnName@180..181
+          IDENT@180..181 "f"
+        FnParamList@181..183
+          L_PAREN@181..182 "("
+          R_PAREN@182..183 ")"
+      COMPOSED_TRIVIA@183..184 " "
+      Block@184..186
+        L_BRACE@184..185 "{"
+        R_BRACE@185..186 "}"
+  COMPOSED_TRIVIA@186..187 "\n"

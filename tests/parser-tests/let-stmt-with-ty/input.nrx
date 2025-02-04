@@ -1,0 +1,2 @@
+// test let-stmt-with-ty at crates/narxia-syn/src/parser/stmt.rs
+let x: i32

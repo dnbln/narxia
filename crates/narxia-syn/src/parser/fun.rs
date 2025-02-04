@@ -7,6 +7,15 @@ use super::{
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
+    // parser-test:fn-basic
+    // fn main() {}
+
+    // parser-test:fn-with-body
+    // fn main() {
+    //     let x = a
+    //     let y = b
+    // }
+
     pub parse_fn_def: FnDef ::=
         $parse_fn_head()
         $/ws:wcn
@@ -37,6 +46,29 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:fn-with-generic-ty
+    // fn f<T>(v: T) {
+    // }
+
+    // parser-test:fn-with-generic-ty2
+    // fn f<T, U>(v: T, w: U) {
+    // }
+
+    // parser-test:fn-with-generic-ty-bound
+    // fn f<T: Copy+Clone>(v: T) {
+    // }
+
+    // parser-test:fn-with-generic-ty-default
+    // fn f<T = i32>(v: T) {
+    // }
+
+    // parser-test:fn-with-generic-ty-bound-default
+    // fn f<T: Copy+Clone = i32>(v: T) {
+    // }
+
+    // parser-test:fn-with-generic-const
+    // fn f<const V: Ty>(a: i32) {}
+
     parse_generic_param_list: GenericParamList ::=
         $parse_list_simple2(
             T![<],
@@ -145,6 +177,18 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:fn-with-simple-param
+    // fn input(a: A) {}
+
+    // parser-test:fn-with-simple-param-default
+    // fn input(a: A = A()) {}
+
+    // parser-test:fn-with-simple-params
+    // fn input(a0: A0, a1: A1) {}
+    
+    // parser-test:fn-with-simple-params-default
+    // fn input_with_defaults(a0: A0, a1: A1 = A1()) {}
+
     parse_fn_param_list: FnParamList ::=
         $parse_list_simple2(
             T!['('],
@@ -190,6 +234,9 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:fn-with-ret-ty
+    // fn main() -> i32 { 0 }
+
     parse_fn_ret_ty: FnRetTy ::=
         $![->]
         $/ws:wcn

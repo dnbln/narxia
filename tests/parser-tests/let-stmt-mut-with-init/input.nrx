@@ -1,0 +1,2 @@
+// test let-stmt-mut-with-init at crates/narxia-syn/src/parser/stmt.rs
+let mut x = 1

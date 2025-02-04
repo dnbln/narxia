@@ -1,0 +1,2 @@
+// test num-lit-all-extra-underscores at crates/narxia-syn/src/parser/expr.rs
+let x = 123_4____56________789 + 0b____01_00 + 01________23___4_567 + 0x3_a______bc_de__f

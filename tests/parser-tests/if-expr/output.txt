@@ -1,0 +1,35 @@
+Root@0..77
+  COMPOSED_TRIVIA@0..56 "// test if-expr at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@56..76
+    Stmt@56..76
+      Expr@56..76
+        ExprAtom@56..76
+          IfExpr@56..76
+            IF_KW@56..58 "if"
+            COMPOSED_TRIVIA@58..59 " "
+            IfCondition@59..67
+              L_PAREN@59..60 "("
+              Expr@60..66
+                BinaryOpExpr@60..66
+                  ExprAtom@60..61
+                    IDENT@60..61 "a"
+                  COMPOSED_TRIVIA@61..62 " "
+                  BinaryOpExprOp@62..64
+                    EQ2@62..64 "=="
+                  COMPOSED_TRIVIA@64..65 " "
+                  ExprAtom@65..66
+                    IDENT@65..66 "b"
+              R_PAREN@66..67 ")"
+            COMPOSED_TRIVIA@67..68 " "
+            IfThenClause@68..69
+              Expr@68..69
+                ExprAtom@68..69
+                  IDENT@68..69 "a"
+            COMPOSED_TRIVIA@69..70 " "
+            ElseClause@70..76
+              ELSE_KW@70..74 "else"
+              COMPOSED_TRIVIA@74..75 " "
+              Expr@75..76
+                ExprAtom@75..76
+                  IDENT@75..76 "b"
+  COMPOSED_TRIVIA@76..77 "\n"

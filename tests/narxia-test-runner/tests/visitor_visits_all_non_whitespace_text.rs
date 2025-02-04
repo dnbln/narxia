@@ -2,9 +2,12 @@ use std::fmt::Write as _;
 
 use dir_structure::NewtypeToInner;
 use miette::{bail, IntoDiagnostic};
+use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirVisitor;
-use narxia_test_runner::parser_tests::ParserTestSingleFolder;
+use narxia_syn::syntax_kind::SyntaxKind;
+use narxia_syn::token_source::TokenSource;
+use narxia_test_runner::parser_tests::lower_to_hir;
 use owo_colors::OwoColorize;
 
 struct OrphanSpanVisitor<'hir> {
@@ -63,10 +66,31 @@ impl<'hir> HirVisitor<'hir> for OrphanSpanVisitor<'hir> {
     }
 }
 
-fn run_test(test: ParserTestSingleFolder) -> miette::Result<()> {
+fn trivia_tokens(input: &str) -> Vec<std::ops::Range<usize>> {
+    let mut ranges = Vec::new();
+
+    let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(input);
+
+    while let Some(next_token) = ts.next() {
+        let kind = next_token.kind();
+        if [
+            SyntaxKind::WHITESPACE,
+            SyntaxKind::NEWLINE,
+            SyntaxKind::COMMENT,
+        ]
+        .contains(&kind)
+        {
+            ranges.push(next_token.span().range_usize());
+        }
+    }
+
+    ranges
+}
+
+fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
-    let orig = test.input.perform_read().into_diagnostic()?.into_inner();
-    let hir = test.lower_to_hir(&ctx)?;
+    let orig = test.input.get().into_diagnostic()?.into_inner();
+    let hir = lower_to_hir(&mut test, &ctx)?;
 
     let mod_def = hir.mod_def(&ctx.db);
 
@@ -86,11 +110,12 @@ fn run_test(test: ParserTestSingleFolder) -> miette::Result<()> {
         let mut s = String::new();
 
         let mut any_missing = false;
+        let trivia_tokens = trivia_tokens(&orig);
 
         for ((ai, a), b) in old.iter().zip(new.iter()) {
             let is_missing = (a == b) &&
                 // not part of HIR, we don't really care about these
-                ![',', ';'].contains(a) && !a.is_whitespace()
+                ![',', ';'].contains(a) && !trivia_tokens.iter().any(|range| range.contains(&ai))
                 && !visitor.ignore_sets.iter().filter(|(_, ch)| ch == a).any(|(range, _)| range.contains(&ai));
 
             if is_missing {

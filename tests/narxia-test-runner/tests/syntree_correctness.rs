@@ -173,7 +173,7 @@ fn run() -> miette::Result<()> {
     narxia_test_runner::for_each_parser_test! {
         |test| {
             let path = test.value().input_file_path();
-            let contents = test.value().input.perform_read().into_diagnostic()?.0;
+            let contents = test.value().input.get().into_diagnostic()?.0;
             input_files.push(InputFile { path, contents });
         }
     }

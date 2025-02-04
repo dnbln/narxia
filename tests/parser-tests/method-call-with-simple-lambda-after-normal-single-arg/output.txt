@@ -1,0 +1,37 @@
+Root@0..121
+  COMPOSED_TRIVIA@0..103 "// test method-call-with-simple-lambda-after-normal-single-arg at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@103..120
+    Stmt@103..120
+      Expr@103..120
+        MethodCall@103..120
+          ExprAtom@103..104
+            IDENT@103..104 "a"
+          DOT@104..105 "."
+          IDENT@105..106 "f"
+          CallExprArgs@106..120
+            CallExprArgsList@106..109
+              L_PAREN@106..107 "("
+              Expr@107..108
+                ExprAtom@107..108
+                  IDENT@107..108 "a"
+              R_PAREN@108..109 ")"
+            COMPOSED_TRIVIA@109..110 " "
+            CallExprArgLambda@110..120
+              LambdaExpr@110..120
+                L_BRACE@110..111 "{"
+                COMPOSED_TRIVIA@111..112 " "
+                Item@112..118
+                  Stmt@112..118
+                    Expr@112..118
+                      BinaryOpExpr@112..118
+                        ExprAtom@112..114
+                          IDENT@112..114 "it"
+                        COMPOSED_TRIVIA@114..115 " "
+                        BinaryOpExprOp@115..116
+                          PLUS@115..116 "+"
+                        COMPOSED_TRIVIA@116..117 " "
+                        ExprAtom@117..118
+                          IDENT@117..118 "b"
+                COMPOSED_TRIVIA@118..119 " "
+                R_BRACE@119..120 "}"
+  COMPOSED_TRIVIA@120..121 "\n"

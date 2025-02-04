@@ -15,7 +15,7 @@
 
 use miette::{bail, Context, IntoDiagnostic};
 use narxia_syn::syntree::TreePresenterStyle;
-use narxia_test_runner::parser_tests::ParserTestSingleFolder;
+use narxia_dir_structures::ParserTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {
@@ -35,7 +35,7 @@ impl TestMode {
 
 fn run_test(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
-    let input = test.input.perform_read().into_diagnostic()?;
+    let input = test.input.get().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
     let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(&ctx, src_file);
     if !errors.is_empty() {

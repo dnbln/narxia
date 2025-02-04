@@ -1,0 +1,14 @@
+Root@0..80
+  COMPOSED_TRIVIA@0..71 "// test loop-expr-with-newline at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@71..79
+    Stmt@71..79
+      Expr@71..79
+        ExprAtom@71..79
+          LoopExpr@71..79
+            LOOP_KW@71..75 "loop"
+            COMPOSED_TRIVIA@75..76 " "
+            Block@76..79
+              L_BRACE@76..77 "{"
+              COMPOSED_TRIVIA@77..78 "\n"
+              R_BRACE@78..79 "}"
+  COMPOSED_TRIVIA@79..80 "\n"

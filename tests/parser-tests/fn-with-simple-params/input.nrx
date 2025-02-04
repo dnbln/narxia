@@ -1,0 +1,2 @@
+// test fn-with-simple-params at crates/narxia-syn/src/parser/fun.rs
+fn input(a0: A0, a1: A1) {}

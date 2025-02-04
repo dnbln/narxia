@@ -1,0 +1,45 @@
+Root@0..102
+  COMPOSED_TRIVIA@0..80 "// test call-with-multi-args-and-lambda at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@80..101
+    Stmt@80..101
+      Expr@80..101
+        CallExpr@80..101
+          ExprAtom@80..81
+            IDENT@80..81 "f"
+          CallExprArgs@81..101
+            CallExprArgsList@81..90
+              L_PAREN@81..82 "("
+              Expr@82..83
+                ExprAtom@82..83
+                  IDENT@82..83 "a"
+              COMMA@83..84 ","
+              COMPOSED_TRIVIA@84..85 " "
+              Expr@85..86
+                ExprAtom@85..86
+                  IDENT@85..86 "b"
+              COMMA@86..87 ","
+              COMPOSED_TRIVIA@87..88 " "
+              Expr@88..89
+                ExprAtom@88..89
+                  IDENT@88..89 "c"
+              R_PAREN@89..90 ")"
+            COMPOSED_TRIVIA@90..91 " "
+            CallExprArgLambda@91..101
+              LambdaExpr@91..101
+                L_BRACE@91..92 "{"
+                COMPOSED_TRIVIA@92..93 " "
+                Item@93..99
+                  Stmt@93..99
+                    Expr@93..99
+                      BinaryOpExpr@93..99
+                        ExprAtom@93..95
+                          IDENT@93..95 "it"
+                        COMPOSED_TRIVIA@95..96 " "
+                        BinaryOpExprOp@96..97
+                          PLUS@96..97 "+"
+                        COMPOSED_TRIVIA@97..98 " "
+                        ExprAtom@98..99
+                          IDENT@98..99 "a"
+                COMPOSED_TRIVIA@99..100 " "
+                R_BRACE@100..101 "}"
+  COMPOSED_TRIVIA@101..102 "\n"

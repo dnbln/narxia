@@ -1,0 +1,2 @@
+// test fn-with-generic-const at crates/narxia-syn/src/parser/fun.rs
+fn f<const V: Ty>(a: i32) {}

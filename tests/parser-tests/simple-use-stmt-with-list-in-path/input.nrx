@@ -1,0 +1,2 @@
+// test simple-use-stmt-with-list-in-path at crates/narxia-syn/src/parser/mod.rs
+use println::{a b}

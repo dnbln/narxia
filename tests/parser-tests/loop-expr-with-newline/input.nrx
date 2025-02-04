@@ -1,0 +1,3 @@
+// test loop-expr-with-newline at crates/narxia-syn/src/parser/expr.rs
+loop {
+}

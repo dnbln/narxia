@@ -1,0 +1,20 @@
+Root@0..84
+  COMPOSED_TRIVIA@0..59 "// test hello-world at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@59..83
+    Stmt@59..83
+      Expr@59..83
+        CallExpr@59..83
+          ExprAtom@59..66
+            IDENT@59..66 "println"
+          CallExprArgs@66..83
+            CallExprArgsList@66..83
+              L_PAREN@66..67 "("
+              Expr@67..82
+                ExprAtom@67..82
+                  StringLiteral@67..82
+                    BEGIN_STRING@67..68 "\""
+                    StringLiteralFragTextPart@68..81
+                      StringLiteralFragTextPartToken@68..81 "Hello, world!"
+                    END_STRING@81..82 "\""
+              R_PAREN@82..83 ")"
+  COMPOSED_TRIVIA@83..84 "\n"

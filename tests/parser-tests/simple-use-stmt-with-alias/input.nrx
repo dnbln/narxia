@@ -1,0 +1,2 @@
+// test simple-use-stmt-with-alias at crates/narxia-syn/src/parser/mod.rs
+use println as p

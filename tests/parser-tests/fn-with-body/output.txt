@@ -1,0 +1,47 @@
+Root@0..102
+  COMPOSED_TRIVIA@0..60 "// test fn-with-body at crates/narxia-syn/src/parser/fun.rs\n"
+  Item@60..101
+    FnDef@60..101
+      FnHead@60..69
+        FN_KW@60..62 "fn"
+        COMPOSED_TRIVIA@62..63 " "
+        FnName@63..67
+          IDENT@63..67 "main"
+        FnParamList@67..69
+          L_PAREN@67..68 "("
+          R_PAREN@68..69 ")"
+      COMPOSED_TRIVIA@69..70 " "
+      Block@70..101
+        L_BRACE@70..71 "{"
+        COMPOSED_TRIVIA@71..76 "\n    "
+        Item@76..85
+          Stmt@76..85
+            LetStmt@76..85
+              LET_KW@76..79 "let"
+              COMPOSED_TRIVIA@79..80 " "
+              Pat@80..81
+                IDENT@80..81 "x"
+              COMPOSED_TRIVIA@81..82 " "
+              EQ@82..83 "="
+              COMPOSED_TRIVIA@83..84 " "
+              Expr@84..85
+                ExprAtom@84..85
+                  IDENT@84..85 "a"
+        NEWLINE@85..86 "\n"
+        COMPOSED_TRIVIA@86..90 "    "
+        Item@90..99
+          Stmt@90..99
+            LetStmt@90..99
+              LET_KW@90..93 "let"
+              COMPOSED_TRIVIA@93..94 " "
+              Pat@94..95
+                IDENT@94..95 "y"
+              COMPOSED_TRIVIA@95..96 " "
+              EQ@96..97 "="
+              COMPOSED_TRIVIA@97..98 " "
+              Expr@98..99
+                ExprAtom@98..99
+                  IDENT@98..99 "b"
+        NEWLINE@99..100 "\n"
+        R_BRACE@100..101 "}"
+  COMPOSED_TRIVIA@101..102 "\n"

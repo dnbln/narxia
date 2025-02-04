@@ -1,0 +1,31 @@
+Root@0..85
+  COMPOSED_TRIVIA@0..62 "// test fn-with-ret-ty at crates/narxia-syn/src/parser/fun.rs\n"
+  Item@62..84
+    FnDef@62..84
+      FnHead@62..78
+        FN_KW@62..64 "fn"
+        COMPOSED_TRIVIA@64..65 " "
+        FnName@65..69
+          IDENT@65..69 "main"
+        FnParamList@69..71
+          L_PAREN@69..70 "("
+          R_PAREN@70..71 ")"
+        COMPOSED_TRIVIA@71..72 " "
+        FnRetTy@72..78
+          THIN_ARROW@72..74 "->"
+          COMPOSED_TRIVIA@74..75 " "
+          TyRef@75..78
+            IDENT@75..78 "i32"
+      COMPOSED_TRIVIA@78..79 " "
+      Block@79..84
+        L_BRACE@79..80 "{"
+        COMPOSED_TRIVIA@80..81 " "
+        Item@81..82
+          Stmt@81..82
+            Expr@81..82
+              ExprAtom@81..82
+                NumLit@81..82
+                  NUM_DEC@81..82 "0"
+        COMPOSED_TRIVIA@82..83 " "
+        R_BRACE@83..84 "}"
+  COMPOSED_TRIVIA@84..85 "\n"

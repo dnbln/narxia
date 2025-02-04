@@ -1,0 +1,14 @@
+Root@0..80
+  COMPOSED_TRIVIA@0..71 "// test return-expr-with-value at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@71..79
+    Stmt@71..79
+      Expr@71..79
+        ExprAtom@71..79
+          ReturnExpr@71..79
+            RETURN_KW@71..77 "return"
+            COMPOSED_TRIVIA@77..78 " "
+            Expr@78..79
+              ExprAtom@78..79
+                NumLit@78..79
+                  NUM_DEC@78..79 "1"
+  COMPOSED_TRIVIA@79..80 "\n"

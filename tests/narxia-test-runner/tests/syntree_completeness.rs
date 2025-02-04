@@ -21,7 +21,7 @@ use narxia_syn::syntree::tests_data::{
 };
 use narxia_syn::syntree::{Node, Token, TreeNode};
 use narxia_syn::text_span::TextSpan;
-use narxia_test_runner::parser_tests::ParserTestSingleFolder;
+use narxia_dir_structures::ParserTestSingleFolder;
 use owo_colors::{OwoColorize, Style};
 
 fn node_chk(node: &Node) -> impl Fn(&ElemRef) -> bool + '_ {
@@ -57,7 +57,7 @@ fn acdl_contains(acdl: &AccessorCalledDataList, chk: impl Fn(&ElemRef) -> bool) 
 
 fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
-    let input = test.input.perform_read().into_diagnostic()?;
+    let input = test.input.get().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
     let syn_file = narxia_driver::parse_file_and_assert_no_errors(&ctx, src_file);
 

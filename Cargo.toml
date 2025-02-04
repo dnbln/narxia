@@ -26,6 +26,7 @@ opt-level = 3
 
 [workspace.dependencies]
 narxia-data-structures = { path = "crates/narxia-data-structures" }
+narxia-dir-structures = { path = "dev/narxia-dir-structures" }
 narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
 narxia-hir-db = { path = "crates/narxia-hir-db" }
@@ -42,20 +43,32 @@ dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.4" }
 dir-structure = { path = "dev/dir-structure", version = "0.1.4" }
 
 bumpalo = "3.6.0"
+cargo_metadata = "0.19.1"
+nextest-metadata = "0.12.1"
 clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
-owo-colors = "4.0.0"
 bitflags = "2"
 dashmap = "4.0.1"
+drop_bomb = "0.1.5"
+glob = "0.3.0"
 human-panic = "2.0.0"
+humantime = "2.1.0"
 libtest-mimic = "0.7.0"
 miette = { version = "7.2.0", features = ["fancy"] }
+owo-colors = "4.0.0"
 path-absolutize = "3.1.1"
-salsa = { path = "crates/narxia-salsa" }
+prodash = { version = "29.0.0", default-features = false, features = [
+    "render-line",
+    "render-line-crossterm",
+    "render-line-autoconfigure",
+    "progress-tree",
+] }
 rowan = "0.15.11"
-drop_bomb = "0.1.5"
-smallvec = "1.10.0"
+salsa = { path = "crates/narxia-salsa" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 similar = "2.7"
+smallvec = "1.10.0"
 thiserror = "1.0.48"
 tracing = "0.1.37"
-tracing-subscriber = {version = "0.3.17", features = ["env-filter"]}
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }

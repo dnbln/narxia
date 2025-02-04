@@ -1,6 +1,2 @@
-module a {
-    fn f() -> i32 {0}
-}
-
-module b 
-
+// test module at crates/narxia-syn/src/parser/mod.rs
+module a

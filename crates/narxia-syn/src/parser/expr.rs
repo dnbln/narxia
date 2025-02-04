@@ -7,6 +7,27 @@ use super::{
 use crate::syntax_kind::{SyntaxKind, T};
 
 parse_fn_decl! {
+    // parser-test:num-lit-dec
+    // let x = 123
+
+    // parser-test:num-lit-dec-with-underscore
+    // let x = 123_456_789
+
+    // parser-test:num-lit-bin
+    // let x = 0b01_00
+
+    // parser-test:num-lit-oct
+    // let x = 01_234_567
+
+    // parser-test-num-lit-hex
+    // let x = 0x3_abc_def
+
+    // parser-test:num-lit-all
+    // let x = 123_456_789 + 0b01_00 + 01_234_567 + 0x3_abc_def
+
+    // parser-test:num-lit-all-extra-underscores
+    // let x = 123_4____56________789 + 0b____01_00 + 01________23___4_567 + 0x3_a______bc_de__f
+
     parse_num_lit: NumLit ::=
         $/match {
             [num_bin]!
@@ -111,11 +132,50 @@ parse_fn_decl! {
             [break] => {$parse_break_expr()}
             [continue] => {$parse_continue_expr()}
             ['('] => {$parse_tuple_like_expr()}
-            ['{'] => {$parse_block_expr()}
+            ['{'] => {$parse_block_expr_or_lambda()}
         }
 }
 
+#[parse_fn]
+fn parse_block_expr_or_lambda(p: &mut Parser) -> CompletedMarker {
+    let s = p.state();
+    p.expect(T!['{']);
+    p.skip_ws_wcn();
+
+    // attempt to parse list of args if there
+    parse_lambda_param_list(p);
+    if p.is_recovering() {
+        p.recovered();
+        p.restore_state(s);
+        return parse_block_expr(p);
+    } else {
+        p.restore_state(s);
+        return parse_lambda_expr(p);
+    }
+}
+
 parse_fn_decl! {
+    // parser-test:simple-paren-expression
+    // let x = (1)
+
+    // parser-test:simple-paren-expression-with-comma
+    // let x = (1,)
+
+    // parser-test:paren-multiple-expr
+    // let x = (1, 2, 3)
+    
+    // parser-test:paren-multiple-expr-with-comma-compact
+    // let x = (1,2,3,)
+
+    // parser-test:paren-multiple-expr-with-comma-newline
+    // let x = (
+    //     1,
+    //     2,
+    //     3,
+    //     4,
+    // )
+
+
     parse_tuple_like_expr: TupleLikeExpr ::=
         $parse_list_simple2(
             T!['('],
@@ -197,6 +257,10 @@ fn infix_binary_op_simple<const N: usize>(
     })
 }
 
+// parser-test:precedence-parsing
+// let x = a + b * c / d % x - y == e != f >= g.h * i[j[k]] <= l.m[n] / o.p.q[r] > s(t < u.v(w.x.y.z)) & a | b ^ c && d || e
+
+
 #[parse_fn]
 fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
     let mut m = parse_expr_atom(p);
@@ -266,6 +330,54 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:call-with-simple-lambda
+    // f { it + a }
+
+    // parser-test:call-with-simple-lambda-explicit-param
+    // f { it -> it + a }
+
+    // parser-test:call-with-simple-lambda-explicit-param-block
+    // f { it ->
+    //     call();
+    //     call2();
+    //     it
+    // }
+
+    // parser-test:call-with-simple-lambda-explicit-param-explicit-type
+    // f { it: i32 -> it + a }
+
+    // parser-test:call-with-simple-lambda-multiple-explicit-param-explicit-type
+    // f { it: i32, it2: i32 -> it + it2 }
+    // f { it: i32, it2: i32, it3: i32 -> it + it2 + it3 }
+
+    // parser-test:call-with-simple-lambda-after-call-args
+    // f() { it + a }
+    
+    // parser-test:call-with-simple-lambda-after-call-args-explicit-param
+    // f() { it -> it + a }
+
+    // parser-test:call-with-simple-lambda-after-normal-single-arg-explicit-param-block
+    // f(a) { it -> it + b }
+
+    // parser-test:call-with-multiple-args
+    // f(a, b, c)
+
+    // parser-test:call-with-multi-args-and-lambda
+    // f(a, b, c) { it + a }
+
+    // parser-test:call-with-multi-args-and-explicit-lambda-param
+    // f(a, b, c, { it -> it + a })
+
+    // parser-test:method-call-with-simple-lambda
+    // a.f { it + a }
+
+    // parser-test:method-call-with-simple-lambda-after-empty-call-args
+    // a.f() { it + a }
+
+    // parser-test:method-call-with-simple-lambda-after-normal-single-arg
+    // a.f(a) { it + b }
+
+
     parse_call_expr_args: CallExprArgs ::=
         $/match {
             ['('] => {
@@ -431,6 +543,14 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:if-expr
+    // if (a == b) a else b
+
+    // parser-test:if-expr-in-block
+    // {
+    //     if (a == b) a else b
+    // }
+
     parse_if_expr: IfExpr ::=
         $![if]
         $/ws:wcn
@@ -469,6 +589,18 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:loop-expr
+    // loop {}
+
+    // parser-test:loop-expr-with-newline
+    // loop {
+    // }
+
+    // parser-test:loop-expr-in-block
+    // {
+    //     loop {}
+    // }
+
     parse_loop_expr: LoopExpr ::=
         $![loop]
         $/ws:wcn
@@ -476,6 +608,16 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:return-expr-no-value
+    // return
+
+    // parser-test:return-expr-with-value
+    // return 1
+
+    // parser-test:return-expr-with-value-on-newline
+    // return
+    // 1
+
     parse_return_expr: ReturnExpr ::=
         $![return]
         $/state:s1
@@ -487,11 +629,23 @@ parse_fn_decl! {
 }
 
 parse_fn_decl! {
+    // parser-test:continue-expr
+    // continue
     parse_continue_expr: ContinueExpr ::=
         $![continue]
 }
 
 parse_fn_decl! {
+    // parser-test:break-expr-no-value
+    // break
+
+    // parser-test:break-expr-with-value
+    // break 1
+
+    // parser-test:break-expr-with-value-on-newline
+    // break
+    // 1
+
     parse_break_expr: BreakExpr ::=
         $![break]
         $/state:s1

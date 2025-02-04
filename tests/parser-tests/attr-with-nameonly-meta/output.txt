@@ -1,0 +1,29 @@
+Root@0..93
+  COMPOSED_TRIVIA@0..71 "// test attr-with-nameonly-meta at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@71..92
+    AttrList@71..83
+      Attr@71..82
+        HASH@71..72 "#"
+        AttrName@72..76
+          IDENT@72..76 "attr"
+        AttrMeta@76..82
+          L_BRACK@76..77 "["
+          AttrMetaItem@77..81
+            AttrMetaItemName@77..81
+              IDENT@77..81 "meta"
+          R_BRACK@81..82 "]"
+      COMPOSED_TRIVIA@82..83 "\n"
+    FnDef@83..92
+      FnHead@83..89
+        FN_KW@83..85 "fn"
+        COMPOSED_TRIVIA@85..86 " "
+        FnName@86..87
+          IDENT@86..87 "f"
+        FnParamList@87..89
+          L_PAREN@87..88 "("
+          R_PAREN@88..89 ")"
+      COMPOSED_TRIVIA@89..90 " "
+      Block@90..92
+        L_BRACE@90..91 "{"
+        R_BRACE@91..92 "}"
+  COMPOSED_TRIVIA@92..93 "\n"

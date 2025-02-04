@@ -1,0 +1,209 @@
+Root@0..189
+  COMPOSED_TRIVIA@0..67 "// test precedence-parsing at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@67..188
+    Stmt@67..188
+      LetStmt@67..188
+        LET_KW@67..70 "let"
+        COMPOSED_TRIVIA@70..71 " "
+        Pat@71..72
+          IDENT@71..72 "x"
+        COMPOSED_TRIVIA@72..73 " "
+        EQ@73..74 "="
+        COMPOSED_TRIVIA@74..75 " "
+        Expr@75..188
+          BinaryOpExpr@75..188
+            BinaryOpExpr@75..183
+              BinaryOpExpr@75..178
+                BinaryOpExpr@75..170
+                  BinaryOpExpr@75..166
+                    BinaryOpExpr@75..101
+                      BinaryOpExpr@75..96
+                        BinaryOpExpr@75..92
+                          ExprAtom@75..76
+                            IDENT@75..76 "a"
+                          COMPOSED_TRIVIA@76..77 " "
+                          BinaryOpExprOp@77..78
+                            PLUS@77..78 "+"
+                          COMPOSED_TRIVIA@78..79 " "
+                          BinaryOpExpr@79..92
+                            BinaryOpExpr@79..88
+                              BinaryOpExpr@79..84
+                                ExprAtom@79..80
+                                  IDENT@79..80 "b"
+                                COMPOSED_TRIVIA@80..81 " "
+                                BinaryOpExprOp@81..82
+                                  ASTERISK@81..82 "*"
+                                COMPOSED_TRIVIA@82..83 " "
+                                ExprAtom@83..84
+                                  IDENT@83..84 "c"
+                              COMPOSED_TRIVIA@84..85 " "
+                              BinaryOpExprOp@85..86
+                                SLASH@85..86 "/"
+                              COMPOSED_TRIVIA@86..87 " "
+                              ExprAtom@87..88
+                                IDENT@87..88 "d"
+                            COMPOSED_TRIVIA@88..89 " "
+                            BinaryOpExprOp@89..90
+                              PERCENT@89..90 "%"
+                            COMPOSED_TRIVIA@90..91 " "
+                            ExprAtom@91..92
+                              IDENT@91..92 "x"
+                        COMPOSED_TRIVIA@92..93 " "
+                        BinaryOpExprOp@93..94
+                          MINUS@93..94 "-"
+                        COMPOSED_TRIVIA@94..95 " "
+                        ExprAtom@95..96
+                          IDENT@95..96 "y"
+                      COMPOSED_TRIVIA@96..97 " "
+                      BinaryOpExprOp@97..99
+                        EQ2@97..99 "=="
+                      COMPOSED_TRIVIA@99..100 " "
+                      ExprAtom@100..101
+                        IDENT@100..101 "e"
+                    COMPOSED_TRIVIA@101..102 " "
+                    BinaryOpExprOp@102..104
+                      NEQ@102..104 "!="
+                    COMPOSED_TRIVIA@104..105 " "
+                    BinaryOpExpr@105..166
+                      BinaryOpExpr@105..144
+                        BinaryOpExpr@105..123
+                          ExprAtom@105..106
+                            IDENT@105..106 "f"
+                          COMPOSED_TRIVIA@106..107 " "
+                          BinaryOpExprOp@107..109
+                            GE@107..109 ">="
+                          COMPOSED_TRIVIA@109..110 " "
+                          BinaryOpExpr@110..123
+                            FieldAccess@110..113
+                              ExprAtom@110..111
+                                IDENT@110..111 "g"
+                              DOT@111..112 "."
+                              IDENT@112..113 "h"
+                            COMPOSED_TRIVIA@113..114 " "
+                            BinaryOpExprOp@114..115
+                              ASTERISK@114..115 "*"
+                            COMPOSED_TRIVIA@115..116 " "
+                            IndexExpr@116..123
+                              ExprAtom@116..117
+                                IDENT@116..117 "i"
+                              IndexExprIndex@117..123
+                                L_BRACK@117..118 "["
+                                Expr@118..122
+                                  IndexExpr@118..122
+                                    ExprAtom@118..119
+                                      IDENT@118..119 "j"
+                                    IndexExprIndex@119..122
+                                      L_BRACK@119..120 "["
+                                      Expr@120..121
+                                        ExprAtom@120..121
+                                          IDENT@120..121 "k"
+                                      R_BRACK@121..122 "]"
+                                R_BRACK@122..123 "]"
+                        COMPOSED_TRIVIA@123..124 " "
+                        BinaryOpExprOp@124..126
+                          LE@124..126 "<="
+                        COMPOSED_TRIVIA@126..127 " "
+                        BinaryOpExpr@127..144
+                          IndexExpr@127..133
+                            FieldAccess@127..130
+                              ExprAtom@127..128
+                                IDENT@127..128 "l"
+                              DOT@128..129 "."
+                              IDENT@129..130 "m"
+                            IndexExprIndex@130..133
+                              L_BRACK@130..131 "["
+                              Expr@131..132
+                                ExprAtom@131..132
+                                  IDENT@131..132 "n"
+                              R_BRACK@132..133 "]"
+                          COMPOSED_TRIVIA@133..134 " "
+                          BinaryOpExprOp@134..135
+                            SLASH@134..135 "/"
+                          COMPOSED_TRIVIA@135..136 " "
+                          IndexExpr@136..144
+                            FieldAccess@136..141
+                              FieldAccess@136..139
+                                ExprAtom@136..137
+                                  IDENT@136..137 "o"
+                                DOT@137..138 "."
+                                IDENT@138..139 "p"
+                              DOT@139..140 "."
+                              IDENT@140..141 "q"
+                            IndexExprIndex@141..144
+                              L_BRACK@141..142 "["
+                              Expr@142..143
+                                ExprAtom@142..143
+                                  IDENT@142..143 "r"
+                              R_BRACK@143..144 "]"
+                      COMPOSED_TRIVIA@144..145 " "
+                      BinaryOpExprOp@145..146
+                        R_ANGLE@145..146 ">"
+                      COMPOSED_TRIVIA@146..147 " "
+                      CallExpr@147..166
+                        ExprAtom@147..148
+                          IDENT@147..148 "s"
+                        CallExprArgs@148..166
+                          CallExprArgsList@148..166
+                            L_PAREN@148..149 "("
+                            Expr@149..165
+                              BinaryOpExpr@149..165
+                                ExprAtom@149..150
+                                  IDENT@149..150 "t"
+                                COMPOSED_TRIVIA@150..151 " "
+                                BinaryOpExprOp@151..152
+                                  L_ANGLE@151..152 "<"
+                                COMPOSED_TRIVIA@152..153 " "
+                                MethodCall@153..165
+                                  ExprAtom@153..154
+                                    IDENT@153..154 "u"
+                                  DOT@154..155 "."
+                                  IDENT@155..156 "v"
+                                  CallExprArgs@156..165
+                                    CallExprArgsList@156..165
+                                      L_PAREN@156..157 "("
+                                      Expr@157..164
+                                        FieldAccess@157..164
+                                          FieldAccess@157..162
+                                            FieldAccess@157..160
+                                              ExprAtom@157..158
+                                                IDENT@157..158 "w"
+                                              DOT@158..159 "."
+                                              IDENT@159..160 "x"
+                                            DOT@160..161 "."
+                                            IDENT@161..162 "y"
+                                          DOT@162..163 "."
+                                          IDENT@163..164 "z"
+                                      R_PAREN@164..165 ")"
+                            R_PAREN@165..166 ")"
+                  COMPOSED_TRIVIA@166..167 " "
+                  BinaryOpExprOp@167..168
+                    AMP@167..168 "&"
+                  COMPOSED_TRIVIA@168..169 " "
+                  ExprAtom@169..170
+                    IDENT@169..170 "a"
+                COMPOSED_TRIVIA@170..171 " "
+                BinaryOpExprOp@171..172
+                  PIPE@171..172 "|"
+                COMPOSED_TRIVIA@172..173 " "
+                BinaryOpExpr@173..178
+                  ExprAtom@173..174
+                    IDENT@173..174 "b"
+                  COMPOSED_TRIVIA@174..175 " "
+                  BinaryOpExprOp@175..176
+                    CARET@175..176 "^"
+                  COMPOSED_TRIVIA@176..177 " "
+                  ExprAtom@177..178
+                    IDENT@177..178 "c"
+              COMPOSED_TRIVIA@178..179 " "
+              BinaryOpExprOp@179..181
+                AMP2@179..181 "&&"
+              COMPOSED_TRIVIA@181..182 " "
+              ExprAtom@182..183
+                IDENT@182..183 "d"
+            COMPOSED_TRIVIA@183..184 " "
+            BinaryOpExprOp@184..186
+              PIPE2@184..186 "||"
+            COMPOSED_TRIVIA@186..187 " "
+            ExprAtom@187..188
+              IDENT@187..188 "e"
+  COMPOSED_TRIVIA@188..189 "\n"

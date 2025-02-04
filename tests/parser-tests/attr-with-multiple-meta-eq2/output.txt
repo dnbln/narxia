@@ -1,0 +1,63 @@
+Root@0..123
+  COMPOSED_TRIVIA@0..75 "// test attr-with-multiple-meta-eq2 at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@75..122
+    AttrList@75..113
+      Attr@75..112
+        HASH@75..76 "#"
+        AttrName@76..80
+          IDENT@76..80 "attr"
+        AttrMeta@80..112
+          L_BRACK@80..81 "["
+          AttrMetaItem@81..89
+            AttrMetaItemName@81..85
+              IDENT@81..85 "meta"
+            COMPOSED_TRIVIA@85..86 " "
+            AttrMetaItemEq@86..89
+              EQ@86..87 "="
+              COMPOSED_TRIVIA@87..88 " "
+              Expr@88..89
+                ExprAtom@88..89
+                  NumLit@88..89
+                    NUM_DEC@88..89 "1"
+          COMMA@89..90 ","
+          COMPOSED_TRIVIA@90..91 " "
+          AttrMetaItem@91..100
+            AttrMetaItemName@91..96
+              IDENT@91..96 "meta2"
+            COMPOSED_TRIVIA@96..97 " "
+            AttrMetaItemEq@97..100
+              EQ@97..98 "="
+              COMPOSED_TRIVIA@98..99 " "
+              Expr@99..100
+                ExprAtom@99..100
+                  NumLit@99..100
+                    NUM_DEC@99..100 "2"
+          COMMA@100..101 ","
+          COMPOSED_TRIVIA@101..102 " "
+          AttrMetaItem@102..111
+            AttrMetaItemName@102..107
+              IDENT@102..107 "meta3"
+            COMPOSED_TRIVIA@107..108 " "
+            AttrMetaItemEq@108..111
+              EQ@108..109 "="
+              COMPOSED_TRIVIA@109..110 " "
+              Expr@110..111
+                ExprAtom@110..111
+                  NumLit@110..111
+                    NUM_DEC@110..111 "3"
+          R_BRACK@111..112 "]"
+      COMPOSED_TRIVIA@112..113 "\n"
+    FnDef@113..122
+      FnHead@113..119
+        FN_KW@113..115 "fn"
+        COMPOSED_TRIVIA@115..116 " "
+        FnName@116..117
+          IDENT@116..117 "f"
+        FnParamList@117..119
+          L_PAREN@117..118 "("
+          R_PAREN@118..119 ")"
+      COMPOSED_TRIVIA@119..120 " "
+      Block@120..122
+        L_BRACE@120..121 "{"
+        R_BRACE@121..122 "}"
+  COMPOSED_TRIVIA@122..123 "\n"

@@ -1,0 +1,89 @@
+Root@0..149
+  COMPOSED_TRIVIA@0..86 "// test attr-with-multiple-meta-eq-expressions at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@86..148
+    AttrList@86..139
+      Attr@86..138
+        HASH@86..87 "#"
+        AttrName@87..91
+          IDENT@87..91 "attr"
+        AttrMeta@91..138
+          L_BRACK@91..92 "["
+          AttrMetaItem@92..100
+            AttrMetaItemName@92..96
+              IDENT@92..96 "meta"
+            COMPOSED_TRIVIA@96..97 " "
+            AttrMetaItemEq@97..100
+              EQ@97..98 "="
+              COMPOSED_TRIVIA@98..99 " "
+              Expr@99..100
+                ExprAtom@99..100
+                  NumLit@99..100
+                    NUM_DEC@99..100 "1"
+          COMMA@100..101 ","
+          COMPOSED_TRIVIA@101..102 " "
+          AttrMetaItem@102..124
+            AttrMetaItemName@102..107
+              IDENT@102..107 "meta2"
+            COMPOSED_TRIVIA@107..108 " "
+            AttrMetaItemEq@108..124
+              EQ@108..109 "="
+              COMPOSED_TRIVIA@109..110 " "
+              Expr@110..124
+                ExprAtom@110..124
+                  BlockExpr@110..124
+                    Block@110..124
+                      L_BRACE@110..111 "{"
+                      Item@111..120
+                        Stmt@111..120
+                          LetStmt@111..120
+                            LET_KW@111..114 "let"
+                            COMPOSED_TRIVIA@114..115 " "
+                            Pat@115..116
+                              IDENT@115..116 "x"
+                            COMPOSED_TRIVIA@116..117 " "
+                            EQ@117..118 "="
+                            COMPOSED_TRIVIA@118..119 " "
+                            Expr@119..120
+                              ExprAtom@119..120
+                                NumLit@119..120
+                                  NUM_DEC@119..120 "1"
+                      SEMI@120..121 ";"
+                      COMPOSED_TRIVIA@121..122 " "
+                      Item@122..123
+                        Stmt@122..123
+                          Expr@122..123
+                            ExprAtom@122..123
+                              IDENT@122..123 "x"
+                      R_BRACE@123..124 "}"
+          COMMA@124..125 ","
+          COMPOSED_TRIVIA@125..126 " "
+          AttrMetaItem@126..137
+            AttrMetaItemName@126..131
+              IDENT@126..131 "meta3"
+            COMPOSED_TRIVIA@131..132 " "
+            AttrMetaItemEq@132..137
+              EQ@132..133 "="
+              COMPOSED_TRIVIA@133..134 " "
+              Expr@134..137
+                ExprAtom@134..137
+                  StringLiteral@134..137
+                    BEGIN_STRING@134..135 "\""
+                    StringLiteralFragTextPart@135..136
+                      StringLiteralFragTextPartToken@135..136 "x"
+                    END_STRING@136..137 "\""
+          R_BRACK@137..138 "]"
+      COMPOSED_TRIVIA@138..139 "\n"
+    FnDef@139..148
+      FnHead@139..145
+        FN_KW@139..141 "fn"
+        COMPOSED_TRIVIA@141..142 " "
+        FnName@142..143
+          IDENT@142..143 "f"
+        FnParamList@143..145
+          L_PAREN@143..144 "("
+          R_PAREN@144..145 ")"
+      COMPOSED_TRIVIA@145..146 " "
+      Block@146..148
+        L_BRACE@146..147 "{"
+        R_BRACE@147..148 "}"
+  COMPOSED_TRIVIA@148..149 "\n"

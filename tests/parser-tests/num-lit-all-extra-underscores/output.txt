@@ -1,0 +1,41 @@
+Root@0..168
+  COMPOSED_TRIVIA@0..78 "// test num-lit-all-extra-underscores at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@78..167
+    Stmt@78..167
+      LetStmt@78..167
+        LET_KW@78..81 "let"
+        COMPOSED_TRIVIA@81..82 " "
+        Pat@82..83
+          IDENT@82..83 "x"
+        COMPOSED_TRIVIA@83..84 " "
+        EQ@84..85 "="
+        COMPOSED_TRIVIA@85..86 " "
+        Expr@86..167
+          BinaryOpExpr@86..167
+            BinaryOpExpr@86..145
+              BinaryOpExpr@86..122
+                ExprAtom@86..108
+                  NumLit@86..108
+                    NUM_DEC@86..108 "123_4____56________789"
+                COMPOSED_TRIVIA@108..109 " "
+                BinaryOpExprOp@109..110
+                  PLUS@109..110 "+"
+                COMPOSED_TRIVIA@110..111 " "
+                ExprAtom@111..122
+                  NumLit@111..122
+                    NUM_BIN@111..122 "0b____01_00"
+              COMPOSED_TRIVIA@122..123 " "
+              BinaryOpExprOp@123..124
+                PLUS@123..124 "+"
+              COMPOSED_TRIVIA@124..125 " "
+              ExprAtom@125..145
+                NumLit@125..145
+                  NUM_OCT@125..145 "01________23___4_567"
+            COMPOSED_TRIVIA@145..146 " "
+            BinaryOpExprOp@146..147
+              PLUS@146..147 "+"
+            COMPOSED_TRIVIA@147..148 " "
+            ExprAtom@148..167
+              NumLit@148..167
+                NUM_HEX@148..167 "0x3_a______bc_de__f"
+  COMPOSED_TRIVIA@167..168 "\n"

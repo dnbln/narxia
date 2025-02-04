@@ -1,0 +1,17 @@
+Root@0..96
+  COMPOSED_TRIVIA@0..76 "// test num-lit-dec-with-underscore at crates/narxia-syn/src/parser/expr.rs\n"
+  Item@76..95
+    Stmt@76..95
+      LetStmt@76..95
+        LET_KW@76..79 "let"
+        COMPOSED_TRIVIA@79..80 " "
+        Pat@80..81
+          IDENT@80..81 "x"
+        COMPOSED_TRIVIA@81..82 " "
+        EQ@82..83 "="
+        COMPOSED_TRIVIA@83..84 " "
+        Expr@84..95
+          ExprAtom@84..95
+            NumLit@84..95
+              NUM_DEC@84..95 "123_456_789"
+  COMPOSED_TRIVIA@95..96 "\n"

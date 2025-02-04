@@ -1,0 +1,18 @@
+Root@0..65
+  COMPOSED_TRIVIA@0..53 "// test fn-ty at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@53..64
+    Stmt@53..64
+      LetStmt@53..64
+        LET_KW@53..56 "let"
+        COMPOSED_TRIVIA@56..57 " "
+        Pat@57..58
+          IDENT@57..58 "x"
+        COLON@58..59 ":"
+        COMPOSED_TRIVIA@59..60 " "
+        TyRef@60..64
+          FnTy@60..64
+            FN_KW@60..62 "fn"
+            FnTyParamTys@62..64
+              L_PAREN@62..63 "("
+              R_PAREN@63..64 ")"
+  COMPOSED_TRIVIA@64..65 "\n"

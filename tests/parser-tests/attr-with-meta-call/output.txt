@@ -1,0 +1,69 @@
+Root@0..110
+  COMPOSED_TRIVIA@0..67 "// test attr-with-meta-call at crates/narxia-syn/src/parser/mod.rs\n"
+  Item@67..109
+    AttrList@67..100
+      Attr@67..99
+        HASH@67..68 "#"
+        AttrName@68..72
+          IDENT@68..72 "attr"
+        AttrMeta@72..99
+          L_BRACK@72..73 "["
+          AttrMetaItem@73..98
+            AttrMetaItemName@73..77
+              IDENT@73..77 "meta"
+            AttrMetaItemCall@77..98
+              L_PAREN@77..78 "("
+              AttrMetaItem@78..83
+                AttrMetaItemName@78..79
+                  IDENT@78..79 "a"
+                COMPOSED_TRIVIA@79..80 " "
+                AttrMetaItemEq@80..83
+                  EQ@80..81 "="
+                  COMPOSED_TRIVIA@81..82 " "
+                  Expr@82..83
+                    ExprAtom@82..83
+                      NumLit@82..83
+                        NUM_DEC@82..83 "1"
+              COMMA@83..84 ","
+              COMPOSED_TRIVIA@84..85 " "
+              AttrMetaItem@85..90
+                AttrMetaItemName@85..86
+                  IDENT@85..86 "b"
+                COMPOSED_TRIVIA@86..87 " "
+                AttrMetaItemEq@87..90
+                  EQ@87..88 "="
+                  COMPOSED_TRIVIA@88..89 " "
+                  Expr@89..90
+                    ExprAtom@89..90
+                      NumLit@89..90
+                        NUM_DEC@89..90 "2"
+              COMMA@90..91 ","
+              COMPOSED_TRIVIA@91..92 " "
+              AttrMetaItem@92..97
+                AttrMetaItemName@92..93
+                  IDENT@92..93 "c"
+                COMPOSED_TRIVIA@93..94 " "
+                AttrMetaItemEq@94..97
+                  EQ@94..95 "="
+                  COMPOSED_TRIVIA@95..96 " "
+                  Expr@96..97
+                    ExprAtom@96..97
+                      NumLit@96..97
+                        NUM_DEC@96..97 "3"
+              R_PAREN@97..98 ")"
+          R_BRACK@98..99 "]"
+      COMPOSED_TRIVIA@99..100 "\n"
+    FnDef@100..109
+      FnHead@100..106
+        FN_KW@100..102 "fn"
+        COMPOSED_TRIVIA@102..103 " "
+        FnName@103..104
+          IDENT@103..104 "f"
+        FnParamList@104..106
+          L_PAREN@104..105 "("
+          R_PAREN@105..106 ")"
+      COMPOSED_TRIVIA@106..107 " "
+      Block@107..109
+        L_BRACE@107..108 "{"
+        R_BRACE@108..109 "}"
+  COMPOSED_TRIVIA@109..110 "\n"

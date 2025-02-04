@@ -697,7 +697,7 @@ syntree_node! {
 }
 
 syntree_node! {
-    ExprAtom = |[ident![ident], StringLiteral, NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, TupleLikeExpr, BlockExpr]
+    ExprAtom = |[ident![ident], StringLiteral, NumLit, LoopExpr, IfExpr, ReturnExpr, BreakExpr, ContinueExpr, TupleLikeExpr, BlockExpr, LambdaExpr]
 }
 
 syntree_node! {

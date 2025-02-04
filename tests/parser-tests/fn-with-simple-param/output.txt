@@ -1,0 +1,26 @@
+Root@0..86
+  COMPOSED_TRIVIA@0..68 "// test fn-with-simple-param at crates/narxia-syn/src/parser/fun.rs\n"
+  Item@68..85
+    FnDef@68..85
+      FnHead@68..82
+        FN_KW@68..70 "fn"
+        COMPOSED_TRIVIA@70..71 " "
+        FnName@71..76
+          IDENT@71..76 "input"
+        FnParamList@76..82
+          L_PAREN@76..77 "("
+          FnParam@77..81
+            FnParamName@77..78
+              Pat@77..78
+                IDENT@77..78 "a"
+            COLON@78..79 ":"
+            COMPOSED_TRIVIA@79..80 " "
+            FnParamTy@80..81
+              TyRef@80..81
+                IDENT@80..81 "A"
+          R_PAREN@81..82 ")"
+      COMPOSED_TRIVIA@82..83 " "
+      Block@83..85
+        L_BRACE@83..84 "{"
+        R_BRACE@84..85 "}"
+  COMPOSED_TRIVIA@85..86 "\n"

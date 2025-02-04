@@ -1,0 +1,3 @@
+// test attr-with-multiple-meta-eq2 at crates/narxia-syn/src/parser/mod.rs
+#attr[meta = 1, meta2 = 2, meta3 = 3]
+fn f() {}

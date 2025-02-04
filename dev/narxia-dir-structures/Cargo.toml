@@ -1,0 +1,12 @@
+[package]
+name = "narxia-dir-structures"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+
+[dependencies]
+dir-structure.workspace = true
