@@ -14,6 +14,7 @@ use crate::NexusR;
 pub struct BuildCmd {
     package: Option<String>,
     binary: Option<String>,
+    profile: Option<String>,
     config: BuildCmdConfig,
 }
 
@@ -47,6 +48,11 @@ impl BuildCmd {
         self
     }
 
+    pub fn profile(mut self, profile: impl Into<String>) -> Self {
+        self.profile = Some(profile.into());
+        self
+    }
+
     pub fn run(
         self,
         mut item: Option<&mut Item>,
@@ -55,6 +61,7 @@ impl BuildCmd {
         let Self {
             package,
             binary,
+            profile,
             config,
         } = self;
 
@@ -76,6 +83,10 @@ impl BuildCmd {
 
         if let Some(binary) = binary {
             cmd.arg("--bin").arg(binary);
+        }
+
+        if let Some(profile) = profile {
+            cmd.arg("--profile").arg(profile);
         }
 
         cmd.arg("--message-format=json-render-diagnostics");
@@ -345,6 +356,7 @@ pub mod tests {
     pub struct RunTests {
         filter: Option<String>,
         capture_nextest_stderr: bool,
+        fail_fast: bool,
     }
 
     impl RunTests {
@@ -352,6 +364,7 @@ pub mod tests {
             Self {
                 filter: None,
                 capture_nextest_stderr: true,
+                fail_fast: true,
             }
         }
 
@@ -365,6 +378,11 @@ pub mod tests {
             self
         }
 
+        pub fn fail_fast(mut self, fail_fast: bool) -> Self {
+            self.fail_fast = fail_fast;
+            self
+        }
+
         pub fn run(self, mut item: Option<&mut Item>) -> NexusR {
             let mut cmd = cargo_command();
             cmd.arg("nextest")
@@ -373,6 +391,10 @@ pub mod tests {
 
             if let Some(filter) = &self.filter {
                 cmd.arg("-E").arg(filter);
+            }
+
+            if !self.fail_fast {
+                cmd.arg("--no-fail-fast");
             }
 
             cmd.stdout(std::process::Stdio::piped());
@@ -422,6 +444,7 @@ pub mod tests {
 
             for message in std::io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
+                // println!("{}", message);
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;
 
                 match line {
@@ -454,7 +477,7 @@ pub mod tests {
                         TestEvent::Failed {
                             name,
                             exec_time,
-                            stdout,
+                            info,
                         } => {
                             if let Some(item) = &mut item {
                                 let (suite, test) = name.split_once('$').unwrap();
@@ -463,10 +486,20 @@ pub mod tests {
                                     .position(|(n, _)| *n == name)
                                     .unwrap();
                                 let (_, mut test_item) = current_running_tests.remove(pos);
-                                println!("{}", stdout);
+                                
+                                let reference = match &info {
+                                    TestFailedInfo::Fail { stdout } => {
+                                        println!("{}", stdout);
+
+                                        "see above"
+                                    },
+                                    TestFailedInfo::Reason { reason } => {
+                                        reason
+                                    },
+                                };
                                 test_item.inc();
                                 test_item
-                                    .fail(format!("[FAIL] in {exec_time:.3}s: {suite}::{test}"));
+                                    .fail(format!("[FAIL] ({reference}) in {exec_time:.3}s: {suite}::{test}"));
                                 let bin_id = &current_suite.as_ref().unwrap().1.test_binary;
                                 test_item.fail(format!("Run `cargo nexus test -t 'binary(={bin_id}) & test(={test})'` to see the output"));
                                 current_suite.as_mut().unwrap().0.inc();
@@ -589,7 +622,19 @@ pub mod tests {
         Failed {
             name: String,
             exec_time: f64,
+            #[serde(flatten)]
+            info: TestFailedInfo,
+        },
+    }
+
+    #[derive(Debug, serde::Deserialize)]
+    #[serde(untagged)]
+    enum TestFailedInfo {
+        Fail {
             stdout: String,
+        },
+        Reason {
+            reason: String,
         },
     }
 

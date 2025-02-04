@@ -144,14 +144,66 @@ pub enum Target {
     Compiler,
 }
 
+#[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Profile {
+    Dev,
+    Release,
+}
+
+impl Profile {
+    pub fn cargo_name(&self) -> &str {
+        match self {
+            Self::Dev => "dev",
+            Self::Release => "release",
+        }
+    }
+}
+
 #[derive(Debug, Parser)]
 pub struct BuildCmd {
-    /// The target to build.
+    /// The targets to build.
     #[clap(long, value_delimiter = ',', default_value = "compiler")]
     pub targets: Vec<Target>,
+
+    #[clap(flatten)]
+    pub profile: ProfileDeterminer,
+}
+
+#[derive(Debug, clap::Args, Clone, Copy)]
+pub struct ProfileDeterminer {
+    /// Build in release mode.
+    #[clap(long, conflicts_with = "profile")]
+    pub release: bool,
+
+    /// The profile to build in.
+    #[clap(long, conflicts_with = "release")]
+    pub profile: Option<Profile>,
+}
+
+impl ProfileDeterminer {
+    pub fn get_profile(self) -> Profile {
+        if self.release {
+            Profile::Release
+        } else {
+            self.profile.unwrap_or(Profile::Dev)
+        }
+    }
+}
+
+impl BuildCmd {
+    pub fn run(self, item: &mut Item, build_progress: Option<BuildCmdBuildingProgress>) -> NexusR {
+        let bins = BuildI {
+            targets: self.targets,
+            profile: self.profile.get_profile(),
+        }
+        .run(item, build_progress)?;
+
+        Ok(())
+    }
 }
 
 fn build_compiler(
+    profile: Profile,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
 ) -> NexusR<PathBuf> {
@@ -160,6 +212,7 @@ fn build_compiler(
     let output = cargo_interface::build()
         .package("narxia-driver")
         .binary("narxia-driver")
+        .profile(profile.cargo_name())
         .run(Some(&mut item), build_progress)?;
 
     let executable = if output.status.success() {
@@ -183,7 +236,12 @@ pub struct NarxiaBinaries {
     pub compiler: Option<PathBuf>,
 }
 
-impl BuildCmd {
+pub struct BuildI {
+    pub targets: Vec<Target>,
+    pub profile: Profile,
+}
+
+impl BuildI {
     pub fn run(
         mut self,
         item: &mut Item,
@@ -197,7 +255,8 @@ impl BuildCmd {
         for target in self.targets {
             match target {
                 Target::Compiler => {
-                    bins.compiler = Some(build_compiler(item, build_progress.clone())?);
+                    bins.compiler =
+                        Some(build_compiler(self.profile, item, build_progress.clone())?);
                 }
             }
         }

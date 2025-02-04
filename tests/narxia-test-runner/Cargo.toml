@@ -19,30 +19,30 @@ narxia-hir-db.workspace = true
 narxia-syn.workspace = true
 
 [[test]]
-name = "parsing_tests"
+name = "parsing_tests_nxtimq"
 path = "tests/parsing_tests.rs"
 harness = false
 
 [[test]]
-name = "syntree_correctness"
+name = "syntree_correctness_nxtimq"
 path = "tests/syntree_correctness.rs"
 
 [[test]]
-name = "syntree_completeness"
+name = "syntree_completeness_nxtimq"
 path = "tests/syntree_completeness.rs"
 harness = false
 
 [[test]]
-name = "no_orphans_after_parent_compute"
+name = "no_orphans_after_parent_compute_nxtimq"
 path = "tests/no_orphans_after_parent_compute.rs"
 harness = false
 
 [[test]]
-name = "visitor_visits_all_hir_ids"
+name = "visitor_visits_all_hir_ids_nxtimq"
 path = "tests/visitor_visits_all_hir_ids.rs"
 harness = false
 
 [[test]]
-name = "visitor_visits_all_non_whitespace_text"
+name = "visitor_visits_all_non_whitespace_text_nxtimq"
 path = "tests/visitor_visits_all_non_whitespace_text.rs"
 harness = false
