@@ -146,6 +146,7 @@ fn main() -> NexusR {
         }
     }
 
+
     handle.shutdown_and_wait();
 
     Ok(())
