@@ -22,8 +22,8 @@ jobs:
         with:
           crate: cargo-nextest
           args: --locked
-      - name: Dl cache
-        uses: Swatinem/rust-cache@v2
+      # - name: Rust cache
+      #   uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
       - name: Build
