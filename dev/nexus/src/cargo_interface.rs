@@ -37,6 +37,14 @@ fn cargo_command() -> std::process::Command {
     std::process::Command::new("cargo")
 }
 
+fn async_read(mut r: impl Read + Send + 'static) -> std::thread::JoinHandle<String> {
+    std::thread::spawn(move || {
+        let mut v = Vec::new();
+        std::io::copy(&mut r, &mut std::io::Cursor::new(&mut v)).unwrap();
+        String::from_utf8(v).unwrap()
+    })
+}
+
 impl BuildCmd {
     pub fn package(mut self, package: impl Into<String>) -> Self {
         self.package = Some(package.into());
@@ -97,7 +105,9 @@ impl BuildCmd {
         let mut child = cmd.spawn().into_diagnostic()?;
 
         let stdout = std::mem::take(&mut child.stdout).unwrap();
-        let mut stderr = std::mem::take(&mut child.stderr).unwrap();
+        let stderr = std::mem::take(&mut child.stderr).unwrap();
+
+        let stderr_handle = async_read(stderr);
 
         let mut target_artifact = None;
 
@@ -214,13 +224,10 @@ impl BuildCmd {
             let _ = handle.join();
         }
 
-        let mut stderr_string = String::new();
-        stderr
-            .read_to_string(&mut stderr_string)
-            .into_diagnostic()?;
+        let stderr = stderr_handle.join().unwrap();
 
         Ok(BuildCmdOutput {
-            stderr: stderr_string,
+            stderr,
             status,
             target_artifact,
         })
