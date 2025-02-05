@@ -26,7 +26,11 @@ jobs:
       #   uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
+      # - name: Build
+      #   run: cargo nexus build-sys build
+      # - name: Test
+      #   run: cargo nexus test --no-fail-fast
       - name: Build
-        run: cargo nexus build-sys build
+        run: cargo build -p narxia-driver --bin narxia-driver
       - name: Test
-        run: cargo nexus test --no-fail-fast
+        run: cargo nextest run --all
