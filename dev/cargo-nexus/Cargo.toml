@@ -1,0 +1,12 @@
+[package]
+name = "cargo-nexus"
+version = "0.0.0"
+publish = true
+edition.workspace = true
+homepage = "https://dnbln.dev/cargo-nexus"
+repository = "https://github.com/dnbln/narxia/tree/trunk/dev/cargo-nexus"
+description = "A build system."
+keywords = ["cargo", "build-system"]
+license.workspace = true
+
+[dependencies]
