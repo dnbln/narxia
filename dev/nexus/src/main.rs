@@ -1,3 +1,6 @@
+use core::fmt;
+use std::str::FromStr;
+
 use clap::{ArgAction, Parser};
 use nexus::bin_context::NexusContext;
 use nexus::{
@@ -58,6 +61,12 @@ enum App {
         /// If this flag is used, the tests will stop running after the first failure.
         #[clap(long = "no-fail-fast", default_value_t = true, action = ArgAction::SetFalse)]
         fail_fast: bool,
+
+        /// Parser test mode.
+        ///
+        /// This mode will run the parser tests.
+        #[clap(long, default_value_t = ParserTestsMode::Check)]
+        parser_tests: ParserTestsMode,
     },
     #[clap(name = "run")]
     #[clap(alias = "r")]
@@ -66,6 +75,27 @@ enum App {
         profile: ProfileDeterminer,
         args: Vec<String>,
     },
+}
+
+#[derive(Debug, clap::ValueEnum, Clone)]
+enum ParserTestsMode {
+    Check,
+    Overwrite,
+}
+
+impl fmt::Display for ParserTestsMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParserTestsMode::Check => write!(f, "check"),
+            ParserTestsMode::Overwrite => write!(f, "overwrite"),
+        }
+    }
+}
+
+impl Default for ParserTestsMode {
+    fn default() -> Self {
+        ParserTestsMode::Check
+    }
 }
 
 fn main() -> NexusR {
@@ -94,6 +124,7 @@ fn main() -> NexusR {
             capture_nextest,
             count_tests,
             fail_fast,
+            parser_tests,
         } => {
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
@@ -104,7 +135,13 @@ fn main() -> NexusR {
             item.init(test_count, Some(unit::label("tests")));
             let run_tests = nexus::cargo_interface::tests::RunTests::new()
                 .filter(test_filter.clone())
-                .fail_fast(fail_fast);
+                .fail_fast(fail_fast)
+                .parser_tests(match parser_tests {
+                    ParserTestsMode::Check => nexus::cargo_interface::tests::ParserTestsMode::Check,
+                    ParserTestsMode::Overwrite => {
+                        nexus::cargo_interface::tests::ParserTestsMode::Overwrite
+                    }
+                });
 
             #[cfg(debug_assertions)]
             let run_tests = run_tests.capture_nextest_output(capture_nextest);
@@ -145,7 +182,6 @@ fn main() -> NexusR {
             }
         }
     }
-
 
     handle.shutdown_and_wait();
 

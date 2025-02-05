@@ -1,3 +1,7 @@
+//! This test checks that the visitor visits all the HIR IDs in the HIR map.
+//! 
+//! This is useful to ensure that the visitor is not missing any HIR nodes.
+
 use miette::bail;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;

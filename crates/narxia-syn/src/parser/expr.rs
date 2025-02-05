@@ -163,7 +163,7 @@ parse_fn_decl! {
 
     // parser-test:paren-multiple-expr
     // let x = (1, 2, 3)
-    
+
     // parser-test:paren-multiple-expr-with-comma-compact
     // let x = (1,2,3,)
 
@@ -260,7 +260,6 @@ fn infix_binary_op_simple<const N: usize>(
 // parser-test:precedence-parsing
 // let x = a + b * c / d % x - y == e != f >= g.h * i[j[k]] <= l.m[n] / o.p.q[r] > s(t < u.v(w.x.y.z)) & a | b ^ c && d || e
 
-
 #[parse_fn]
 fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
     let mut m = parse_expr_atom(p);
@@ -352,7 +351,7 @@ parse_fn_decl! {
 
     // parser-test:call-with-simple-lambda-after-call-args
     // f() { it + a }
-    
+
     // parser-test:call-with-simple-lambda-after-call-args-explicit-param
     // f() { it -> it + a }
 
@@ -383,7 +382,9 @@ parse_fn_decl! {
             ['('] => {
                 $parse_call_expr_args_list()
                 $/state:s1
-                $/ws:wc
+                $/ws:wc // parser-test:call-with-simple-lambda-on-next-line
+                        // f()
+                        // { it + a }
                 $/if at['{'] {
                     $parse_call_expr_args_trailing_block()
                 }
@@ -439,7 +440,11 @@ fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
 parse_fn_decl! {
     parse_lambda_param_list: LambdaParamList ::=
         $parse_list_rep_simple2(T![,], parse_lambda_param, AttemptRecoveryLevel::Shallow)
-        $/ws:wc
+        $/ws:wcn    // parser-test:lambda-params-arrow
+                    // { a,
+                    //   b,
+                    //   c
+                    //   -> a + b + c }
         $![->]
 }
 
@@ -614,14 +619,12 @@ parse_fn_decl! {
     // parser-test:return-expr-with-value
     // return 1
 
-    // parser-test:return-expr-with-value-on-newline
-    // return
-    // 1
-
     parse_return_expr: ReturnExpr ::=
         $![return]
         $/state:s1
-        $/ws:wc
+        $/ws:wc // parser-test:return-expr-with-value-on-newline
+                // return
+                // 1
         $/match {
             [ident] [+] [-] [!] [*] [begin_string] [num_bin] [num_oct] [num_dec] [num_hex] [if] [loop] ['{'] => {$parse_expr()}
             _ => {$/restore_state:s1}

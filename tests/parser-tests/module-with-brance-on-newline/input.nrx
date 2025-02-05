@@ -1,0 +1,4 @@
+// test module-with-brance-on-newline at crates/narxia-syn/src/parser/mod.rs
+module a
+{
+}

@@ -11,6 +11,12 @@
 //!
 //! Namely, the parser ensures that all the events that have started since the state
 //! was saved are either completed or rolled back before the state is restored.
+//!
+//! You might find parser tests sprinkled throughout this module. These are comments that
+//! start with `// parser-test`, followed by a `:` and then the test name.
+//! These comments are all collected and made into parser tests.
+//!
+//! Here is an example of a parser test:
 
 // parser-test:hello-world
 // println("Hello, world!")
@@ -684,7 +690,10 @@ parse_fn_decl! {
         $/ws:wcn
         $parse_module_name()
         $/state:s1
-        $/ws:wc
+        $/ws:wc     // parser-test:module-with-brance-on-newline
+                    // module a
+                    // {
+                    // }
         $/match {
             ['{'] => {$parse_mod_body()}
             _ => {

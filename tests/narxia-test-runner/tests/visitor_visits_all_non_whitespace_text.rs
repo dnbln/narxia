@@ -1,3 +1,18 @@
+//! This test checks that the visitor visits all non-whitespace text in the file.
+//!
+//! This is useful to ensure that the visitor is not missing any tokens.
+//!
+//! There are however some exceptions:
+//! - Trivia tokens (whitespace, newlines, comments) are ignored.
+//! - In a type bound list, the '+' character is ignored. (`T: Copy+Clone`). This is because
+//!  the '+' character is not part of the HIR.
+//! - In a use statement, the ':', '{', and '}' characters are ignored. This is because
+//!  of the way we construct the use statements in HIR, we don't really want to
+//!  keep track of these.
+//! - Everywhere, the ',' and ';' characters are ignored. This is because they are
+//!  never a part of the HIR, just to help the parser separate specific nodes
+//!  (similarly to the + in type bounds).
+
 use std::fmt::Write as _;
 
 use dir_structure::NewtypeToInner;

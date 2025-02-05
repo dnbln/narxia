@@ -1,0 +1,3 @@
+// test call-with-simple-lambda-on-next-line at crates/narxia-syn/src/parser/expr.rs
+f()
+{ it + a }

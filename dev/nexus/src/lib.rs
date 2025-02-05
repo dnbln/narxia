@@ -90,7 +90,7 @@ fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item
             );
 
             while let Some((_, next_line)) = iter.peek() {
-                let next_line_without_whitespace = next_line.trim();
+                let next_line_without_whitespace = next_line[test_prefix_position..].trim();
 
                 if !next_line_without_whitespace.starts_with("// ") {
                     break;

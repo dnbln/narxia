@@ -357,6 +357,18 @@ pub mod tests {
         filter: Option<String>,
         capture_nextest_stderr: bool,
         fail_fast: bool,
+        parser_tests_mode: ParserTestsMode,
+    }
+
+    pub enum ParserTestsMode {
+        Check,
+        Overwrite,
+    }
+
+    impl Default for ParserTestsMode {
+        fn default() -> Self {
+            ParserTestsMode::Check
+        }
     }
 
     impl RunTests {
@@ -365,6 +377,7 @@ pub mod tests {
                 filter: None,
                 capture_nextest_stderr: true,
                 fail_fast: true,
+                parser_tests_mode: ParserTestsMode::default(),
             }
         }
 
@@ -383,11 +396,23 @@ pub mod tests {
             self
         }
 
+        pub fn parser_tests(mut self, mode: ParserTestsMode) -> Self {
+            self.parser_tests_mode = mode;
+            self
+        }
+
         pub fn run(self, mut item: Option<&mut Item>) -> NexusR {
             let mut cmd = cargo_command();
             cmd.arg("nextest")
                 .args(["run", "--message-format", "libtest-json-plus", "--all"])
-                .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1");
+                .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1")
+                .env(
+                    "NARXIA_PARSER_SNAPSHOTS_TEST_MODE",
+                    match self.parser_tests_mode {
+                        ParserTestsMode::Check => "check",
+                        ParserTestsMode::Overwrite => "overwrite",
+                    },
+                );
 
             if let Some(filter) = &self.filter {
                 cmd.arg("-E").arg(filter);
@@ -486,20 +511,19 @@ pub mod tests {
                                     .position(|(n, _)| *n == name)
                                     .unwrap();
                                 let (_, mut test_item) = current_running_tests.remove(pos);
-                                
+
                                 let reference = match &info {
                                     TestFailedInfo::Fail { stdout } => {
                                         println!("{}", stdout);
 
                                         "see above"
-                                    },
-                                    TestFailedInfo::Reason { reason } => {
-                                        reason
-                                    },
+                                    }
+                                    TestFailedInfo::Reason { reason } => reason,
                                 };
                                 test_item.inc();
-                                test_item
-                                    .fail(format!("[FAIL] ({reference}) in {exec_time:.3}s: {suite}::{test}"));
+                                test_item.fail(format!(
+                                    "[FAIL] ({reference}) in {exec_time:.3}s: {suite}::{test}"
+                                ));
                                 let bin_id = &current_suite.as_ref().unwrap().1.test_binary;
                                 test_item.fail(format!("Run `cargo nexus test -t 'binary(={bin_id}) & test(={test})'` to see the output"));
                                 current_suite.as_mut().unwrap().0.inc();
@@ -630,12 +654,8 @@ pub mod tests {
     #[derive(Debug, serde::Deserialize)]
     #[serde(untagged)]
     enum TestFailedInfo {
-        Fail {
-            stdout: String,
-        },
-        Reason {
-            reason: String,
-        },
+        Fail { stdout: String },
+        Reason { reason: String },
     }
 
     #[derive(Debug, serde::Deserialize)]

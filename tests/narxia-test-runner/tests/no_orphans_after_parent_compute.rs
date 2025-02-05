@@ -1,4 +1,7 @@
-use miette::{bail, IntoDiagnostic};
+//! This test checks that there are no orphan hir_ids after the parent
+//! of each hir_id is computed, except for the root module.
+
+use miette::bail;
 use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir::hir::{HirIdNewtype, SpecialIdents};
