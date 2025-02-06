@@ -22,6 +22,7 @@ pub struct BuildCmd {
 pub struct BuildCmdConfig {
     pub print_dependency_artifacts: bool,
     pub print_fresh: bool,
+    pub use_ansi: bool,
 }
 
 impl Default for BuildCmdConfig {
@@ -29,6 +30,7 @@ impl Default for BuildCmdConfig {
         Self {
             print_dependency_artifacts: false,
             print_fresh: false,
+            use_ansi: true,
         }
     }
 }
@@ -58,6 +60,11 @@ impl BuildCmd {
 
     pub fn profile(mut self, profile: impl Into<String>) -> Self {
         self.profile = Some(profile.into());
+        self
+    }
+
+    pub fn config(mut self, config: BuildCmdConfig) -> Self {
+        self.config = config;
         self
     }
 
@@ -97,7 +104,11 @@ impl BuildCmd {
             cmd.arg("--profile").arg(profile);
         }
 
-        cmd.arg("--message-format=json-render-diagnostics");
+        if config.use_ansi {
+            cmd.arg("--message-format=json-diagnostic-rendered-ansi");
+        } else {
+            cmd.arg("--message-format=json");
+        }
 
         cmd.stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
@@ -209,7 +220,44 @@ impl BuildCmd {
                         });
                     }
                 }
-                cargo_metadata::Message::CompilerMessage(compiler_message) => {}
+                cargo_metadata::Message::CompilerMessage(compiler_message) => {
+                    match compiler_message.message.level {
+                        // always render ICE's and Errors
+                        cargo_metadata::diagnostic::DiagnosticLevel::Ice => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            eprintln!("{rendered}");
+                        }
+                        cargo_metadata::diagnostic::DiagnosticLevel::Error => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            eprintln!("{rendered}");
+                        }
+                        cargo_metadata::diagnostic::DiagnosticLevel::Warning => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            if ws_members.contains(&compiler_message.package_id) {
+                                eprintln!("{rendered}");
+                            }
+                        }
+                        cargo_metadata::diagnostic::DiagnosticLevel::FailureNote => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            if ws_members.contains(&compiler_message.package_id) {
+                                eprintln!("{rendered}");
+                            }
+                        }
+                        cargo_metadata::diagnostic::DiagnosticLevel::Note => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            if ws_members.contains(&compiler_message.package_id) {
+                                eprintln!("{rendered}");
+                            }
+                        }
+                        cargo_metadata::diagnostic::DiagnosticLevel::Help => {
+                            let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                            if ws_members.contains(&compiler_message.package_id) {
+                                eprintln!("{rendered}");
+                            }
+                        }
+                        _ => todo!(),
+                    }
+                }
                 cargo_metadata::Message::BuildScriptExecuted(build_script) => {}
                 cargo_metadata::Message::BuildFinished(build_finished) => {}
                 cargo_metadata::Message::TextLine(_) => {}
