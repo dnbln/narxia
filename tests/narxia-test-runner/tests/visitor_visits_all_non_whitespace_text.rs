@@ -58,11 +58,7 @@ impl<'hir> HirVisitor<'hir> for OrphanSpanVisitor<'hir> {
         self.visit_token_span(ident.span);
     }
 
-    fn visit_use_stmt(
-        &mut self,
-        _: narxia_hir::hir::UseStmtId,
-        use_stmt: &'hir narxia_hir::hir::UseStmt,
-    ) {
+    fn visit_use_stmt(&mut self, use_stmt: &'hir narxia_hir::hir::UseStmt) {
         // due to the way we construct use statements, we need to ignore these
         self.ignore_sets.push((use_stmt.span.get_range(), ':'));
         self.ignore_sets.push((use_stmt.span.get_range(), '{'));

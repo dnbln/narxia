@@ -34,6 +34,41 @@ pub enum HirElem {
     StrLiteral(StrLiteral),
     StrLiteralDisplayFragment(StrLiteralDisplayFragment),
     StrLiteralDebugFragment(StrLiteralDebugFragment),
+    #[doc(hidden)]
+    __Allocated(HirSpan),
+}
+
+impl HirElem {
+    fn get_hir_id_in_self(&self) -> HirId {
+        match self {
+            HirElem::Mod(mod_def) => mod_def.hir_id.hir_id(),
+            HirElem::Item(item) => item.hir_id.hir_id(),
+            HirElem::Ident(ident) => todo!(),
+            HirElem::Fn(fn_def) => fn_def.hir_id.hir_id(),
+            HirElem::FnParam(fn_param) => todo!(),
+            HirElem::FnRetTy(fn_ret_ty) => todo!(),
+            HirElem::Expr(expr) => expr.hir_id.hir_id(),
+            HirElem::LoopExpr(loop_expr) => todo!(),
+            HirElem::BreakExpr(break_expr) => todo!(),
+            HirElem::ContinueExpr(continue_expr) => todo!(),
+            HirElem::ReturnExpr(return_expr) => todo!(),
+            HirElem::Pat(pat) => todo!(),
+            HirElem::Stmt(stmt) => stmt.hir_id.hir_id(),
+            HirElem::ForStmt(for_stmt) => todo!(),
+            HirElem::WhileStmt(while_stmt) => todo!(),
+            HirElem::UseStmt(use_stmt) => use_stmt.hir_id.hir_id(),
+            HirElem::UsePathSegment(use_path_segment) => use_path_segment.hir_id.hir_id(),
+            HirElem::Block(block) => block.hir_id.hir_id(),
+            HirElem::TyRef(ty_ref) => ty_ref.hir_id.hir_id(),
+            HirElem::TyGenericArg(ty_generic_arg) => ty_generic_arg.hir_id.hir_id(),
+            HirElem::LetStmt(let_stmt) => todo!(),
+            HirElem::AssignmentStmt(assignment_stmt) => todo!(),
+            HirElem::StrLiteral(str_literal) => todo!(),
+            HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
+            HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => todo!(),
+            HirElem::__Allocated(_) => unreachable!(),
+        }
+    }
 }
 
 impl fmt::Display for HirElem {
@@ -64,6 +99,7 @@ impl fmt::Display for HirElem {
             Self::StrLiteral(s) => write!(f, "{}", s),
             Self::StrLiteralDisplayFragment(s) => write!(f, "{}", s),
             Self::StrLiteralDebugFragment(s) => write!(f, "{}", s),
+            Self::__Allocated(_) => write!(f, "<Allocated>"),
         }
     }
 }
@@ -94,6 +130,18 @@ impl HirMap {
         HirId::new(self.buffer.len())
     }
 
+    pub fn allocate_hir_id(&mut self, span: HirSpan) -> HirId {
+        let mut id = self.next_hir_id();
+        #[cfg(hir_id_span)]
+        {
+            id.span = span;
+        }
+        self.buffer.push(HirElem::__Allocated(span));
+        self.parents.push(HirId::ORPHAN_HIRID);
+        self.files.push(self.current_file.unwrap());
+        id
+    }
+
     pub fn push_ref(&mut self, r: HirElem, span: HirSpan) -> HirId {
         let mut id = self.next_hir_id();
         #[cfg(hir_id_span)]
@@ -104,6 +152,12 @@ impl HirMap {
         self.parents.push(HirId::ORPHAN_HIRID);
         self.files.push(self.current_file.unwrap());
         id
+    }
+
+    pub fn push_ref_at_allocation(&mut self, r: HirElem, allocation: HirId) {
+        debug_assert_eq!(self.buffer[allocation.id], HirElem::__Allocated(allocation.span));
+        debug_assert_eq!(r.get_hir_id_in_self(), allocation);
+        self.buffer[allocation.id] = r;
     }
 
     pub fn get(&self, at: HirId) -> &HirElem {
@@ -184,6 +238,13 @@ impl HirMap {
         }
     }
 
+    pub fn get_ty_generic_arg(&self, at: TyGenericArgId) -> &TyGenericArg {
+        match self.get(at.0) {
+            HirElem::TyGenericArg(t) => t,
+            x => panic!("Expected TyGenericArg, found {x:?}"),
+        }
+    }
+
     fn update_parent(&mut self, at: HirId, parent: HirId) {
         self.parents[at.id] = parent;
     }
@@ -194,6 +255,27 @@ impl HirMap {
 
     pub fn get_file(&self, at: HirId) -> SrcFile {
         self.files[at.id]
+    }
+
+    pub fn __get_allocated_hirids(&self) -> Vec<HirId> {
+        self.buffer
+            .iter()
+            .enumerate()
+            .filter_map(|(i, x)| {
+                if let HirElem::__Allocated(span) = x {
+                    let mut hir_id = HirId::new(i);
+
+                    #[cfg(hir_id_span)]
+                    {
+                        hir_id.span = *span;
+                    }
+
+                    Some(hir_id)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

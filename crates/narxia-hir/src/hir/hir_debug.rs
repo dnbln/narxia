@@ -179,7 +179,7 @@ pub fn display_mod_def(
     write!(f, "{:indent$}", "", indent = hdc.depth)?;
     write!(f, "{} {}", "module".keyword(), mod_def.name.text,)?;
     if let Some(body) = &mod_def.body {
-        writeln!(f, "{}", "{".punctuation());
+        writeln!(f, "{}", "{".punctuation())?;
         display_item_list(f, &body.items, hdc.make_child())?;
         writeln!(f)?;
         write!(f, "{:indent$}", "", indent = hdc.depth)?;
@@ -614,7 +614,7 @@ fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt
                         write!(f, "{} ", ",".punctuation())?;
                     }
 
-                    display_ty_generic_arg(f, arg, hdc.make_child())?;
+                    display_ty_generic_arg_id(f, *arg, hdc.make_child())?;
                 }
                 write!(f, "{}", ">".punctuation())?;
             }
@@ -647,6 +647,16 @@ impl fmt::Display for TyRef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         display_ty(f, self, HirDisplayContext::new())
     }
+}
+
+fn display_ty_generic_arg_id(
+    f: &mut fmt::Formatter,
+    id: TyGenericArgId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
 }
 
 fn display_ty_generic_arg(

@@ -10,7 +10,6 @@
 //! This module contains the code that lowers the syntax tree to the HIR.
 
 use narxia_src_db::SrcFile;
-use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
 use narxia_syn::syntree::{Token, TreeNode};
 
@@ -45,6 +44,16 @@ impl HasHirSpan for HirSpan {
 impl<'arena> HirLowerCtxt<'arena> {
     fn push_ref(&mut self, elem: HirElem, span: HirSpan) -> HirId {
         self.hir_ref_arena.push_ref(elem, span)
+    }
+
+    fn allocate_hir_id<T: HirIdNewtype>(&mut self, span: HirSpan) -> T {
+        T::new(self.hir_ref_arena.allocate_hir_id(span))
+    }
+
+    fn push_ref_at_allocation<T: HirIdNewtype>(&mut self, allocation: T, elem: HirElem) -> T {
+        let hir_id = allocation.hir_id();
+        self.hir_ref_arena.push_ref_at_allocation(elem, hir_id);
+        allocation
     }
 }
 
@@ -114,6 +123,7 @@ fn lower_mod_def_from_item_list(
     name: Ident,
     span: HirSpan,
 ) -> ModId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(span);
     let mod_def = ModDef {
         mod_kw,
         name,
@@ -122,9 +132,10 @@ fn lower_mod_def_from_item_list(
             items: lower_item_list(hir_lower_ctxt, item_list),
             rbrace,
         }),
+        hir_id,
     };
 
-    ModId(hir_lower_ctxt.push_ref(HirElem::Mod(mod_def), span))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Mod(mod_def))
 }
 
 fn lower_mod_def_to_include(
@@ -133,37 +144,48 @@ fn lower_mod_def_to_include(
     name: Ident,
     span: HirSpan,
 ) -> ModId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(span);
     let mod_def = ModDef {
         mod_kw,
         name,
         body: None,
+        hir_id,
     };
 
-    ModId(hir_lower_ctxt.push_ref(HirElem::Mod(mod_def), span))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Mod(mod_def))
 }
 
 fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<ItemId> {
     let attrs = lower_attr_list(hir_lower_ctxt, item.get_attr_list().as_ref());
 
     let hir_items = if let Some(fn_def) = item.get_fn_def() {
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
         vec![Item {
             attrs,
             kind: ItemKind::FnDef(lower_fn_def(hir_lower_ctxt, &fn_def)),
+            hir_id,
         }]
     } else if let Some(stmt) = item.get_stmt() {
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
         vec![Item {
             attrs,
             kind: ItemKind::Stmt(lower_stmt(hir_lower_ctxt, &stmt)),
+            hir_id,
         }]
     } else if let Some(use_stmt) = item.get_use_stmt() {
         lower_use_stmt(hir_lower_ctxt, &use_stmt)
             .into_iter()
-            .map(|it| Item {
-                attrs: AttrList::new(),
-                kind: ItemKind::UseStmt(it),
+            .map(|it| {
+                let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
+                Item {
+                    attrs: AttrList::new(),
+                    kind: ItemKind::UseStmt(it),
+                    hir_id,
+                }
             })
             .collect()
     } else if let Some(mod_def) = item.get_module() {
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
         let mod_kw = ModuleKw::from_token(&mod_def.get_module_kw());
         let name = lower_ident(
             hir_lower_ctxt,
@@ -192,13 +214,16 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<It
         vec![Item {
             attrs,
             kind: ItemKind::ModDef(mod_id),
+            hir_id,
         }]
     } else {
         todo!()
     };
     hir_items
         .into_iter()
-        .map(|hir_item| ItemId(hir_lower_ctxt.push_ref(HirElem::Item(hir_item), item.span())))
+        .map(|hir_item| {
+            hir_lower_ctxt.push_ref_at_allocation(hir_item.hir_id, HirElem::Item(hir_item))
+        })
         .collect()
 }
 
@@ -289,15 +314,17 @@ fn lower_use_stmt(
     lower_use_path(hir_lower_ctxt, &use_stmt.get_use_path().unwrap())
         .into_iter()
         .map(|path| {
+            let hir_id = hir_lower_ctxt.allocate_hir_id(use_stmt.span());
             let use_kw = UseKw::from_token(&use_stmt.get_use_kw());
-            UseStmtId(hir_lower_ctxt.push_ref(
+            hir_lower_ctxt.push_ref_at_allocation(
+                hir_id,
                 HirElem::UseStmt(UseStmt {
                     use_kw,
                     path,
                     span: use_stmt.span(),
+                    hir_id,
                 }),
-                use_stmt.span(),
-            ))
+            )
         })
         .collect()
 }
@@ -308,11 +335,14 @@ fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath
             hir_lower_ctxt,
             &segment_and_path.get_use_path_segment().get_ident(),
         );
-        let span = segment.span;
-        let segment = UsePathSegmentId(hir_lower_ctxt.push_ref(
-            HirElem::UsePathSegment(UsePathSegment { ident: segment }),
-            span,
-        ));
+        let hir_id = hir_lower_ctxt.allocate_hir_id(segment.span);
+        let segment = hir_lower_ctxt.push_ref_at_allocation(
+            hir_id,
+            HirElem::UsePathSegment(UsePathSegment {
+                ident: segment,
+                hir_id,
+            }),
+        );
         if let Some(ext) = segment_and_path.get_use_path_continuation() {
             if let Some(continuation) = ext.get_use_path_colon_continuation() {
                 let mut paths =
@@ -349,31 +379,8 @@ fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath
     }
 }
 
-fn lower_lbrace(lbrace: &Token) -> LBrace {
-    if lbrace.kind() != SyntaxKind::L_BRACE {
-        panic!("Expected '{{', found {:?}", lbrace);
-    }
-
-    LBrace::from_token(lbrace)
-}
-
-fn lower_rbrace(rbrace: &Token) -> RBrace {
-    if rbrace.kind() != SyntaxKind::R_BRACE {
-        panic!("Expected '}}', found {:?}", rbrace);
-    }
-
-    RBrace::from_token(rbrace)
-}
-
-fn lower_colon2(colon2: &Token) -> Colon2 {
-    if colon2.kind() != SyntaxKind::COLON2 {
-        panic!("Expected '::', found {:?}", colon2);
-    }
-
-    Colon2::from_token(colon2)
-}
-
 fn lower_fn_def(hir_lower_ctxt: &mut HirLowerCtxt, fn_def: &syntree::FnDef) -> FnId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_def.span());
     let head = fn_def.get_fn_head();
     let fn_kw = FnKw::from_token(&head.get_fn_kw());
     let name = lower_ident(hir_lower_ctxt, &head.get_fn_name().unwrap().get_ident());
@@ -396,9 +403,10 @@ fn lower_fn_def(hir_lower_ctxt: &mut HirLowerCtxt, fn_def: &syntree::FnDef) -> F
         params,
         ret_ty,
         body,
+        hir_id,
     };
 
-    FnId(hir_lower_ctxt.push_ref(HirElem::Fn(hir_fn_def), fn_def.span()))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Fn(hir_fn_def))
 }
 
 fn lower_generic_param_list(
@@ -543,9 +551,11 @@ fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnP
 }
 
 fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(expr.span());
     let hir_expr = match expr {
         syntree::Expr::ExprAtom(atom) => Expr {
             kind: ExprKind::Atom(lower_expr_atom(hir_lower_ctxt, atom)),
+            hir_id,
         },
         syntree::Expr::ExprNode(node) => return lower_expr_node(hir_lower_ctxt, node),
         syntree::Expr::BinaryOpExpr(binary_op_expr) => {
@@ -556,19 +566,24 @@ fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId
                     op,
                     rhs: right,
                 }),
+                hir_id,
             }
         }
         syntree::Expr::CallExpr(call_expr) => Expr {
             kind: ExprKind::CallExpr(lower_call_expr(hir_lower_ctxt, call_expr)),
+            hir_id,
         },
         syntree::Expr::IndexExpr(index_expr) => Expr {
             kind: ExprKind::IndexExpr(lower_index_expr(hir_lower_ctxt, index_expr)),
+            hir_id,
         },
         syntree::Expr::FieldAccess(field_access) => Expr {
             kind: ExprKind::FieldAccess(lower_field_access(hir_lower_ctxt, field_access)),
+            hir_id,
         },
         syntree::Expr::MethodCall(method_call) => Expr {
             kind: ExprKind::MethodCall(lower_method_call(hir_lower_ctxt, method_call)),
+            hir_id,
         },
         syntree::Expr::Block(block) => {
             let block = lower_block(hir_lower_ctxt, block);
@@ -576,6 +591,7 @@ fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId
                 kind: ExprKind::Atom(ExprAtom {
                     kind: ExprAtomKind::BlockExpr(BlockExpr { block }),
                 }),
+                hir_id,
             }
         }
         syntree::Expr::CustomInfixExpr(e) => {
@@ -596,11 +612,12 @@ fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId
                     name: op,
                     arg,
                 }),
+                hir_id,
             }
         }
     };
 
-    ExprId(hir_lower_ctxt.push_ref(HirElem::Expr(hir_expr), expr.span()))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Expr(hir_expr))
 }
 
 fn lower_call_expr(hir_lower_ctxt: &mut HirLowerCtxt, call_expr: &syntree::CallExpr) -> CallExpr {
@@ -636,6 +653,7 @@ fn lower_call_expr_args(
         .collect::<Vec<_>>();
 
     args.extend(call_expr_args.get_call_expr_arg_lambda().map(|it| {
+        let hir_id = hir_lower_ctxt.allocate_hir_id(it.span());
         let expr = Expr {
             kind: ExprKind::Atom(ExprAtom {
                 kind: ExprAtomKind::LambdaExpr(lower_lambda_expr(
@@ -643,8 +661,9 @@ fn lower_call_expr_args(
                     &it.get_lambda_expr(),
                 )),
             }),
+            hir_id,
         };
-        ExprId(hir_lower_ctxt.push_ref(HirElem::Expr(expr), it.span()))
+        hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Expr(expr))
     }));
     CallExprArgs {
         lparen,
@@ -850,6 +869,7 @@ fn lower_block_extra_items(
     block: &syntree::Block,
     f: impl FnOnce(&mut HirLowerCtxt, &mut ItemList),
 ) -> BlockId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(block.span());
     let lbrace = LBrace::from_token(&block.get_lbrace());
     let mut items = lower_item_list(hir_lower_ctxt, block.get_item_list());
     let rbrace = RBrace::from_token(&block.get_rbrace().unwrap());
@@ -860,9 +880,10 @@ fn lower_block_extra_items(
         lbrace,
         items,
         rbrace,
+        hir_id,
     };
 
-    BlockId(hir_lower_ctxt.push_ref(HirElem::Block(hir_block), block.span()))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Block(hir_block))
 }
 
 fn lower_block(hir_lower_ctxt: &mut HirLowerCtxt, block: &syntree::Block) -> BlockId {
@@ -870,31 +891,37 @@ fn lower_block(hir_lower_ctxt: &mut HirLowerCtxt, block: &syntree::Block) -> Blo
 }
 
 fn lower_stmt(hir_lower_ctxt: &mut HirLowerCtxt, stmt: &syntree::Stmt) -> StmtId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(stmt.span());
     let hir_stmt = if let Some(expr) = stmt.get_expr_node() {
         Stmt {
             kind: StmtKind::ExprStmt(lower_expr_node(hir_lower_ctxt, &expr)),
+            hir_id,
         }
     } else if let Some(let_stmt) = stmt.get_let_stmt() {
         Stmt {
             kind: StmtKind::LetStmt(lower_let_stmt(hir_lower_ctxt, &let_stmt)),
+            hir_id,
         }
     } else if let Some(for_stmt) = stmt.get_for_stmt() {
         Stmt {
             kind: StmtKind::ForStmt(lower_for_stmt(hir_lower_ctxt, &for_stmt)),
+            hir_id,
         }
     } else if let Some(while_stmt) = stmt.get_while_stmt() {
         Stmt {
             kind: StmtKind::WhileStmt(lower_while_stmt(hir_lower_ctxt, &while_stmt)),
+            hir_id,
         }
     } else if let Some(assignment_stmt) = stmt.get_assignment_stmt() {
         Stmt {
             kind: StmtKind::AssignmentStmt(lower_assignment_stmt(hir_lower_ctxt, &assignment_stmt)),
+            hir_id,
         }
     } else {
         todo!()
     };
 
-    StmtId(hir_lower_ctxt.push_ref(HirElem::Stmt(hir_stmt), stmt.span()))
+    hir_lower_ctxt.push_ref_at_allocation(hir_id, HirElem::Stmt(hir_stmt))
 }
 
 fn lower_let_stmt(hir_lower_ctxt: &mut HirLowerCtxt, let_stmt: &syntree::LetStmt) -> LetStmt {
@@ -1079,22 +1106,30 @@ fn lower_displayable_to_expr(
     displayable: &syntree::StringLiteralFragDisplayable,
 ) -> ExprId {
     let expr = match displayable {
-        syntree::StringLiteralFragDisplayable::StringLiteralFragExpr(e) => Expr {
-            kind: ExprKind::Atom(ExprAtom {
-                kind: ExprAtomKind::BlockExpr(lower_block_expr(
-                    hir_lower_ctxt,
-                    &e.get_block_expr(),
-                )),
-            }),
-        },
-        syntree::StringLiteralFragDisplayable::StringLiteralFragIdent(e) => Expr {
-            kind: ExprKind::Atom(ExprAtom {
-                kind: ExprAtomKind::Ident(lower_ident(hir_lower_ctxt, &e.get_ident())),
-            }),
-        },
+        syntree::StringLiteralFragDisplayable::StringLiteralFragExpr(e) => {
+            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span());
+            Expr {
+                kind: ExprKind::Atom(ExprAtom {
+                    kind: ExprAtomKind::BlockExpr(lower_block_expr(
+                        hir_lower_ctxt,
+                        &e.get_block_expr(),
+                    )),
+                }),
+                hir_id,
+            }
+        }
+        syntree::StringLiteralFragDisplayable::StringLiteralFragIdent(e) => {
+            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span());
+            Expr {
+                kind: ExprKind::Atom(ExprAtom {
+                    kind: ExprAtomKind::Ident(lower_ident(hir_lower_ctxt, &e.get_ident())),
+                }),
+                hir_id,
+            }
+        }
     };
 
-    ExprId(hir_lower_ctxt.push_ref(HirElem::Expr(expr), displayable.span()))
+    hir_lower_ctxt.push_ref_at_allocation(expr.hir_id, HirElem::Expr(expr))
 }
 
 fn lower_pat(hir_lower_ctxt: &mut HirLowerCtxt, pat: &syntree::Pat) -> Pat {
@@ -1112,6 +1147,7 @@ fn lower_pat(hir_lower_ctxt: &mut HirLowerCtxt, pat: &syntree::Pat) -> Pat {
 
 fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRefId {
     let span = HirSpan::of_node(ty_ref);
+    let hir_id = hir_lower_ctxt.allocate_hir_id(span);
     let ty_ref = if let Some(name) = ty_ref.get_ident() {
         let name = lower_ident(hir_lower_ctxt, &name);
         macro_rules! ty_refp {
@@ -1141,18 +1177,19 @@ fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> T
             _ => TyRefKind::Named(name, TyGenericArgs { args: vec![] }), // TODO: do
         };
 
-        TyRef { kind, span }
+        TyRef { kind, span, hir_id }
     } else if let Some(fn_ty) = ty_ref.get_fn_ty() {
         let fn_ty = lower_fn_ty(hir_lower_ctxt, &fn_ty);
         TyRef {
             kind: TyRefKind::Fn(fn_ty),
             span,
+            hir_id,
         }
     } else {
         todo!()
     };
 
-    TyRefId(hir_lower_ctxt.push_ref(HirElem::TyRef(ty_ref), span))
+    hir_lower_ctxt.push_ref_at_allocation(ty_ref.hir_id, HirElem::TyRef(ty_ref))
 }
 
 fn lower_fn_ty(hir_lower_ctxt: &mut HirLowerCtxt, fn_ty: &syntree::FnTy) -> FnTy {

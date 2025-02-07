@@ -46,3 +46,8 @@ harness = false
 name = "visitor_visits_all_non_whitespace_text_nxtimq"
 path = "tests/visitor_visits_all_non_whitespace_text.rs"
 harness = false
+
+[[test]]
+name = "no_allocated_and_unused_hirids_nxtimq"
+path = "tests/no_allocated_and_unused_hirids.rs"
+harness = false

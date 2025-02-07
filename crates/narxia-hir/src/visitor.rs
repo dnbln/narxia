@@ -1,5 +1,3 @@
-use std::default;
-
 use crate::hir::HirIdNewtype;
 use crate::hir_map::HirMap;
 use crate::{hir, HirId, HirSpan};
@@ -37,10 +35,78 @@ macro_rules! const_token_visit_fns {
             };
         }
 
-        macro_rules! implement_acceptors {
+        macro_rules! const_token_implement_acceptors {
             () => {
                 impl_visitable! {
                     $($visit_name($kw_ty)),*
+                }
+            };
+        }
+    };
+}
+
+macro_rules! hir_visitor_fns {
+    ($($fn_name:ident($hir_ty:ty) -> $walk_name:ident),* $(,)?) => {
+        macro_rules! visitor_fns_decl_visit_fns {
+            () => {
+                $(
+                    fn $fn_name(&mut self, hir: &'hir $hir_ty) {
+                        $walk_name(self, hir)
+                    }
+                )*
+            };
+        }
+
+        macro_rules! visitor_fns_impl_visitable {
+            () => {
+                impl_visitable! {
+                    $($fn_name($hir_ty)),*
+                }
+            };
+        }
+    };
+}
+
+macro_rules! hir_visitor_hir_ids {
+    ($($visit_name:ident($hir_id_newtype:ty) -> $hm_getter:ident),* $(,)?) => {
+        macro_rules! hir_visitor_hir_ids_visitor_fn_decls {
+            () => {
+                $(
+                    fn $visit_name(&mut self, id: $hir_id_newtype) {
+                        self.visit_hir_id(id.hir_id());
+                        self.q_id_strategy(|v, hm| hm.$hm_getter(id).accept(v));
+                        self.end_visit_hir_id(id.hir_id());
+                    }
+                )*
+            };
+        }
+
+        macro_rules! hir_visitor_hir_ids_impl_visitable {
+            () => {
+                impl_visitable_id! {
+                    $($visit_name($hir_id_newtype)),*
+                }
+            };
+        }
+    };
+}
+
+macro_rules! contextualised_hir_visitors {
+    ($($visit_name:ident ($context_ty_id:ty, $hir_ty:ty) -> $walk_name:ident),* $(,)?) => {
+        macro_rules! contextualised_hir_visitors_fn_decls {
+            () => {
+                $(
+                    fn $visit_name(&mut self, id: $context_ty_id, hir: &'hir $hir_ty) {
+                        $walk_name(self, id, hir)
+                    }
+                )*
+            };
+        }
+
+        macro_rules! contextualised_hir_visitors_impl_acceptors {
+            () => {
+                impl_id_visitable! {
+                    $($visit_name [$context_ty_id] ($hir_ty)),*
                 }
             };
         }
@@ -111,275 +177,97 @@ const_token_visit_fns! {
     visit_pipe2 -> walk_pipe2 -> hir::Pipe2,
 }
 
+hir_visitor_fns! {
+    visit_mod_def(hir::ModDef) -> walk_mod_def,
+    visit_mod_body(hir::ModBody) -> walk_mod_body,
+    visit_attr_list(hir::AttrList) -> walk_attr_list,
+    visit_attr(hir::Attr) -> walk_attr,
+    visit_attr_meta(hir::AttrMeta) -> walk_attr_meta,
+    visit_attr_meta_item(hir::AttrMetaItem) -> walk_attr_meta_item,
+    visit_attr_meta_item_eq(hir::AttrMetaItemEq) -> walk_attr_meta_item_eq,
+    visit_attr_meta_item_call(hir::AttrMetaItemCall) -> walk_attr_meta_item_call,
+    visit_item(hir::Item) -> walk_item,
+    visit_stmt(hir::Stmt) -> walk_stmt,
+    visit_expr(hir::Expr) -> walk_expr,
+    visit_block(hir::Block) -> walk_block,
+    visit_ident(hir::Ident) -> walk_ident,
+    visit_num_literal(hir::NumLit) -> walk_num_literal,
+    visit_item_list(hir::ItemList) -> walk_item_list,
+    visit_assignment_op(hir::AssignmentOp) -> walk_assignment_op,
+    visit_generic_params(hir::GenericParams) -> walk_generic_params,
+    visit_generic_param(hir::GenericParam) -> walk_generic_param,
+    visit_generic_param_ty(hir::GenericParamTy) -> walk_generic_param_ty,
+    visit_generic_param_ty_bounds(hir::GenericParamTyBounds) -> walk_generic_param_ty_bounds,
+    visit_generic_param_const(hir::GenericParamConst) -> walk_generic_param_const,
+    visit_fn_def(hir::FnDef) -> walk_fn_def,
+    visit_fn_param_list(hir::FnParamList) -> walk_fn_param_list,
+    visit_fn_param(hir::FnParam) -> walk_fn_param,
+    visit_fn_ret_ty(hir::FnRetTy) -> walk_fn_ret_ty,
+    visit_pat(hir::Pat) -> walk_pat,
+    visit_ty_ref(hir::TyRef) -> walk_ty_ref,
+    visit_ty_generic_args(hir::TyGenericArgs) -> walk_ty_generic_args,
+    visit_ty_generic_arg(hir::TyGenericArg) -> walk_ty_generic_arg,
+    visit_fn_ty_ref(hir::FnTy) -> walk_fn_ty_ref,
+    visit_str_literal(hir::StrLiteral) -> walk_str_literal,
+    visit_str_literal_fragment(hir::StrLiteralFragment) -> walk_str_literal_fragment,
+    visit_str_literal_text_fragment(hir::StrLiteralTextFragment) -> walk_str_literal_text_fragment,
+    visit_str_literal_display_fragment(hir::StrLiteralDisplayFragment) -> walk_str_literal_display_fragment,
+    visit_str_literal_debug_fragment(hir::StrLiteralDebugFragment) -> walk_str_literal_debug_fragment,
+
+    visit_call_args(hir::CallExprArgs) -> walk_call_args,
+    visit_lambda_param_list(hir::LambdaParamList) -> walk_lambda_param_list,
+    visit_lambda_param(hir::LambdaParam) -> walk_lambda_param,
+
+    visit_use_stmt(hir::UseStmt) -> walk_use_stmt,
+    visit_use_path(hir::UsePath) -> walk_use_path,
+    visit_use_path_segment(hir::UsePathSegment) -> walk_use_path_segment,
+    visit_use_alias(hir::UseAlias) -> walk_use_alias,
+}
+
+hir_visitor_hir_ids! {
+    visit_item_id(hir::ItemId) -> get_item,
+    visit_stmt_id(hir::StmtId) -> get_stmt,
+    visit_block_id(hir::BlockId) -> get_block,
+    visit_fn_id(hir::FnId) -> get_fn,
+    visit_mod_id(hir::ModId) -> get_mod,
+    visit_ty_ref_id(hir::TyRefId) -> get_ty_ref,
+    visit_use_stmt_id(hir::UseStmtId) -> get_use_stmt,
+    visit_use_path_segment_id(hir::UsePathSegmentId) -> get_use_segment,
+    visit_expr_id(hir::ExprId) -> get_expr,
+    visit_ty_generic_arg_id(hir::TyGenericArgId) -> get_ty_generic_arg,
+}
+
+contextualised_hir_visitors! {
+    visit_let_stmt(hir::StmtId, hir::LetStmt) -> walk_let_stmt,
+    visit_for_stmt(hir::StmtId, hir::ForStmt) -> walk_for_stmt,
+    visit_while_stmt(hir::StmtId, hir::WhileStmt) -> walk_while_stmt,
+    visit_assignment_stmt(hir::StmtId, hir::AssignmentStmt) -> walk_assignment_stmt,
+    //
+    visit_block_expr(hir::ExprId, hir::BlockExpr) -> walk_block_expr,
+    visit_expr_atom(hir::ExprId, hir::ExprAtom) -> walk_expr_atom,
+    visit_expr_binary_expr(hir::ExprId, hir::BinaryOpExpr) -> walk_expr_binary_expr,
+    visit_expr_call_expr(hir::ExprId, hir::CallExpr) -> walk_expr_call_expr,
+    visit_expr_index_expr(hir::ExprId, hir::IndexExpr) -> walk_expr_index_expr,
+    visit_expr_field_access(hir::ExprId, hir::FieldAccess) -> walk_expr_field_access,
+    visit_expr_method_call(hir::ExprId, hir::MethodCall) -> walk_expr_method_call,
+    visit_custom_infix_expr(hir::ExprId, hir::CustomInfixExpr) -> walk_custom_infix_expr,
+    visit_return_expr(hir::ExprId, hir::ReturnExpr) -> walk_return_expr,
+    visit_break_expr(hir::ExprId, hir::BreakExpr) -> walk_break_expr,
+    visit_continue_expr(hir::ExprId, hir::ContinueExpr) -> walk_continue_expr,
+    visit_loop_expr(hir::ExprId, hir::LoopExpr) -> walk_loop_expr,
+    visit_if_expr(hir::ExprId, hir::IfExpr) -> walk_if_expr,
+    visit_if_expr_else_clause(hir::ExprId, hir::IfExprElseClause) -> walk_if_expr_else_clause,
+    visit_tuple_like_expr(hir::ExprId, hir::TupleExpr) -> walk_tuple_like_expr,
+    visit_lambda_expr(hir::ExprId, hir::LambdaExpr) -> walk_lambda_expr,
+}
+
 #[allow(unused_variables)]
 pub trait HirVisitor<'hir> {
     fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q);
 
-    fn visit_mod_def(&mut self, mod_id: hir::ModId, mod_def: &'hir hir::ModDef) {
-        walk_mod_def(self, mod_def)
-    }
+    visitor_fns_decl_visit_fns!();
 
-    fn visit_mod_body(&mut self, mod_body: &'hir hir::ModBody) {
-        walk_mod_body(self, mod_body)
-    }
-
-    fn visit_item(&mut self, item_id: hir::ItemId, item: &'hir hir::Item) {
-        walk_item(self, item)
-    }
-
-    fn visit_attr_list(&mut self, attr_list: &'hir hir::AttrList) {
-        walk_attr_list(self, attr_list)
-    }
-
-    fn visit_attr(&mut self, attr: &'hir hir::Attr) {
-        walk_attr(self, attr)
-    }
-
-    fn visit_attr_meta(&mut self, attr_meta: &'hir hir::AttrMeta) {
-        walk_attr_meta(self, attr_meta)
-    }
-
-    fn visit_attr_meta_item(&mut self, attr_meta_item: &'hir hir::AttrMetaItem) {
-        walk_attr_meta_item(self, attr_meta_item)
-    }
-
-    fn visit_attr_meta_item_eq(&mut self, attr_meta_item_eq: &'hir hir::AttrMetaItemEq) {
-        walk_attr_meta_item_eq(self, attr_meta_item_eq)
-    }
-
-    fn visit_attr_meta_item_call(&mut self, attr_meta_item_call: &'hir hir::AttrMetaItemCall) {
-        walk_attr_meta_item_call(self, attr_meta_item_call)
-    }
-
-    fn visit_ident(&mut self, ident: &'hir hir::Ident) {
-        walk_ident(self, ident)
-    }
-
-    fn visit_num_literal(&mut self, num: &'hir hir::NumLit) {
-        walk_num_literal(self, num)
-    }
-
-    fn visit_item_list(&mut self, item_list: &'hir hir::ItemList) {
-        walk_item_list(self, item_list)
-    }
-
-    fn visit_fn_def(&mut self, fn_id: hir::FnId, fn_def: &'hir hir::FnDef) {
-        walk_fn_def(self, fn_def)
-    }
-
-    fn visit_stmt(&mut self, stmt_id: hir::StmtId, stmt: &'hir hir::Stmt) {
-        walk_stmt(self, stmt_id, stmt)
-    }
-
-    fn visit_expr(&mut self, expr_id: hir::ExprId, expr: &'hir hir::Expr) {
-        walk_expr(self, expr_id, expr)
-    }
-
-    fn visit_let_stmt(&mut self, stmt_id: hir::StmtId, let_stmt: &'hir hir::LetStmt) {
-        walk_let_stmt(self, let_stmt)
-    }
-
-    fn visit_for_stmt(&mut self, stmt_id: hir::StmtId, for_stmt: &'hir hir::ForStmt) {
-        walk_for_stmt(self, for_stmt)
-    }
-
-    fn visit_while_stmt(&mut self, stmt_id: hir::StmtId, while_stmt: &'hir hir::WhileStmt) {
-        walk_while_stmt(self, while_stmt)
-    }
-
-    fn visit_assignment_stmt(
-        &mut self,
-        stmt_id: hir::StmtId,
-        assignment_stmt: &'hir hir::AssignmentStmt,
-    ) {
-        walk_assignment_stmt(self, assignment_stmt)
-    }
-
-    fn visit_assignment_op(&mut self, assignment_op: &'hir hir::AssignmentOp) {
-        walk_assignment_op(self, assignment_op)
-    }
-
-    fn visit_generic_params(&mut self, gparams: &'hir hir::GenericParams) {
-        walk_generic_params(self, gparams)
-    }
-
-    fn visit_generic_param(&mut self, gparam: &'hir hir::GenericParam) {
-        walk_generic_param(self, gparam)
-    }
-
-    fn visit_generic_param_ty(&mut self, generic_param_ty: &'hir hir::GenericParamTy) {
-        walk_generic_param_ty(self, generic_param_ty)
-    }
-
-    fn visit_generic_param_const(&mut self, generic_param_const: &'hir hir::GenericParamConst) {
-        walk_generic_param_const(self, generic_param_const)
-    }
-
-    fn visit_generic_param_ty_bounds(&mut self, ty_bounds: &'hir hir::GenericParamTyBounds) {
-        walk_generic_param_ty_bounds(self, ty_bounds)
-    }
-
-    fn visit_fn_param_list(&mut self, param_list: &'hir hir::FnParamList) {
-        walk_fn_param_list(self, param_list)
-    }
-
-    fn visit_fn_param(&mut self, fn_param: &'hir hir::FnParam) {
-        walk_fn_param(self, fn_param)
-    }
-
-    fn visit_fn_ret_ty(&mut self, fn_ret_ty: &'hir hir::FnRetTy) {
-        walk_fn_ret_ty(self, fn_ret_ty)
-    }
-
-    fn visit_block(&mut self, block_id: hir::BlockId, block: &'hir hir::Block) {
-        walk_block(self, block)
-    }
-
-    fn visit_block_expr(&mut self, expr_id: hir::ExprId, block_expr: &'hir hir::BlockExpr) {
-        walk_block_expr(self, block_expr)
-    }
-
-    fn visit_ty_ref(&mut self, ty_ref_id: hir::TyRefId, ty_ref: &'hir hir::TyRef) {
-        walk_ty_ref(self, ty_ref)
-    }
-
-    fn visit_pat(&mut self, pat: &'hir hir::Pat) {
-        walk_pat(self, pat)
-    }
-
-    fn visit_ty_generic_args(&mut self, generic_args: &'hir hir::TyGenericArgs) {
-        walk_ty_generic_args(self, generic_args)
-    }
-
-    fn visit_ty_generic_arg(&mut self, generic_arg: &'hir hir::TyGenericArg) {
-        walk_ty_generic_arg(self, generic_arg)
-    }
-
-    fn visit_fn_ty_ref(&mut self, fn_ty: &'hir hir::FnTy) {
-        walk_fn_ty_ref(self, fn_ty)
-    }
-
-    fn visit_expr_atom(&mut self, expr_id: hir::ExprId, atom: &'hir hir::ExprAtom) {
-        walk_expr_atom(self, expr_id, atom)
-    }
-
-    fn visit_str_literal(&mut self, str_literal: &'hir hir::StrLiteral) {
-        walk_str_literal(self, str_literal)
-    }
-
-    fn visit_str_literal_fragment(&mut self, str_literal_fragment: &'hir hir::StrLiteralFragment) {
-        walk_str_literal_fragment(self, str_literal_fragment)
-    }
-
-    fn visit_str_literal_text_fragment(
-        &mut self,
-        str_literal_text_fragment: &'hir hir::StrLiteralTextFragment,
-    ) {
-        walk_str_literal_text_fragment(self, str_literal_text_fragment)
-    }
-
-    fn visit_str_display_fragment(
-        &mut self,
-        str_display_fragment: &'hir hir::StrLiteralDisplayFragment,
-    ) {
-        walk_str_display_fragment(self, str_display_fragment)
-    }
-
-    fn visit_str_debug_fragment(&mut self, str_debug_fragment: &'hir hir::StrLiteralDebugFragment) {
-        walk_str_debug_fragment(self, str_debug_fragment)
-    }
-
-    fn visit_expr_binary_expr(
-        &mut self,
-        expr_id: hir::ExprId,
-        binary_expr: &'hir hir::BinaryOpExpr,
-    ) {
-        walk_expr_binary_expr(self, binary_expr)
-    }
-
-    fn visit_expr_call_expr(&mut self, expr_id: hir::ExprId, call_expr: &'hir hir::CallExpr) {
-        walk_expr_call_expr(self, call_expr)
-    }
-
-    fn visit_expr_index_expr(&mut self, expr_id: hir::ExprId, index_expr: &'hir hir::IndexExpr) {
-        walk_expr_index_expr(self, index_expr)
-    }
-
-    fn visit_expr_field_access(
-        &mut self,
-        expr_id: hir::ExprId,
-        field_access: &'hir hir::FieldAccess,
-    ) {
-        walk_expr_field_access(self, field_access)
-    }
-
-    fn visit_expr_method_call(&mut self, expr_id: hir::ExprId, method_call: &'hir hir::MethodCall) {
-        walk_expr_method_call(self, method_call)
-    }
-
-    fn visit_custom_infix_expr(
-        &mut self,
-        expr_id: hir::ExprId,
-        custom_infix: &'hir hir::CustomInfixExpr,
-    ) {
-        walk_custom_infix_expr(self, custom_infix)
-    }
-
-    fn visit_return_expr(&mut self, expr_id: hir::ExprId, ret: &'hir hir::ReturnExpr) {
-        walk_return_expr(self, ret)
-    }
-
-    fn visit_break_expr(&mut self, expr_id: hir::ExprId, break_expr: &'hir hir::BreakExpr) {
-        walk_break_expr(self, break_expr)
-    }
-
-    fn visit_continue_expr(
-        &mut self,
-        expr_id: hir::ExprId,
-        continue_expr: &'hir hir::ContinueExpr,
-    ) {
-        walk_continue_expr(self, continue_expr)
-    }
-
-    fn visit_loop_expr(&mut self, expr_id: hir::ExprId, loop_expr: &'hir hir::LoopExpr) {
-        walk_loop_expr(self, loop_expr)
-    }
-
-    fn visit_if_expr(&mut self, expr_id: hir::ExprId, if_expr: &'hir hir::IfExpr) {
-        walk_if_expr(self, expr_id, if_expr)
-    }
-
-    fn visit_if_expr_else_clause(
-        &mut self,
-        expr_id: hir::ExprId,
-        else_clause: &'hir hir::IfExprElseClause,
-    ) {
-        walk_if_expr_else_clause(self, else_clause)
-    }
-
-    fn visit_tuple_like_expr(
-        &mut self,
-        expr_id: hir::ExprId,
-        tuple_like_expr: &'hir hir::TupleExpr,
-    ) {
-        walk_tuple_like_expr(self, tuple_like_expr)
-    }
-
-    fn visit_call_args(&mut self, call_args: &'hir hir::CallExprArgs) {
-        walk_call_args(self, call_args)
-    }
-
-    fn visit_lambda_expr(&mut self, expr_id: hir::ExprId, lambda_expr: &'hir hir::LambdaExpr) {
-        walk_lambda_expr(self, lambda_expr)
-    }
-
-    fn visit_lambda_param_list(&mut self, lambda_param_list: &'hir hir::LambdaParamList) {
-        walk_lambda_param_list(self, lambda_param_list)
-    }
-
-    fn visit_lambda_param(&mut self, lambda_param: &'hir hir::LambdaParam) {
-        walk_lambda_param(self, lambda_param)
-    }
+    contextualised_hir_visitors_fn_decls!();
 
     fn visit_hir_id(&mut self, hir_id: HirId) {
         // Nothing to do.
@@ -409,81 +297,8 @@ pub trait HirVisitor<'hir> {
         self.visit_token_span(token.span);
     }
 
-    fn visit_expr_id(&mut self, expr_id: hir::ExprId) {
-        self.visit_hir_id(expr_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_expr(expr_id).accept(expr_id, v));
-        self.end_visit_hir_id(expr_id.hir_id());
-    }
-
-    fn visit_use_stmt(&mut self, use_stmt_id: hir::UseStmtId, use_stmt: &'hir hir::UseStmt) {
-        walk_use_stmt(self, use_stmt)
-    }
-
-    fn visit_use_path_segment(
-        &mut self,
-        use_path_segment_id: hir::UsePathSegmentId,
-        use_path_segment: &'hir hir::UsePathSegment,
-    ) {
-        walk_use_path_segment(self, use_path_segment)
-    }
-
-    fn visit_use_path(&mut self, use_path: &'hir hir::UsePath) {
-        walk_use_path(self, use_path)
-    }
-
-    fn visit_use_alias(&mut self, use_alias: &'hir hir::UseAlias) {
-        walk_use_alias(self, use_alias)
-    }
-
+    hir_visitor_hir_ids_visitor_fn_decls! {}
     const_token_visit_fns_decl_visits! {}
-
-    fn visit_item_id(&mut self, item_id: hir::ItemId) {
-        self.visit_hir_id(item_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_item(item_id).accept(item_id, v));
-        self.end_visit_hir_id(item_id.hir_id());
-    }
-
-    fn visit_stmt_id(&mut self, stmt_id: hir::StmtId) {
-        self.visit_hir_id(stmt_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_stmt(stmt_id).accept(stmt_id, v));
-        self.end_visit_hir_id(stmt_id.hir_id());
-    }
-
-    fn visit_block_id(&mut self, block_id: hir::BlockId) {
-        self.visit_hir_id(block_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_block(block_id).accept(block_id, v));
-        self.end_visit_hir_id(block_id.hir_id());
-    }
-
-    fn visit_fn_id(&mut self, fn_id: hir::FnId) {
-        self.visit_hir_id(fn_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_fn(fn_id).accept(fn_id, v));
-        self.end_visit_hir_id(fn_id.hir_id());
-    }
-
-    fn visit_mod_id(&mut self, mod_id: hir::ModId) {
-        self.visit_hir_id(mod_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_mod(mod_id).accept(mod_id, v));
-        self.end_visit_hir_id(mod_id.hir_id());
-    }
-
-    fn visit_ty_ref_id(&mut self, ty_ref_id: hir::TyRefId) {
-        self.visit_hir_id(ty_ref_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_ty_ref(ty_ref_id).accept(ty_ref_id, v));
-        self.end_visit_hir_id(ty_ref_id.hir_id());
-    }
-
-    fn visit_use_stmt_id(&mut self, use_stmt_id: hir::UseStmtId) {
-        self.visit_hir_id(use_stmt_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_use_stmt(use_stmt_id).accept(use_stmt_id, v));
-        self.end_visit_hir_id(use_stmt_id.hir_id());
-    }
-
-    fn visit_use_path_segment_id(&mut self, use_segment_id: hir::UsePathSegmentId) {
-        self.visit_hir_id(use_segment_id.hir_id());
-        self.q_id_strategy(|v, hm| hm.get_use_segment(use_segment_id).accept(use_segment_id, v));
-        self.end_visit_hir_id(use_segment_id.hir_id());
-    }
 }
 
 const_token_visit_fns_decl_walks!();
@@ -683,56 +498,48 @@ pub fn walk_fn_param_list<'hir, V: HirVisitor<'hir> + ?Sized>(
     param_list.rparen.accept(visitor);
 }
 
-pub fn walk_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
-    visitor: &mut V,
-    stmt_id: hir::StmtId,
-    stmt: &'hir hir::Stmt,
-) {
+pub fn walk_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, stmt: &'hir hir::Stmt) {
     match &stmt.kind {
         hir::StmtKind::ExprStmt(expr) => {
             expr.accept(visitor);
         }
         hir::StmtKind::LetStmt(let_stmt) => {
-            let_stmt.accept(stmt_id, visitor);
+            let_stmt.accept(stmt.hir_id, visitor);
         }
         hir::StmtKind::ForStmt(for_stmt) => {
-            for_stmt.accept(stmt_id, visitor);
+            for_stmt.accept(stmt.hir_id, visitor);
         }
         hir::StmtKind::WhileStmt(while_stmt) => {
-            while_stmt.accept(stmt_id, visitor);
+            while_stmt.accept(stmt.hir_id, visitor);
         }
         hir::StmtKind::AssignmentStmt(assignment_stmt) => {
-            assignment_stmt.accept(stmt_id, visitor);
+            assignment_stmt.accept(stmt.hir_id, visitor);
         }
     }
 }
 
-pub fn walk_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
-    visitor: &mut V,
-    expr_id: hir::ExprId,
-    expr: &'hir hir::Expr,
-) {
+pub fn walk_expr<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, expr: &'hir hir::Expr) {
     match &expr.kind {
         hir::ExprKind::Atom(atom) => {
-            atom.accept(expr_id, visitor);
+            atom.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::Binary(binary_expr) => {
-            binary_expr.accept(expr_id, visitor);
+            binary_expr.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::CallExpr(call_expr) => {
-            call_expr.accept(expr_id, visitor);
+            call_expr.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::IndexExpr(index_expr) => {
-            index_expr.accept(expr_id, visitor);
+            index_expr.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::FieldAccess(field_access) => {
-            field_access.accept(expr_id, visitor);
+            field_access.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::MethodCall(method_call) => {
-            method_call.accept(expr_id, visitor);
+            method_call.accept(expr.hir_id, visitor);
         }
         hir::ExprKind::CustomInfix(custom_infix) => {
-            custom_infix.accept(expr_id, visitor);
+            custom_infix.accept(expr.hir_id, visitor);
         }
     }
 }
@@ -841,6 +648,7 @@ pub fn walk_fn_ret_ty<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::StmtId,
     let_stmt: &'hir hir::LetStmt,
 ) {
     let_stmt.let_kw.accept(visitor);
@@ -863,6 +671,7 @@ pub fn walk_let_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_for_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::StmtId,
     for_stmt: &'hir hir::ForStmt,
 ) {
     for_stmt.for_kw.accept(visitor);
@@ -876,6 +685,7 @@ pub fn walk_for_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_while_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::StmtId,
     while_stmt: &'hir hir::WhileStmt,
 ) {
     while_stmt.while_kw.accept(visitor);
@@ -887,6 +697,7 @@ pub fn walk_while_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_assignment_stmt<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::StmtId,
     assignment_stmt: &'hir hir::AssignmentStmt,
 ) {
     assignment_stmt.lhs.accept(visitor);
@@ -919,6 +730,7 @@ pub fn walk_block<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, block: &'
 
 pub fn walk_block_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     block_expr: &'hir hir::BlockExpr,
 ) {
     block_expr.block.accept(visitor);
@@ -926,6 +738,7 @@ pub fn walk_block_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_expr_binary_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     binary_expr: &'hir hir::BinaryOpExpr,
 ) {
     binary_expr.lhs.accept(visitor);
@@ -952,6 +765,7 @@ pub fn walk_expr_binary_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_expr_call_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     call_expr: &'hir hir::CallExpr,
 ) {
     call_expr.callee.accept(visitor);
@@ -960,6 +774,7 @@ pub fn walk_expr_call_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_expr_index_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     index_expr: &'hir hir::IndexExpr,
 ) {
     index_expr.base.accept(visitor);
@@ -970,6 +785,7 @@ pub fn walk_expr_index_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_expr_field_access<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     field_access: &'hir hir::FieldAccess,
 ) {
     field_access.base.accept(visitor);
@@ -979,6 +795,7 @@ pub fn walk_expr_field_access<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_expr_method_call<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     method_call: &'hir hir::MethodCall,
 ) {
     method_call.base.accept(visitor);
@@ -989,6 +806,7 @@ pub fn walk_expr_method_call<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     ret: &'hir hir::ReturnExpr,
 ) {
     ret.return_kw.accept(visitor);
@@ -997,6 +815,7 @@ pub fn walk_return_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_break_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     break_expr: &'hir hir::BreakExpr,
 ) {
     break_expr.break_kw.accept(visitor);
@@ -1005,6 +824,7 @@ pub fn walk_break_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_continue_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     continue_expr: &'hir hir::ContinueExpr,
 ) {
     continue_expr.continue_kw.accept(visitor);
@@ -1012,6 +832,7 @@ pub fn walk_continue_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_custom_infix_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     custom_infix: &'hir hir::CustomInfixExpr,
 ) {
     custom_infix.base.accept(visitor);
@@ -1021,6 +842,7 @@ pub fn walk_custom_infix_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_loop_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     loop_expr: &'hir hir::LoopExpr,
 ) {
     loop_expr.loop_kw.accept(visitor);
@@ -1044,6 +866,7 @@ pub fn walk_if_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_if_expr_else_clause<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     else_clause: &'hir hir::IfExprElseClause,
 ) {
     else_clause.else_kw.accept(visitor);
@@ -1052,6 +875,7 @@ pub fn walk_if_expr_else_clause<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_tuple_like_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     tuple_like_expr: &'hir hir::TupleExpr,
 ) {
     tuple_like_expr.lparen.accept(visitor);
@@ -1090,6 +914,7 @@ pub fn walk_call_args<'hir, V: HirVisitor<'hir> + ?Sized>(
 
 pub fn walk_lambda_expr<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
+    _: hir::ExprId,
     lambda_expr: &'hir hir::LambdaExpr,
 ) {
     lambda_expr.lbrace.accept(visitor);
@@ -1162,14 +987,14 @@ pub fn walk_str_literal_text_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
     str_literal_text_fragment.token.accept(visitor);
 }
 
-pub fn walk_str_display_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
+pub fn walk_str_literal_display_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     str_display_fragment: &'hir hir::StrLiteralDisplayFragment,
 ) {
     str_display_fragment.expr.accept(visitor);
 }
 
-pub fn walk_str_debug_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
+pub fn walk_str_literal_debug_fragment<'hir, V: HirVisitor<'hir> + ?Sized>(
     visitor: &mut V,
     str_debug_fragment: &'hir hir::StrLiteralDebugFragment,
 ) {
@@ -1285,46 +1110,13 @@ macro_rules! impl_visitable {
     };
 }
 
+visitor_fns_impl_visitable!();
+
 impl_visitable! {
-    visit_mod_body(hir::ModBody),
-    visit_ident(hir::Ident),
-    visit_num_literal(hir::NumLit),
-    visit_item_list(hir::ItemList),
-
-    visit_attr_list(hir::AttrList),
-    visit_attr(hir::Attr),
-    visit_attr_meta(hir::AttrMeta),
-    visit_attr_meta_item(hir::AttrMetaItem),
-    visit_attr_meta_item_eq(hir::AttrMetaItemEq),
-    visit_attr_meta_item_call(hir::AttrMetaItemCall),
-
-    visit_generic_params(hir::GenericParams),
-    visit_generic_param(hir::GenericParam),
-    visit_generic_param_ty(hir::GenericParamTy),
-    visit_generic_param_const(hir::GenericParamConst),
-    visit_generic_param_ty_bounds(hir::GenericParamTyBounds),
-    visit_fn_param_list(hir::FnParamList),
-    visit_fn_param(hir::FnParam),
-    visit_fn_ret_ty(hir::FnRetTy),
-    visit_pat(hir::Pat),
-    visit_ty_generic_args(hir::TyGenericArgs),
-    visit_ty_generic_arg(hir::TyGenericArg),
-    visit_fn_ty_ref(hir::FnTy),
-    visit_str_literal(hir::StrLiteral),
-    visit_str_literal_fragment(hir::StrLiteralFragment),
-    visit_str_literal_text_fragment(hir::StrLiteralTextFragment),
-    visit_str_display_fragment(hir::StrLiteralDisplayFragment),
-    visit_str_debug_fragment(hir::StrLiteralDebugFragment),
-    visit_call_args(hir::CallExprArgs),
-    visit_lambda_param_list(hir::LambdaParamList),
-    visit_lambda_param(hir::LambdaParam),
-    visit_use_path(hir::UsePath),
-    visit_use_alias(hir::UseAlias),
-    visit_assignment_op(hir::AssignmentOp),
     visit_generic_token(hir::Tk),
 }
 
-implement_acceptors!();
+const_token_implement_acceptors!();
 
 macro_rules! impl_visitable_id {
     ($($visit_name:ident ($ty:ty)),* $(,)?) => {
@@ -1346,17 +1138,9 @@ macro_rules! impl_visitable_id {
     }
 }
 
-impl_visitable_id! {
-    visit_expr_id(hir::ExprId),
-    visit_item_id(hir::ItemId),
-    visit_stmt_id(hir::StmtId),
-    visit_block_id(hir::BlockId),
-    visit_fn_id(hir::FnId),
-    visit_mod_id(hir::ModId),
-    visit_ty_ref_id(hir::TyRefId),
-    visit_use_stmt_id(hir::UseStmtId),
-    visit_use_path_segment_id(hir::UsePathSegmentId),
+hir_visitor_hir_ids_impl_visitable!();
 
+impl_visitable_id! {
     visit_hir_id(HirId),
     visit_span(HirSpan),
 }
@@ -1374,34 +1158,4 @@ macro_rules! impl_id_visitable {
     };
 }
 
-impl_id_visitable! {
-    visit_mod_def [hir::ModId] (hir::ModDef),
-    visit_item [hir::ItemId] (hir::Item),
-    visit_fn_def [hir::FnId] (hir::FnDef),
-    visit_stmt [hir::StmtId] (hir::Stmt),
-    visit_expr [hir::ExprId] (hir::Expr),
-    visit_let_stmt [hir::StmtId] (hir::LetStmt),
-    visit_for_stmt [hir::StmtId] (hir::ForStmt),
-    visit_while_stmt [hir::StmtId] (hir::WhileStmt),
-    visit_assignment_stmt [hir::StmtId] (hir::AssignmentStmt),
-    visit_block [hir::BlockId] (hir::Block),
-    visit_block_expr [hir::ExprId] (hir::BlockExpr),
-    visit_expr_atom [hir::ExprId] (hir::ExprAtom),
-    visit_expr_binary_expr [hir::ExprId] (hir::BinaryOpExpr),
-    visit_expr_call_expr [hir::ExprId] (hir::CallExpr),
-    visit_expr_index_expr [hir::ExprId] (hir::IndexExpr),
-    visit_expr_field_access [hir::ExprId] (hir::FieldAccess),
-    visit_expr_method_call [hir::ExprId] (hir::MethodCall),
-    visit_custom_infix_expr [hir::ExprId] (hir::CustomInfixExpr),
-    visit_return_expr [hir::ExprId] (hir::ReturnExpr),
-    visit_break_expr [hir::ExprId] (hir::BreakExpr),
-    visit_continue_expr [hir::ExprId] (hir::ContinueExpr),
-    visit_loop_expr [hir::ExprId] (hir::LoopExpr),
-    visit_if_expr [hir::ExprId] (hir::IfExpr),
-    visit_if_expr_else_clause [hir::ExprId] (hir::IfExprElseClause),
-    visit_tuple_like_expr [hir::ExprId] (hir::TupleExpr),
-    visit_lambda_expr [hir::ExprId] (hir::LambdaExpr),
-    visit_ty_ref [hir::TyRefId] (hir::TyRef),
-    visit_use_stmt [hir::UseStmtId] (hir::UseStmt),
-    visit_use_path_segment [hir::UsePathSegmentId] (hir::UsePathSegment),
-}
+contextualised_hir_visitors_impl_acceptors!();

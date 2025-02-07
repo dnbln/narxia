@@ -14,10 +14,19 @@ mod hir_debug;
 pub use hir_debug::*;
 
 pub trait HirIdNewtype {
+    fn new(hir_id: HirId) -> Self
+    where
+        Self: Sized;
     fn hir_id(&self) -> HirId;
 }
 
 impl HirIdNewtype for HirId {
+    fn new(hir_id: HirId) -> Self
+    where
+        Self: Sized,
+    {
+        hir_id
+    }
     fn hir_id(&self) -> HirId {
         *self
     }
@@ -29,6 +38,13 @@ macro_rules! hir_id_newtype {
         pub struct $name(pub HirId);
 
         impl HirIdNewtype for $name {
+            fn new(hir_id: HirId) -> Self
+            where
+                Self: Sized,
+            {
+                Self(hir_id)
+            }
+
             fn hir_id(&self) -> HirId {
                 self.0
             }
@@ -104,6 +120,8 @@ pub struct ModDef {
     pub mod_kw: ModuleKw,
     pub name: Ident,
     pub body: Option<ModBody>,
+
+    pub hir_id: ModId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -117,6 +135,7 @@ pub struct ModBody {
 pub struct Item {
     pub attrs: AttrList,
     pub kind: ItemKind,
+    pub hir_id: ItemId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -192,6 +211,7 @@ pub struct UseStmt {
     pub use_kw: UseKw,
     pub span: HirSpan,
     pub path: UsePath,
+    pub hir_id: UseStmtId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -211,6 +231,7 @@ hir_id_newtype!(UsePathSegmentId, UsePathSegment);
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UsePathSegment {
     pub ident: Ident,
+    pub hir_id: UsePathSegmentId,
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Clone)]
@@ -256,6 +277,8 @@ pub struct FnDef {
     pub params: Option<FnParamList>,
     pub ret_ty: Option<FnRetTy>,
     pub body: BlockId,
+
+    pub hir_id: FnId,
 }
 
 hir_id_newtype!(BlockId, Block);
@@ -330,6 +353,7 @@ hir_id_newtype!(ExprId, Expr);
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Expr {
     pub kind: ExprKind,
+    pub hir_id: ExprId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -405,6 +429,13 @@ pub struct LambdaExpr {
 pub struct LambdaExprId(pub ExprId);
 
 impl HirIdNewtype for LambdaExprId {
+    fn new(hir_id: HirId) -> Self
+    where
+        Self: Sized,
+    {
+        Self(ExprId::new(hir_id))
+    }
+
     fn hir_id(&self) -> HirId {
         self.0.hir_id()
     }
@@ -733,6 +764,8 @@ pub struct Block {
     pub lbrace: LBrace,
     pub items: ItemList,
     pub rbrace: RBrace,
+
+    pub hir_id: BlockId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -747,6 +780,7 @@ hir_id_newtype!(StmtId, Stmt);
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Stmt {
     pub kind: StmtKind,
+    pub hir_id: StmtId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -832,6 +866,7 @@ pub enum PatKind {
 pub struct TyRef {
     pub span: HirSpan,
     pub kind: TyRefKind,
+    pub hir_id: TyRefId,
 }
 
 hir_id_newtype!(TyRefId, TyRef);
@@ -870,13 +905,16 @@ pub enum PrimitiveTyKind {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TyGenericArgs {
-    pub args: Vec<TyGenericArg>,
+    pub args: Vec<TyGenericArgId>,
 }
+
+hir_id_newtype!(TyGenericArgId, TyGenericArg);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TyGenericArg {
     pub kind: TyGenericArgKind,
     pub span: HirSpan,
+    pub hir_id: TyGenericArgId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

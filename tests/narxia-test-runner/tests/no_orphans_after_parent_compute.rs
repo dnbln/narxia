@@ -28,17 +28,13 @@ impl<'hir> HirVisitor<'hir> for OrphanHirIdVisitor<'hir> {
 
     fn visit_mod_id(&mut self, mod_id: narxia_hir::hir::ModId) {
         self.q_id_strategy(|this, hir_map| {
-            this.visit_mod_def(mod_id, hir_map.get_mod(mod_id));
+            this.visit_mod_def(hir_map.get_mod(mod_id));
         });
     }
 
-    fn visit_mod_def(
-        &mut self,
-        mod_id: narxia_hir::hir::ModId,
-        mod_def: &'hir narxia_hir::hir::ModDef,
-    ) {
+    fn visit_mod_def(&mut self, mod_def: &'hir narxia_hir::hir::ModDef) {
         if mod_def.name.text != SpecialIdents::ROOT_MODULE {
-            self.visit_hir_id(mod_id.hir_id());
+            self.visit_hir_id(mod_def.hir_id.hir_id());
         }
     }
 }

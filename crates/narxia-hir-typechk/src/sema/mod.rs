@@ -160,15 +160,15 @@ struct ProgramStructureVisitor<'hir> {
 }
 
 macro_rules! scope_creating_elements {
-    ($($vis_name:ident ($id:ty, $t:ty) => $walk_name:ident $($id_use:expr)? ;)*) => {
+    ($($vis_name:ident ($t:ty) => $walk_name:ident;)*) => {
         $(
-            fn $vis_name(&mut self, id: $id, t: &'hir $t) {
+            fn $vis_name(&mut self, t: &'hir $t) {
                 let last_scope = self.stack.last().copied();
-                let self_elem = self.program_structure.scope_tree.push_scope_element(None, scope_elem(id));
+                let self_elem = self.program_structure.scope_tree.push_scope_element(None, scope_elem(t.hir_id));
                 let scope = self.program_structure.scope_tree.push_scope(last_scope, Some(self_elem));
                 self.stack.push(scope);
 
-                vis::$walk_name(self, $(if $id_use == () {id}else{id},)? t);
+                vis::$walk_name(self, t);
 
                 let s = self.stack.pop();
 
@@ -179,13 +179,13 @@ macro_rules! scope_creating_elements {
 }
 
 macro_rules! scope_adding_elements {
-    ($($vis_name:ident ($id:ty, $t:ty) => $walk_name:ident $($id_use:expr)? ;)*) => {
+    ($($vis_name:ident ($t:ty) => $walk_name:ident;)*) => {
         $(
-            fn $vis_name(&mut self, id: $id, t: &'hir $t) {
+            fn $vis_name(&mut self, t: &'hir $t) {
                 let last_scope = self.stack.last().copied();
-                let _self_elem = self.program_structure.scope_tree.push_scope_element(last_scope, scope_elem(id));
+                let _self_elem = self.program_structure.scope_tree.push_scope_element(last_scope, scope_elem(t.hir_id));
 
-                vis::$walk_name(self, $(if $id_use == () {id}else{id},)? t);
+                vis::$walk_name(self, t);
             }
         )*
     };
@@ -197,13 +197,13 @@ impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
     }
 
     scope_creating_elements! {
-        visit_mod_def(hir::ModId, hir::ModDef) => walk_mod_def;
-        visit_fn_def(hir::FnId, hir::FnDef) => walk_fn_def;
-        visit_block(hir::BlockId, hir::Block) => walk_block;
+        visit_mod_def(hir::ModDef) => walk_mod_def;
+        visit_fn_def(hir::FnDef) => walk_fn_def;
+        visit_block(hir::Block) => walk_block;
     }
 
     scope_adding_elements! {
-        visit_use_stmt(hir::UseStmtId, hir::UseStmt) => walk_use_stmt;
+        visit_use_stmt(hir::UseStmt) => walk_use_stmt;
     }
 }
 
