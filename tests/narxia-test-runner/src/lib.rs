@@ -2,35 +2,9 @@
 
 pub extern crate narxia_dir_structures;
 
-use std::path::Path;
 use std::sync::{Arc, Mutex};
 
 use libtest_mimic::Failed;
-
-pub fn run_trial(
-    nocapture: bool,
-    trial: impl FnOnce() -> Result<(), Failed>,
-) -> Result<(), Failed> {
-    let data = Arc::new(Mutex::new(Vec::new()));
-
-    if !nocapture {
-        std::io::set_output_capture(Some(data.clone()));
-    }
-
-    let result = trial();
-
-    if !nocapture {
-        std::io::set_output_capture(None);
-    }
-
-    if !nocapture && result.is_err() {
-        let data = data.lock().unwrap();
-        let data = String::from_utf8_lossy(&data);
-        eprintln!("{}", data);
-    }
-
-    result
-}
 
 pub mod parser_tests {
     use dir_structure::DirStructureItem;

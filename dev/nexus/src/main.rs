@@ -6,8 +6,8 @@ use nexus::bin_context::NexusContext;
 use nexus::cargo_interface::SysTarget;
 use nexus::duration::NexusDuration;
 use nexus::{
-    cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, NarxiaNeededBins, NexusR,
-    ProfileDeterminer, RunCompilerBins, Target,
+    cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, ColorConfig,
+    NarxiaNeededBins, NexusR, ProfileDeterminer, RunCompilerBins, Target,
 };
 use prodash::unit;
 
@@ -242,18 +242,40 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
 fn main() -> NexusR {
     narxia_log_impl::init();
+
+    let color_config = match std::env::var("COLOR") {
+        Ok(s) => match s.as_str() {
+            "always" | "true" | "1" => ColorConfig::Always,
+            "never" | "false" | "0" => ColorConfig::Never,
+            _ => ColorConfig::Auto,
+        },
+        Err(_) => ColorConfig::Auto,
+    };
+
     let (mut cx, tree) = NexusContext::new();
     let start = std::time::Instant::now();
 
-    let handle = prodash::render::line::render(
-        std::io::stderr(),
-        tree,
-        prodash::render::line::Options {
-            frames_per_second: 20.0,
-            ..Default::default()
+    let mut opts = prodash::render::line::Options {
+        frames_per_second: 20.0,
+        ..Default::default()
+    }
+    .auto_configure(prodash::render::line::StreamKind::Stderr);
+
+    match color_config {
+        ColorConfig::Always => {
+            opts.colored = true;
+            owo_colors::set_override(true);
         }
-        .auto_configure(prodash::render::line::StreamKind::Stderr),
-    );
+        ColorConfig::Never => {
+            opts.colored = false;
+            owo_colors::set_override(false);
+        }
+        ColorConfig::Auto => {
+            owo_colors::unset_override();
+        }
+    }
+
+    let handle = prodash::render::line::render(std::io::stderr(), tree, opts);
 
     let app = App::parse();
 

@@ -9,15 +9,38 @@ use std::time::{Duration, Instant};
 use cargo_metadata::TargetKind;
 use miette::{bail, IntoDiagnostic};
 use owo_colors::OwoColorize;
+use owo_colors::Stream::*;
 use prodash::tree::Item;
 use prodash::unit;
 
 use crate::duration::NexusDuration;
 use crate::NexusR;
 
+#[derive(Debug, Clone)]
+pub enum PkgSpec {
+    Packages(Vec<String>),
+    WorkspaceExcluding(Vec<String>),
+}
+
+#[macro_export]
+macro_rules! pkg_spec {
+    ($($name:expr),* $(,)?) => {
+        $crate::cargo_interface::PkgSpec::Packages(vec![$($name.to_string()),*])
+    };
+    (workspace excluding $($name:expr),* $(,)?) => {
+        $crate::cargo_interface::PkgSpec::WorkspaceExcluding(vec![$($name.to_string()),*])
+    };
+}
+
+impl Default for PkgSpec {
+    fn default() -> Self {
+        PkgSpec::WorkspaceExcluding(Vec::new())
+    }
+}
+
 #[derive(Default, Clone, Debug)]
 pub struct BuildCmd {
-    package: Option<String>,
+    packages: PkgSpec,
     profile: Option<String>,
     sys_target: SysTarget,
     targets: Vec<BuildTarget>,
@@ -79,8 +102,8 @@ pub enum SysTarget {
 }
 
 impl BuildCmd {
-    pub fn package(mut self, package: impl Into<String>) -> Self {
-        self.package = Some(package.into());
+    pub fn packages(mut self, packages: impl Into<PkgSpec>) -> Self {
+        self.packages = packages.into();
         self
     }
 
@@ -110,7 +133,7 @@ impl BuildCmd {
         build_progress: Option<BuildCmdBuildingProgress>,
     ) -> NexusR<BuildCmdOutput> {
         let Self {
-            package,
+            packages,
             targets,
             profile,
             sys_target,
@@ -129,8 +152,18 @@ impl BuildCmd {
         let mut cmd = cargo_command();
         cmd.arg("build");
 
-        if let Some(package) = package {
-            cmd.arg("--package").arg(package);
+        match packages {
+            PkgSpec::Packages(packages) => {
+                for package in packages {
+                    cmd.arg("--package").arg(package);
+                }
+            }
+            PkgSpec::WorkspaceExcluding(excluded) => {
+                cmd.arg("--workspace");
+                for exclude in excluded {
+                    cmd.arg("--exclude").arg(exclude);
+                }
+            }
         }
 
         for target in targets {
@@ -539,6 +572,10 @@ impl RunCompilerCommand {
 }
 
 pub mod tests {
+    use core::fmt;
+
+    use owo_colors::Style;
+
     use super::*;
 
     pub fn list_tests(filter: Option<&String>) -> NexusR<nextest_metadata::TestListSummary> {
@@ -667,8 +704,26 @@ pub mod tests {
                 });
             }
 
-            let mut current_suite = None::<(Item, SuiteNextest)>;
-            let mut current_running_tests = Vec::new();
+            struct TestResult {
+                suite: String,
+                test: String,
+                result: TestResultKind,
+            }
+
+            enum TestResultKind {
+                Passed {
+                    exec_time: f64,
+                },
+                Failed {
+                    exec_time: f64,
+                    info: TestFailedInfo,
+                },
+                Ignored,
+                Measured,
+                FilteredOut,
+            }
+
+            let mut tests = Vec::new();
             let enable_tree = item.is_some();
 
             struct Summary {
@@ -697,28 +752,15 @@ pub mod tests {
 
                 match line {
                     OutputLine::Test(test_event) => match test_event {
-                        TestEvent::Started { name } => {
-                            if enable_tree {
-                                let (suite, test) = name.split_once('$').unwrap();
-                                let test_item =
-                                    current_suite.as_mut().unwrap().0.add_child(format!("Test"));
-                                test_item.init(Some(1), None);
-                                current_running_tests.push((name, test_item));
-                            }
-                        }
+                        TestEvent::Started { name } => {}
                         TestEvent::Ok { name, exec_time } => {
                             if let Some(item) = &mut item {
                                 let (suite, test) = name.split_once('$').unwrap();
-                                let pos = current_running_tests
-                                    .iter()
-                                    .position(|(n, _)| *n == name)
-                                    .unwrap();
-                                let (_, mut test_item) = current_running_tests.remove(pos);
-                                test_item.inc();
-                                test_item
-                                    .done(format!("[OK]   in {exec_time:.3}s: {suite}::{test}"));
-                                current_suite.as_mut().unwrap().0.inc();
-
+                                tests.push(TestResult {
+                                    suite: suite.to_owned(),
+                                    test: test.to_owned(),
+                                    result: TestResultKind::Passed { exec_time },
+                                });
                                 item.inc();
                             }
                         }
@@ -729,27 +771,12 @@ pub mod tests {
                         } => {
                             if let Some(item) = &mut item {
                                 let (suite, test) = name.split_once('$').unwrap();
-                                let pos = current_running_tests
-                                    .iter()
-                                    .position(|(n, _)| *n == name)
-                                    .unwrap();
-                                let (_, mut test_item) = current_running_tests.remove(pos);
 
-                                let reference = match &info {
-                                    TestFailedInfo::Fail { stdout } => {
-                                        println!("{}", stdout);
-
-                                        "see above"
-                                    }
-                                    TestFailedInfo::Reason { reason } => reason,
-                                };
-                                test_item.inc();
-                                test_item.fail(format!(
-                                    "[FAIL] ({reference}) in {exec_time:.3}s: {suite}::{test}"
-                                ));
-                                let bin_id = &current_suite.as_ref().unwrap().1.test_binary;
-                                test_item.fail(format!("Run `cargo nexus test -t 'binary(={bin_id}) & test(={test})'` to see the output"));
-                                current_suite.as_mut().unwrap().0.inc();
+                                tests.push(TestResult {
+                                    suite: suite.to_owned(),
+                                    test: test.to_owned(),
+                                    result: TestResultKind::Failed { exec_time, info },
+                                });
 
                                 item.inc();
                             }
@@ -759,13 +786,7 @@ pub mod tests {
                         SuiteEvent::Started {
                             test_count,
                             nextest,
-                        } => {
-                            if let Some(item) = &mut item {
-                                let suite_item = item.add_child("Suite");
-                                suite_item.init(Some(test_count), Some(unit::label("tests")));
-                                current_suite = Some((suite_item, nextest));
-                            }
-                        }
+                        } => {}
                         SuiteEvent::Ok {
                             exec_time,
                             passed,
@@ -775,9 +796,6 @@ pub mod tests {
                             filtered_out,
                             nextest,
                         } => {
-                            if enable_tree {
-                                let mut suite = current_suite.take().unwrap();
-                            }
                             summary.passed += passed;
                             summary.failed += failed;
                             summary.ignored += ignored;
@@ -794,9 +812,6 @@ pub mod tests {
                             filtered_out,
                             nextest,
                         } => {
-                            if enable_tree {
-                                let mut suite = current_suite.take().unwrap();
-                            }
                             summary.passed += passed;
                             summary.failed += failed;
                             summary.ignored += ignored;
@@ -807,6 +822,115 @@ pub mod tests {
                     },
                 }
             }
+
+            struct TestStatusHeader<'a>(&'a str, &'a str);
+            impl fmt::Display for TestStatusHeader<'_> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(
+                        f,
+                        "{} {}{}{}",
+                        "test".if_supports_color(Stderr, |text| text.blue()),
+                        self.0.if_supports_color(Stderr, |text| text.yellow()),
+                        "::".if_supports_color(Stderr, |text| text.purple()),
+                        self.1.if_supports_color(Stderr, |text| text.cyan()),
+                    )
+                }
+            }
+
+            let mut out = String::new();
+
+            for TestResult {
+                suite,
+                test,
+                result,
+            } in tests
+                .iter()
+                .filter(|f| !matches!(f.result, TestResultKind::Failed { .. }))
+            {
+                match result {
+                    TestResultKind::Passed { exec_time } => {
+                        writeln!(
+                            &mut out,
+                            "{} ... {}",
+                            TestStatusHeader(suite, test),
+                            format_args!("ok ({exec_time:.3}s)").if_supports_color(Stderr, |t| {
+                                Style::new().bright_green().bold().style(t)
+                            }),
+                        )
+                        .unwrap();
+                    }
+                    TestResultKind::Failed { exec_time, info } => unreachable!(),
+                    TestResultKind::Ignored => {
+                        writeln!(
+                            &mut out,
+                            "{} ... {}",
+                            TestStatusHeader(suite, test),
+                            "ignored".if_supports_color(Stderr, |t| Style::new()
+                                .bright_white()
+                                .bold()
+                                .style(t)),
+                        )
+                        .unwrap();
+                    }
+                    TestResultKind::Measured => {
+                        writeln!(
+                            &mut out,
+                            "{} ... {}",
+                            TestStatusHeader(suite, test),
+                            "measured".if_supports_color(Stderr, |t| Style::new()
+                                .bright_blue()
+                                .bold()
+                                .style(t)),
+                        )
+                        .unwrap();
+                    }
+                    TestResultKind::FilteredOut => {
+                        writeln!(
+                            &mut out,
+                            "{} ... {}",
+                            TestStatusHeader(suite, test),
+                            "filtered out".if_supports_color(Stderr, |t| Style::new()
+                                .yellow()
+                                .bold()
+                                .style(t)),
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+
+            for TestResult {
+                suite,
+                test,
+                result,
+            } in tests
+                .iter()
+                .filter(|f| matches!(f.result, TestResultKind::Failed { .. }))
+            {
+                let TestResultKind::Failed { exec_time, info } = result else {
+                    unreachable!()
+                };
+
+                writeln!(
+                    &mut out,
+                    "{} ... {}",
+                    TestStatusHeader(suite, test),
+                    format_args!("FAILED ({exec_time:.3}s)")
+                        .if_supports_color(Stderr, |t| Style::new().bright_red().bold().style(t)),
+                )
+                .unwrap();
+                match info {
+                    TestFailedInfo::Fail { stdout } => {
+                        writeln!(&mut out, "stdout:").unwrap();
+                        writeln!(&mut out, "{stdout}").unwrap();
+                    }
+                    TestFailedInfo::Reason { reason } => {
+                        writeln!(&mut out, "reason: {reason}").unwrap();
+                    }
+                }
+            }
+
+            eprintln!("{out}\n");
 
             if let Some(item) = item {
                 let initial = match (summary.passed, summary.failed) {

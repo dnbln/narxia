@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use bin_context::NexusContext;
-use cargo_interface::{BuildCmdBuildingProgress, BuildTarget, RunCompilerCommand, SysTarget};
+use cargo_interface::{
+    BuildCmdBuildingProgress, BuildTarget, PkgSpec, RunCompilerCommand, SysTarget,
+};
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::{bail, IntoDiagnostic};
 use narxia_dir_structures::dir_structure::DirStructureItem;
@@ -215,7 +217,7 @@ fn build_compiler(
     let mut item = item.add_child("Build::Compiler");
     item.init(None, Some(unit::label("artifacts")));
     let output = cargo_interface::build()
-        .package("narxia-driver")
+        .packages(pkg_spec!("narxia-driver"))
         .build_targets([BuildTarget::Bin("narxia-driver".to_owned())])
         .profile(profile.cargo_name())
         .sys_target(sys.clone())
@@ -248,7 +250,6 @@ fn build_tests(
     let mut item = item.add_child("Build::Tests");
     item.init(None, Some(unit::label("artifacts")));
     cargo_interface::build()
-        .package("narxia-test-runner")
         .profile(profile.cargo_name())
         .build_targets(vec![BuildTarget::Tests])
         .run(Some(&mut item), build_progress)?;
@@ -478,4 +479,10 @@ fn write_bin_file_to_zip<W: Write + Seek>(
     }
 
     Ok(())
+}
+
+pub enum ColorConfig {
+    Always,
+    Never,
+    Auto,
 }
