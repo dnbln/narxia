@@ -16,6 +16,7 @@ use prodash::unit;
 
 pub mod bin_context;
 pub mod cargo_interface;
+pub mod duration;
 
 pub type NexusR<T = ()> = miette::Result<T>;
 
@@ -32,7 +33,7 @@ pub enum BuildSysCmd {
 }
 
 impl BuildSysCmd {
-    pub fn run(self, cx: &NexusContext) -> NexusR {
+    pub fn run(self, cx: &mut NexusContext) -> NexusR {
         match self {
             Self::Build(cmd) => {
                 let mut item = cx.new_child("Build");

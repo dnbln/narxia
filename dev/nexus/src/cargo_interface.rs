@@ -11,6 +11,7 @@ use miette::{bail, IntoDiagnostic};
 use prodash::tree::Item;
 use prodash::unit;
 
+use crate::duration::NexusDuration;
 use crate::NexusR;
 
 #[derive(Default, Clone, Debug)]
@@ -380,26 +381,16 @@ impl ItemWrapper {
                             current_item_start = start;
                         }
                         Ok(BuildEvent::Finish) => {
-                            let duration_since_start =
-                                Instant::now().duration_since(current_item_start);
-                            let duration_millis: usize =
-                                duration_since_start.as_millis().try_into().unwrap();
-                            let duration = Duration::from_millis(duration_millis as u64);
                             item.done(format!(
                                 "Building done in {}",
-                                humantime::Duration::from(duration)
+                                NexusDuration::since(current_item_start)
                             ));
                             item.set_name(old_name.clone());
                         }
                         Ok(BuildEvent::FinishAll) | Err(TryRecvError::Disconnected) => {
-                            let duration_since_start =
-                                Instant::now().duration_since(building_start);
-                            let duration_millis: usize =
-                                duration_since_start.as_millis().try_into().unwrap();
-                            let duration = Duration::from_millis(duration_millis as u64);
                             item.done(format!(
                                 "Building done in {}",
-                                humantime::Duration::from(duration)
+                                NexusDuration::since(building_start)
                             ));
                             break;
                         }

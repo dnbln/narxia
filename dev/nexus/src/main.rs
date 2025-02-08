@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use clap::{ArgAction, Parser};
 use nexus::bin_context::NexusContext;
 use nexus::cargo_interface::SysTarget;
+use nexus::duration::NexusDuration;
 use nexus::{
     cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, NarxiaNeededBins, NexusR,
     ProfileDeterminer, RunCompilerBins,
@@ -110,25 +111,10 @@ impl Default for ParserTestsMode {
     }
 }
 
-fn main() -> NexusR {
-    narxia_log_impl::init();
-    let (cx, tree) = NexusContext::new();
-
-    let handle = prodash::render::line::render(
-        std::io::stderr(),
-        tree,
-        prodash::render::line::Options {
-            frames_per_second: 20.0,
-            ..Default::default()
-        }
-        .auto_configure(prodash::render::line::StreamKind::Stderr),
-    );
-
-    let app = App::parse();
-
+fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
     match app {
         App::Build(cmd) => {
-            cmd.run(&cx)?;
+            cmd.run(cx)?;
         }
         App::Test {
             test_filter,
@@ -228,6 +214,38 @@ fn main() -> NexusR {
             }
         }
     }
+
+    Ok(())
+}
+
+fn main() -> NexusR {
+    narxia_log_impl::init();
+    let (mut cx, tree) = NexusContext::new();
+    let start = std::time::Instant::now();
+
+    let handle = prodash::render::line::render(
+        std::io::stderr(),
+        tree,
+        prodash::render::line::Options {
+            frames_per_second: 20.0,
+            ..Default::default()
+        }
+        .auto_configure(prodash::render::line::StreamKind::Stderr),
+    );
+
+    let app = App::parse();
+
+    let r = run_app(app, &mut cx);
+
+    match r {
+        Ok(()) => cx.done(format!("elapsed {}", NexusDuration::since(start))),
+        Err(e) => {
+            cx.fail(format!("error after {}", NexusDuration::since(start)));
+            return Err(e);
+        }
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(30));
 
     handle.shutdown_and_wait();
 
