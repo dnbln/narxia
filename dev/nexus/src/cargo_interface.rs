@@ -691,8 +691,6 @@ pub mod tests {
             cmd.stdout(std::process::Stdio::piped());
             cmd.stderr(std::process::Stdio::piped());
 
-            let run_tests_group = groups.map(|g| g.begin("Run tests"));
-
             let mut child = cmd.spawn().into_diagnostic()?;
 
             let start_time = Instant::now();
@@ -979,8 +977,6 @@ pub mod tests {
                     item.fail(msg);
                 }
             }
-
-            mem::drop(run_tests_group);
 
             if summary.failed != 0 {
                 bail!("tests failed");
