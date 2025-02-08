@@ -1,11 +1,12 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
+use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use bin_context::NexusContext;
-use cargo_interface::{BuildCmdBuildingProgress, RunCompilerCommand};
+use cargo_interface::{BuildCmdBuildingProgress, BuildTarget, RunCompilerCommand, SysTarget};
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::{bail, IntoDiagnostic};
 use narxia_dir_structures::dir_structure::DirStructureItem;
@@ -142,6 +143,7 @@ fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item
 #[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Target {
     Compiler,
+    Tests,
 }
 
 #[derive(Debug, ValueEnum, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -195,6 +197,7 @@ impl BuildCmd {
         let bins = BuildI {
             targets: self.targets,
             profile: self.profile.get_profile(),
+            sys: SysTarget::Host,
         }
         .run(item, build_progress)?;
 
@@ -204,6 +207,7 @@ impl BuildCmd {
 
 fn build_compiler(
     profile: Profile,
+    sys: &SysTarget,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
 ) -> NexusR<PathBuf> {
@@ -211,8 +215,9 @@ fn build_compiler(
     item.init(None, Some(unit::label("artifacts")));
     let output = cargo_interface::build()
         .package("narxia-driver")
-        .binary("narxia-driver")
+        .build_targets([BuildTarget::Bin("narxia-driver".to_owned())])
         .profile(profile.cargo_name())
+        .sys_target(sys.clone())
         .run(Some(&mut item), build_progress)?;
 
     let executable = if output.status.success() {
@@ -225,11 +230,31 @@ fn build_compiler(
 
         last_artifact.executable
     } else {
+        eprintln!("{}", output.stderr);
+
         item.fail("Compiler build failed");
         bail!("Compiler build failed");
     };
 
     Ok(executable)
+}
+
+fn build_tests(
+    profile: Profile,
+    item: &mut Item,
+    build_progress: Option<BuildCmdBuildingProgress>,
+) -> NexusR {
+    let mut item = item.add_child("Build::Tests");
+    item.init(None, Some(unit::label("artifacts")));
+    cargo_interface::build()
+        .package("narxia-test-runner")
+        .profile(profile.cargo_name())
+        .build_targets(vec![BuildTarget::Tests])
+        .run(Some(&mut item), build_progress)?;
+
+    item.done("Tests built");
+
+    Ok(())
 }
 
 pub struct NarxiaBinaries {
@@ -239,6 +264,7 @@ pub struct NarxiaBinaries {
 pub struct BuildI {
     pub targets: Vec<Target>,
     pub profile: Profile,
+    pub sys: SysTarget,
 }
 
 impl BuildI {
@@ -255,8 +281,15 @@ impl BuildI {
         for target in self.targets {
             match target {
                 Target::Compiler => {
-                    bins.compiler =
-                        Some(build_compiler(self.profile, item, build_progress.clone())?);
+                    bins.compiler = Some(build_compiler(
+                        self.profile,
+                        &self.sys,
+                        item,
+                        build_progress.clone(),
+                    )?);
+                }
+                Target::Tests => {
+                    build_tests(self.profile, item, build_progress.clone())?;
                 }
             }
         }
@@ -273,6 +306,7 @@ impl<'bins> NarxiaBinProvider<'bins> for NarxiaBinaries {
     fn get(&'bins self, target: Target) -> Option<&'bins PathBuf> {
         match target {
             Target::Compiler => self.compiler.as_ref(),
+            Target::Tests => None,
         }
     }
 }
@@ -361,9 +395,86 @@ macro bin_type {
     }
 }
 
+use zip::write::FileOptions;
+use zip::ZipWriter;
+
 bin_type! {
     RunCompilerBins,
     RunCompilerCommand,
     :bins
         compiler(Compiler)
+}
+
+bin_type! {
+    BuildDistribsBins,
+    BuildDistribCommand,
+    :bins
+        compiler(Compiler)
+}
+
+pub struct BuildDistribCommand {
+    pub pkg: PathBuf,
+}
+
+impl BuildDistribCommand {
+    pub fn run(&self, item: &mut Item, bins: &BuildDistribsBins) -> NexusR {
+        let mut wr = ZipWriter::new(std::fs::File::create(&self.pkg).into_diagnostic()?);
+        write_bin_file_to_zip(
+            &mut wr,
+            Path::new(bins.compiler.file_name().unwrap()),
+            &bins.compiler,
+            FileOptions::default(),
+            Some(&mut item.add_child("Compiler")),
+        )?;
+        wr.finish().into_diagnostic()?;
+        Ok(())
+    }
+}
+
+fn write_bin_file_to_zip<W: Write + Seek>(
+    wr: &mut ZipWriter<W>,
+    zip_path: impl AsRef<Path>,
+    path: impl AsRef<Path>,
+    options: FileOptions,
+    mut item: Option<&mut Item>,
+) -> NexusR<()> {
+    wr.start_file(
+        zip_path
+            .as_ref()
+            .to_str()
+            .expect("Cannot convert to string"),
+        options,
+    )
+    .into_diagnostic()?;
+
+    let path = path.as_ref();
+
+    let file_size = path.metadata().into_diagnostic()?.len();
+
+    if let Some(item) = &mut item {
+        item.init(Some(file_size as usize / 1024), Some(unit::label("kb")));
+    }
+
+    let mut buf = [0u8; 0x0001_0000];
+    let mut f = std::fs::File::open(path).into_diagnostic()?;
+
+    let mut total_read = 0;
+
+    loop {
+        let read = f.read(&mut buf).into_diagnostic()?;
+
+        if read == 0 {
+            break;
+        }
+
+        total_read += read;
+
+        if let Some(item) = &mut item {
+            item.set(total_read / 1024);
+        }
+
+        wr.write_all(&buf[..read]).into_diagnostic()?;
+    }
+
+    Ok(())
 }

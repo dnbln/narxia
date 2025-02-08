@@ -1150,7 +1150,7 @@ macro_rules! impl_id_visitable {
         $(
             impl<'hir> IdVisitable<'hir> for $ty {
                 type Id = $id;
-                fn accept<V: HirVisitor<'hir>+ ?Sized>(&'hir self, id: Self::Id, visitor: &mut V) {
+                fn accept<V: HirVisitor<'hir> + ?Sized>(&'hir self, id: Self::Id, visitor: &mut V) {
                     visitor.$visit_name (id, self);
                 }
             }

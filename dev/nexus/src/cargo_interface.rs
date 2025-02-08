@@ -1,7 +1,10 @@
-use std::io::{BufRead, Read, Write};
+use std::fmt::Write;
+use std::io::{BufRead, Read};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use std::sync::mpsc::TryRecvError;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use cargo_metadata::TargetKind;
 use miette::{bail, IntoDiagnostic};
@@ -13,8 +16,9 @@ use crate::NexusR;
 #[derive(Default, Clone, Debug)]
 pub struct BuildCmd {
     package: Option<String>,
-    binary: Option<String>,
     profile: Option<String>,
+    sys_target: SysTarget,
+    targets: Vec<BuildTarget>,
     config: BuildCmdConfig,
 }
 
@@ -22,6 +26,7 @@ pub struct BuildCmd {
 pub struct BuildCmdConfig {
     pub print_dependency_artifacts: bool,
     pub print_fresh: bool,
+    pub print_low_level_diagnostics: bool,
     pub use_ansi: bool,
 }
 
@@ -30,6 +35,7 @@ impl Default for BuildCmdConfig {
         Self {
             print_dependency_artifacts: false,
             print_fresh: false,
+            print_low_level_diagnostics: false,
             use_ansi: true,
         }
     }
@@ -47,19 +53,47 @@ fn async_read(mut r: impl Read + Send + 'static) -> std::thread::JoinHandle<Stri
     })
 }
 
+#[derive(Debug, Clone)]
+pub enum BuildTarget {
+    Lib,
+    Bin(String),
+    Bins,
+    Example(String),
+    Examples,
+    Test(String),
+    Tests,
+    Benchmark(String),
+    Benchmarks,
+    AllTargets,
+}
+
+#[derive(Debug, Clone, Default)]
+pub enum SysTarget {
+    #[default]
+    Host,
+    Target {
+        name: String,
+    },
+}
+
 impl BuildCmd {
     pub fn package(mut self, package: impl Into<String>) -> Self {
         self.package = Some(package.into());
         self
     }
 
-    pub fn binary(mut self, binary: impl Into<String>) -> Self {
-        self.binary = Some(binary.into());
+    pub fn profile(mut self, profile: impl Into<String>) -> Self {
+        self.profile = Some(profile.into());
         self
     }
 
-    pub fn profile(mut self, profile: impl Into<String>) -> Self {
-        self.profile = Some(profile.into());
+    pub fn sys_target(mut self, sys_target: impl Into<SysTarget>) -> Self {
+        self.sys_target = sys_target.into();
+        self
+    }
+
+    pub fn build_targets(mut self, targets: impl IntoIterator<Item = BuildTarget>) -> Self {
+        self.targets = targets.into_iter().collect();
         self
     }
 
@@ -75,8 +109,9 @@ impl BuildCmd {
     ) -> NexusR<BuildCmdOutput> {
         let Self {
             package,
-            binary,
+            targets,
             profile,
+            sys_target,
             config,
         } = self;
 
@@ -96,12 +131,51 @@ impl BuildCmd {
             cmd.arg("--package").arg(package);
         }
 
-        if let Some(binary) = binary {
-            cmd.arg("--bin").arg(binary);
+        for target in targets {
+            match target {
+                BuildTarget::Lib => {
+                    cmd.arg("--lib");
+                }
+                BuildTarget::Bin(bin) => {
+                    cmd.arg("--bin").arg(bin);
+                }
+                BuildTarget::Bins => {
+                    cmd.arg("--bins");
+                }
+                BuildTarget::Example(example) => {
+                    cmd.arg("--example").arg(example);
+                }
+                BuildTarget::Examples => {
+                    cmd.arg("--examples");
+                }
+                BuildTarget::Test(test) => {
+                    cmd.arg("--test").arg(test);
+                }
+                BuildTarget::Tests => {
+                    cmd.arg("--tests");
+                }
+                BuildTarget::Benchmark(bench) => {
+                    cmd.arg("--bench").arg(bench);
+                }
+                BuildTarget::Benchmarks => {
+                    cmd.arg("--benchmarks");
+                }
+                BuildTarget::AllTargets => {
+                    cmd.arg("--all-targets");
+                }
+            }
         }
 
         if let Some(profile) = profile {
             cmd.arg("--profile").arg(profile);
+        }
+
+        match sys_target {
+            SysTarget::Host => {}
+
+            SysTarget::Target { name } => {
+                cmd.arg("--target").arg(name);
+            }
         }
 
         if config.use_ansi {
@@ -122,54 +196,20 @@ impl BuildCmd {
 
         let mut target_artifact = None;
 
-        let progress_item = if let Some(bp) = build_progress {
-            item.as_mut().map(|item| {
-                let name = item.name().unwrap();
+        let progress_lock = if let Some(build_progress) = &build_progress {
+            let name = match &item {
+                Some(item) => item.name().unwrap().to_string(),
+                None => "Building".to_string(),
+            };
+            let lock = build_progress.item.lock().unwrap();
 
-                let (tx, rx) = std::sync::mpsc::channel();
-
-                (
-                    tx,
-                    std::thread::spawn(move || {
-                        let mut progress_item = bp.item.lock().unwrap();
-                        let old_name = progress_item.0.name().unwrap();
-                        progress_item.0.init(None, Some(unit::label("ms")));
-                        progress_item.0.set_name(name);
-
-                        let building_start = bp.start;
-                        let self_building_start = Instant::now();
-                        loop {
-                            let duration = Instant::now().duration_since(building_start);
-                            let duration_millis: usize = duration.as_millis().try_into().unwrap();
-                            match rx.try_recv() {
-                                Ok(()) => {
-                                    let duration_since_start =
-                                        Instant::now().duration_since(self_building_start);
-                                    let duration_millis: usize =
-                                        duration_since_start.as_millis().try_into().unwrap();
-                                    let duration = Duration::from_millis(duration_millis as u64);
-                                    progress_item.0.done(format!(
-                                        "Building done in {}",
-                                        humantime::Duration::from(duration)
-                                    ));
-                                    progress_item.0.set_name(old_name);
-                                    break;
-                                }
-                                Err(std::sync::mpsc::TryRecvError::Empty) => {}
-                                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                                    progress_item.0.set_name(old_name);
-                                    break;
-                                }
-                            }
-                            progress_item.0.set(duration_millis);
-                            std::thread::sleep(std::time::Duration::from_millis(73));
-                        }
-                    }),
-                )
-            })
+            Some(ItemWrapper::start(lock, name, Instant::now())?)
         } else {
             None
         };
+
+        let mut critical_diagnostics = String::new();
+        let mut low_level_diagnostics = String::new();
 
         for message in cargo_metadata::Message::parse_stream(std::io::BufReader::new(stdout)) {
             let message = message.into_diagnostic()?;
@@ -225,34 +265,40 @@ impl BuildCmd {
                         // always render ICE's and Errors
                         cargo_metadata::diagnostic::DiagnosticLevel::Ice => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
-                            eprintln!("{rendered}");
+                            critical_diagnostics.push_str(rendered);
+                            critical_diagnostics.push('\n');
                         }
                         cargo_metadata::diagnostic::DiagnosticLevel::Error => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
-                            eprintln!("{rendered}");
+                            critical_diagnostics.push_str(rendered);
+                            critical_diagnostics.push('\n');
                         }
                         cargo_metadata::diagnostic::DiagnosticLevel::Warning => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
-                                eprintln!("{rendered}");
+                                low_level_diagnostics.push_str(rendered);
+                                low_level_diagnostics.push('\n');
                             }
                         }
                         cargo_metadata::diagnostic::DiagnosticLevel::FailureNote => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
-                                eprintln!("{rendered}");
+                                low_level_diagnostics.push_str(rendered);
+                                low_level_diagnostics.push('\n');
                             }
                         }
                         cargo_metadata::diagnostic::DiagnosticLevel::Note => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
-                                eprintln!("{rendered}");
+                                low_level_diagnostics.push_str(rendered);
+                                low_level_diagnostics.push('\n');
                             }
                         }
                         cargo_metadata::diagnostic::DiagnosticLevel::Help => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
-                                eprintln!("{rendered}");
+                                low_level_diagnostics.push_str(rendered);
+                                low_level_diagnostics.push('\n');
                             }
                         }
                         _ => todo!(),
@@ -265,11 +311,15 @@ impl BuildCmd {
             }
         }
 
+        if config.print_low_level_diagnostics {
+            eprintln!("{low_level_diagnostics}");
+        }
+        eprintln!("{critical_diagnostics}");
+
         let status = child.wait().into_diagnostic()?;
 
-        if let Some((tx, handle)) = progress_item {
-            tx.send(()).into_diagnostic()?;
-            let _ = handle.join();
+        if let Some(mut lock) = progress_lock {
+            lock.finish()?;
         }
 
         let stderr = stderr_handle.join().unwrap();
@@ -288,27 +338,146 @@ pub struct BuildCmdBuildingProgress {
     start: Instant,
 }
 
+enum BuildEvent {
+    Start { name: String, start: Instant },
+    Finish,
+    FinishAll,
+}
+
 impl BuildCmdBuildingProgress {
     pub fn new(item: Item, start: Instant) -> Self {
         Self {
-            item: Arc::new(Mutex::new(ItemWrapper(item, Instant::now()))),
+            item: Arc::new(Mutex::new(ItemWrapper::new(item, start))),
             start,
         }
     }
 }
 
 #[derive(Debug)]
-struct ItemWrapper(Item, Instant);
+struct ItemWrapper(
+    std::sync::mpsc::Sender<BuildEvent>,
+    std::mem::ManuallyDrop<JoinHandle<()>>,
+    bool,
+);
+
+impl ItemWrapper {
+    fn new(item: Item, start: Instant) -> Self {
+        let (tx, rx) = std::sync::mpsc::channel();
+        ItemWrapper(
+            tx,
+            std::mem::ManuallyDrop::new(std::thread::spawn(move || {
+                let mut item = item;
+                let old_name = item.name().unwrap();
+                item.init(None, Some(unit::label("ms")));
+
+                let building_start = start;
+                let mut current_item_start = Instant::now();
+
+                loop {
+                    match rx.try_recv() {
+                        Ok(BuildEvent::Start { name, start }) => {
+                            item.set_name(name);
+                            current_item_start = start;
+                        }
+                        Ok(BuildEvent::Finish) => {
+                            let duration_since_start =
+                                Instant::now().duration_since(current_item_start);
+                            let duration_millis: usize =
+                                duration_since_start.as_millis().try_into().unwrap();
+                            let duration = Duration::from_millis(duration_millis as u64);
+                            item.done(format!(
+                                "Building done in {}",
+                                humantime::Duration::from(duration)
+                            ));
+                            item.set_name(old_name.clone());
+                        }
+                        Ok(BuildEvent::FinishAll) | Err(TryRecvError::Disconnected) => {
+                            let duration_since_start =
+                                Instant::now().duration_since(building_start);
+                            let duration_millis: usize =
+                                duration_since_start.as_millis().try_into().unwrap();
+                            let duration = Duration::from_millis(duration_millis as u64);
+                            item.done(format!(
+                                "Building done in {}",
+                                humantime::Duration::from(duration)
+                            ));
+                            break;
+                        }
+                        Err(TryRecvError::Empty) => {}
+                    }
+
+                    let duration_since_start = Instant::now().duration_since(building_start);
+                    let duration_millis: usize =
+                        duration_since_start.as_millis().try_into().unwrap();
+
+                    item.set(duration_millis);
+                    std::thread::sleep(std::time::Duration::from_millis(73));
+                }
+            })),
+            false,
+        )
+    }
+
+    fn start<'a>(
+        guard: MutexGuard<'a, Self>,
+        name: String,
+        start: Instant,
+    ) -> NexusR<ItemWrapperFinishGuard<'a>> {
+        guard
+            .0
+            .send(BuildEvent::Start { name, start })
+            .into_diagnostic()?;
+        Ok(ItemWrapperFinishGuard {
+            item_wrapper: guard,
+            finished: false,
+        })
+    }
+
+    pub fn finish_all(&mut self) -> NexusR {
+        if self.2 {
+            return Ok(());
+        }
+        self.2 = true;
+        self.0.send(BuildEvent::FinishAll).into_diagnostic()?;
+
+        unsafe {
+            std::mem::ManuallyDrop::take(&mut self.1).join().unwrap();
+        }
+
+        Ok(())
+    }
+}
+
+struct ItemWrapperFinishGuard<'a> {
+    item_wrapper: MutexGuard<'a, ItemWrapper>,
+    finished: bool,
+}
+
+impl<'a> ItemWrapperFinishGuard<'a> {
+    fn finish(&mut self) -> NexusR {
+        if self.finished {
+            return Ok(());
+        }
+
+        self.finished = true;
+        self.item_wrapper
+            .0
+            .send(BuildEvent::Finish)
+            .into_diagnostic()?;
+
+        Ok(())
+    }
+}
+
+impl<'a> Drop for ItemWrapperFinishGuard<'a> {
+    fn drop(&mut self) {
+        self.finish().unwrap();
+    }
+}
 
 impl Drop for ItemWrapper {
     fn drop(&mut self) {
-        let duration = Instant::now().duration_since(self.1);
-        let duration_millis: usize = duration.as_millis().try_into().unwrap();
-        let duration = Duration::from_millis(duration_millis as u64);
-        self.0.done(format!(
-            "Building done in {}",
-            humantime::Duration::from(duration)
-        ));
+        self.finish_all().unwrap();
     }
 }
 

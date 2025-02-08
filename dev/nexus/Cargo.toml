@@ -19,6 +19,7 @@ owo-colors.workspace = true
 prodash.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+zip.workspace = true
 
 narxia-log.workspace = true
 narxia-log-impl.workspace = true

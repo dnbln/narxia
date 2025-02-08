@@ -1,11 +1,12 @@
 use core::fmt;
-use std::str::FromStr;
+use std::path::PathBuf;
 
 use clap::{ArgAction, Parser};
 use nexus::bin_context::NexusContext;
+use nexus::cargo_interface::SysTarget;
 use nexus::{
-    cargo_interface, BuildSysCmd, NarxiaNeededBins, NexusR, Profile, ProfileDeterminer,
-    RunCompilerBins,
+    cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, NarxiaNeededBins, NexusR,
+    ProfileDeterminer, RunCompilerBins,
 };
 use prodash::unit;
 
@@ -68,12 +69,23 @@ enum App {
         #[clap(long, default_value_t = ParserTestsMode::Check)]
         parser_tests: ParserTestsMode,
     },
+    /// Runs the narxia compiler driver.
+    ///
+    /// Call this command with -- --help to see the available options in the driver.
     #[clap(name = "run")]
     #[clap(alias = "r")]
     Run {
         #[clap(flatten)]
         profile: ProfileDeterminer,
         args: Vec<String>,
+    },
+    /// Build a distributalbe package.
+    #[clap(name = "dist")]
+    Dist {
+        #[clap(long, default_value = "dist.zip")]
+        pkg: PathBuf,
+        #[clap(long)]
+        sys: Option<String>,
     },
 }
 
@@ -168,6 +180,7 @@ fn main() -> NexusR {
                 nexus::BuildI {
                     targets: needed_bins_buffer,
                     profile,
+                    sys: SysTarget::Host,
                 }
                 .run(&mut item, Some(bp))?
             };
@@ -179,6 +192,39 @@ fn main() -> NexusR {
             {
                 let item = cx.new_child("Running");
                 run_cmd.run(item)?;
+            }
+        }
+        App::Dist { pkg, sys } => {
+            let cmd = BuildDistribCommand { pkg };
+
+            let bins = {
+                let mut item = cx.new_child("Building");
+                item.init(None, None);
+
+                let mut needed_bins_buffer = Vec::new();
+                BuildDistribsBins::needed_bins(&cmd, &mut needed_bins_buffer);
+
+                let bp = cargo_interface::BuildCmdBuildingProgress::new(
+                    item.add_child("Building progress"),
+                    std::time::Instant::now(),
+                );
+
+                nexus::BuildI {
+                    targets: needed_bins_buffer,
+                    profile: nexus::Profile::Release,
+                    sys: match sys {
+                        Some(sys) => SysTarget::Target { name: sys },
+                        None => SysTarget::Host,
+                    },
+                }
+                .run(&mut item, Some(bp))?
+            };
+
+            let build_distrib_bins = BuildDistribsBins::compile_from(&bins);
+
+            {
+                let mut item = cx.new_child("Building distributable");
+                cmd.run(&mut item, &build_distrib_bins)?;
             }
         }
     }
