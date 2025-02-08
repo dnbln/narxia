@@ -636,7 +636,8 @@ pub mod tests {
                         ParserTestsMode::Check => "check",
                         ParserTestsMode::Overwrite => "overwrite",
                     },
-                );
+                )
+                .env("NARXIA_TEST_GUARD", "1");
 
             if let Some(filter) = &self.filter {
                 cmd.arg("-E").arg(filter);
