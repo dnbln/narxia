@@ -847,6 +847,10 @@ pub mod tests {
                 }
             }
 
+            if summary.failed != 0 {
+                bail!("tests failed");
+            }
+
             Ok(())
         }
     }
