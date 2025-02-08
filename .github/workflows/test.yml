@@ -9,6 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   COLOR: always
+  NEXUS_GROUP_BEGIN: "::begin-group::{group}"
+  NEXUS_GROUP_END: "::end-group::"
 
 jobs:
   build:

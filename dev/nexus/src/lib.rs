@@ -1,6 +1,7 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
+use core::fmt;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
@@ -485,4 +486,72 @@ pub enum ColorConfig {
     Always,
     Never,
     Auto,
+}
+
+#[derive(Debug, Clone)]
+pub struct NexusOutputGroups {
+    begin: String,
+    end: String,
+}
+
+pub struct NexusOutputGroupRAII<'a> {
+    groups: &'a NexusOutputGroups,
+    group: &'a str,
+}
+
+impl Drop for NexusOutputGroupRAII<'_> {
+    fn drop(&mut self) {
+        println!("{}", self.groups.end(self.group));
+    }
+}
+
+impl NexusOutputGroups {
+    pub fn new(begin: String, end: String) -> Self {
+        Self { begin, end }
+    }
+
+    pub fn begin<'a>(&'a self, group: &'a str) -> NexusOutputGroupRAII<'a> {
+        println!("{}", self.do_begin(group));
+
+        NexusOutputGroupRAII {
+            groups: self,
+            group,
+        }
+    }
+
+    pub fn do_begin<'a>(&'a self, group: &'a str) -> NextestBeginGroup<'a> {
+        NextestBeginGroup {
+            groups: self,
+            group,
+        }
+    }
+
+    pub fn end<'a>(&'a self, group: &'a str) -> NextestEndGroup<'a> {
+        NextestEndGroup {
+            groups: self,
+            group,
+        }
+    }
+}
+
+pub struct NextestBeginGroup<'a> {
+    groups: &'a NexusOutputGroups,
+    group: &'a str,
+}
+
+impl fmt::Display for NextestBeginGroup<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.groups.begin.replace("{group}", self.group))
+    }
+}
+
+pub struct NextestEndGroup<'a> {
+    groups: &'a NexusOutputGroups,
+    group: &'a str,
+}
+
+impl fmt::Display for NextestEndGroup<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.groups.end.replace("{group}", self.group))
+    }
 }

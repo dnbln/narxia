@@ -7,7 +7,7 @@ use nexus::cargo_interface::SysTarget;
 use nexus::duration::NexusDuration;
 use nexus::{
     cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, ColorConfig,
-    NarxiaNeededBins, NexusR, ProfileDeterminer, RunCompilerBins, Target,
+    NarxiaNeededBins, NexusOutputGroups, NexusR, ProfileDeterminer, RunCompilerBins, Target,
 };
 use prodash::unit;
 
@@ -43,7 +43,7 @@ enum App {
         /// as the total number of tests is not known in advance.
         ///
         /// It does give a performance boost though.
-        #[clap(long = "count-tests")]
+        #[clap(long = "no-count-tests", default_value_t = true, action = ArgAction::SetFalse)]
         count_tests: bool,
 
         /// Whether to capture the output of the nextest stderr.
@@ -166,7 +166,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             #[cfg(debug_assertions)]
             let run_tests = run_tests.capture_nextest_output(capture_nextest);
 
-            run_tests.run(Some(&mut item))?;
+            run_tests.run(Some(&mut item), cx.groups())?;
         }
         App::Run { profile, args } => {
             let profile = profile.get_profile();
@@ -252,7 +252,17 @@ fn main() -> NexusR {
         Err(_) => ColorConfig::Auto,
     };
 
-    let (mut cx, tree) = NexusContext::new();
+    let groups = match (
+        std::env::var("NEXUS_GROUP_BEGIN"),
+        std::env::var("NEXUS_GROUP_END"),
+    ) {
+        (Ok(begin), Ok(end)) => Some(NexusOutputGroups::new(begin, end)),
+        _ => None,
+    };
+
+    dbg!(&groups);
+
+    let (mut cx, tree) = NexusContext::new(groups);
     let start = std::time::Instant::now();
 
     let mut opts = prodash::render::line::Options {

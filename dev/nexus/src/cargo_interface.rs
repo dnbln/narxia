@@ -573,10 +573,12 @@ impl RunCompilerCommand {
 
 pub mod tests {
     use core::fmt;
+    use std::mem;
 
     use owo_colors::Style;
 
     use super::*;
+    use crate::NexusOutputGroups;
 
     pub fn list_tests(filter: Option<&String>) -> NexusR<nextest_metadata::TestListSummary> {
         let mut cmd = cargo_command();
@@ -660,7 +662,11 @@ pub mod tests {
             self
         }
 
-        pub fn run(self, mut item: Option<&mut Item>) -> NexusR {
+        pub fn run(
+            self,
+            mut item: Option<&mut Item>,
+            groups: Option<&NexusOutputGroups>,
+        ) -> NexusR {
             let mut cmd = cargo_command();
             cmd.arg("nextest")
                 .args(["run", "--message-format", "libtest-json-plus", "--all"])
@@ -685,12 +691,14 @@ pub mod tests {
             cmd.stdout(std::process::Stdio::piped());
             cmd.stderr(std::process::Stdio::piped());
 
+            let run_tests_group = groups.map(|g| g.begin("Run tests"));
+
             let mut child = cmd.spawn().into_diagnostic()?;
 
             let start_time = Instant::now();
 
-            let stdout = std::mem::take(&mut child.stdout).unwrap();
-            let stderr = std::mem::take(&mut child.stderr).unwrap();
+            let stdout = mem::take(&mut child.stdout).unwrap();
+            let stderr = mem::take(&mut child.stderr).unwrap();
 
             {
                 let capture = self.capture_nextest_stderr;
@@ -930,7 +938,10 @@ pub mod tests {
                 }
             }
 
-            eprintln!("{out}\n");
+            {
+                let _tests = groups.map(|g| g.begin("Test results"));
+                eprintln!("{out}\n");
+            }
 
             if let Some(item) = item {
                 let initial = match (summary.passed, summary.failed) {
@@ -968,6 +979,8 @@ pub mod tests {
                     item.fail(msg);
                 }
             }
+
+            mem::drop(run_tests_group);
 
             if summary.failed != 0 {
                 bail!("tests failed");

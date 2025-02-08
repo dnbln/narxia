@@ -3,6 +3,8 @@ use std::sync::{Arc, Weak};
 use prodash::tree::root::Options;
 use prodash::tree::{Item, Root as Tree};
 
+use crate::NexusOutputGroups;
+
 struct Shell {
     pub tree: Arc<Tree>,
 }
@@ -10,10 +12,11 @@ struct Shell {
 pub struct NexusContext {
     shell: Shell,
     root: Item,
+    groups: Option<NexusOutputGroups>,
 }
 
 impl NexusContext {
-    pub fn new() -> (Self, Weak<Tree>) {
+    pub fn new(groups: Option<NexusOutputGroups>) -> (Self, Weak<Tree>) {
         let tree = Arc::new(
             Options {
                 message_buffer_capacity: 300,
@@ -25,6 +28,7 @@ impl NexusContext {
         let ctxt = Self {
             shell: Shell { tree },
             root,
+            groups,
         };
         let tree = Arc::downgrade(&ctxt.shell.tree);
         (ctxt, tree)
@@ -47,5 +51,9 @@ impl NexusContext {
     pub fn fail(&mut self, message: impl Into<String>) {
         let message = message.into();
         self.root.fail(message);
+    }
+
+    pub fn groups(&self) -> Option<&NexusOutputGroups> {
+        self.groups.as_ref()
     }
 }
