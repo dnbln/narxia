@@ -260,8 +260,6 @@ fn main() -> NexusR {
         _ => None,
     };
 
-    dbg!(&groups);
-
     let (mut cx, tree) = NexusContext::new(groups);
     let start = std::time::Instant::now();
 

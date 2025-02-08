@@ -829,16 +829,18 @@ pub mod tests {
                 }
             }
 
-            struct TestStatusHeader<'a>(&'a str, &'a str);
+            let out_stream = Stdout;
+
+            struct TestStatusHeader<'a>(&'a str, &'a str, owo_colors::Stream);
             impl fmt::Display for TestStatusHeader<'_> {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     write!(
                         f,
                         "{} {}{}{}",
-                        "test".if_supports_color(Stderr, |text| text.blue()),
-                        self.0.if_supports_color(Stderr, |text| text.yellow()),
-                        "::".if_supports_color(Stderr, |text| text.purple()),
-                        self.1.if_supports_color(Stderr, |text| text.cyan()),
+                        "test".if_supports_color(self.2, |text| text.blue()),
+                        self.0.if_supports_color(self.2, |text| text.yellow()),
+                        "::".if_supports_color(self.2, |text| text.purple()),
+                        self.1.if_supports_color(self.2, |text| text.cyan()),
                     )
                 }
             }
@@ -858,10 +860,11 @@ pub mod tests {
                         writeln!(
                             &mut out,
                             "{} ... {}",
-                            TestStatusHeader(suite, test),
-                            format_args!("ok ({exec_time:.3}s)").if_supports_color(Stderr, |t| {
-                                Style::new().bright_green().bold().style(t)
-                            }),
+                            TestStatusHeader(suite, test, out_stream),
+                            format_args!("ok ({exec_time:.3}s)")
+                                .if_supports_color(out_stream, |t| {
+                                    Style::new().bright_green().bold().style(t)
+                                }),
                         )
                         .unwrap();
                     }
@@ -870,8 +873,8 @@ pub mod tests {
                         writeln!(
                             &mut out,
                             "{} ... {}",
-                            TestStatusHeader(suite, test),
-                            "ignored".if_supports_color(Stderr, |t| Style::new()
+                            TestStatusHeader(suite, test, out_stream),
+                            "ignored".if_supports_color(out_stream, |t| Style::new()
                                 .bright_white()
                                 .bold()
                                 .style(t)),
@@ -882,8 +885,8 @@ pub mod tests {
                         writeln!(
                             &mut out,
                             "{} ... {}",
-                            TestStatusHeader(suite, test),
-                            "measured".if_supports_color(Stderr, |t| Style::new()
+                            TestStatusHeader(suite, test, out_stream),
+                            "measured".if_supports_color(out_stream, |t| Style::new()
                                 .bright_blue()
                                 .bold()
                                 .style(t)),
@@ -894,8 +897,8 @@ pub mod tests {
                         writeln!(
                             &mut out,
                             "{} ... {}",
-                            TestStatusHeader(suite, test),
-                            "filtered out".if_supports_color(Stderr, |t| Style::new()
+                            TestStatusHeader(suite, test, out_stream),
+                            "filtered out".if_supports_color(out_stream, |t| Style::new()
                                 .yellow()
                                 .bold()
                                 .style(t)),
@@ -920,9 +923,10 @@ pub mod tests {
                 writeln!(
                     &mut out,
                     "{} ... {}",
-                    TestStatusHeader(suite, test),
-                    format_args!("FAILED ({exec_time:.3}s)")
-                        .if_supports_color(Stderr, |t| Style::new().bright_red().bold().style(t)),
+                    TestStatusHeader(suite, test, out_stream),
+                    format_args!("FAILED ({exec_time:.3}s)").if_supports_color(out_stream, |t| {
+                        Style::new().bright_red().bold().style(t)
+                    }),
                 )
                 .unwrap();
                 match info {
@@ -938,7 +942,7 @@ pub mod tests {
 
             {
                 let _tests = groups.map(|g| g.begin("Test results"));
-                eprintln!("{out}\n");
+                println!("{out}\n");
             }
 
             if let Some(item) = item {
