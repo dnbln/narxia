@@ -1,4 +1,12 @@
+use std::path::PathBuf;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use narxia_driver::DriverCtx;
+use narxia_hir::hir::ModDef;
+use narxia_hir::lower::LowerCtxt;
+use narxia_src_db::SrcFile;
+use narxia_syn::syntree::{Root, SynTree};
+use narxia_syn_db::SynFile;
 
 fn make_input(num: usize) -> String {
     r#"
@@ -80,28 +88,50 @@ fn make_input(num: usize) -> String {
     "#.repeat(num)
 }
 
-fn run_parser(
-    input: &str,
-) -> (
-    narxia_syn::syntree::GreenTree,
-    Vec<narxia_syn::parse_error::ParseError>,
-) {
-    let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(input);
-    let mut parser = narxia_syn::parser::Parser::new(&mut ts);
-    parser.parse();
-    let (node, errors) = parser.finish_to_tree();
-    (node, errors)
+fn hir_lower(root: &SynTree, src_file: SrcFile, ctx: &DriverCtx) {
+    let mut hir_map = ctx.db.get_global_ty_ctxt().hir_map_mut_ref();
+    hir_map.__test_clean();
+    let hir = narxia_hir::lower::lower_mod_def(
+        &mut LowerCtxt {
+            src_file,
+            hir_map: &mut *hir_map,
+        },
+        root.get_root(),
+    );
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parser 10", |b| {
+    let ctx = DriverCtx::initialize_in_test();
+    c.bench_function("hirlower 10", |b| {
         let input = make_input(10);
-        b.iter(|| run_parser(black_box(&input)))
+        let file = narxia_driver::load_file(&ctx, PathBuf::from("input.nrx"), &input);
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(Some(file));
+        let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+        let root = tree.tree(&ctx.db).red();
+        b.iter(|| hir_lower(black_box(&root), file, &ctx));
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(None);
     });
 
-    c.bench_function("parser 1000", |b| {
+    c.bench_function("hirlower 1000", |b| {
         let input = make_input(1000);
-        b.iter(|| run_parser(black_box(&input)))
+        let file = narxia_driver::load_file(&ctx, PathBuf::from("input.nrx"), &input);
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(Some(file));
+        let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+        let root = tree.tree(&ctx.db).red();
+        b.iter(|| hir_lower(black_box(&root), file, &ctx));
+        ctx.db
+            .get_global_ty_ctxt()
+            .hir_map_mut_ref()
+            .set_current_file(None);
     });
 }
 

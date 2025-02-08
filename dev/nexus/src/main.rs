@@ -7,7 +7,7 @@ use nexus::cargo_interface::SysTarget;
 use nexus::duration::NexusDuration;
 use nexus::{
     cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, NarxiaNeededBins, NexusR,
-    ProfileDeterminer, RunCompilerBins,
+    ProfileDeterminer, RunCompilerBins, Target,
 };
 use prodash::unit;
 
@@ -63,6 +63,9 @@ enum App {
         /// If this flag is used, the tests will stop running after the first failure.
         #[clap(long = "no-fail-fast", default_value_t = true, action = ArgAction::SetFalse)]
         fail_fast: bool,
+
+        #[clap(flatten)]
+        profile: ProfileDeterminer,
 
         /// Parser test mode.
         ///
@@ -122,8 +125,26 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             capture_nextest,
             count_tests,
             fail_fast,
+            profile,
             parser_tests,
         } => {
+            let profile = profile.get_profile();
+            {
+                let mut item = cx.new_child("Building");
+                item.init(None, None);
+
+                let bp = cargo_interface::BuildCmdBuildingProgress::new(
+                    item.add_child("Building progress"),
+                    std::time::Instant::now(),
+                );
+
+                nexus::BuildI {
+                    targets: vec![Target::Compiler, Target::Tests],
+                    profile,
+                    sys: SysTarget::Host,
+                }
+                .run(&mut item, Some(bp))?;
+            }
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
                 Some(nexus::cargo_interface::tests::list_tests(test_filter.as_ref())?.test_count)
@@ -134,6 +155,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             let run_tests = nexus::cargo_interface::tests::RunTests::new()
                 .filter(test_filter.clone())
                 .fail_fast(fail_fast)
+                .profile(profile.cargo_name())
                 .parser_tests(match parser_tests {
                     ParserTestsMode::Check => nexus::cargo_interface::tests::ParserTestsMode::Check,
                     ParserTestsMode::Overwrite => {

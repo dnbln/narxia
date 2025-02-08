@@ -277,6 +277,12 @@ impl HirMap {
             })
             .collect()
     }
+
+    pub fn __test_clean(&mut self) {
+        self.buffer.clear();
+        self.parents.clear();
+        self.files.clear();
+    }
 }
 
 struct ParentUpdateVisitor<'hir> {

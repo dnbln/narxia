@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use cargo_metadata::TargetKind;
 use miette::{bail, IntoDiagnostic};
+use owo_colors::OwoColorize;
 use prodash::tree::Item;
 use prodash::unit;
 
@@ -526,7 +527,6 @@ impl RunCompilerCommand {
             .stderr(std::process::Stdio::inherit());
 
         let mut child = cmd.spawn().into_diagnostic()?;
-
         let status = child.wait().into_diagnostic()?;
 
         if !status.success() {
@@ -572,6 +572,7 @@ pub mod tests {
         filter: Option<String>,
         capture_nextest_stderr: bool,
         fail_fast: bool,
+        profile: String,
         parser_tests_mode: ParserTestsMode,
     }
 
@@ -592,6 +593,7 @@ pub mod tests {
                 filter: None,
                 capture_nextest_stderr: true,
                 fail_fast: true,
+                profile: "dev".to_string(),
                 parser_tests_mode: ParserTestsMode::default(),
             }
         }
@@ -608,6 +610,11 @@ pub mod tests {
 
         pub fn fail_fast(mut self, fail_fast: bool) -> Self {
             self.fail_fast = fail_fast;
+            self
+        }
+
+        pub fn profile(mut self, profile: impl Into<String>) -> Self {
+            self.profile = profile.into();
             self
         }
 
