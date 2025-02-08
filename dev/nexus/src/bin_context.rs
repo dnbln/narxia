@@ -16,7 +16,7 @@ impl NexusContext {
     pub fn new() -> (Self, Weak<Tree>) {
         let tree = Arc::new(
             Options {
-                message_buffer_capacity: 150,
+                message_buffer_capacity: 300,
                 ..Default::default()
             }
             .create(),
