@@ -264,7 +264,7 @@ impl BuildCmd {
                             [TargetKind::Bench] => " (bench)",
                             [TargetKind::CustomBuild] => " (custom-build)",
                             [TargetKind::ProcMacro] => " (proc-macro)",
-                            _ => "unknown",
+                            _ => " unknown",
                         };
 
                         if config.print_dependency_artifacts
@@ -583,7 +583,7 @@ pub mod tests {
     pub fn list_tests(filter: Option<&String>) -> NexusR<nextest_metadata::TestListSummary> {
         let mut cmd = cargo_command();
         cmd.arg("nextest")
-            .args(["list", "--message-format", "json", "--all"]);
+            .args(["list", "--message-format", "json", "--workspace"]);
 
         if let Some(filter) = filter {
             cmd.arg("-E").arg(filter);
@@ -669,7 +669,7 @@ pub mod tests {
         ) -> NexusR {
             let mut cmd = cargo_command();
             cmd.arg("nextest")
-                .args(["run", "--message-format", "libtest-json-plus", "--all"])
+                .args(["run", "--message-format", "libtest-json-plus", "--workspace"])
                 .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1")
                 .env(
                     "NARXIA_PARSER_SNAPSHOTS_TEST_MODE",
