@@ -406,7 +406,7 @@ pub struct LLVMManager {
 impl LLVMManager {
     pub fn make_from_target() -> Self {
         Self {
-            llvm_manager_path: ws_root().join("target/llvm"),
+            llvm_manager_path: ws_root().join("nexusbuild/llvm"),
         }
     }
 

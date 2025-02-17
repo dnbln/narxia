@@ -33,8 +33,24 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
-      - name: Build
-        run: cargo nexus build-sys build
+      - name: Cache llvm
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm
+      - name: Build llvm
+        run: cargo nexus build-sys build --targets llvm
+      - name: Save llvm
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm
+      - name: Build narxia
+        run: cargo nexus build-sys build --targets compiler
+      - name: Build tests
+        run: cargo nexus build-sys build --targets tests
       - name: Test
         run: cargo nexus test --no-fail-fast
       # - name: Build
