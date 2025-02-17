@@ -3,7 +3,7 @@ use std::sync::{Arc, Weak};
 use prodash::tree::root::Options;
 use prodash::tree::{Item, Root as Tree};
 
-use crate::NexusOutputGroups;
+use crate::{LLVMManager, NexusOutputGroups};
 
 struct Shell {
     pub tree: Arc<Tree>,
@@ -13,6 +13,7 @@ pub struct NexusContext {
     shell: Shell,
     root: Item,
     groups: Option<NexusOutputGroups>,
+    pub llvm_manager: LLVMManager,
 }
 
 impl NexusContext {
@@ -29,6 +30,7 @@ impl NexusContext {
             shell: Shell { tree },
             root,
             groups,
+            llvm_manager: LLVMManager::make_from_target(),
         };
         let tree = Arc::downgrade(&ctxt.shell.tree);
         (ctxt, tree)

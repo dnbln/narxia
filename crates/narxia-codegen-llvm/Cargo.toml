@@ -1,0 +1,15 @@
+[package]
+name = "narxia-codegen-llvm"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[dependencies]
+narxia-codegen.workspace = true
+
+llvm-sys.workspace = true

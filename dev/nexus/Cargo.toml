@@ -11,14 +11,18 @@ keywords.workspace = true
 [dependencies]
 cargo_metadata.workspace = true
 clap.workspace = true
+cmake.workspace = true
 glob.workspace = true
 humantime.workspace = true
 miette.workspace = true
 nextest-metadata.workspace = true
 owo-colors.workspace = true
 prodash.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tar.workspace = true
+xz.workspace = true
 zip.workspace = true
 
 narxia-log.workspace = true

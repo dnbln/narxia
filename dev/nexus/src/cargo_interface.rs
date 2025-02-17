@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fmt::Write;
 use std::io::{BufRead, Read};
 use std::path::PathBuf;
@@ -43,6 +44,7 @@ pub struct BuildCmd {
     packages: PkgSpec,
     profile: Option<String>,
     sys_target: SysTarget,
+    envs: Vec<(OsString, OsString)>,
     targets: Vec<BuildTarget>,
     config: BuildCmdConfig,
 }
@@ -117,6 +119,11 @@ impl BuildCmd {
         self
     }
 
+    pub fn env(mut self, k: impl Into<OsString>, v: impl Into<OsString>) -> Self {
+        self.envs.push((k.into(), v.into()));
+        self
+    }
+
     pub fn build_targets(mut self, targets: impl IntoIterator<Item = BuildTarget>) -> Self {
         self.targets = targets.into_iter().collect();
         self
@@ -137,6 +144,7 @@ impl BuildCmd {
             targets,
             profile,
             sys_target,
+            envs,
             config,
         } = self;
 
@@ -219,6 +227,10 @@ impl BuildCmd {
             cmd.arg("--message-format=json");
         }
 
+        for (k, v) in envs {
+            cmd.env(k, v);
+        }
+
         cmd.stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
 
@@ -236,9 +248,8 @@ impl BuildCmd {
                 Some(item) => item.name().unwrap().to_string(),
                 None => "Building".to_string(),
             };
-            let lock = build_progress.item.lock().unwrap();
 
-            Some(ItemWrapper::start(lock, name, Instant::now())?)
+            Some(build_progress.make_progress_lock(name, Instant::now())?)
         } else {
             None
         };
@@ -386,6 +397,14 @@ impl BuildCmdBuildingProgress {
             start,
         }
     }
+
+    pub(crate) fn make_progress_lock(
+        &self,
+        name: String,
+        start: Instant,
+    ) -> NexusR<ItemWrapperFinishGuard> {
+        ItemWrapper::start(self.item.lock().unwrap(), name, start)
+    }
 }
 
 #[derive(Debug)]
@@ -473,7 +492,7 @@ impl ItemWrapper {
     }
 }
 
-struct ItemWrapperFinishGuard<'a> {
+pub(crate) struct ItemWrapperFinishGuard<'a> {
     item_wrapper: MutexGuard<'a, ItemWrapper>,
     finished: bool,
 }
@@ -669,7 +688,12 @@ pub mod tests {
         ) -> NexusR {
             let mut cmd = cargo_command();
             cmd.arg("nextest")
-                .args(["run", "--message-format", "libtest-json-plus", "--workspace"])
+                .args([
+                    "run",
+                    "--message-format",
+                    "libtest-json-plus",
+                    "--workspace",
+                ])
                 .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1")
                 .env(
                     "NARXIA_PARSER_SNAPSHOTS_TEST_MODE",

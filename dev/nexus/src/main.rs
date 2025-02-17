@@ -143,7 +143,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     profile,
                     sys: SysTarget::Host,
                 }
-                .run(&mut item, Some(bp))?;
+                .run(&cx.llvm_manager, &mut item, Some(bp))?;
             }
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
@@ -190,7 +190,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     profile,
                     sys: SysTarget::Host,
                 }
-                .run(&mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))?
             };
 
             let run_compiler_bins = RunCompilerBins::compile_from(&bins);
@@ -225,7 +225,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                         None => SysTarget::Host,
                     },
                 }
-                .run(&mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))?
             };
 
             let build_distrib_bins = BuildDistribsBins::compile_from(&bins);
