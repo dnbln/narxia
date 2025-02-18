@@ -441,13 +441,13 @@ impl LLVMManager {
         Ok(())
     }
 
-    fn llvm_sys_env(&self, version: &LLVMVersion) -> (String, PathBuf) {
-        let llvm_prefix_root = self.install_path(version);
+    fn llvm_prefix_info(&self, version: &LLVMVersion) -> LLVMPrefixInfo {
+        let prefix = self.install_path(version);
 
-        (
-            format!("LLVM_SYS_{}{}_PREFIX", version.major, version.minor),
-            llvm_prefix_root,
-        )
+        LLVMPrefixInfo {
+            version: version.clone(),
+            prefix,
+        }
     }
 
     fn build_path(&self, version: &LLVMVersion) -> PathBuf {
@@ -660,7 +660,7 @@ fn build_llvm(
     llvm_manager: &LLVMManager,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
-) -> NexusR<(String, PathBuf)> {
+) -> NexusR<LLVMPrefixInfo> {
     let mut item = item.add_child("Build::LLVM");
     let progress_lock = build_progress
         .as_ref()
@@ -674,12 +674,12 @@ fn build_llvm(
     };
     if llvm_manager.check_install(&version) {
         item.done("LLVM already built");
-        return Ok(llvm_manager.llvm_sys_env(&version));
+        return Ok(llvm_manager.llvm_prefix_info(&version));
     }
 
     let src_path = llvm_manager.download_llvm_src(&mut item, &version)?;
     let _ = llvm_manager.compile_llvm(&mut item, &version, &src_path)?;
-    let llvm_prefix = llvm_manager.llvm_sys_env(&version);
+    let llvm_prefix = llvm_manager.llvm_prefix_info(&version);
     drop(progress_lock);
 
     Ok(llvm_prefix)
@@ -688,18 +688,21 @@ fn build_llvm(
 fn build_compiler(
     profile: Profile,
     sys: &SysTarget,
-    llvm_prefix_root: &(String, PathBuf),
+    llvm_prefix_info: &LLVMPrefixInfo,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
 ) -> NexusR<PathBuf> {
     let mut item = item.add_child("Build::Compiler");
     item.init(None, Some(unit::label("artifacts")));
+
+    let (llvm_k, llvm_v) = llvm_prefix_info.to_env();
+
     let output = cargo_interface::build()
         .packages(pkg_spec!("narxia-driver"))
         .build_targets([BuildTarget::Bin("narxia-driver".to_owned())])
         .profile(profile.cargo_name())
         .sys_target(sys.clone())
-        .env(llvm_prefix_root.0.clone(), llvm_prefix_root.1.clone())
+        .env(llvm_k, llvm_v)
         .run(Some(&mut item), build_progress)?;
 
     let executable = if output.status.success() {
@@ -723,14 +726,17 @@ fn build_compiler(
 
 fn build_tests(
     profile: Profile,
+    llvm_prefix_info: &LLVMPrefixInfo,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
 ) -> NexusR {
     let mut item = item.add_child("Build::Tests");
     item.init(None, Some(unit::label("artifacts")));
+    let (llvm_k, llvm_v) = llvm_prefix_info.to_env();
     cargo_interface::build()
         .profile(profile.cargo_name())
         .build_targets(vec![BuildTarget::Tests])
+        .env(llvm_k, llvm_v)
         .run(Some(&mut item), build_progress)?;
 
     item.done("Tests built");
@@ -738,8 +744,20 @@ fn build_tests(
     Ok(())
 }
 
+#[derive(Debug, Clone)]
+pub struct LLVMPrefixInfo {
+    version: LLVMVersion,
+    prefix: PathBuf,
+}
+
+impl LLVMPrefixInfo {
+    pub fn to_env(&self) -> (String, PathBuf) {
+        (format!("LLVM_SYS_{}{}_PREFIX", self.version.major, self.version.minor), self.prefix.clone())
+    }
+}
+
 pub struct NarxiaBinaries {
-    pub llvm_prefix_root: Option<(String, PathBuf)>,
+    pub llvm: Option<LLVMPrefixInfo>,
     pub compiler: Option<PathBuf>,
 }
 
@@ -776,27 +794,32 @@ impl BuildI {
         self.targets.dedup();
 
         let mut bins = NarxiaBinaries {
-            llvm_prefix_root: None,
+            llvm: None,
             compiler: None,
         };
 
         for target in self.targets {
             match target {
                 Target::LLVM => {
-                    bins.llvm_prefix_root =
+                    bins.llvm =
                         Some(build_llvm(llvm_manager, item, build_progress.clone())?);
                 }
                 Target::Compiler => {
                     bins.compiler = Some(build_compiler(
                         self.profile,
                         &self.sys,
-                        bins.llvm_prefix_root.as_ref().unwrap(),
+                        bins.llvm.as_ref().unwrap(),
                         item,
                         build_progress.clone(),
                     )?);
                 }
                 Target::Tests => {
-                    build_tests(self.profile, item, build_progress.clone())?;
+                    build_tests(
+                        self.profile,
+                        bins.llvm.as_ref().unwrap(),
+                        item,
+                        build_progress.clone(),
+                    )?;
                 }
             }
         }
@@ -807,15 +830,21 @@ impl BuildI {
 
 pub trait NarxiaBinProvider<'bins> {
     fn get(&'bins self, target: Target) -> Option<&'bins PathBuf>;
+    
+    fn get_llvm(&'bins self) -> Option<&'bins LLVMPrefixInfo>;
 }
 
 impl<'bins> NarxiaBinProvider<'bins> for NarxiaBinaries {
     fn get(&'bins self, target: Target) -> Option<&'bins PathBuf> {
         match target {
-            Target::LLVM => self.llvm_prefix_root.as_ref().map(|(_, p)| p),
+            Target::LLVM => self.llvm.as_ref().map(|info| &info.prefix),
             Target::Compiler => self.compiler.as_ref(),
             Target::Tests => None,
         }
+    }
+
+    fn get_llvm(&'bins self) -> Option<&'bins LLVMPrefixInfo> {
+        self.llvm.as_ref()
     }
 }
 
@@ -830,6 +859,28 @@ pub trait ExtractSubcommand<Subcommand> {
 }
 
 macro bin_type {
+    (@field_ty_for_target: LLVM) => {
+        $crate::LLVMPrefixInfo
+    },
+    (@field_ty_for_target: $target:ident) => {
+        ::std::path::PathBuf
+    },
+    (@getter_for_target: LLVM, $base:expr) => {
+        $base.get_llvm()
+    },
+    (@getter_for_target: $target:ident, $base:expr) => {
+        $base.get($crate::Target::$target)
+    },
+    (@getter_in_self_for_target: LLVM, $v:expr) => {
+        $v.prefix
+    },
+    (@getter_in_self_for_target: $target:ident, $v:expr) => {
+        $v
+    },
+    (@return_if_target_is_llvm: LLVM, $v:expr) => {
+        return $v;
+    },
+    (@return_if_target_is_llvm: $target:ident, $v:expr) => {},
     ($name:ident,
         $command:ty,
         :bins $($field_bins:ident($field_target:ident))*
@@ -843,11 +894,11 @@ macro bin_type {
         #[derive(Debug, Clone, Copy)]
         pub struct $name<'bins> {
             $(
-                pub $field_bins: &'bins ::std::path::PathBuf,
+                pub $field_bins: &'bins bin_type!(@field_ty_for_target: $field_target),
             )*
             $(
                 $(
-                    pub $field_opt_bins: Option<&'bins ::std::path::PathBuf>,
+                    pub $field_opt_bins: Option<&'bins bin_type!(@field_ty_for_target: $field_opt_target)>,
                 )*
             )?
             $(
@@ -883,8 +934,8 @@ macro bin_type {
 
             fn compile_from(bins: &'bins impl NarxiaBinProvider<'bins>) -> Self {
                 Self {
-                    $($field_bins: bins.get($crate::Target::$field_target).unwrap(),)*
-                    $($($field_opt_bins: bins.get($crate::Target::$field_opt_target),)*)?
+                    $($field_bins: bin_type!(@getter_for_target: $field_target, bins).unwrap(),)*
+                    $($($field_opt_bins: bin_type!(@getter_for_target: $field_opt_target, bins),)*)?
                     $($field_name: <$field_ty as NarxiaNeededBins<'bins>>::compile_from(bins),)*
                 }
             }
@@ -894,10 +945,22 @@ macro bin_type {
             fn get(&'bins self, target: Target) -> Option<&'bins ::std::path::PathBuf> {
                 match target {
                     $(
-                        $crate::Target::$field_target => Some(self.$field_bins),
+                        $crate::Target::$field_target => Some(& bin_type!(@getter_in_self_for_target: $field_target, self.$field_bins)),
                     )*
                     _ => None,
                 }
+            }
+
+            fn get_llvm(&'bins self) -> Option<&'bins LLVMPrefixInfo> {
+                $(
+                    bin_type!(@return_if_target_is_llvm: $field_target, Some(self.$field_bins));
+                )*
+
+                $(
+                    bin_type!(@return_if_target_is_llvm: $field_opt_target, self.$field_opt_bins);
+                )*
+
+                None
             }
         }
     }
@@ -911,6 +974,7 @@ bin_type! {
     RunCompilerCommand,
     :bins
         compiler(Compiler)
+        llvm(LLVM)
 }
 
 bin_type! {

@@ -15,7 +15,7 @@ use prodash::tree::Item;
 use prodash::unit;
 
 use crate::duration::NexusDuration;
-use crate::NexusR;
+use crate::{LLVMPrefixInfo, NexusR, RunCompilerBins};
 
 #[derive(Debug, Clone)]
 pub enum PkgSpec {
@@ -227,7 +227,7 @@ impl BuildCmd {
             cmd.arg("--message-format=json");
         }
 
-        for (k, v) in dbg!(envs) {
+        for (k, v) in envs {
             cmd.env(k, v);
         }
 
@@ -542,7 +542,8 @@ pub fn build() -> BuildCmd {
 
 #[derive(Debug, Default)]
 pub struct RunCompilerCommand {
-    bin: Option<PathBuf>,
+    compiler: Option<PathBuf>,
+    llvm: Option<LLVMPrefixInfo>,
     args: Vec<String>,
 }
 
@@ -557,21 +558,21 @@ impl RunCompilerCommand {
         self
     }
 
-    pub fn bin(&mut self, bin: impl Into<PathBuf>) -> &mut Self {
-        self.bin = Some(bin.into());
+    pub fn compiler(&mut self, bin: impl Into<PathBuf>) -> &mut Self {
+        self.compiler = Some(bin.into());
+        self
+    }
+
+    pub fn llvm(&mut self, llvm: impl Into<LLVMPrefixInfo>) -> &mut Self {
+        self.llvm = Some(llvm.into());
         self
     }
 
     pub fn run(&self, mut item: Item) -> NexusR {
-        let mut cmd = match &self.bin {
-            Some(bin) => std::process::Command::new(bin),
-            None => {
-                let mut cmd = cargo_command();
-                cmd.arg("run")
-                    .args(["-p", "narxia-driver", "--bin", "narxia-driver", "--"]);
-                cmd
-            }
-        };
+        let mut cmd = std::process::Command::new(self.compiler.as_ref().unwrap());
+
+        let (k, v) = self.llvm.as_ref().unwrap().to_env();
+        cmd.env(k, v);
 
         cmd.args(&self.args);
 
@@ -599,7 +600,10 @@ pub mod tests {
     use super::*;
     use crate::NexusOutputGroups;
 
-    pub fn list_tests(filter: Option<&String>) -> NexusR<nextest_metadata::TestListSummary> {
+    pub fn list_tests(
+        filter: Option<&String>,
+        env: impl IntoIterator<Item = (OsString, OsString)>,
+    ) -> NexusR<nextest_metadata::TestListSummary> {
         let mut cmd = cargo_command();
         cmd.arg("nextest")
             .args(["list", "--message-format", "json", "--workspace"]);
@@ -610,6 +614,8 @@ pub mod tests {
 
         cmd.stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped());
+
+        cmd.envs(env);
 
         let output = cmd.output().into_diagnostic()?;
 
@@ -632,6 +638,7 @@ pub mod tests {
         fail_fast: bool,
         profile: String,
         parser_tests_mode: ParserTestsMode,
+        envs: Vec<(OsString, OsString)>,
     }
 
     pub enum ParserTestsMode {
@@ -653,6 +660,7 @@ pub mod tests {
                 fail_fast: true,
                 profile: "dev".to_string(),
                 parser_tests_mode: ParserTestsMode::default(),
+                envs: Vec::new(),
             }
         }
 
@@ -673,6 +681,11 @@ pub mod tests {
 
         pub fn profile(mut self, profile: impl Into<String>) -> Self {
             self.profile = profile.into();
+            self
+        }
+
+        pub fn env(mut self, k: impl Into<OsString>, v: impl Into<OsString>) -> Self {
+            self.envs.push((k.into(), v.into()));
             self
         }
 
@@ -702,7 +715,8 @@ pub mod tests {
                         ParserTestsMode::Overwrite => "overwrite",
                     },
                 )
-                .env("NARXIA_TEST_GUARD", "1");
+                .env("NARXIA_TEST_GUARD", "1")
+                .envs(self.envs);
 
             if let Some(filter) = &self.filter {
                 cmd.arg("-E").arg(filter);

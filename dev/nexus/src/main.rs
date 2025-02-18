@@ -129,7 +129,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             parser_tests,
         } => {
             let profile = profile.get_profile();
-            {
+            let bins = {
                 let mut item = cx.new_child("Building");
                 item.init(None, None);
 
@@ -143,19 +143,34 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     profile,
                     sys: SysTarget::Host,
                 }
-                .run(&cx.llvm_manager, &mut item, Some(bp))?;
-            }
+                .run(&cx.llvm_manager, &mut item, Some(bp))?
+            };
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
-                Some(nexus::cargo_interface::tests::list_tests(test_filter.as_ref())?.test_count)
+                Some(
+                    nexus::cargo_interface::tests::list_tests(
+                        test_filter.as_ref(),
+                        [bins
+                            .llvm
+                            .as_ref()
+                            .cloned()
+                            .map(|p| p.to_env())
+                            .map(|(a, b)| (a.into(), b.into()))
+                            .unwrap()],
+                    )?
+                    .test_count,
+                )
             } else {
                 None
             };
             item.init(test_count, Some(unit::label("tests")));
+            let llvm_prefix = bins.llvm.as_ref().cloned().unwrap();
+            let (llvm_k, llvm_v) = llvm_prefix.to_env();
             let run_tests = nexus::cargo_interface::tests::RunTests::new()
                 .filter(test_filter.clone())
                 .fail_fast(fail_fast)
                 .profile(profile.cargo_name())
+                .env(llvm_k, llvm_v)
                 .parser_tests(match parser_tests {
                     ParserTestsMode::Check => nexus::cargo_interface::tests::ParserTestsMode::Check,
                     ParserTestsMode::Overwrite => {
@@ -195,7 +210,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
             let run_compiler_bins = RunCompilerBins::compile_from(&bins);
 
-            run_cmd.bin(run_compiler_bins.compiler);
+            run_cmd.compiler(&run_compiler_bins.compiler);
+            run_cmd.llvm(run_compiler_bins.llvm.clone());
 
             {
                 let item = cx.new_child("Running");
