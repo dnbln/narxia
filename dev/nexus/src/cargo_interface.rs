@@ -227,7 +227,7 @@ impl BuildCmd {
             cmd.arg("--message-format=json");
         }
 
-        for (k, v) in envs {
+        for (k, v) in dbg!(envs) {
             cmd.env(k, v);
         }
 

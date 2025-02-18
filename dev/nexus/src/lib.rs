@@ -456,6 +456,7 @@ impl LLVMManager {
 
     fn install_path(&self, version: &LLVMVersion) -> PathBuf {
         self.llvm_manager_path
+            .join("install")
             .join(format!("llvm-{version}.install"))
     }
 
@@ -499,6 +500,13 @@ impl LLVMManager {
         Ok(extracted)
     }
 
+    fn check_install(&self, version: &LLVMVersion) -> bool {
+        let install_path = self.install_path(version);
+        let llvm_config = install_path.join("bin/llvm-config");
+
+        install_path.exists() && llvm_config.exists()
+    }
+
     fn compile_llvm(
         &self,
         item: &mut Item,
@@ -508,6 +516,11 @@ impl LLVMManager {
         let build_path = self.build_path(version);
         let install_path = self.install_path(version);
         let llvm_config = install_path.join("bin/llvm-config");
+
+        if install_path.exists() && llvm_config.exists() {
+            item.done("LLVM already built");
+            return Ok(llvm_config);
+        }
 
         'configure: {
             if build_path.exists() {
@@ -659,8 +672,13 @@ fn build_llvm(
         patch: 7,
         extra: None,
     };
+    if llvm_manager.check_install(&version) {
+        item.done("LLVM already built");
+        return Ok(llvm_manager.llvm_sys_env(&version));
+    }
+
     let src_path = llvm_manager.download_llvm_src(&mut item, &version)?;
-    let o = llvm_manager.compile_llvm(&mut item, &version, &src_path)?;
+    let _ = llvm_manager.compile_llvm(&mut item, &version, &src_path)?;
     let llvm_prefix = llvm_manager.llvm_sys_env(&version);
     drop(progress_lock);
 
