@@ -38,7 +38,7 @@ jobs:
         with:
           key: ${{ runner.os }}-built-llvm
           path: |
-            nexusbuild/llvm
+            nexusbuild/llvm/install
       - name: Build llvm
         run: cargo nexus build-sys build --targets llvm
       - name: Save llvm
@@ -46,7 +46,7 @@ jobs:
         with:
           key: ${{ runner.os }}-built-llvm
           path: |
-            nexusbuild/llvm
+            nexusbuild/llvm/install
       - name: Build narxia
         run: cargo nexus build-sys build --targets compiler
       - name: Build tests
