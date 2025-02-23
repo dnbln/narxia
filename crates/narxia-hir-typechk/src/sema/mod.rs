@@ -2,8 +2,8 @@ use core::ops;
 
 use narxia_hir::hir;
 use narxia_hir::hir::HirIdNewtype;
+use narxia_hir::hir_map;
 use narxia_hir::hir_map::HirMap;
-use narxia_hir::hir_map::{self};
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::visitor::{self as vis};
 use narxia_hir::HirId;

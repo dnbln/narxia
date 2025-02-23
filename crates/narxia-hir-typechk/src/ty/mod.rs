@@ -1,5 +1,5 @@
+use std::fmt;
 use std::fmt::Debug;
-use std::fmt::{self};
 
 use narxia_data_structures::FxHashMap;
 

@@ -1,7 +1,7 @@
 use core::ptr;
 use std::cell::RefCell;
+use std::fmt;
 use std::fmt::Formatter;
-use std::fmt::{self};
 use std::io;
 use std::path::PathBuf;
 

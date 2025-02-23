@@ -1,13 +1,13 @@
 use std::ffi::OsString;
 use std::fmt::Write;
+use std::io;
 use std::io::BufRead;
 use std::io::Read;
-use std::io::{self};
 use std::mem;
 use std::path::PathBuf;
 use std::process;
+use std::sync::mpsc;
 use std::sync::mpsc::TryRecvError;
-use std::sync::mpsc::{self};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;

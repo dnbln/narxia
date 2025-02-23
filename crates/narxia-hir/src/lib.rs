@@ -4,8 +4,8 @@
 use std::fmt;
 use std::ops;
 
+use narxia_syn::syntree;
 use narxia_syn::syntree::Token;
-use narxia_syn::syntree::{self};
 use narxia_syn::text_span::TextSpan;
 
 pub mod hir;

@@ -1,8 +1,8 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
+use std::fmt;
 use std::fmt::Write as _;
-use std::fmt::{self};
 use std::fs;
 use std::io;
 use std::io::BufRead;
@@ -31,6 +31,10 @@ use narxia_dir_structures::dir_structure::DirStructureItem;
 use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
+use reqwest::blocking;
+use xz::read;
+use zip::write::FileOptions;
+use zip::ZipWriter;
 
 pub mod bin_context;
 pub mod cargo_interface;
@@ -402,7 +406,7 @@ impl DownloadAndDecompressTarXz {
             download_item: &'i Item,
             download_file: Option<&'i mut fs::File>,
             total: usize,
-            resp: Response,
+            resp: blocking::Response,
         }
 
         impl Read for Reader<'_> {
@@ -1038,12 +1042,6 @@ macro bin_type {
         }
     }
 }
-
-use reqwest::blocking::Response;
-use reqwest::blocking::{self};
-use xz::read;
-use zip::write::FileOptions;
-use zip::ZipWriter;
 
 bin_type! {
     RunCompilerBins,
