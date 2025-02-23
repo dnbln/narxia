@@ -1,7 +1,7 @@
 #![feature(try_blocks)]
 #![feature(let_chains)]
 
-use core::fmt;
+use std::{fmt, ops};
 
 use narxia_syn::syntree::{self, Token};
 use narxia_syn::text_span::TextSpan;
@@ -18,7 +18,12 @@ pub struct HirSpan {
 }
 
 pub const DUMMY_SP: HirSpan = HirSpan {
-    span: unsafe { TextSpan::new_unchecked(0, 0) },
+    span: {
+        #[allow(unsafe_code)]
+        unsafe {
+            TextSpan::new_unchecked(0, 0)
+        }
+    },
 };
 
 impl HirSpan {
@@ -42,7 +47,7 @@ impl HirSpan {
         self.get_range().end
     }
 
-    pub fn get_range(self) -> core::ops::Range<usize> {
+    pub fn get_range(self) -> ops::Range<usize> {
         self.span.range_usize()
     }
 

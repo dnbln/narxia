@@ -1,42 +1,44 @@
 use std::borrow::Borrow;
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::collections::{btree_map, hash_map, BTreeMap, BTreeSet, HashMap, HashSet};
+use std::fmt;
+use std::hash::Hash;
 use std::ops::Index;
 
-pub struct FxHashMap<K: std::hash::Hash + Eq, V>(HashMap<K, V>);
+pub struct FxHashMap<K: Hash + Eq, V>(HashMap<K, V>);
 
-impl<K0: std::hash::Hash + Eq + std::fmt::Debug, V0: std::fmt::Debug> std::fmt::Debug
+impl<K0: Hash + Eq + fmt::Debug, V0: fmt::Debug> fmt::Debug
     for FxHashMap<K0, V0>
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        <HashMap<K0, V0> as std::fmt::Debug>::fmt(&self.0, f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <HashMap<K0, V0> as fmt::Debug>::fmt(&self.0, f)
     }
 }
 
-impl<K: std::hash::Hash + Eq, V> Default for FxHashMap<K, V> {
+impl<K: Hash + Eq, V> Default for FxHashMap<K, V> {
     fn default() -> Self {
         Self(HashMap::default())
     }
 }
 
-impl<K: std::hash::Hash + Eq, V: PartialEq> PartialEq for FxHashMap<K, V> {
+impl<K: Hash + Eq, V: PartialEq> PartialEq for FxHashMap<K, V> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
-impl<K: std::hash::Hash + Eq, V: Eq> Eq for FxHashMap<K, V> {}
+impl<K: Hash + Eq, V: Eq> Eq for FxHashMap<K, V> {}
 
-impl<K: std::hash::Hash + Eq + Clone, V: Clone> Clone for FxHashMap<K, V> {
+impl<K: Hash + Eq + Clone, V: Clone> Clone for FxHashMap<K, V> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<K: std::hash::Hash + Eq, V> FxHashMap<K, V> {
+impl<K: Hash + Eq, V> FxHashMap<K, V> {
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
-        K: std::borrow::Borrow<Q>,
-        Q: std::hash::Hash + Eq,
+        K: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.0.get(k)
     }
@@ -51,20 +53,20 @@ impl<K: std::hash::Hash + Eq, V> FxHashMap<K, V> {
 
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
-        K: std::borrow::Borrow<Q>,
-        Q: std::hash::Hash + Eq,
+        K: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.0.contains_key(k)
     }
 
-    pub fn drain(&mut self) -> std::collections::hash_map::Drain<'_, K, V> {
+    pub fn drain(&mut self) -> hash_map::Drain<'_, K, V> {
         self.0.drain()
     }
 
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
     where
-        K: std::borrow::Borrow<Q>,
-        Q: std::hash::Hash + Eq,
+        K: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.0.get_mut(k)
     }
@@ -76,7 +78,7 @@ impl<K: std::hash::Hash + Eq, V> FxHashMap<K, V> {
 
 impl<K, V> Index<K> for FxHashMap<K, V>
 where
-    K: std::hash::Hash + Eq,
+    K: Hash + Eq,
 {
     type Output = V;
 
@@ -106,7 +108,7 @@ impl<K: Ord, V> FxBTreeMap<K, V> {
         self.0.get(k)
     }
 
-    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, K, V> {
+    pub fn iter(&self) -> btree_map::Iter<'_, K, V> {
         self.0.iter()
     }
 }

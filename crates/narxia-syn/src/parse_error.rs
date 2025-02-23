@@ -1,3 +1,5 @@
+use std::panic;
+
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 
@@ -6,7 +8,7 @@ pub struct ParseError {
     info: ParseErrorInfo,
     at: TextSpan,
     tkind: SyntaxKind,
-    location: Option<&'static std::panic::Location<'static>>,
+    location: Option<&'static panic::Location<'static>>,
 }
 
 impl ParseError {
@@ -14,7 +16,7 @@ impl ParseError {
         info: ParseErrorInfo,
         at: TextSpan,
         tkind: SyntaxKind,
-        location: Option<&'static std::panic::Location<'_>>,
+        location: Option<&'static panic::Location<'_>>,
     ) -> Self {
         Self {
             info,
@@ -34,9 +36,9 @@ impl ParseError {
 
 #[derive(Debug, Clone)]
 pub enum ParseErrorInfo {
-    ExpectedKind(SyntaxKind, &'static std::panic::Location<'static>),
+    ExpectedKind(SyntaxKind, &'static panic::Location<'static>),
     UnexpectedToken {
         got: SyntaxKind,
-        at: &'static std::panic::Location<'static>,
+        at: &'static panic::Location<'static>,
     },
 }

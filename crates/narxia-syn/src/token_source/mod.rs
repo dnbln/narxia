@@ -31,6 +31,7 @@ impl TokenRepr {
         }
     }
 
+    #[allow(unsafe_code)]
     pub fn kind(self) -> SyntaxKind {
         NarxiaLanguage::kind_from_u16(unsafe {
             u16::try_from(self.repr & 0xFFFF).unwrap_unchecked()
@@ -43,6 +44,7 @@ impl TokenRepr {
         }
     }
 
+    #[allow(unsafe_code)]
     pub fn span(self) -> TextSpan {
         let start =
             unsafe { u32::try_from((self.repr & 0xFFFFFFFF00000000) >> 32).unwrap_unchecked() };
@@ -90,6 +92,7 @@ impl Token {
         self
     }
 
+    #[allow(unsafe_code)]
     #[inline(always)]
     pub(crate) unsafe fn compose(self, other: Token, kind: SyntaxKind) -> Token {
         Token {

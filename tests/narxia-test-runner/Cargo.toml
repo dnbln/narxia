@@ -18,6 +18,9 @@ narxia-hir.workspace = true
 narxia-hir-db.workspace = true
 narxia-syn.workspace = true
 
+[lints]
+workspace = true
+
 [[test]]
 name = "parsing_tests_nxtimq"
 path = "tests/parsing_tests.rs"

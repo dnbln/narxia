@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{cell::RefCell, fmt};
 
 use narxia_src_db::SrcFile;
 use owo_colors::{OwoColorize, Style};
@@ -14,7 +14,7 @@ pub struct HirDebugContext {
 }
 
 thread_local! {
-    static DEBUG_CONTEXT: std::cell::RefCell<Option<HirDebugContext>> = std::cell::RefCell::new(None);
+    static DEBUG_CONTEXT: RefCell<Option<HirDebugContext>> = RefCell::new(None);
 }
 
 pub fn dbg_hir(
@@ -22,14 +22,14 @@ pub fn dbg_hir(
     get_path_fn: fn(SrcFile) -> String,
     get_file_contents_fn: fn(SrcFile) -> String,
     hir_map_lookup_fn: fn(HirId) -> HirElem,
-    cb: impl FnOnce() -> std::fmt::Result,
-) -> std::fmt::Result {
+    cb: impl FnOnce() -> fmt::Result,
+) -> fmt::Result {
     DEBUG_CONTEXT.with(move |f| {
         if f.borrow().is_some() {
             panic!("Hir debug context already set");
         }
 
-        struct HirDebugContextGuard<'a>(&'a std::cell::RefCell<Option<HirDebugContext>>);
+        struct HirDebugContextGuard<'a>(&'a RefCell<Option<HirDebugContext>>);
 
         impl<'a> Drop for HirDebugContextGuard<'a> {
             fn drop(&mut self) {
@@ -55,8 +55,8 @@ pub fn display_hir(
     get_path_fn: fn(SrcFile) -> String,
     get_file_contents_fn: fn(SrcFile) -> String,
     hir_map_lookup_fn: fn(HirId) -> HirElem,
-    cb: impl FnOnce() -> std::fmt::Result,
-) -> std::fmt::Result {
+    cb: impl FnOnce() -> fmt::Result,
+) -> fmt::Result {
     dbg_hir(
         get_file_fn,
         get_path_fn,

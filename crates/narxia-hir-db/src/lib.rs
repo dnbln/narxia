@@ -1,18 +1,20 @@
 #![feature(trait_upcasting)]
 
 
-use narxia_hir::hir_map::HirMap;
+use std::sync;
+
+use narxia_hir::{hir, hir_map::HirMap, lower};
 
 #[salsa::db]
 pub trait HirDb: salsa::Database + narxia_syn_db::SynDb {
-    fn hir_map_mut_ref(&self) -> std::sync::RwLockWriteGuard<HirMap>;
+    fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<HirMap>;
 }
 
 #[salsa::tracked]
 pub struct HirFile<'db> {
     #[id]
     pub file: narxia_syn_db::SynFile<'db>,
-    pub mod_def: narxia_hir::hir::ModId,
+    pub mod_def: hir::ModId,
 }
 
 #[salsa::tracked]
@@ -22,8 +24,8 @@ pub fn lower_file<'db>(db: &'db dyn HirDb, file: narxia_syn_db::SynFile<'db>) ->
     let mut hir_map = db.hir_map_mut_ref();
     let red = file.tree(db).red();
 
-    let mod_id = narxia_hir::lower::lower_mod_def(
-        &mut narxia_hir::lower::LowerCtxt {
+    let mod_id = lower::lower_mod_def(
+        &mut lower::LowerCtxt {
             src_file,
             hir_map: &mut hir_map,
         },

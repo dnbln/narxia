@@ -8,10 +8,12 @@ repository.workspace = true
 description.workspace = true
 keywords.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
 cargo_metadata.workspace = true
 clap.workspace = true
-cmake.workspace = true
 glob.workspace = true
 humantime.workspace = true
 miette.workspace = true

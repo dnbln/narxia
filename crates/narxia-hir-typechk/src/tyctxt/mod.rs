@@ -1,3 +1,4 @@
+use std::{ops, sync};
 use std::sync::{Arc, RwLock};
 
 use narxia_hir::hir_map::{HirElem, HirMap};
@@ -81,7 +82,7 @@ impl GlobalTyCtxt {
         rf.lookup_hir_id_def(hir_id)
     }
 
-    pub fn hir_map_mut_ref(&self) -> std::sync::RwLockWriteGuard<HirMap> {
+    pub fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<HirMap> {
         self.inner.hir_map.write().unwrap()
     }
 
@@ -109,9 +110,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-pub struct GlobalHirMapRef<'tcx>(std::sync::RwLockReadGuard<'tcx, HirMap>);
+pub struct GlobalHirMapRef<'tcx>(sync::RwLockReadGuard<'tcx, HirMap>);
 
-impl std::ops::Deref for GlobalHirMapRef<'_> {
+impl ops::Deref for GlobalHirMapRef<'_> {
     type Target = HirMap;
 
     fn deref(&self) -> &Self::Target {

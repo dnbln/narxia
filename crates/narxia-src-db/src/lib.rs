@@ -2,14 +2,14 @@ use core::fmt;
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::io;
+use std::{fs, io};
 
 use path_absolutize::Absolutize;
 
 struct SrcFileDatabaseInner {
     db: String,
     files: Vec<(FilePathInfo, Span)>,
-    loader: Box<dyn Fn(&Path) -> std::io::Result<String> + Send + Sync>,
+    loader: Box<dyn Fn(&Path) -> io::Result<String> + Send + Sync>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,12 +48,12 @@ impl fmt::Debug for SrcFileDatabase {
 
 impl Default for SrcFileDatabase {
     fn default() -> Self {
-        Self::new_with_loader(Box::new(|p| std::fs::read_to_string(p)))
+        Self::new_with_loader(Box::new(|p| fs::read_to_string(p)))
     }
 }
 
 impl SrcFileDatabase {
-    pub fn new_with_loader(loader: Box<dyn Fn(&Path) -> std::io::Result<String> + Send + Sync>) -> Self {
+    pub fn new_with_loader(loader: Box<dyn Fn(&Path) -> io::Result<String> + Send + Sync>) -> Self {
         Self {
             inner: Arc::new(RwLock::new(SrcFileDatabaseInner {
                 db: String::new(),
@@ -63,7 +63,7 @@ impl SrcFileDatabase {
         }
     }
 
-    pub fn load_file(&self, path: FilePathInfo) -> std::io::Result<Span> {
+    pub fn load_file(&self, path: FilePathInfo) -> io::Result<Span> {
         let inner = self.inner.read().unwrap();
         let text = (inner.loader)(&path.full_path)?;
         drop(inner);

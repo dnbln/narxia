@@ -32,6 +32,8 @@
 //! Nevertheless, changes to this code should be done with care, and the
 //! unsafe blocks should be reviewed carefully.
 
+use core::hint;
+use std::intrinsics;
 use std::marker::PhantomData;
 
 use super::{TokParserState, Token, TokenSource};
@@ -51,6 +53,7 @@ pub(crate) struct BufferedTokenSource<'l, T: TokenSource<'l> + 'l> {
     _pd: PhantomData<&'l ()>,
 }
 
+#[allow(unsafe_code)]
 impl<'l, T> BufferedTokenSource<'l, T>
 where
     T: TokenSource<'l> + 'l,
@@ -93,7 +96,7 @@ where
                 self.buffer_len = 0;
                 self.ts.restore_pos(self.buffer_spans[0] as usize);
             }
-            _ => unsafe { core::hint::unreachable_unchecked() },
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -110,7 +113,7 @@ where
     #[inline(always)]
     #[track_caller]
     pub fn lookahead0(&mut self) -> Option<Token> {
-        if std::intrinsics::unlikely(self.buffer_len == 0) {
+        if intrinsics::unlikely(self.buffer_len == 0) {
             let t0 = self.ts.next()?; // token at position = 0
             unsafe {
                 self.store_0(t0);
@@ -126,7 +129,7 @@ where
     #[inline(always)]
     #[track_caller]
     pub fn lookahead0_kind(&mut self) -> Option<SyntaxKind> {
-        if std::intrinsics::unlikely(self.buffer_len == 0) {
+        if intrinsics::unlikely(self.buffer_len == 0) {
             let t0 = self.ts.next()?; // token at position = 0
             unsafe {
                 self.store_0(t0);
@@ -141,7 +144,7 @@ where
     #[inline(always)]
     #[track_caller]
     pub fn lookahead0_span(&mut self) -> Option<TextSpan> {
-        if std::intrinsics::unlikely(self.buffer_len == 0) {
+        if intrinsics::unlikely(self.buffer_len == 0) {
             let t0 = self.ts.next()?; // token at position = 0
             unsafe {
                 self.store_0(t0);
@@ -156,7 +159,7 @@ where
     #[inline(always)]
     #[track_caller]
     pub fn at_eof(&mut self) -> bool {
-        if std::intrinsics::unlikely(self.buffer_len == 0) {
+        if intrinsics::unlikely(self.buffer_len == 0) {
             let t0 = self.ts.next(); // token at position = 0
             match t0 {
                 Some(t0) => {
@@ -283,7 +286,7 @@ where
                     // (3, 4)
                     Some(self.get_buf_3())
                 }
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             }
         }
         // while n >= self.buffer.len() {
@@ -380,7 +383,7 @@ where
                     self.advance_n_1_bl_4();
                     t
                 }
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             };
             push_token_evt(t0);
             true
@@ -470,7 +473,7 @@ where
                     self.advance_n_2_bl_4();
                     (t0, t1)
                 }
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             };
             let token = t0.compose(t1, complete);
             push_token_evt(t0, t1, token);
@@ -666,7 +669,7 @@ where
                     }
                 }
             }
-            _ => unsafe { core::hint::unreachable_unchecked() },
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -822,7 +825,7 @@ where
                     }
                 }
             }
-            _ => unsafe { core::hint::unreachable_unchecked() },
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -913,7 +916,7 @@ where
                     }
                     false
                 }
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             }
         }
     }
@@ -937,7 +940,7 @@ where
                 let token = unsafe { self.get_buf_0() };
                 Some(unsafe { token.compose(last, kind) })
             }
-            _ => unsafe { core::hint::unreachable_unchecked() },
+            _ => unsafe { hint::unreachable_unchecked() },
         }
     }
 
@@ -955,7 +958,7 @@ where
                 2 => self.advance_n_1_bl_2(),
                 3 => self.advance_n_1_bl_3(),
                 4 => self.advance_n_1_bl_4(),
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             }
         }
     }
@@ -1026,7 +1029,7 @@ where
                 (3, 4) => {
                     self.advance_n_3_bl_4();
                 }
-                (_, _) => core::hint::unreachable_unchecked(),
+                (_, _) => hint::unreachable_unchecked(),
             }
         }
     }
@@ -1119,13 +1122,14 @@ where
                     self.ts.restore_pos(pos);
                     self.buffer_len = 0;
                 }
-                _ => core::hint::unreachable_unchecked(),
+                _ => hint::unreachable_unchecked(),
             }
         }
     }
 }
 
 // Buffers manipulation convenience methods
+#[allow(unsafe_code)]
 impl<'l, T> BufferedTokenSource<'l, T>
 where
     T: TokenSource<'l>,

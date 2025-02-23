@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::IntoDiagnostic;
-use narxia_codegen::CodegenBackend;
+use narxia_codegen::{ir, CodegenBackend};
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
+use narxia_hir_typechk::sema;
 
 /// Compiler for narxia.
 #[derive(Parser, Debug)]
@@ -154,8 +155,7 @@ fn main() -> miette::Result<()> {
 
             let hir_mod = hir.mod_def(&ctx.db);
 
-            let analysis_results =
-                narxia_hir_typechk::sema::analyze_program_structure(tcx, hir_mod);
+            let analysis_results = sema::analyze_program_structure(tcx, hir_mod);
 
             println!("{:?}", analysis_results);
 
@@ -241,24 +241,22 @@ fn main() -> miette::Result<()> {
                 .set_current_file(None);
 
             let mut cg_tyctxt = narxia_codegen::TyCtxt::new();
-            let unit_ty = cg_tyctxt.add_ty(narxia_codegen::ir::Ty::Unit);
-            let fty = cg_tyctxt.add_ty(narxia_codegen::ir::Ty::Function(
-                narxia_codegen::ir::FunctionTy {
-                    args: vec![],
-                    ret: unit_ty,
-                },
-            ));
+            let unit_ty = cg_tyctxt.add_ty(ir::Ty::Unit);
+            let fty = cg_tyctxt.add_ty(ir::Ty::Function(ir::FunctionTy {
+                args: vec![],
+                ret: unit_ty,
+            }));
 
             narxia_codegen_llvm::Backend::new()
                 .generate_code(
                     &cg_tyctxt,
-                    &narxia_codegen::ir::Mod {
+                    &ir::Mod {
                         globals: vec![],
                         functions: vec![],
-                        global_code: narxia_codegen::ir::Function {
+                        global_code: ir::Function {
                             name: "global".to_string(),
                             ty: fty,
-                            block: narxia_codegen::ir::Block { instr: vec![] },
+                            block: ir::Block { instr: vec![] },
                         },
                     },
                     narxia_codegen::Out::File(cg.out.clone()),

@@ -2,15 +2,12 @@
 
 pub extern crate narxia_dir_structures;
 
-use std::sync::{Arc, Mutex};
-
-use libtest_mimic::Failed;
-
 pub mod parser_tests {
     use dir_structure::DirStructureItem;
     use miette::{bail, IntoDiagnostic};
     use narxia_dir_structures::{parser_tests_dir, ParserTestSingleFolder};
     use narxia_driver::DriverCtx;
+    use narxia_hir::hir_map;
     use narxia_hir_db::HirFile;
 
     pub fn lower_to_hir<'db>(
@@ -40,7 +37,7 @@ pub mod parser_tests {
 
         let mod_id = hir.mod_def(&ctx.db);
 
-        narxia_hir::hir_map::hir_map_update_parents_in_mod(
+        hir_map::hir_map_update_parents_in_mod(
             &mut *ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
             mod_id,
         );

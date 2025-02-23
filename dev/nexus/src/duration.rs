@@ -1,28 +1,28 @@
-use core::fmt;
+use std::{fmt, time};
 
 pub struct NexusDuration {
-    duration: std::time::Duration,
+    duration: time::Duration,
 }
 
 impl NexusDuration {
-    pub fn new(duration: std::time::Duration) -> Self {
-        let duration = std::time::Duration::from_millis(duration.as_millis().try_into().unwrap());
+    pub fn new(duration: time::Duration) -> Self {
+        let duration = time::Duration::from_millis(duration.as_millis().try_into().unwrap());
         Self { duration }
     }
 
-    pub fn since(start: std::time::Instant) -> Self {
+    pub fn since(start: time::Instant) -> Self {
         Self::new(start.elapsed())
     }
 }
 
-impl From<std::time::Duration> for NexusDuration {
-    fn from(duration: std::time::Duration) -> Self {
+impl From<time::Duration> for NexusDuration {
+    fn from(duration: time::Duration) -> Self {
         Self::new(duration)
     }
 }
 
 impl fmt::Display for NexusDuration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         humantime::Duration::from(self.duration).fmt(f)
     }
 }

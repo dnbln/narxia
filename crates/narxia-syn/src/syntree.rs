@@ -46,8 +46,8 @@
 //! Here, `EnumName` doesn't have to match the name of a variant in the [`SyntaxKind`] enum,
 //! but all the variants have to be created through [`syntree_node`].
 
-use std::fmt;
 use std::fmt::{Debug, Formatter};
+use std::{any, fmt};
 
 use narxia_proc::{syntree_enum, syntree_node};
 use owo_colors::Style;
@@ -343,7 +343,10 @@ impl SynTree {
     pub fn get_root(&self) -> Root {
         // Safety: The following must hold before calling this.
         // self.root.kind() == SyntaxKind::Root
-        unsafe { <Root as TreeNode>::cast_from_node_raw(self.root.clone()) }
+        #[allow(unsafe_code)]
+        unsafe {
+            <Root as TreeNode>::cast_from_node_raw(self.root.clone())
+        }
     }
 
     pub fn present_with_style<T>(
@@ -359,6 +362,7 @@ pub trait TreeNode: Sized {
     fn try_cast(n: Node) -> Option<Self> {
         if Self::can_cast_from_syntax_kind(n.kind()) {
             // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
+            #[allow(unsafe_code)]
             Some(unsafe { Self::cast_from_node_raw(n) })
         } else {
             None
@@ -368,12 +372,14 @@ pub trait TreeNode: Sized {
     fn try_cast_ref(n: &Node) -> Option<Self> {
         if Self::can_cast_from_syntax_kind(n.kind()) {
             // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
+            #[allow(unsafe_code)]
             Some(unsafe { Self::cast_from_node_raw(n.clone()) })
         } else {
             None
         }
     }
 
+    #[allow(unsafe_code)]
     unsafe fn cast_from_node_raw(n: Node) -> Self; // Invariant: The following must hold before calling this.
                                                    // Self::can_cast_from_syntax_kind(n.kind()) == true
     fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool;
@@ -1057,10 +1063,7 @@ fn get_child<T: TreeNode + 'static>(n: &Node) -> T {
                 "{:?}",
                 TreePresenter::__private_new_at_node(n, 0, Default::default())
             );
-            panic!(
-                "Node has no children of type {:?}",
-                std::any::type_name::<T>()
-            )
+            panic!("Node has no children of type {:?}", any::type_name::<T>())
         }
     }
 }

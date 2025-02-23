@@ -3,6 +3,7 @@
 //! This module contains the implementation of a token source that reads tokens from a text.
 
 use std::ops::RangeInclusive;
+use std::str::CharIndices;
 
 use super::TokParserState;
 use crate::syntax_kind::{SyntaxKind, T};
@@ -17,6 +18,67 @@ pub struct TextTokenSource<'text> {
     state: TokParserState,
 }
 
+#[allow(unsafe_code)]
+mod danger {
+    use crate::token_source::Token;
+
+    use super::TextTokenSource;
+
+    impl<'text> TextTokenSource<'text> {
+        #[inline(always)]
+        pub fn next_token(&mut self) -> Option<Token> {
+            if self.pos >= self.text.len() {
+                return None;
+            }
+
+            let to_parse = &self.text[self.pos..];
+            let (token, advanced, error) = Self::parse_one_token(self.state, to_parse);
+            let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
+            self.pos += advanced;
+            self.error = error;
+            Some(token)
+        }
+
+        #[inline(always)]
+        pub fn ws_wc_skipped(&mut self) -> Option<Token> {
+            if self.pos >= self.text.len() {
+                return None;
+            }
+
+            let to_parse = &self.text[self.pos..];
+
+            match to_parse.chars().next() {
+                Some(' ' | '\r' | '\t' | '/') => {}
+                _ => return None,
+            }
+
+            let (token, advanced, error) = Self::parse_ws_wc(to_parse);
+            let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
+            self.pos += advanced;
+            self.error = error;
+            Some(token)
+        }
+
+        #[inline(always)]
+        pub fn ws_wcn_skipped(&mut self) -> Option<Token> {
+            if self.pos >= self.text.len() {
+                return None;
+            }
+
+            let to_parse = &self.text[self.pos..];
+            match to_parse.chars().next() {
+                Some(' ' | '\r' | '\t' | '/' | '\n') => {}
+                _ => return None,
+            }
+            let (token, advanced, error) = Self::parse_ws_wcn(to_parse);
+            let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
+            self.pos += advanced;
+            self.error = error;
+            Some(token)
+        }
+    }
+}
+
 impl<'text> TextTokenSource<'text> {
     pub fn new(text: &'text str) -> Self {
         assert!(text.len() <= u32::MAX as usize);
@@ -26,20 +88,6 @@ impl<'text> TextTokenSource<'text> {
             error: None,
             state: TokParserState::Normal,
         }
-    }
-
-    #[inline(always)]
-    fn next_token(&mut self) -> Option<Token> {
-        if self.pos >= self.text.len() {
-            return None;
-        }
-
-        let to_parse = &self.text[self.pos..];
-        let (token, advanced, error) = Self::parse_one_token(self.state, to_parse);
-        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
-        self.pos += advanced;
-        self.error = error;
-        Some(token)
     }
 
     #[inline(always)]
@@ -59,44 +107,6 @@ impl<'text> TextTokenSource<'text> {
     }
 
     #[inline(always)]
-    fn ws_wc_skipped(&mut self) -> Option<Token> {
-        if self.pos >= self.text.len() {
-            return None;
-        }
-
-        let to_parse = &self.text[self.pos..];
-
-        match to_parse.chars().next() {
-            Some(' ' | '\r' | '\t' | '/') => {}
-            _ => return None,
-        }
-
-        let (token, advanced, error) = Self::parse_ws_wc(to_parse);
-        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
-        self.pos += advanced;
-        self.error = error;
-        Some(token)
-    }
-
-    #[inline(always)]
-    fn ws_wcn_skipped(&mut self) -> Option<Token> {
-        if self.pos >= self.text.len() {
-            return None;
-        }
-
-        let to_parse = &self.text[self.pos..];
-        match to_parse.chars().next() {
-            Some(' ' | '\r' | '\t' | '/' | '\n') => {}
-            _ => return None,
-        }
-        let (token, advanced, error) = Self::parse_ws_wcn(to_parse);
-        let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
-        self.pos += advanced;
-        self.error = error;
-        Some(token)
-    }
-
-    #[inline(always)]
     fn parse_ws_wc(s: &str) -> (Token, usize, Option<TokenError>) {
         let mut parser = CharTokenParser::new(s);
         let (token, advance) = parser.parse_ws_wc();
@@ -111,6 +121,7 @@ impl<'text> TextTokenSource<'text> {
     }
 }
 
+#[allow(unsafe_code)]
 impl<'text> TokenSource<'text> for TextTokenSource<'text> {
     fn next(&mut self) -> Option<Token> {
         self.next_token()
@@ -148,10 +159,11 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
 
 struct CharTokenParser<'text> {
     text: &'text str,
-    chars: std::str::CharIndices<'text>,
+    chars: CharIndices<'text>,
     error: Option<TokenError>,
 }
 
+#[allow(unsafe_code)]
 #[inline(always)]
 fn r(kind: SyntaxKind, start: usize, end: usize) -> (Token, usize) {
     let s = unsafe { start.try_into().unwrap_unchecked() };
@@ -172,7 +184,7 @@ fn r1(kind: SyntaxKind, start: usize) -> (Token, usize) {
 
 #[inline(always)]
 fn consume_all<const NC: usize, const NR: usize>(
-    c: &mut std::str::CharIndices,
+    c: &mut CharIndices,
     chars: [char; NC],
     ranges: [RangeInclusive<char>; NR],
 ) -> usize {
@@ -194,7 +206,7 @@ fn consume_all<const NC: usize, const NR: usize>(
 
 #[inline(always)]
 fn consume_until<const NC: usize, const NR: usize>(
-    c: &mut std::str::CharIndices,
+    c: &mut CharIndices,
     chars: [char; NC],
     ranges: [RangeInclusive<char>; NR],
 ) -> usize {
@@ -430,7 +442,7 @@ impl<'text> CharTokenParser<'text> {
 
 struct CharInStringTokenParser<'text> {
     text: &'text str,
-    chars: std::str::CharIndices<'text>,
+    chars: CharIndices<'text>,
     error: Option<TokenError>,
 }
 

@@ -47,7 +47,6 @@ dir-structure = { path = "dev/dir-structure", version = "0.1.4" }
 
 bumpalo = "3.6.0"
 cargo_metadata = "0.19.1"
-cmake = "0.1.45"
 nextest-metadata = "0.12.1"
 clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
@@ -81,3 +80,12 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 xz = "0.1.0"
 zip = "0.5.11"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_imports = "deny"
+
+[workspace.lints.clippy]
+absolute_paths = "deny"
+alloc_instead_of_core = "forbid"
+allow_attributes = "forbid"

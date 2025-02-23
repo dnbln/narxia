@@ -1,8 +1,11 @@
+#![allow(unsafe_code)]
+
 use std::ffi::{CStr, CString};
+use std::{fs, ptr};
 
 use llvm_sys::prelude::*;
 use llvm_sys::*;
-use narxia_codegen::CodegenBackend;
+use narxia_codegen::{ir, CodegenBackend};
 
 pub struct Backend {
     context: LLVMContextRef,
@@ -98,7 +101,7 @@ impl CodegenBackend for Backend {
     fn generate_code(
         &mut self,
         tcx: &narxia_codegen::TyCtxt,
-        ir: &narxia_codegen::ir::Mod,
+        ir: &ir::Mod,
         out: narxia_codegen::Out,
     ) -> Result<(), Self::Error> {
         let void_ty = unsafe { core::LLVMVoidTypeInContext(self.context) };
@@ -107,7 +110,7 @@ impl CodegenBackend for Backend {
             core::LLVMAddFunction(
                 self.module,
                 b"main\0".as_ptr() as *const _,
-                core::LLVMFunctionType(int_ty, std::ptr::null_mut(), 0, 0),
+                core::LLVMFunctionType(int_ty, ptr::null_mut(), 0, 0),
             )
         };
 
@@ -118,10 +121,10 @@ impl CodegenBackend for Backend {
         let _ = entry.ret(sum);
 
         unsafe {
-            llvm_sys::analysis::LLVMVerifyModule(
+            analysis::LLVMVerifyModule(
                 self.module,
                 analysis::LLVMVerifierFailureAction::LLVMAbortProcessAction,
-                std::ptr::null_mut(),
+                ptr::null_mut(),
             );
         }
 
@@ -130,7 +133,7 @@ impl CodegenBackend for Backend {
 
             match out {
                 narxia_codegen::Out::File(path_buf) => {
-                    std::fs::write(path_buf, s.string().to_bytes()).unwrap();
+                    fs::write(path_buf, s.string().to_bytes()).unwrap();
                 }
                 narxia_codegen::Out::ToWrite(w) => {
                     w.write_all(s.string().to_bytes()).unwrap();

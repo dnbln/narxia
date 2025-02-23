@@ -1,3 +1,5 @@
+use std::mem;
+
 use rowan::Language;
 
 use crate::syntax_kind::SyntaxKind;
@@ -8,7 +10,8 @@ pub struct NarxiaLanguage;
 impl NarxiaLanguage {
     pub fn kind_from_u16(v: u16) -> SyntaxKind {
         debug_assert!(v < SyntaxKind::__END as u16);
-        unsafe { std::mem::transmute::<u16, SyntaxKind>(v) }
+        #[allow(unsafe_code)]
+        unsafe { mem::transmute::<u16, SyntaxKind>(v) }
     }
 }
 

@@ -8,5 +8,9 @@ repository.workspace = true
 description.workspace = true
 keywords.workspace = true
 
+
+[lints]
+workspace = true
+
 [dependencies]
 dir-structure.workspace = true

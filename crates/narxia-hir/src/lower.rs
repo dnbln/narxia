@@ -10,6 +10,7 @@
 //! This module contains the code that lowers the syntax tree to the HIR.
 
 use narxia_src_db::SrcFile;
+use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
 use narxia_syn::syntree::{Token, TreeNode};
 
@@ -1300,7 +1301,7 @@ fn lower_block_expr(
 }
 
 fn lower_ident(hir_lower_ctxt: &mut HirLowerCtxt, ident: &Token) -> Ident {
-    assert_eq!(ident.kind(), narxia_syn::syntax_kind::SyntaxKind::IDENT);
+    assert_eq!(ident.kind(), SyntaxKind::IDENT);
 
     let span = HirSpan::of(ident);
     let text = ident.text().to_owned();

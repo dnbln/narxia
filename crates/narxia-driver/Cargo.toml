@@ -10,6 +10,15 @@ keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[lints]
+workspace = true
+
+[features]
+default = []
+llvm-force-static = ["narxia-codegen-llvm/llvm-force-static"]
+llvm-prefer-dynamic = ["narxia-codegen-llvm/llvm-prefer-dynamic"]
+
 [dependencies]
 clap.workspace = true
 owo-colors.workspace = true

@@ -1,5 +1,7 @@
+use core::ops;
+
 use narxia_hir::hir::HirIdNewtype;
-use narxia_hir::hir_map::HirMap;
+use narxia_hir::hir_map::{self, HirMap};
 use narxia_hir::visitor::{self as vis, HirVisitor};
 use narxia_hir::{hir, HirId};
 
@@ -56,7 +58,7 @@ impl ScopeTree {
     }
 }
 
-impl core::ops::Index<ScopeId> for ScopeTree {
+impl ops::Index<ScopeId> for ScopeTree {
     type Output = ScopeRepr;
 
     fn index(&self, id: ScopeId) -> &Self::Output {
@@ -64,7 +66,7 @@ impl core::ops::Index<ScopeId> for ScopeTree {
     }
 }
 
-impl core::ops::Index<ElemId> for ScopeTree {
+impl ops::Index<ElemId> for ScopeTree {
     type Output = ScopeElement;
 
     fn index(&self, id: ElemId) -> &Self::Output {
@@ -264,19 +266,19 @@ pub fn analyze_program_structure<'tcx>(
                 let hir_elem = hir_map.get(hir_id);
 
                 match hir_elem {
-                    narxia_hir::hir_map::HirElem::Mod(mod_def) => {
+                    hir_map::HirElem::Mod(mod_def) => {
                         names.push(ScopeDefinedName {
                             name: mod_def.name.text.clone(),
                             def_id,
                         });
                     }
-                    narxia_hir::hir_map::HirElem::Fn(fn_def) => {
+                    hir_map::HirElem::Fn(fn_def) => {
                         names.push(ScopeDefinedName {
                             name: fn_def.name.text.clone(),
                             def_id,
                         });
                     }
-                    narxia_hir::hir_map::HirElem::UseStmt(use_stmt) => {
+                    hir_map::HirElem::UseStmt(use_stmt) => {
                         let path = &use_stmt.path;
 
                         let imported_name = use_path_imported_name(&*hir_map, path);
@@ -286,7 +288,7 @@ pub fn analyze_program_structure<'tcx>(
                             def_id,
                         });
                     }
-                    narxia_hir::hir_map::HirElem::Block(block) => {}
+                    hir_map::HirElem::Block(block) => {}
                     _ => todo!(),
                 }
             }
@@ -334,20 +336,20 @@ fn resolve_names<'tcx>(
             let hir_elem = hir_map.get(hir_id);
 
             match hir_elem {
-                narxia_hir::hir_map::HirElem::Mod(mod_def) => {
+                hir_map::HirElem::Mod(mod_def) => {
                     tcx.add_def_id(hir_id);
                 }
-                narxia_hir::hir_map::HirElem::Fn(fn_def) => {
+                hir_map::HirElem::Fn(fn_def) => {
                     tcx.add_def_id(hir_id);
                 }
-                narxia_hir::hir_map::HirElem::UseStmt(use_stmt) => {
+                hir_map::HirElem::UseStmt(use_stmt) => {
                     let path = &use_stmt.path;
 
                     let imported_name = use_path_imported_name(&*hir_map, path);
 
                     tcx.add_def_id(hir_id);
                 }
-                narxia_hir::hir_map::HirElem::Block(block) => {}
+                hir_map::HirElem::Block(block) => {}
                 _ => todo!(),
             }
         }

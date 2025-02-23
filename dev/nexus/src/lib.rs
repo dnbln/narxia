@@ -1,19 +1,19 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
-use core::fmt;
-use std::fmt::Write as _;
+use std::fmt::{self, Write as _};
+use std::{fs, io, process, thread};
 use std::io::{BufRead, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use bin_context::NexusContext;
 use cargo_interface::{
-    BuildCmdBuildingProgress, BuildTarget, PkgSpec, RunCompilerCommand, SysTarget,
+    BuildCmdBuildingProgress, BuildTarget, RunCompilerCommand, SysTarget,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::{bail, IntoDiagnostic};
-use narxia_dir_structures::dir_structure::DirStructureItem;
+use narxia_dir_structures::dir_structure::{DeferredReadOrOwn, DirStructureItem};
 use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
@@ -73,7 +73,7 @@ impl BuildSysCmd {
 }
 
 fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item) -> NexusR {
-    let file_contents = std::fs::read(file).into_diagnostic()?;
+    let file_contents = fs::read(file).into_diagnostic()?;
     let file_contents = String::from_utf8_lossy(&file_contents);
 
     item.init(None, Some(unit::label("tests")));
@@ -131,7 +131,7 @@ fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item
 
     for (_line_number, name, code) in parser_tests {
         let folder = narxia_dir_structures::ParserTestSingleFolder {
-            input: narxia_dir_structures::dir_structure::DeferredReadOrOwn::Own(code.into()),
+            input: DeferredReadOrOwn::Own(code.into()),
             output: None,
             self_path: PathBuf::new(),
         };
@@ -169,6 +169,13 @@ pub enum Profile {
 }
 
 impl Profile {
+    pub fn default_llvm_link_behavior(&self) -> LLVMLinkBehavior {
+        match self {
+            Self::Dev => LLVMLinkBehavior::PreferDynamic,
+            Self::Release => LLVMLinkBehavior::ForceStatic,
+        }
+    }
+
     pub fn cargo_name(&self) -> &str {
         match self {
             Self::Dev => "dev",
@@ -185,6 +192,9 @@ pub struct BuildCmd {
 
     #[clap(flatten)]
     pub profile: ProfileDeterminer,
+
+    #[clap(long)]
+    pub llvm_link_behavior: Option<LLVMLinkBehavior>,
 }
 
 #[derive(Debug, clap::Args, Clone, Copy)]
@@ -215,10 +225,14 @@ impl BuildCmd {
         item: &mut Item,
         build_progress: Option<BuildCmdBuildingProgress>,
     ) -> NexusR {
+        let profile = self.profile.get_profile();
         let bins = BuildI {
             targets: self.targets,
-            profile: self.profile.get_profile(),
+            profile,
             sys: SysTarget::Host,
+            llvm_link_behavior: self
+                .llvm_link_behavior
+                .unwrap_or_else(|| profile.default_llvm_link_behavior()),
         }
         .run(llvm_manager, item, build_progress)?;
 
@@ -240,11 +254,11 @@ impl DecompressTarXz {
         struct Reader<'i> {
             item: &'i Item,
             total: usize,
-            r: xz::read::XzDecoder<std::fs::File>,
+            r: read::XzDecoder<fs::File>,
         }
 
         impl Read for Reader<'_> {
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
                 let r = self.r.read(buf)?;
                 self.total += r;
                 self.item.set(self.total / 1024);
@@ -255,7 +269,7 @@ impl DecompressTarXz {
         let mut a = tar::Archive::new(Reader {
             item: &item,
             total: 0,
-            r: xz::read::XzDecoder::new(std::fs::File::open(&self.tar_xz).into_diagnostic()?),
+            r: read::XzDecoder::new(fs::File::open(&self.tar_xz).into_diagnostic()?),
         });
 
         match a.unpack(&self.destination_path) {
@@ -299,7 +313,7 @@ impl DownloadAndDecompressTarXz {
 
         let mut download_item = self.item.add_child("Download");
         let mut decompress_item = self.item.add_child("Decompress");
-        let resp = reqwest::blocking::get(&self.url)
+        let resp = blocking::get(&self.url)
             .into_diagnostic()?
             .error_for_status()
             .into_diagnostic()?;
@@ -312,18 +326,18 @@ impl DownloadAndDecompressTarXz {
         let mut download_file = self
             .download_to
             .as_ref()
-            .map(std::fs::File::create)
+            .map(fs::File::create)
             .transpose()
             .into_diagnostic()?;
 
         struct DecompressReader<'i> {
             decompress_item: &'i Item,
             total: usize,
-            r: xz::read::XzDecoder<Reader<'i>>,
+            r: read::XzDecoder<Reader<'i>>,
         }
 
         impl Read for DecompressReader<'_> {
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
                 let r = self.r.read(buf)?;
                 self.total += r;
                 self.decompress_item.set(self.total / 1024);
@@ -333,13 +347,13 @@ impl DownloadAndDecompressTarXz {
 
         struct Reader<'i> {
             download_item: &'i Item,
-            download_file: Option<&'i mut std::fs::File>,
+            download_file: Option<&'i mut fs::File>,
             total: usize,
-            resp: reqwest::blocking::Response,
+            resp: Response,
         }
 
         impl<'i> Read for Reader<'i> {
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
                 let r = self.resp.read(buf)?;
                 self.total += r;
 
@@ -356,7 +370,7 @@ impl DownloadAndDecompressTarXz {
         let mut a = tar::Archive::new(DecompressReader {
             decompress_item: &decompress_item,
             total: 0,
-            r: xz::read::XzDecoder::new(Reader {
+            r: read::XzDecoder::new(Reader {
                 download_item: &download_item,
                 download_file: download_file.as_mut(),
                 total: 0,
@@ -387,7 +401,7 @@ struct LLVMVersion {
 }
 
 impl fmt::Display for LLVMVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{major}.{minor}.{patch}{extra}",
@@ -423,7 +437,7 @@ impl LLVMManager {
         let mut dirs = vec![];
         let suffix = format!("-{version}.src");
 
-        for dir in std::fs::read_dir(&self.src_path(version)).into_diagnostic()? {
+        for dir in fs::read_dir(&self.src_path(version)).into_diagnostic()? {
             let dir = dir.into_diagnostic()?;
             let path = dir.path();
             let p = path.to_str().unwrap();
@@ -435,7 +449,7 @@ impl LLVMManager {
         }
 
         for (old, new) in dirs {
-            std::fs::rename(&old, new).into_diagnostic()?;
+            fs::rename(&old, new).into_diagnostic()?;
         }
 
         Ok(())
@@ -467,13 +481,13 @@ impl LLVMManager {
 
         if let Some(src_parent) = src_path.parent() {
             if !src_parent.exists() {
-                std::fs::create_dir_all(src_parent).into_diagnostic()?;
+                fs::create_dir_all(src_parent).into_diagnostic()?;
             }
         }
 
         if let Some(download_parent) = download_path.parent() {
             if !download_parent.exists() {
-                std::fs::create_dir_all(download_parent).into_diagnostic()?;
+                fs::create_dir_all(download_parent).into_diagnostic()?;
             }
         }
 
@@ -544,9 +558,9 @@ impl LLVMManager {
                     bail!("LLVM source not found");
                 }
 
-                std::fs::create_dir(&build_path).into_diagnostic()?;
+                fs::create_dir(&build_path).into_diagnostic()?;
 
-                let mut cmake = std::process::Command::new("cmake");
+                let mut cmake = process::Command::new("cmake");
                 cmake
                     .args([
                         src_path.join("llvm").to_str().unwrap(),
@@ -569,14 +583,14 @@ impl LLVMManager {
             }
         }
 
-        let mut build = std::process::Command::new("cmake");
+        let mut build = process::Command::new("cmake");
         build
             .args(["--build", ".", "--target", "install"])
             .current_dir(&build_path);
 
         build
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+            .stdout(process::Stdio::piped())
+            .stderr(process::Stdio::piped());
 
         build.env("NINJA_STATUS", "$$NEXUS_STATUS:::%f::%t$$");
 
@@ -587,7 +601,7 @@ impl LLVMManager {
         let mut stdout = build.stdout.take().unwrap();
         let mut stderr = build.stderr.take().unwrap();
 
-        let stderr = std::thread::spawn(move || {
+        let stderr = thread::spawn(move || {
             let mut v = Vec::new();
             stderr.read_to_end(&mut v).into_diagnostic()?;
             Ok::<_, miette::Report>(v)
@@ -595,10 +609,10 @@ impl LLVMManager {
         let stdout = {
             let item = item.add_child("Build::LLVM");
             item.init(None, Some(unit::label("edges")));
-            std::thread::spawn(move || {
+            thread::spawn(move || {
                 let mut out = String::new();
 
-                let mut br = std::io::BufReader::new(stdout);
+                let mut br = io::BufReader::new(stdout);
                 loop {
                     let mut line = String::new();
                     let o = br.read_line(&mut line).into_diagnostic()?;
@@ -636,10 +650,10 @@ impl LLVMManager {
         let status = build.wait().into_diagnostic()?;
 
         if !status.success() {
-            std::io::stderr()
+            io::stderr()
                 .write_all(&stderr.join().unwrap()?)
                 .into_diagnostic()?;
-            std::io::stdout()
+            io::stdout()
                 .write_all(&stdout.join().unwrap()?.as_bytes())
                 .into_diagnostic()?;
 
@@ -752,7 +766,13 @@ pub struct LLVMPrefixInfo {
 
 impl LLVMPrefixInfo {
     pub fn to_env(&self) -> (String, PathBuf) {
-        (format!("LLVM_SYS_{}{}_PREFIX", self.version.major, self.version.minor), self.prefix.clone())
+        (
+            format!(
+                "LLVM_SYS_{}{}_PREFIX",
+                self.version.major, self.version.minor
+            ),
+            self.prefix.clone(),
+        )
     }
 }
 
@@ -765,6 +785,7 @@ pub struct BuildI {
     pub targets: Vec<Target>,
     pub profile: Profile,
     pub sys: SysTarget,
+    pub llvm_link_behavior: LLVMLinkBehavior,
 }
 
 impl BuildI {
@@ -801,8 +822,7 @@ impl BuildI {
         for target in self.targets {
             match target {
                 Target::LLVM => {
-                    bins.llvm =
-                        Some(build_llvm(llvm_manager, item, build_progress.clone())?);
+                    bins.llvm = Some(build_llvm(llvm_manager, item, build_progress.clone())?);
                 }
                 Target::Compiler => {
                     bins.compiler = Some(build_compiler(
@@ -830,7 +850,7 @@ impl BuildI {
 
 pub trait NarxiaBinProvider<'bins> {
     fn get(&'bins self, target: Target) -> Option<&'bins PathBuf>;
-    
+
     fn get_llvm(&'bins self) -> Option<&'bins LLVMPrefixInfo>;
 }
 
@@ -966,6 +986,8 @@ macro bin_type {
     }
 }
 
+use reqwest::blocking::{self, Response};
+use xz::read;
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
@@ -990,7 +1012,7 @@ pub struct BuildDistribCommand {
 
 impl BuildDistribCommand {
     pub fn run(&self, item: &mut Item, bins: &BuildDistribsBins) -> NexusR {
-        let mut wr = ZipWriter::new(std::fs::File::create(&self.pkg).into_diagnostic()?);
+        let mut wr = ZipWriter::new(fs::File::create(&self.pkg).into_diagnostic()?);
         write_bin_file_to_zip(
             &mut wr,
             Path::new(bins.compiler.file_name().unwrap()),
@@ -1028,7 +1050,7 @@ fn write_bin_file_to_zip<W: Write + Seek>(
     }
 
     let mut buf = [0u8; 0x0001_0000];
-    let mut f = std::fs::File::open(path).into_diagnostic()?;
+    let mut f = fs::File::open(path).into_diagnostic()?;
 
     let mut total_read = 0;
 
@@ -1122,5 +1144,20 @@ pub struct NextestEndGroup<'a> {
 impl fmt::Display for NextestEndGroup<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.groups.end.replace("{group}", self.group))
+    }
+}
+
+#[derive(Debug, Copy, Clone, ValueEnum)]
+pub enum LLVMLinkBehavior {
+    ForceStatic,
+    PreferDynamic,
+}
+
+impl fmt::Display for LLVMLinkBehavior {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ForceStatic => write!(f, "force-static"),
+            Self::PreferDynamic => write!(f, "prefer-dynamic"),
+        }
     }
 }

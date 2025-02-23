@@ -1,6 +1,7 @@
 use std::cell::RefCell;
-use std::fmt;
+use std::{fmt, panic};
 use std::rc::Rc;
+use ::std::thread;
 
 use owo_colors::OwoColorize;
 
@@ -13,13 +14,13 @@ type ParseStackInternalRef = Rc<RefCell<ParseStackInternal>>;
 pub struct ParseStackGuard {
     internal: ParseStackInternalRef,
     pos: usize,
-    call_at: &'static std::panic::Location<'static>,
+    call_at: &'static panic::Location<'static>,
 }
 
 impl Drop for ParseStackGuard {
     fn drop(&mut self) {
         let mut stack_internal = self.internal.borrow_mut();
-        if self.pos != stack_internal.items.len() - 1 && !::std::thread::panicking() {
+        if self.pos != stack_internal.items.len() - 1 && !thread::panicking() {
             panic!(
                 "ParseStackGuard: pos ({}) != len - 1 ({}) (called at [{}]):\n{}",
                 self.pos,
@@ -98,7 +99,7 @@ impl ParseStack {
     ) -> ParseStackGuard {
         let internal = self.internal.clone();
         let pos;
-        let call_at = std::panic::Location::caller();
+        let call_at = panic::Location::caller();
         {
             let mut bw = internal.borrow_mut();
             if bw.items.len() > 10_000 {

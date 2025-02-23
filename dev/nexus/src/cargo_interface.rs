@@ -1,13 +1,14 @@
 use std::ffi::OsString;
 use std::fmt::Write;
-use std::io::{BufRead, Read};
+use std::io::{self, BufRead, Read};
+use std::{mem, process, thread, time};
 use std::path::PathBuf;
-use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{self, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-use cargo_metadata::TargetKind;
+use cargo_metadata::{diagnostic, TargetKind};
 use miette::{bail, IntoDiagnostic};
 use owo_colors::OwoColorize;
 use owo_colors::Stream::*;
@@ -15,7 +16,7 @@ use prodash::tree::Item;
 use prodash::unit;
 
 use crate::duration::NexusDuration;
-use crate::{LLVMPrefixInfo, NexusR, RunCompilerBins};
+use crate::{LLVMPrefixInfo, NexusR};
 
 #[derive(Debug, Clone)]
 pub enum PkgSpec {
@@ -68,14 +69,14 @@ impl Default for BuildCmdConfig {
     }
 }
 
-fn cargo_command() -> std::process::Command {
-    std::process::Command::new("cargo")
+fn cargo_command() -> process::Command {
+    process::Command::new("cargo")
 }
 
-fn async_read(mut r: impl Read + Send + 'static) -> std::thread::JoinHandle<String> {
-    std::thread::spawn(move || {
+fn async_read(mut r: impl Read + Send + 'static) -> thread::JoinHandle<String> {
+    thread::spawn(move || {
         let mut v = Vec::new();
-        std::io::copy(&mut r, &mut std::io::Cursor::new(&mut v)).unwrap();
+        io::copy(&mut r, &mut io::Cursor::new(&mut v)).unwrap();
         String::from_utf8(v).unwrap()
     })
 }
@@ -231,13 +232,13 @@ impl BuildCmd {
             cmd.env(k, v);
         }
 
-        cmd.stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+        cmd.stdout(process::Stdio::piped())
+            .stderr(process::Stdio::piped());
 
         let mut child = cmd.spawn().into_diagnostic()?;
 
-        let stdout = std::mem::take(&mut child.stdout).unwrap();
-        let stderr = std::mem::take(&mut child.stderr).unwrap();
+        let stdout = mem::take(&mut child.stdout).unwrap();
+        let stderr = mem::take(&mut child.stderr).unwrap();
 
         let stderr_handle = async_read(stderr);
 
@@ -257,7 +258,7 @@ impl BuildCmd {
         let mut critical_diagnostics = String::new();
         let mut low_level_diagnostics = String::new();
 
-        for message in cargo_metadata::Message::parse_stream(std::io::BufReader::new(stdout)) {
+        for message in cargo_metadata::Message::parse_stream(io::BufReader::new(stdout)) {
             let message = message.into_diagnostic()?;
 
             match message {
@@ -309,38 +310,38 @@ impl BuildCmd {
                 cargo_metadata::Message::CompilerMessage(compiler_message) => {
                     match compiler_message.message.level {
                         // always render ICE's and Errors
-                        cargo_metadata::diagnostic::DiagnosticLevel::Ice => {
+                        diagnostic::DiagnosticLevel::Ice => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             critical_diagnostics.push_str(rendered);
                             critical_diagnostics.push('\n');
                         }
-                        cargo_metadata::diagnostic::DiagnosticLevel::Error => {
+                        diagnostic::DiagnosticLevel::Error => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             critical_diagnostics.push_str(rendered);
                             critical_diagnostics.push('\n');
                         }
-                        cargo_metadata::diagnostic::DiagnosticLevel::Warning => {
+                        diagnostic::DiagnosticLevel::Warning => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
                                 low_level_diagnostics.push_str(rendered);
                                 low_level_diagnostics.push('\n');
                             }
                         }
-                        cargo_metadata::diagnostic::DiagnosticLevel::FailureNote => {
+                        diagnostic::DiagnosticLevel::FailureNote => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
                                 low_level_diagnostics.push_str(rendered);
                                 low_level_diagnostics.push('\n');
                             }
                         }
-                        cargo_metadata::diagnostic::DiagnosticLevel::Note => {
+                        diagnostic::DiagnosticLevel::Note => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
                                 low_level_diagnostics.push_str(rendered);
                                 low_level_diagnostics.push('\n');
                             }
                         }
-                        cargo_metadata::diagnostic::DiagnosticLevel::Help => {
+                        diagnostic::DiagnosticLevel::Help => {
                             let rendered = compiler_message.message.rendered.as_ref().unwrap();
                             if ws_members.contains(&compiler_message.package_id) {
                                 low_level_diagnostics.push_str(rendered);
@@ -409,17 +410,17 @@ impl BuildCmdBuildingProgress {
 
 #[derive(Debug)]
 struct ItemWrapper(
-    std::sync::mpsc::Sender<BuildEvent>,
-    std::mem::ManuallyDrop<JoinHandle<()>>,
+    mpsc::Sender<BuildEvent>,
+    mem::ManuallyDrop<JoinHandle<()>>,
     bool,
 );
 
 impl ItemWrapper {
     fn new(item: Item, start: Instant) -> Self {
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = mpsc::channel();
         ItemWrapper(
             tx,
-            std::mem::ManuallyDrop::new(std::thread::spawn(move || {
+            mem::ManuallyDrop::new(thread::spawn(move || {
                 let mut item = item;
                 let old_name = item.name().unwrap();
                 item.init(None, Some(unit::label("ms")));
@@ -455,7 +456,7 @@ impl ItemWrapper {
                         duration_since_start.as_millis().try_into().unwrap();
 
                     item.set(duration_millis);
-                    std::thread::sleep(std::time::Duration::from_millis(73));
+                    thread::sleep(time::Duration::from_millis(73));
                 }
             })),
             false,
@@ -484,8 +485,9 @@ impl ItemWrapper {
         self.2 = true;
         self.0.send(BuildEvent::FinishAll).into_diagnostic()?;
 
+        #[allow(unsafe_code)]
         unsafe {
-            std::mem::ManuallyDrop::take(&mut self.1).join().unwrap();
+            mem::ManuallyDrop::take(&mut self.1).join().unwrap();
         }
 
         Ok(())
@@ -527,7 +529,7 @@ impl Drop for ItemWrapper {
 
 pub struct BuildCmdOutput {
     pub stderr: String,
-    pub status: std::process::ExitStatus,
+    pub status: process::ExitStatus,
     pub target_artifact: Option<TargetArtifactInfo>,
 }
 
@@ -569,15 +571,15 @@ impl RunCompilerCommand {
     }
 
     pub fn run(&self, mut item: Item) -> NexusR {
-        let mut cmd = std::process::Command::new(self.compiler.as_ref().unwrap());
+        let mut cmd = process::Command::new(self.compiler.as_ref().unwrap());
 
         let (k, v) = self.llvm.as_ref().unwrap().to_env();
         cmd.env(k, v);
 
         cmd.args(&self.args);
 
-        cmd.stdout(std::process::Stdio::inherit())
-            .stderr(std::process::Stdio::inherit());
+        cmd.stdout(process::Stdio::inherit())
+            .stderr(process::Stdio::inherit());
 
         let mut child = cmd.spawn().into_diagnostic()?;
         let status = child.wait().into_diagnostic()?;
@@ -593,7 +595,7 @@ impl RunCompilerCommand {
 
 pub mod tests {
     use core::fmt;
-    use std::mem;
+    use std::{io, mem, process, str, thread};
 
     use owo_colors::Style;
 
@@ -612,8 +614,8 @@ pub mod tests {
             cmd.arg("-E").arg(filter);
         }
 
-        cmd.stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped());
+        cmd.stdout(process::Stdio::piped())
+            .stderr(process::Stdio::piped());
 
         cmd.envs(env);
 
@@ -626,7 +628,7 @@ pub mod tests {
             );
         }
 
-        let stdout = std::str::from_utf8(&output.stdout).into_diagnostic()?;
+        let stdout = str::from_utf8(&output.stdout).into_diagnostic()?;
         let summary = nextest_metadata::TestListSummary::parse_json(stdout).into_diagnostic()?;
 
         Ok(summary)
@@ -726,8 +728,8 @@ pub mod tests {
                 cmd.arg("--no-fail-fast");
             }
 
-            cmd.stdout(std::process::Stdio::piped());
-            cmd.stderr(std::process::Stdio::piped());
+            cmd.stdout(process::Stdio::piped());
+            cmd.stderr(process::Stdio::piped());
 
             let mut child = cmd.spawn().into_diagnostic()?;
 
@@ -738,12 +740,12 @@ pub mod tests {
 
             {
                 let capture = self.capture_nextest_stderr;
-                std::thread::spawn(move || {
+                thread::spawn(move || {
                     let mut stderr = stderr;
                     if capture {
-                        let _ = std::io::copy(&mut stderr, &mut std::io::sink());
+                        let _ = io::copy(&mut stderr, &mut io::sink());
                     } else {
-                        let _ = std::io::copy(&mut stderr, &mut std::io::stderr());
+                        let _ = io::copy(&mut stderr, &mut io::stderr());
                     }
                 });
             }
@@ -789,7 +791,7 @@ pub mod tests {
                 total_time: 0.0,
             };
 
-            for message in std::io::BufReader::new(stdout).lines() {
+            for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
                 // println!("{}", message);
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;

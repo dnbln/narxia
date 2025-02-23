@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use std::{fmt, io};
+use std::{fmt, io, marker};
 
 use owo_colors::{OwoColorize, Style};
 use tracing::field::{Field, Visit};
@@ -30,7 +30,7 @@ where
 {
     make_writer: W,
     cfg: NarxiaLayerConfig,
-    _pd: std::marker::PhantomData<&'a ()>,
+    _pd: marker::PhantomData<&'a ()>,
 }
 
 enum MetadataKind {
@@ -50,7 +50,7 @@ where
         Self {
             make_writer,
             cfg,
-            _pd: std::marker::PhantomData,
+            _pd: marker::PhantomData,
         }
     }
 

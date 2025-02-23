@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{io, path::PathBuf};
 
 use ir::Ty;
 
@@ -6,7 +6,7 @@ pub mod ir;
 
 pub enum Out<'a> {
     File(PathBuf),
-    ToWrite(&'a mut dyn std::io::Write),
+    ToWrite(&'a mut dyn io::Write),
 }
 
 pub trait CodegenBackend {

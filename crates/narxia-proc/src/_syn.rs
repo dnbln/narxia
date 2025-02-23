@@ -1,3 +1,5 @@
+use std::ops;
+
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::parse::discouraged::Speculative;
@@ -315,7 +317,7 @@ impl WsBehavior {
     const WC: WsBehavior = WsBehavior { v: 0b011 };
 }
 
-impl std::ops::BitOr for WsBehavior {
+impl ops::BitOr for WsBehavior {
     type Output = WsBehavior;
 
     fn bitor(self, rhs: Self) -> Self::Output {

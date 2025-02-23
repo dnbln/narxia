@@ -1,10 +1,11 @@
+use core::ptr;
 use std::cell::RefCell;
-use std::fmt::Formatter;
+use std::fmt::{self, Formatter};
+use std::io;
 use std::path::PathBuf;
-use std::{fmt, io};
 
 use narxia_hir::hir_map::HirElem;
-use narxia_hir::HirId;
+use narxia_hir::{hir, HirId};
 use narxia_src_db::{FilePathInfo, SrcFile};
 use narxia_syn::parse_error::ParseError;
 use narxia_syn_db::SynFile;
@@ -64,7 +65,7 @@ pub fn init_panic_hook() {
         env!("CARGO_PKG_VERSION")
     )
     .authors("Dinu Blanovschi <git@dnbln.dev>")
-    .homepage("dnbln.dev")
+    .homepage("https://dnbln.dev/narxia")
     .support("- Open a support request via a GitHub issue to https://github.com/dnbln/narxia"));
 }
 
@@ -82,7 +83,7 @@ fn dbg_impl_code<H>(
     let context = dbg_impl.context;
 
     thread_local! {
-        static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(core::ptr::null());
+        static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(ptr::null());
     }
 
     DRIVER_CTXT.with(|f| {
@@ -98,7 +99,7 @@ fn dbg_impl_code<H>(
     impl Drop for ContextResetGuard {
         fn drop(&mut self) {
             DRIVER_CTXT.with(|f| {
-                *f.borrow_mut() = core::ptr::null();
+                *f.borrow_mut() = ptr::null();
             });
         }
     }
@@ -108,6 +109,7 @@ fn dbg_impl_code<H>(
     fn debug_hir_id_get_src_file(hir_id: HirId) -> SrcFile {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
+            #[allow(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             ctx.db.lookup_hir_id_file(hir_id)
         })
@@ -116,6 +118,7 @@ fn dbg_impl_code<H>(
     fn debug_hir_id_path_callback(src_file: SrcFile) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
+            #[allow(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             format!("{}", src_file.get_presentable_path(&ctx.db).display())
         })
@@ -124,6 +127,7 @@ fn dbg_impl_code<H>(
     fn debug_file_contents_callback(file: SrcFile) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
+            #[allow(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             file.get_text(&ctx.db)
         })
@@ -132,6 +136,7 @@ fn dbg_impl_code<H>(
     fn debug_get_hir_element(hir_id: HirId) -> HirElem {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
+            #[allow(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             ctx.db
                 .get_global_ty_ctxt()
@@ -142,7 +147,7 @@ fn dbg_impl_code<H>(
         })
     }
 
-    narxia_hir::hir::dbg_hir(
+    hir::dbg_hir(
         debug_hir_id_get_src_file,
         debug_hir_id_path_callback,
         debug_file_contents_callback,
@@ -151,14 +156,14 @@ fn dbg_impl_code<H>(
     )
 }
 
-impl<'hir, 'ctxt, H: std::fmt::Debug> std::fmt::Debug for HirDebugImpl<'hir, 'ctxt, H> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'hir, 'ctxt, H: fmt::Debug> fmt::Debug for HirDebugImpl<'hir, 'ctxt, H> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         dbg_impl_code(self, f, |hir, f| write!(f, "{:?}", hir))
     }
 }
 
-impl<'hir, 'ctxt, H: std::fmt::Display> std::fmt::Display for HirDebugImpl<'hir, 'ctxt, H> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<'hir, 'ctxt, H: fmt::Display> fmt::Display for HirDebugImpl<'hir, 'ctxt, H> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         dbg_impl_code(self, f, |hir, f| write!(f, "{}", hir))
     }
 }
@@ -169,10 +174,10 @@ pub trait HirDbg {
         context: &'ctxt DriverCtx,
     ) -> HirDebugImpl<'hir, 'ctxt, Self>
     where
-        Self: std::fmt::Debug + Sized,
+        Self: fmt::Debug + Sized,
     {
         HirDebugImpl { hir: self, context }
     }
 }
 
-impl<T> HirDbg for T where T: std::fmt::Debug + Sized {}
+impl<T> HirDbg for T where T: fmt::Debug + Sized {}

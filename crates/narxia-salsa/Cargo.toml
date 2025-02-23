@@ -10,5 +10,8 @@ keywords.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lints]
+workspace = true
+
 [dependencies]
 salsa = { git = "https://github.com/salsa-rs/salsa", rev = "88dc597fc90c6d45f7d25479d51536ba9310bbc1", package = "salsa" }

@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Range};
 use std::fmt::Formatter;
 use std::ops::Index;
 
@@ -13,25 +13,29 @@ pub struct TextSpan {
 impl TextSpan {
     pub fn of(token: &Token) -> Self {
         let r = token.text_range();
+        #[allow(unsafe_code)]
         unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
     }
 
     pub fn of_node(node: &Node) -> Self {
         let r = node.text_range();
+        #[allow(unsafe_code)]
         unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
     }
-    pub const fn from_range(range: std::ops::Range<u32>) -> Self {
+    pub const fn from_range(range: Range<u32>) -> Self {
         Self::new(range.start, range.end)
     }
 
     pub const fn new(start: u32, end: u32) -> Self {
         debug_assert!(start <= end);
+        #[allow(unsafe_code)]
         unsafe { Self::new_unchecked(start, end) }
     }
 
     /// # Safety
     /// start <= end
     #[must_use]
+    #[allow(unsafe_code)]
     pub const unsafe fn new_unchecked(start: u32, end: u32) -> Self {
         Self { start, end }
     }
@@ -55,12 +59,12 @@ impl TextSpan {
     }
 
     #[inline]
-    pub fn range(self) -> std::ops::Range<u32> {
+    pub fn range(self) -> Range<u32> {
         self.start..self.end
     }
 
     #[inline]
-    pub fn range_usize(self) -> std::ops::Range<usize> {
+    pub fn range_usize(self) -> Range<usize> {
         self.start as usize..self.end as usize
     }
 

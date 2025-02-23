@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{self, Debug};
 
 use narxia_data_structures::FxHashMap;
 
@@ -31,7 +31,7 @@ pub struct TyVar {
 }
 
 impl Debug for TyVar {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "_t{}", self.id)
     }
 }
@@ -46,7 +46,7 @@ pub enum Ty {
 }
 
 impl Debug for Ty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Ty::Primitive(p) => write!(f, "{p:?}"),
             Ty::Adt(adt) => write!(f, "{adt:?}"),
@@ -80,7 +80,7 @@ pub struct TyFun {
 }
 
 impl Debug for TyFun {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(")?;
         for (i, ty) in self.inputs.iter().enumerate() {
             if i > 0 {
@@ -143,7 +143,7 @@ pub enum TyClass {
 }
 
 impl Debug for TyClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             TyClass::Std(klass) => write!(f, "{klass:?}"),
             TyClass::UserDefined(klass) => write!(f, "{klass:?}"),
@@ -199,7 +199,7 @@ pub enum StdTyClass {
 }
 
 impl Debug for StdTyClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         macro_rules! write_bin_op {
             ($f:expr, $op:literal, $binoptyclass:expr) => {
                 write!(

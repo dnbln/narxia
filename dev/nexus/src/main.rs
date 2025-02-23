@@ -1,14 +1,17 @@
 use core::fmt;
 use std::path::PathBuf;
+use std::{env, io, thread, time};
 
 use clap::{ArgAction, Parser};
 use nexus::bin_context::NexusContext;
-use nexus::cargo_interface::SysTarget;
+use nexus::cargo_interface::{tests, SysTarget};
 use nexus::duration::NexusDuration;
 use nexus::{
     cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, ColorConfig,
-    NarxiaNeededBins, NexusOutputGroups, NexusR, ProfileDeterminer, RunCompilerBins, Target,
+    LLVMLinkBehavior, NarxiaNeededBins, NexusOutputGroups, NexusR, ProfileDeterminer,
+    RunCompilerBins, Target,
 };
+use prodash::render::line;
 use prodash::unit;
 
 #[derive(Debug, Parser)]
@@ -67,6 +70,9 @@ enum App {
         #[clap(flatten)]
         profile: ProfileDeterminer,
 
+        #[clap(long)]
+        llvm_link_behavior: Option<LLVMLinkBehavior>,
+
         /// Parser test mode.
         ///
         /// This mode will run the parser tests.
@@ -79,6 +85,8 @@ enum App {
     #[clap(name = "run")]
     #[clap(alias = "r")]
     Run {
+        #[clap(long)]
+        llvm_link_behavior: Option<LLVMLinkBehavior>,
         #[clap(flatten)]
         profile: ProfileDeterminer,
         args: Vec<String>,
@@ -86,6 +94,8 @@ enum App {
     /// Build a distributalbe package.
     #[clap(name = "dist")]
     Dist {
+        #[clap(long, default_value_t = LLVMLinkBehavior::ForceStatic)]
+        llvm_link_behavior: LLVMLinkBehavior,
         #[clap(long, default_value = "dist.zip")]
         pkg: PathBuf,
         #[clap(long)]
@@ -126,29 +136,33 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             count_tests,
             fail_fast,
             profile,
+            llvm_link_behavior,
             parser_tests,
         } => {
             let profile = profile.get_profile();
+            let llvm_link_behavior =
+                llvm_link_behavior.unwrap_or_else(|| profile.default_llvm_link_behavior());
             let bins = {
                 let mut item = cx.new_child("Building");
                 item.init(None, None);
 
                 let bp = cargo_interface::BuildCmdBuildingProgress::new(
                     item.add_child("Building progress"),
-                    std::time::Instant::now(),
+                    time::Instant::now(),
                 );
 
                 nexus::BuildI {
                     targets: vec![Target::Compiler, Target::Tests],
                     profile,
                     sys: SysTarget::Host,
+                    llvm_link_behavior,
                 }
                 .run(&cx.llvm_manager, &mut item, Some(bp))?
             };
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
                 Some(
-                    nexus::cargo_interface::tests::list_tests(
+                    tests::list_tests(
                         test_filter.as_ref(),
                         [bins
                             .llvm
@@ -166,15 +180,15 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             item.init(test_count, Some(unit::label("tests")));
             let llvm_prefix = bins.llvm.as_ref().cloned().unwrap();
             let (llvm_k, llvm_v) = llvm_prefix.to_env();
-            let run_tests = nexus::cargo_interface::tests::RunTests::new()
+            let run_tests = tests::RunTests::new()
                 .filter(test_filter.clone())
                 .fail_fast(fail_fast)
                 .profile(profile.cargo_name())
                 .env(llvm_k, llvm_v)
                 .parser_tests(match parser_tests {
-                    ParserTestsMode::Check => nexus::cargo_interface::tests::ParserTestsMode::Check,
+                    ParserTestsMode::Check => tests::ParserTestsMode::Check,
                     ParserTestsMode::Overwrite => {
-                        nexus::cargo_interface::tests::ParserTestsMode::Overwrite
+                        tests::ParserTestsMode::Overwrite
                     }
                 });
 
@@ -183,8 +197,14 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
             run_tests.run(Some(&mut item), cx.groups())?;
         }
-        App::Run { profile, args } => {
+        App::Run {
+            llvm_link_behavior,
+            profile,
+            args,
+        } => {
             let profile = profile.get_profile();
+            let llvm_link_behavior =
+                llvm_link_behavior.unwrap_or_else(|| profile.default_llvm_link_behavior());
             let mut run_cmd = cargo_interface::RunCompilerCommand::default();
             run_cmd.args(args);
 
@@ -197,13 +217,14 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
                 let bp = cargo_interface::BuildCmdBuildingProgress::new(
                     item.add_child("Building progress"),
-                    std::time::Instant::now(),
+                    time::Instant::now(),
                 );
 
                 nexus::BuildI {
                     targets: needed_bins_buffer,
                     profile,
                     sys: SysTarget::Host,
+                    llvm_link_behavior,
                 }
                 .run(&cx.llvm_manager, &mut item, Some(bp))?
             };
@@ -218,7 +239,11 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 run_cmd.run(item)?;
             }
         }
-        App::Dist { pkg, sys } => {
+        App::Dist {
+            pkg,
+            sys,
+            llvm_link_behavior,
+        } => {
             let cmd = BuildDistribCommand { pkg };
 
             let bins = {
@@ -230,7 +255,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
                 let bp = cargo_interface::BuildCmdBuildingProgress::new(
                     item.add_child("Building progress"),
-                    std::time::Instant::now(),
+                    time::Instant::now(),
                 );
 
                 nexus::BuildI {
@@ -240,6 +265,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                         Some(sys) => SysTarget::Target { name: sys },
                         None => SysTarget::Host,
                     },
+                    llvm_link_behavior,
                 }
                 .run(&cx.llvm_manager, &mut item, Some(bp))?
             };
@@ -259,7 +285,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 fn main() -> NexusR {
     narxia_log_impl::init();
 
-    let color_config = match std::env::var("COLOR") {
+    let color_config = match env::var("COLOR") {
         Ok(s) => match s.as_str() {
             "always" | "true" | "1" => ColorConfig::Always,
             "never" | "false" | "0" => ColorConfig::Never,
@@ -269,21 +295,21 @@ fn main() -> NexusR {
     };
 
     let groups = match (
-        std::env::var("NEXUS_GROUP_BEGIN"),
-        std::env::var("NEXUS_GROUP_END"),
+        env::var("NEXUS_GROUP_BEGIN"),
+        env::var("NEXUS_GROUP_END"),
     ) {
         (Ok(begin), Ok(end)) => Some(NexusOutputGroups::new(begin, end)),
         _ => None,
     };
 
     let (mut cx, tree) = NexusContext::new(groups);
-    let start = std::time::Instant::now();
+    let start = time::Instant::now();
 
-    let mut opts = prodash::render::line::Options {
+    let mut opts = line::Options {
         frames_per_second: 20.0,
         ..Default::default()
     }
-    .auto_configure(prodash::render::line::StreamKind::Stderr);
+    .auto_configure(line::StreamKind::Stderr);
 
     match color_config {
         ColorConfig::Always => {
@@ -299,7 +325,7 @@ fn main() -> NexusR {
         }
     }
 
-    let handle = prodash::render::line::render(std::io::stderr(), tree, opts);
+    let handle = line::render(io::stderr(), tree, opts);
 
     let app = App::parse();
 
@@ -313,7 +339,7 @@ fn main() -> NexusR {
         }
     }
 
-    std::thread::sleep(std::time::Duration::from_millis(30));
+    thread::sleep(time::Duration::from_millis(30));
 
     handle.shutdown_and_wait();
 
