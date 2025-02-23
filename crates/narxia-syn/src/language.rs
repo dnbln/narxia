@@ -10,7 +10,7 @@ pub struct NarxiaLanguage;
 impl NarxiaLanguage {
     pub fn kind_from_u16(v: u16) -> SyntaxKind {
         debug_assert!(v < SyntaxKind::__END as u16);
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe { mem::transmute::<u16, SyntaxKind>(v) }
     }
 }

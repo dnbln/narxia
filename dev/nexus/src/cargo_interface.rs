@@ -1,12 +1,12 @@
 use std::ffi::OsString;
 use std::fmt::Write;
 use std::io::{self, BufRead, Read};
-use std::{mem, process, thread, time};
 use std::path::PathBuf;
 use std::sync::mpsc::{self, TryRecvError};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
 use std::time::Instant;
+use std::{mem, process, thread, time};
 
 use cargo_metadata::{diagnostic, TargetKind};
 use miette::{bail, IntoDiagnostic};
@@ -463,11 +463,11 @@ impl ItemWrapper {
         )
     }
 
-    fn start<'a>(
-        guard: MutexGuard<'a, Self>,
+    fn start(
+        guard: MutexGuard<'_, Self>,
         name: String,
         start: Instant,
-    ) -> NexusR<ItemWrapperFinishGuard<'a>> {
+    ) -> NexusR<ItemWrapperFinishGuard<'_>> {
         guard
             .0
             .send(BuildEvent::Start { name, start })
@@ -485,7 +485,7 @@ impl ItemWrapper {
         self.2 = true;
         self.0.send(BuildEvent::FinishAll).into_diagnostic()?;
 
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             mem::ManuallyDrop::take(&mut self.1).join().unwrap();
         }
@@ -499,7 +499,7 @@ pub(crate) struct ItemWrapperFinishGuard<'a> {
     finished: bool,
 }
 
-impl<'a> ItemWrapperFinishGuard<'a> {
+impl ItemWrapperFinishGuard<'_> {
     fn finish(&mut self) -> NexusR {
         if self.finished {
             return Ok(());
@@ -515,7 +515,7 @@ impl<'a> ItemWrapperFinishGuard<'a> {
     }
 }
 
-impl<'a> Drop for ItemWrapperFinishGuard<'a> {
+impl Drop for ItemWrapperFinishGuard<'_> {
     fn drop(&mut self) {
         self.finish().unwrap();
     }
@@ -643,14 +643,16 @@ pub mod tests {
         envs: Vec<(OsString, OsString)>,
     }
 
+    #[derive(Default)]
     pub enum ParserTestsMode {
+        #[default]
         Check,
         Overwrite,
     }
 
-    impl Default for ParserTestsMode {
+    impl Default for RunTests {
         fn default() -> Self {
-            ParserTestsMode::Check
+            Self::new()
         }
     }
 
@@ -987,7 +989,7 @@ pub mod tests {
 
             if let Some(item) = item {
                 let initial = match (summary.passed, summary.failed) {
-                    (0, 0) => format!("no tests run"),
+                    (0, 0) => "no tests run".to_string(),
                     (0, f) => format!("failed {f} tests"),
                     (p, 0) => format!("passed {p} tests"),
                     (p, f) => format!("passed {p} tests, failed {f} tests"),
@@ -1095,5 +1097,118 @@ pub mod tests {
         krate: String,
         test_binary: String,
         kind: String,
+    }
+}
+
+pub struct LintConfig {
+    pub use_ansi: bool,
+}
+
+pub struct Lint {
+    config: LintConfig,
+    fix: bool,
+}
+
+impl Lint {
+    pub fn new(config: LintConfig) -> Self {
+        Self { config, fix: false }
+    }
+
+    pub fn fix(mut self, fix: bool) -> Self {
+        self.fix = fix;
+        self
+    }
+
+    pub fn run(&self, item: &mut Item) -> NexusR {
+        let Self { config, fix } = self;
+        let mut cmd = cargo_command();
+        cmd.arg("clippy")
+            .arg("--workspace")
+            .stdout(process::Stdio::piped())
+            .stderr(process::Stdio::piped());
+
+        if *fix {
+            cmd.arg("--fix");
+        }
+
+        if config.use_ansi {
+            cmd.arg("--message-format=json-diagnostic-rendered-ansi");
+        } else {
+            cmd.arg("--message-format=json");
+        }
+
+        let mut child = cmd.spawn().into_diagnostic()?;
+
+        let stdout = mem::take(&mut child.stdout).unwrap();
+        let stderr = mem::take(&mut child.stderr).unwrap();
+
+        let stderr_handle = async_read(stderr);
+
+        let mut weak_diagnostics = String::new();
+        let mut diagnostics = String::new();
+
+        for message in cargo_metadata::Message::parse_stream(io::BufReader::new(stdout)) {
+            let message = message.into_diagnostic()?;
+
+            if let cargo_metadata::Message::CompilerMessage(compiler_message) = message {
+                match compiler_message.message.level {
+                    diagnostic::DiagnosticLevel::Error => {
+                        let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                        diagnostics.push_str(rendered);
+                        diagnostics.push('\n');
+                    }
+                    diagnostic::DiagnosticLevel::Warning => {
+                        let rendered = compiler_message.message.rendered.as_ref().unwrap();
+                        weak_diagnostics.push_str(rendered);
+                        weak_diagnostics.push('\n');
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        eprintln!("{weak_diagnostics}");
+        eprintln!("{diagnostics}");
+
+        let status = child.wait().into_diagnostic()?;
+
+        let stderr = stderr_handle.join().unwrap();
+
+        if !status.success() {
+            item.fail("clippy failed");
+            eprintln!("{stderr}");
+            bail!("clippy failed");
+        }
+
+        Ok(())
+    }
+}
+
+pub struct Format {}
+
+impl Default for Format {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Format {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn run(&self, item: &mut Item) -> NexusR {
+        let mut cmd = cargo_command();
+        cmd.arg("fmt").arg("--workspace");
+
+        let mut child = cmd.spawn().into_diagnostic()?;
+        let status = child.wait().into_diagnostic()?;
+
+        if !status.success() {
+            eprintln!("Formatting failed");
+            bail!("format failed");
+        }
+
+        Ok(())
     }
 }

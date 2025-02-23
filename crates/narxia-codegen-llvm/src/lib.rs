@@ -13,6 +13,12 @@ pub struct Backend {
     builder: LLVMBuilderRef,
 }
 
+impl Default for Backend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Backend {
     pub fn new() -> Self {
         let context = unsafe { core::LLVMContextCreate() };

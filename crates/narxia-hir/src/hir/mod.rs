@@ -143,6 +143,12 @@ pub struct AttrList {
     pub attrs: Vec<Attr>,
 }
 
+impl Default for AttrList {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AttrList {
     pub fn new() -> Self {
         Self { attrs: Vec::new() }
@@ -530,6 +536,7 @@ pub enum NumLitValue {
 }
 
 impl NumLit {
+    #[expect(clippy::from_str_radix_10)]
     pub fn parse_to_size(&self, size: NumLitSize) -> NumLitValue {
         match size {
             NumLitSize::I8 => match self {

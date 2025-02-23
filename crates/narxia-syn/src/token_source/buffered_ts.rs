@@ -53,7 +53,7 @@ pub(crate) struct BufferedTokenSource<'l, T: TokenSource<'l> + 'l> {
     _pd: PhantomData<&'l ()>,
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 impl<'l, T> BufferedTokenSource<'l, T>
 where
     T: TokenSource<'l> + 'l,
@@ -92,7 +92,7 @@ where
 
         match self.buffer_len {
             0 => {}
-            1 | 2 | 3 | 4 => {
+            1..=4 => {
                 self.buffer_len = 0;
                 self.ts.restore_pos(self.buffer_spans[0] as usize);
             }
@@ -193,7 +193,7 @@ where
                     self.buffer_len = 1;
                     Some(t0)
                 }
-                1 | 2 | 3 | 4 => {
+                1..=4 => {
                     // (0, 1) | (0, 2) | (0, 3) | (0, 4)
                     // Safety: length != 0 means length >= 1 so we can use get_unchecked(0)
                     Some(self.get_buf_0())
@@ -213,7 +213,7 @@ where
                     self.buffer_len = 2;
                     Some(t1)
                 }
-                7 | 8 | 9 => {
+                7..=9 => {
                     // (1, 2) | (1, 3) | (1, 4)
                     // Safety: length != 0 && length != 1 means length >= 2 so we can use get_buf_1()
                     Some(self.get_buf_1())
@@ -320,9 +320,7 @@ where
         unsafe {
             match self.buffer_len {
                 0 => {
-                    let Some(t0) = self.ts.next() else {
-                        return None;
-                    };
+                    let t0 = self.ts.next()?;
                     self.store_0(t0);
                     self.buffer_len = 1;
                     (t0.kind == kind0).then_some(t0)
@@ -528,11 +526,8 @@ where
             0 => {
                 let token = self.ts.skip_ws_wc();
 
-                match token {
-                    Some(t) => {
-                        push_token_evt(t);
-                    }
-                    None => {}
+                if let Some(t) = token {
+                    push_token_evt(t);
                 }
             }
             1 => {
@@ -684,11 +679,8 @@ where
             0 => {
                 let token = self.ts.skip_ws_wcn();
 
-                match token {
-                    Some(t) => {
-                        push_token_evt(t);
-                    }
-                    None => {}
+                if let Some(t) = token {
+                    push_token_evt(t);
                 }
             }
             1 => {
@@ -982,12 +974,11 @@ where
                 (1, 4) => {
                     self.advance_n_1_bl_4();
                 }
-                (2, 0) => match self.ts.next() {
-                    Some(_) => {
+                (2, 0) => {
+                    if self.ts.next().is_some() {
                         self.ts.next();
                     }
-                    None => {}
-                },
+                }
                 (2, 1) => {
                     let _ = self.ts.next();
                     self.buffer_len = 0;
@@ -1001,21 +992,14 @@ where
                 (2, 4) => {
                     self.advance_n_2_bl_4();
                 }
-                (3, 0) => match self.ts.next() {
-                    Some(_) => match self.ts.next() {
-                        Some(_) => {
-                            self.ts.next();
-                        }
-                        None => {}
-                    },
-                    None => {}
-                },
+                (3, 0) => {
+                    if self.ts.next().is_some() && self.ts.next().is_some() {
+                        self.ts.next();
+                    }
+                }
                 (3, 1) => {
-                    match self.ts.next() {
-                        Some(_) => {
-                            self.ts.next();
-                        }
-                        None => {}
+                    if self.ts.next().is_some() {
+                        self.ts.next();
                     }
                     self.buffer_len = 0;
                 }
@@ -1129,7 +1113,7 @@ where
 }
 
 // Buffers manipulation convenience methods
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 impl<'l, T> BufferedTokenSource<'l, T>
 where
     T: TokenSource<'l>,

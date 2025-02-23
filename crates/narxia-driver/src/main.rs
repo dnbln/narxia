@@ -209,7 +209,7 @@ fn main() -> miette::Result<()> {
 
             let hir_map = tcx.hir_map();
 
-            let mut ictx = narxia_hiri::InterpContext::new(&*hir_map);
+            let mut ictx = narxia_hiri::InterpContext::new(&hir_map);
 
             narxia_hiri::interp_mod(&mut ictx, hir_map.get_mod(hir_mod));
         }

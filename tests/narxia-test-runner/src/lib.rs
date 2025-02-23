@@ -38,7 +38,7 @@ pub mod parser_tests {
         let mod_id = hir.mod_def(&ctx.db);
 
         hir_map::hir_map_update_parents_in_mod(
-            &mut *ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
+            &mut ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
             mod_id,
         );
 
@@ -48,7 +48,7 @@ pub mod parser_tests {
     dir_structure::dir_children_wrapper!(pub ParserTestsFolder ParserTestSingleFolder);
 
     pub fn collect_parser_tests() -> miette::Result<ParserTestsFolder> {
-        ParserTestsFolder::read(&parser_tests_dir()).into_diagnostic()
+        ParserTestsFolder::read(parser_tests_dir()).into_diagnostic()
     }
 }
 

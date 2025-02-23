@@ -60,7 +60,7 @@ pub struct ParseStackPresenter<'a> {
     parser_styling: ParserDbgStyling,
 }
 
-impl<'a> fmt::Display for ParseStackPresenter<'a> {
+impl fmt::Display for ParseStackPresenter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (index, item) in self.internal.items.iter().rev().enumerate() {
             writeln!(

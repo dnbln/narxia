@@ -25,19 +25,19 @@ impl Database {
 
 #[salsa::db]
 impl narxia_src_db::SrcDb for Database {
-    fn src_file_text<'db>(&'db self, span: narxia_src_db::Span) -> String {
+    fn src_file_text(&self, span: narxia_src_db::Span) -> String {
         self.src_file_db.get_loaded_span(span)
     }
 
-    fn src_file_path<'db>(&'db self, span: Span) -> FilePathInfo {
+    fn src_file_path(&self, span: Span) -> FilePathInfo {
         self.src_file_db.get_file_path(span)
     }
 
-    fn src_load_file<'db>(&'db self, path: FilePathInfo) -> io::Result<Span> {
+    fn src_load_file(&self, path: FilePathInfo) -> io::Result<Span> {
         self.src_file_db.load_file(path)
     }
 
-    fn src_load_file_inmemory<'db>(&'db self, path: FilePathInfo, text: &str) -> Span {
+    fn src_load_file_inmemory(&self, path: FilePathInfo, text: &str) -> Span {
         self.src_file_db.load_file_from_memory(path, text)
     }
 }

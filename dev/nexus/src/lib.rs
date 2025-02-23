@@ -2,14 +2,14 @@
 #![feature(decl_macro)]
 
 use std::fmt::{self, Write as _};
-use std::{fs, io, process, thread};
 use std::io::{BufRead, Read, Seek, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
+use std::{fs, io, process, thread};
 
 use bin_context::NexusContext;
 use cargo_interface::{
-    BuildCmdBuildingProgress, BuildTarget, RunCompilerCommand, SysTarget,
+    BuildCmdBuildingProgress, BuildTarget, LintConfig, RunCompilerCommand, SysTarget,
 };
 use clap::{Parser, Subcommand, ValueEnum};
 use miette::{bail, IntoDiagnostic};
@@ -34,6 +34,16 @@ pub enum BuildSysCmd {
     #[clap(name = "collect-parser-tests")]
     #[clap(alias = "cpt")]
     CollectParserTests,
+
+    #[clap(name = "lint")]
+    Lint {
+        #[clap(long)]
+        fix: bool,
+    },
+
+    #[clap(name = "format")]
+    #[clap(alias = "fmt")]
+    Format,
 }
 
 impl BuildSysCmd {
@@ -65,6 +75,16 @@ impl BuildSysCmd {
 
                     item.inc();
                 }
+            }
+            Self::Lint { fix } => {
+                let mut item = cx.new_child("Lint");
+                cargo_interface::Lint::new(LintConfig { use_ansi: true })
+                    .fix(fix)
+                    .run(&mut item)?;
+            }
+            Self::Format => {
+                let mut item = cx.new_child("Format");
+                cargo_interface::Format::new().run(&mut item)?;
             }
         }
 
@@ -352,7 +372,7 @@ impl DownloadAndDecompressTarXz {
             resp: Response,
         }
 
-        impl<'i> Read for Reader<'i> {
+        impl Read for Reader<'_> {
             fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
                 let r = self.resp.read(buf)?;
                 self.total += r;
@@ -437,7 +457,7 @@ impl LLVMManager {
         let mut dirs = vec![];
         let suffix = format!("-{version}.src");
 
-        for dir in fs::read_dir(&self.src_path(version)).into_diagnostic()? {
+        for dir in fs::read_dir(self.src_path(version)).into_diagnostic()? {
             let dir = dir.into_diagnostic()?;
             let path = dir.path();
             let p = path.to_str().unwrap();
@@ -598,7 +618,7 @@ impl LLVMManager {
 
         let mut build = build.spawn().into_diagnostic()?;
 
-        let mut stdout = build.stdout.take().unwrap();
+        let stdout = build.stdout.take().unwrap();
         let mut stderr = build.stderr.take().unwrap();
 
         let stderr = thread::spawn(move || {
@@ -654,7 +674,7 @@ impl LLVMManager {
                 .write_all(&stderr.join().unwrap()?)
                 .into_diagnostic()?;
             io::stdout()
-                .write_all(&stdout.join().unwrap()?.as_bytes())
+                .write_all(stdout.join().unwrap()?.as_bytes())
                 .into_diagnostic()?;
 
             item.fail("Build failed");
@@ -1016,7 +1036,7 @@ impl BuildDistribCommand {
         write_bin_file_to_zip(
             &mut wr,
             Path::new(bins.compiler.file_name().unwrap()),
-            &bins.compiler,
+            bins.compiler,
             FileOptions::default(),
             Some(&mut item.add_child("Compiler")),
         )?;

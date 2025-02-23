@@ -263,12 +263,10 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                 if let InterpValue::Bool(b) = cond {
                     if b {
                         interp_expr_id(ctx, if_expr.then)
+                    } else if let Some(else_branch) = &if_expr.else_ {
+                        interp_expr_id(ctx, else_branch.expr)
                     } else {
-                        if let Some(else_branch) = &if_expr.else_ {
-                            interp_expr_id(ctx, else_branch.expr)
-                        } else {
-                            Ok(InterpValue::Unit)
-                        }
+                        Ok(InterpValue::Unit)
                     }
                 } else {
                     panic!("Expected boolean value in if condition");
@@ -942,8 +940,8 @@ fn interp_debug_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
             let fn_def = ctx.hir_map.get_fn(*f);
             format!("{}", fn_def)
         }
-        InterpValue::Unit => format!("()"),
-        InterpValue::Null => format!("null"),
+        InterpValue::Unit => "()".to_string(),
+        InterpValue::Null => "null".to_string(),
         InterpValue::Tuple(t) => {
             let mut s = String::new();
             s.push('(');
@@ -986,13 +984,13 @@ fn interp_display_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
             NumValue::F64(f) => format!("{}", f),
         },
         InterpValue::Bool(b) => format!("{}", b),
-        InterpValue::Str(s) => format!("{}", s),
+        InterpValue::Str(s) => s.to_string(),
         InterpValue::Fn(f) => {
             let fn_def = ctx.hir_map.get_fn(*f);
             format!("{}", fn_def)
         }
-        InterpValue::Unit => format!("()"),
-        InterpValue::Null => format!("null"),
+        InterpValue::Unit => "()".to_string(),
+        InterpValue::Null => "null".to_string(),
         InterpValue::Tuple(t) => {
             let mut s = String::new();
             s.push('(');

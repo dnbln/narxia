@@ -237,6 +237,15 @@ where
     pub children: Vec<DirChild<T>>,
 }
 
+impl<T> Default for DirChildren<T>
+where
+    T: DirStructureItem,
+ {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> DirChildren<T>
 where
     T: DirStructureItem,
@@ -403,7 +412,7 @@ where
     }
 }
 
-impl<'a, T> ExactSizeIterator for DirChildrenIter<'a, T>
+impl<T> ExactSizeIterator for DirChildrenIter<'_, T>
 where
     T: DirStructureItem,
 {
@@ -632,7 +641,7 @@ where
 /// implementation to write the value.
 pub struct FmtWrapperRefWr<'a, T: ?Sized>(pub &'a T);
 
-impl<'a, T> WriteTo for FmtWrapperRefWr<'a, T>
+impl<T> WriteTo for FmtWrapperRefWr<'_, T>
 where
     T: Display + ?Sized,
 {
@@ -703,7 +712,7 @@ impl<'a> FromRefForWriter<'a> for FileBytes {
 /// The [`WriteTo`] wrapper around a reference to a `[u8]`.
 pub struct FileBytesRefWr<'a>(&'a [u8]);
 
-impl<'a> WriteTo for FileBytesRefWr<'a> {
+impl WriteTo for FileBytesRefWr<'_> {
     fn write_to(&self, path: &Path) -> Result<()> {
         utils::create_parent_dir(path)?;
         std::fs::write(path, self.0).wrap_io_error_with(path)?;
@@ -978,7 +987,7 @@ where
 /// [`WriteTo`] impl for [`CleanDir`]
 pub struct CleanDirRefWr<'a, T: ?Sized + DirStructureItem>(&'a T);
 
-impl<'a, T> WriteTo for CleanDirRefWr<'a, T>
+impl<T> WriteTo for CleanDirRefWr<'_, T>
 where
     T: ?Sized + DirStructureItem,
 {
@@ -1031,7 +1040,7 @@ impl<T: DirStructureItem> Versioned<T> {
     /// The version is set to the default value.
     pub fn new(value: T, path: impl Into<PathBuf>) -> Self {
         Self {
-            value: value.into(),
+            value,
             version: Self::DEFAULT_VERSION,
             path: path.into(),
         }
@@ -1049,7 +1058,7 @@ impl<T: DirStructureItem> Versioned<T> {
     /// ```
     pub fn new_dirty(value: T, path: impl Into<PathBuf>) -> Self {
         Self {
-            value: value.into(),
+            value,
             version: Self::DEFAULT_VERSION + 1,
             path: path.into(),
         }
@@ -1172,7 +1181,7 @@ impl WriteTo for str {
     }
 }
 
-impl<'a> WriteTo for &'a str {
+impl WriteTo for &str {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileStrWr(self).write_to(path)
     }
@@ -1184,7 +1193,7 @@ impl WriteTo for [u8] {
     }
 }
 
-impl<'a> WriteTo for &'a [u8] {
+impl WriteTo for &[u8] {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileBytesRefWr(self).write_to(path)
     }

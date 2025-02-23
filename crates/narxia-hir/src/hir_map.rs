@@ -112,6 +112,12 @@ pub struct HirMap {
     current_file: Option<SrcFile>,
 }
 
+impl Default for HirMap {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HirMap {
     pub fn new() -> Self {
         Self {

@@ -47,7 +47,7 @@ fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
 
     let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
     let mut visitor = OrphanHirIdVisitor {
-        hir_map: &*hir_map,
+        hir_map: &hir_map,
         hir_ids: Vec::new(),
     };
 

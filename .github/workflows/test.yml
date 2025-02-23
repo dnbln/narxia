@@ -57,4 +57,4 @@ jobs:
       # - name: Build
       #   run: cargo build -p narxia-driver --bin narxia-driver
       # - name: Test
-      #   run: cargo nextest run --all
+      #   run: cargo nextest run --workspace

@@ -19,6 +19,12 @@ pub struct TyCtxt {
     types: Vec<Ty>,
 }
 
+impl Default for TyCtxt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TyCtxt {
     pub fn new() -> Self {
         Self { types: vec![] }

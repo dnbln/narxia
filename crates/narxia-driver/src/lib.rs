@@ -18,7 +18,7 @@ pub use ctxt::DriverCtx;
 
 pub struct DisplayFile<'a>(&'a db::Database, SrcFile);
 
-impl<'a> fmt::Display for DisplayFile<'a> {
+impl fmt::Display for DisplayFile<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let text = self.1.get_text(self.0);
 
@@ -83,7 +83,7 @@ fn dbg_impl_code<H>(
     let context = dbg_impl.context;
 
     thread_local! {
-        static DRIVER_CTXT: RefCell<*const DriverCtx> = RefCell::new(ptr::null());
+        static DRIVER_CTXT: RefCell<*const DriverCtx> = const { RefCell::new(ptr::null()) };
     }
 
     DRIVER_CTXT.with(|f| {
@@ -109,7 +109,7 @@ fn dbg_impl_code<H>(
     fn debug_hir_id_get_src_file(hir_id: HirId) -> SrcFile {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             ctx.db.lookup_hir_id_file(hir_id)
         })
@@ -118,7 +118,7 @@ fn dbg_impl_code<H>(
     fn debug_hir_id_path_callback(src_file: SrcFile) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             format!("{}", src_file.get_presentable_path(&ctx.db).display())
         })
@@ -127,7 +127,7 @@ fn dbg_impl_code<H>(
     fn debug_file_contents_callback(file: SrcFile) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             file.get_text(&ctx.db)
         })
@@ -136,7 +136,7 @@ fn dbg_impl_code<H>(
     fn debug_get_hir_element(hir_id: HirId) -> HirElem {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
             ctx.db
                 .get_global_ty_ctxt()
@@ -156,13 +156,13 @@ fn dbg_impl_code<H>(
     )
 }
 
-impl<'hir, 'ctxt, H: fmt::Debug> fmt::Debug for HirDebugImpl<'hir, 'ctxt, H> {
+impl<H: fmt::Debug> fmt::Debug for HirDebugImpl<'_, '_, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         dbg_impl_code(self, f, |hir, f| write!(f, "{:?}", hir))
     }
 }
 
-impl<'hir, 'ctxt, H: fmt::Display> fmt::Display for HirDebugImpl<'hir, 'ctxt, H> {
+impl<H: fmt::Display> fmt::Display for HirDebugImpl<'_, '_, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         dbg_impl_code(self, f, |hir, f| write!(f, "{}", hir))
     }

@@ -14,7 +14,7 @@ pub struct HirDebugContext {
 }
 
 thread_local! {
-    static DEBUG_CONTEXT: RefCell<Option<HirDebugContext>> = RefCell::new(None);
+    static DEBUG_CONTEXT: RefCell<Option<HirDebugContext>> = const { RefCell::new(None) };
 }
 
 pub fn dbg_hir(
@@ -31,7 +31,7 @@ pub fn dbg_hir(
 
         struct HirDebugContextGuard<'a>(&'a RefCell<Option<HirDebugContext>>);
 
-        impl<'a> Drop for HirDebugContextGuard<'a> {
+        impl Drop for HirDebugContextGuard<'_> {
             fn drop(&mut self) {
                 *self.0.borrow_mut() = None;
             }
@@ -383,7 +383,7 @@ pub fn display_fn_def(
     if let Some(generics) = &fn_def.generics {
         write!(f, "{}", "<".punctuation())?;
         if generics.params.len() > 1 {
-            write!(f, "\n")?;
+            writeln!(f)?;
             write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
         }
         for (i, param) in generics.params.iter().enumerate() {
@@ -411,7 +411,7 @@ pub fn display_fn_def(
                     }
 
                     if let Some((_, default)) = default {
-                        write!(f, " {} ", "=")?;
+                        write!(f, " = ")?;
                         display_ty_ref_id(f, *default, hdc.make_child())?;
                     }
                 }
@@ -445,7 +445,7 @@ pub fn display_fn_def(
     if let Some(params) = &fn_def.params {
         write!(f, "{}", "(".punctuation())?;
 
-        write!(f, "\n")?;
+        writeln!(f)?;
 
         for param in &params.params {
             write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;

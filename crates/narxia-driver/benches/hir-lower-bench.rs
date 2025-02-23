@@ -2,11 +2,9 @@ use std::path::PathBuf;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use narxia_driver::DriverCtx;
-use narxia_hir::hir::ModDef;
 use narxia_hir::lower::LowerCtxt;
 use narxia_src_db::SrcFile;
-use narxia_syn::syntree::{Root, SynTree};
-use narxia_syn_db::SynFile;
+use narxia_syn::syntree::SynTree;
 
 fn make_input(num: usize) -> String {
     r#"
@@ -94,7 +92,7 @@ fn hir_lower(root: &SynTree, src_file: SrcFile, ctx: &DriverCtx) {
     let hir = narxia_hir::lower::lower_mod_def(
         &mut LowerCtxt {
             src_file,
-            hir_map: &mut *hir_map,
+            hir_map: &mut hir_map,
         },
         root.get_root(),
     );

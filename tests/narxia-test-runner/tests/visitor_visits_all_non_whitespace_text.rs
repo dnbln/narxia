@@ -107,7 +107,7 @@ fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
 
     let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
     let mut visitor = OrphanSpanVisitor {
-        hir_map: &*hir_map,
+        hir_map: &hir_map,
         buffer: orig.clone(),
         ignore_sets: Vec::new(),
     };
@@ -126,8 +126,8 @@ fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
         for ((ai, a), b) in old.iter().zip(new.iter()) {
             let is_missing = (a == b) &&
                 // not part of HIR, we don't really care about these
-                ![',', ';'].contains(a) && !trivia_tokens.iter().any(|range| range.contains(&ai))
-                && !visitor.ignore_sets.iter().filter(|(_, ch)| ch == a).any(|(range, _)| range.contains(&ai));
+                ![',', ';'].contains(a) && !trivia_tokens.iter().any(|range| range.contains(ai))
+                && !visitor.ignore_sets.iter().filter(|(_, ch)| ch == a).any(|(range, _)| range.contains(ai));
 
             if is_missing {
                 any_missing = true;

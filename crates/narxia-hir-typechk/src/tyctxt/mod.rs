@@ -116,18 +116,18 @@ impl ops::Deref for GlobalHirMapRef<'_> {
     type Target = HirMap;
 
     fn deref(&self) -> &Self::Target {
-        &*self.0
+        &self.0
     }
 }
 
-impl<'tcx> GlobalHirMapRef<'tcx> {
+impl GlobalHirMapRef<'_> {
     pub fn get_hir_map(&self) -> &HirMap {
-        &*self.0
+        &self.0
     }
 }
 
 impl<'tcx> HirMapQ<'tcx> for &'tcx GlobalHirMapRef<'tcx> {
     fn run_hir_map_query<T: 'tcx, Q: FnOnce(&'tcx HirMap) -> T>(&self, q: Q) -> T {
-        q(&*self.0)
+        q(&self.0)
     }
 }

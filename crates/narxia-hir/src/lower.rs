@@ -42,7 +42,7 @@ impl HasHirSpan for HirSpan {
     }
 }
 
-impl<'arena> HirLowerCtxt<'arena> {
+impl HirLowerCtxt<'_> {
     fn push_ref(&mut self, elem: HirElem, span: HirSpan) -> HirId {
         self.hir_ref_arena.push_ref(elem, span)
     }
@@ -349,7 +349,7 @@ fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath
                 let mut paths =
                     lower_use_path(hir_lower_ctxt, &continuation.get_use_path().unwrap());
                 for path in paths.iter_mut() {
-                    path.segments.insert(0, segment.clone());
+                    path.segments.insert(0, segment);
                 }
                 paths
             } else if let Some(alias) = ext.get_use_alias() {
@@ -1140,7 +1140,7 @@ fn lower_pat(hir_lower_ctxt: &mut HirLowerCtxt, pat: &syntree::Pat) -> Pat {
             "_" => PatKind::Wildcard(pat_ident),
             _ => PatKind::Ident(pat_ident),
         };
-        return Pat { kind };
+        Pat { kind }
     } else {
         todo!()
     }

@@ -13,13 +13,13 @@ pub struct TextSpan {
 impl TextSpan {
     pub fn of(token: &Token) -> Self {
         let r = token.text_range();
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
     }
 
     pub fn of_node(node: &Node) -> Self {
         let r = node.text_range();
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
     }
     pub const fn from_range(range: Range<u32>) -> Self {
@@ -28,14 +28,14 @@ impl TextSpan {
 
     pub const fn new(start: u32, end: u32) -> Self {
         debug_assert!(start <= end);
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe { Self::new_unchecked(start, end) }
     }
 
     /// # Safety
     /// start <= end
     #[must_use]
-    #[allow(unsafe_code)]
+    #[expect(unsafe_code)]
     pub const unsafe fn new_unchecked(start: u32, end: u32) -> Self {
         Self { start, end }
     }
@@ -73,12 +73,17 @@ impl TextSpan {
         text[..self.start as usize].lines().count()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn len(self) -> u32 {
         self.end - self.start
     }
 
-    #[inline]
+    #[inline(always)]
+    pub fn is_empty(self) -> bool {
+        self.start == self.end
+    }
+
+    #[inline(always)]
     pub fn len_usize(self) -> usize {
         self.len() as usize
     }

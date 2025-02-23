@@ -128,19 +128,13 @@ where
 
         impl Visit for Visitor {
             fn record_bool(&mut self, field: &Field, value: bool) {
-                match field.name() {
-                    "short" => {
-                        self.short = value;
-                    }
-                    _ => {}
+                if field.name() == "short" {
+                    self.short = value;
                 }
             }
             fn record_debug(&mut self, field: &Field, value: &dyn Debug) {
-                match field.name() {
-                    "message" => {
-                        self.message = Some(format!("{value:?}"));
-                    }
-                    _ => {}
+                if field.name() == "message" {
+                    self.message = Some(format!("{value:?}"));
                 }
             }
         }
@@ -150,18 +144,18 @@ where
 
         let level = event.metadata().level();
 
-        let (name, style_color): (&str, Style) = match level {
-            &Level::TRACE => ("TRACE", Style::new().bright_white()),
-            &Level::DEBUG => ("DEBUG", Style::new().bright_blue()),
-            &Level::INFO => ("INFO", Style::new().green()),
-            &Level::WARN => ("WARN", Style::new().yellow()),
-            &Level::ERROR => ("ERROR", Style::new().red()),
+        let (name, style_color): (&str, Style) = match *level {
+            Level::TRACE => ("TRACE", Style::new().bright_white()),
+            Level::DEBUG => ("DEBUG", Style::new().bright_blue()),
+            Level::INFO => ("INFO", Style::new().green()),
+            Level::WARN => ("WARN", Style::new().yellow()),
+            Level::ERROR => ("ERROR", Style::new().red()),
         };
 
         write!(
             w,
             ">>> {}:",
-            style_color.clone().bold().style(name.to_owned())
+            style_color.bold().style(name.to_owned())
         )?;
 
         if let Some(message) = message {

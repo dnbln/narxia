@@ -104,7 +104,9 @@ enum App {
 }
 
 #[derive(Debug, clap::ValueEnum, Clone)]
+#[derive(Default)]
 enum ParserTestsMode {
+    #[default]
     Check,
     Overwrite,
 }
@@ -118,11 +120,6 @@ impl fmt::Display for ParserTestsMode {
     }
 }
 
-impl Default for ParserTestsMode {
-    fn default() -> Self {
-        ParserTestsMode::Check
-    }
-}
 
 fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
     match app {
@@ -231,7 +228,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
             let run_compiler_bins = RunCompilerBins::compile_from(&bins);
 
-            run_cmd.compiler(&run_compiler_bins.compiler);
+            run_cmd.compiler(run_compiler_bins.compiler);
             run_cmd.llvm(run_compiler_bins.llvm.clone());
 
             {

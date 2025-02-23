@@ -209,10 +209,10 @@ impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
     }
 }
 
-pub fn build_program_structure<'tcx>(tcx: TyCtxt<'tcx>, mod_id: hir::ModId) -> ProgramStructure {
+pub fn build_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> ProgramStructure {
     let hir_map = tcx.hir_map();
     let mut visitor = ProgramStructureVisitor {
-        hir_map: &*hir_map,
+        hir_map: &hir_map,
         program_structure: ProgramStructure {
             scope_tree: ScopeTree {
                 scopes: Vec::new(),
@@ -243,8 +243,8 @@ struct ScopeDefinedName {
     def_id: DefId,
 }
 
-pub fn analyze_program_structure<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn analyze_program_structure(
+    tcx: TyCtxt<'_>,
     mod_id: hir::ModId,
 ) -> SemanticAnalysisResult {
     let program_structure = build_program_structure(tcx, mod_id);
@@ -281,7 +281,7 @@ pub fn analyze_program_structure<'tcx>(
                     hir_map::HirElem::UseStmt(use_stmt) => {
                         let path = &use_stmt.path;
 
-                        let imported_name = use_path_imported_name(&*hir_map, path);
+                        let imported_name = use_path_imported_name(&hir_map, path);
 
                         names.push(ScopeDefinedName {
                             name: imported_name,
@@ -316,8 +316,8 @@ fn use_path_imported_name(hir_map: &HirMap, path: &hir::UsePath) -> String {
     )
 }
 
-fn resolve_names<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn resolve_names(
+    tcx: TyCtxt<'_>,
     mod_id: hir::ModId,
     analysis_results: &SemanticAnalysisResult,
 ) {
@@ -345,7 +345,7 @@ fn resolve_names<'tcx>(
                 hir_map::HirElem::UseStmt(use_stmt) => {
                     let path = &use_stmt.path;
 
-                    let imported_name = use_path_imported_name(&*hir_map, path);
+                    let imported_name = use_path_imported_name(&hir_map, path);
 
                     tcx.add_def_id(hir_id);
                 }

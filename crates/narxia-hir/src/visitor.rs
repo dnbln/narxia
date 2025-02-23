@@ -261,7 +261,7 @@ contextualised_hir_visitors! {
     visit_lambda_expr(hir::ExprId, hir::LambdaExpr) -> walk_lambda_expr,
 }
 
-#[allow(unused_variables)]
+#[expect(unused_variables)]
 pub trait HirVisitor<'hir> {
     fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q);
 

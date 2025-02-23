@@ -1,6 +1,6 @@
 [alias]
 nt = "nextest run"
-nta = "nt --all"
+nta = "nt --workspace"
 nexus = "run -p nexus --"
 nexusr = "run -p nexus --release --"
 

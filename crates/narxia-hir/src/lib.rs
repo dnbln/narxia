@@ -19,7 +19,7 @@ pub struct HirSpan {
 
 pub const DUMMY_SP: HirSpan = HirSpan {
     span: {
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             TextSpan::new_unchecked(0, 0)
         }

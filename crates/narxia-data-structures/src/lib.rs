@@ -6,9 +6,7 @@ use std::ops::Index;
 
 pub struct FxHashMap<K: Hash + Eq, V>(HashMap<K, V>);
 
-impl<K0: Hash + Eq + fmt::Debug, V0: fmt::Debug> fmt::Debug
-    for FxHashMap<K0, V0>
-{
+impl<K0: Hash + Eq + fmt::Debug, V0: fmt::Debug> fmt::Debug for FxHashMap<K0, V0> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         <HashMap<K0, V0> as fmt::Debug>::fmt(&self.0, f)
     }
@@ -35,10 +33,10 @@ impl<K: Hash + Eq + Clone, V: Clone> Clone for FxHashMap<K, V> {
 }
 
 impl<K: Hash + Eq, V> FxHashMap<K, V> {
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    pub fn get<Q>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.0.get(k)
     }
@@ -51,10 +49,10 @@ impl<K: Hash + Eq, V> FxHashMap<K, V> {
         self.0.clear()
     }
 
-    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
+    pub fn contains_key<Q>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.0.contains_key(k)
     }
@@ -63,10 +61,10 @@ impl<K: Hash + Eq, V> FxHashMap<K, V> {
         self.0.drain()
     }
 
-    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: Hash + Eq + ?Sized,
     {
         self.0.get_mut(k)
     }
@@ -91,6 +89,12 @@ pub struct FxHashSet<K>(HashSet<K>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FxBTreeMap<K: Ord, V>(BTreeMap<K, V>);
+
+impl<K: Ord, V> Default for FxBTreeMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<K: Ord, V> FxBTreeMap<K, V> {
     pub fn new() -> Self {

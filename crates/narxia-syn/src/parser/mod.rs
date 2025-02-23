@@ -208,8 +208,8 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
-        let g = self.pstk.push(name, can_recover, self.ts.current_pos());
-        g
+        
+        self.pstk.push(name, can_recover, self.ts.current_pos())
     }
 
     #[inline(always)]

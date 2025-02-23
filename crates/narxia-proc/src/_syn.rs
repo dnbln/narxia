@@ -39,9 +39,8 @@ pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
         Ok(p) => p,
         Err(e) => return e.to_compile_error().into(),
     };
-    let expanded =
-        expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into());
-    expanded
+    
+    expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into())
 }
 
 fn expand_t(ident: Ident, data: DataEnum, sk_path: Path) -> syn::Result<TokenStream> {
@@ -76,11 +75,11 @@ pub fn parse_fn(
 ) -> proc_macro::TokenStream {
     let mut input_fn = syn::parse_macro_input!(input as syn::ItemFn);
     let fn_name = input_fn.sig.ident.to_string();
-    struct MLL {
+    struct Mll {
         can_recover: Vec<Ident>,
         recovery: Option<Ident>,
     }
-    impl Parse for MLL {
+    impl Parse for Mll {
         fn parse(input: ParseStream) -> syn::Result<Self> {
             let mut can_recover = Vec::new();
             let mut recovery = None;
@@ -102,10 +101,10 @@ pub fn parse_fn(
             })
         }
     }
-    let MLL {
+    let Mll {
         can_recover,
         recovery,
-    } = syn::parse_macro_input!(attr as MLL);
+    } = syn::parse_macro_input!(attr as Mll);
     let recovery_fn = match recovery {
         Some(recovery) => quote! { Some(recovery) },
         None => {
@@ -893,7 +892,7 @@ fn expand_match(
     end_expr: &TokenStream,
     to: &mut TokenStream,
 ) -> syn::Result<()> {
-    if match_is_optimizable(&extra) {
+    if match_is_optimizable(extra) {
         return expand_optimized_match(extra, end_expr, to);
     }
 
@@ -951,10 +950,10 @@ fn expand_match_arm(
                         .iter()
                         .map(|it| match it {
                             MatchExtraArmSelector::CatchAll { wild } => {
-                                return Err(syn::Error::new_spanned(
+                                Err(syn::Error::new_spanned(
                                     wild,
                                     "_ should be alone in an match arm",
-                                ));
+                                ))
                             }
                             MatchExtraArmSelector::T { delimiter: _, tt } => Ok(tt),
                         })

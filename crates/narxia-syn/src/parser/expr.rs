@@ -147,10 +147,10 @@ fn parse_block_expr_or_lambda(p: &mut Parser) -> CompletedMarker {
     if p.is_recovering() {
         p.recovered();
         p.restore_state(s);
-        return parse_block_expr(p);
+        parse_block_expr(p)
     } else {
         p.restore_state(s);
-        return parse_lambda_expr(p);
+        parse_lambda_expr(p)
     }
 }
 

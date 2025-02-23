@@ -18,13 +18,13 @@ pub struct TextTokenSource<'text> {
     state: TokParserState,
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 mod danger {
     use crate::token_source::Token;
 
     use super::TextTokenSource;
 
-    impl<'text> TextTokenSource<'text> {
+    impl TextTokenSource<'_> {
         #[inline(always)]
         pub fn next_token(&mut self) -> Option<Token> {
             if self.pos >= self.text.len() {
@@ -121,7 +121,7 @@ impl<'text> TextTokenSource<'text> {
     }
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 impl<'text> TokenSource<'text> for TextTokenSource<'text> {
     fn next(&mut self) -> Option<Token> {
         self.next_token()
@@ -163,7 +163,7 @@ struct CharTokenParser<'text> {
     error: Option<TokenError>,
 }
 
-#[allow(unsafe_code)]
+#[expect(unsafe_code)]
 #[inline(always)]
 fn r(kind: SyntaxKind, start: usize, end: usize) -> (Token, usize) {
     let s = unsafe { start.try_into().unwrap_unchecked() };
@@ -173,7 +173,7 @@ fn r(kind: SyntaxKind, start: usize, end: usize) -> (Token, usize) {
             kind,
             span: unsafe { TextSpan::new_unchecked(s, e) },
         },
-        end as usize,
+        end,
     )
 }
 

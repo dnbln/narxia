@@ -87,5 +87,7 @@ unused_imports = "deny"
 
 [workspace.lints.clippy]
 absolute_paths = "deny"
-alloc_instead_of_core = "forbid"
-allow_attributes = "forbid"
+alloc_instead_of_core = "deny"
+allow_attributes = "deny"
+suspicious = { level = "deny", priority = -1 }
+style = "deny"

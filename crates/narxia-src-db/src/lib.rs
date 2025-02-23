@@ -75,7 +75,7 @@ impl SrcFileDatabase {
         let mut inner_lock = self.inner.write().unwrap();
 
         let start_index = inner_lock.db.len();
-        inner_lock.db += &text;
+        inner_lock.db += text;
         let end_index = inner_lock.db.len();
 
         inner_lock.files.push((
@@ -136,13 +136,13 @@ impl Span {
 }
 
 impl SrcFile {
-    pub fn get_presentable_path<'a>(&self, db: &'a dyn SrcDb) -> PathBuf {
+    pub fn get_presentable_path(&self, db: &dyn SrcDb) -> PathBuf {
         let fp = self.path(db);
 
-        fp.short_path.unwrap_or_else(|| fp.full_path)
+        fp.short_path.unwrap_or(fp.full_path)
     }
 
-    pub fn get_text<'a>(&self, db: &'a dyn SrcDb) -> String {
+    pub fn get_text(&self, db: &dyn SrcDb) -> String {
         let db_span = self.db_span(db);
         db.src_file_text(db_span)
     }
@@ -150,11 +150,11 @@ impl SrcFile {
 
 #[salsa::db]
 pub trait SrcDb: salsa::Database {
-    fn src_file_text<'db>(&'db self, span: Span) -> String;
-    fn src_file_path<'db>(&'db self, span: Span) -> FilePathInfo;
+    fn src_file_text(&self, span: Span) -> String;
+    fn src_file_path(&self, span: Span) -> FilePathInfo;
 
-    fn src_load_file<'db>(&'db self, path: FilePathInfo) -> io::Result<Span>;
-    fn src_load_file_inmemory<'db>(&'db self, path: FilePathInfo, text: &str) -> Span;
+    fn src_load_file(&self, path: FilePathInfo) -> io::Result<Span>;
+    fn src_load_file_inmemory(&self, path: FilePathInfo, text: &str) -> Span;
 }
 
 pub fn load_from_disk(db: &dyn SrcDb, path: FilePathInfo) -> io::Result<SrcFile> {

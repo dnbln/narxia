@@ -294,7 +294,7 @@ impl<'a> CustomTreePresenter<'a> {
     }
 }
 
-impl<'a> Debug for CustomTreePresenter<'a> {
+impl Debug for CustomTreePresenter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self.elem {
             SyntaxElementRef::Node(n) => {
@@ -323,7 +323,7 @@ fn as_ref(e: &SyntaxElement) -> SyntaxElementRef {
     }
 }
 
-impl<'a> Debug for TreePresenter<'a> {
+impl Debug for TreePresenter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         self.fmt_node(f)
     }
@@ -343,7 +343,7 @@ impl SynTree {
     pub fn get_root(&self) -> Root {
         // Safety: The following must hold before calling this.
         // self.root.kind() == SyntaxKind::Root
-        #[allow(unsafe_code)]
+        #[expect(unsafe_code)]
         unsafe {
             <Root as TreeNode>::cast_from_node_raw(self.root.clone())
         }
@@ -362,7 +362,7 @@ pub trait TreeNode: Sized {
     fn try_cast(n: Node) -> Option<Self> {
         if Self::can_cast_from_syntax_kind(n.kind()) {
             // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             Some(unsafe { Self::cast_from_node_raw(n) })
         } else {
             None
@@ -372,14 +372,20 @@ pub trait TreeNode: Sized {
     fn try_cast_ref(n: &Node) -> Option<Self> {
         if Self::can_cast_from_syntax_kind(n.kind()) {
             // Safety: Self::can_cast_from_syntax_kind(n.kind()) == true
-            #[allow(unsafe_code)]
+            #[expect(unsafe_code)]
             Some(unsafe { Self::cast_from_node_raw(n.clone()) })
         } else {
             None
         }
     }
 
-    #[allow(unsafe_code)]
+    /// # Safety
+    /// The following must hold before calling this.
+    /// 
+    /// ```rust,ignore
+    /// Self::can_cast_from_syntax_kind(n.kind()) == true
+    /// ```
+    #[expect(unsafe_code)]
     unsafe fn cast_from_node_raw(n: Node) -> Self; // Invariant: The following must hold before calling this.
                                                    // Self::can_cast_from_syntax_kind(n.kind()) == true
     fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool;
@@ -1047,7 +1053,7 @@ syntree_node! {
     WhileCondition = (lparen!['('] ExprNode rparen![')'])
 }
 
-fn get_children<'a, T: TreeNode + 'static>(n: &'a Node) -> impl Iterator<Item = T> + 'a {
+fn get_children<T: TreeNode + 'static>(n: &Node) -> impl Iterator<Item = T> + '_ {
     n.children().filter_map(T::try_cast)
 }
 
@@ -1068,7 +1074,7 @@ fn get_child<T: TreeNode + 'static>(n: &Node) -> T {
     }
 }
 
-fn get_token_list<'a>(n: &'a Node, kind: SyntaxKind) -> impl Iterator<Item = Token> + 'a {
+fn get_token_list(n: &Node, kind: SyntaxKind) -> impl Iterator<Item = Token> + '_ {
     n.children_with_tokens().filter_map(move |e| match e {
         SyntaxElement::Token(t) if t.kind() == kind => Some(t),
         _ => None,
@@ -1150,6 +1156,12 @@ pub mod tests_data {
 
     pub struct AccessorCalledDataList {
         pub accessors: Vec<AccessorCalledData>,
+    }
+
+    impl Default for AccessorCalledDataList {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl AccessorCalledDataList {

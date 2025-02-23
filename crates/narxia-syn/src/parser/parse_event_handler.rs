@@ -121,7 +121,7 @@ impl ParseEventHandler {
         self.events.push(ParseEvent::Error(Box::new(error)));
     }
 
-    pub fn finish<'a>(self, tb: &mut dyn TreeBuilder<'a>) {
+    pub fn finish(self, tb: &mut dyn TreeBuilder<'_>) {
         let mut stack = Vec::new();
 
         enum CompiledParseEvent {
@@ -189,8 +189,8 @@ impl ParseEventHandler {
 
         assert!(stack.is_empty());
 
-        fn handle_precede<'a>(
-            tb: &mut dyn TreeBuilder<'a>,
+        fn handle_precede(
+            tb: &mut dyn TreeBuilder<'_>,
             kind: SyntaxKind,
             precede: &[usize],
             compiled_events: &[CompiledParseEvent],
@@ -395,7 +395,7 @@ pub struct RecentEventPresenter<'a> {
     styling: ParserDbgStyling,
 }
 
-impl<'a> fmt::Display for RecentEventPresenter<'a> {
+impl fmt::Display for RecentEventPresenter<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut start = 0;
         if self.count <= self.internal.events.len() {
