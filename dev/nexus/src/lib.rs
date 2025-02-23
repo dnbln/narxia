@@ -94,9 +94,25 @@ impl BuildSysCmd {
                 }
             }
             Self::Lint { fix } => {
+                let bins = {
+                    let mut item = cx.new_child("Build");
+                    let bp = BuildCmdBuildingProgress::new(
+                        item.add_child("Build progress"),
+                        Instant::now(),
+                    );
+                    BuildI {
+                        targets: vec![Target::LLVM],
+                        profile: Profile::Dev,
+                        sys: SysTarget::Host,
+                        llvm_link_behavior: LLVMLinkBehavior::PreferDynamic,
+                    }
+                    .run(&cx.llvm_manager, &mut item, Some(bp))?
+                };
+                let (llvm_k, llvm_v) = bins.llvm.as_ref().unwrap().to_env();
                 let mut item = cx.new_child("Lint");
                 cargo_interface::Lint::new(LintConfig { use_ansi: true })
                     .fix(fix)
+                    .env(llvm_k, llvm_v)
                     .run(&mut item)?;
             }
             Self::Format { check } => {

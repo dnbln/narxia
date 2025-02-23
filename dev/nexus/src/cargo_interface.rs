@@ -1126,12 +1126,17 @@ pub struct LintConfig {
 
 pub struct Lint {
     config: LintConfig,
+    env: Vec<(OsString, OsString)>,
     fix: bool,
 }
 
 impl Lint {
     pub fn new(config: LintConfig) -> Self {
-        Self { config, fix: false }
+        Self {
+            config,
+            env: Vec::new(),
+            fix: false,
+        }
     }
 
     pub fn fix(mut self, fix: bool) -> Self {
@@ -1139,13 +1144,22 @@ impl Lint {
         self
     }
 
+    pub fn env(mut self, k: impl Into<OsString>, v: impl Into<OsString>) -> Self {
+        self.env.push((k.into(), v.into()));
+        self
+    }
+
     pub fn run(&self, item: &mut Item) -> NexusR {
-        let Self { config, fix } = self;
+        let Self { config, env, fix } = self;
         let mut cmd = cargo_command();
         cmd.arg("clippy")
             .arg("--workspace")
             .stdout(process::Stdio::piped())
             .stderr(process::Stdio::piped());
+
+        for (k, v) in env {
+            cmd.env(k, v);
+        }
 
         if *fix {
             cmd.arg("--fix");
@@ -1164,7 +1178,6 @@ impl Lint {
 
         let stderr_handle = async_read(stderr);
 
-        let mut weak_diagnostics = String::new();
         let mut diagnostics = String::new();
 
         for message in cargo_metadata::Message::parse_stream(io::BufReader::new(stdout)) {
@@ -1186,7 +1199,6 @@ impl Lint {
             }
         }
 
-        eprintln!("{weak_diagnostics}");
         eprintln!("{diagnostics}");
 
         let status = child.wait().into_diagnostic()?;
