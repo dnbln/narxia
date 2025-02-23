@@ -1,9 +1,11 @@
 #![feature(try_blocks)]
 #![feature(let_chains)]
 
-use std::{fmt, ops};
+use std::fmt;
+use std::ops;
 
-use narxia_syn::syntree::{self, Token};
+use narxia_syn::syntree::Token;
+use narxia_syn::syntree::{self};
 use narxia_syn::text_span::TextSpan;
 
 pub mod hir;

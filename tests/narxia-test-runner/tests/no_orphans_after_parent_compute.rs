@@ -4,7 +4,8 @@
 use miette::bail;
 use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
-use narxia_hir::hir::{HirIdNewtype, SpecialIdents};
+use narxia_hir::hir::HirIdNewtype;
+use narxia_hir::hir::SpecialIdents;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirVisitor;
 use narxia_test_runner::parser_tests::lower_to_hir;

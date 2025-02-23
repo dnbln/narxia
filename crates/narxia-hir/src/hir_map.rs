@@ -5,7 +5,8 @@ use narxia_src_db::SrcFile;
 
 use crate::hir::*;
 use crate::visitor::HirVisitor;
-use crate::{HirId, HirSpan};
+use crate::HirId;
+use crate::HirSpan;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HirElem {
@@ -161,7 +162,10 @@ impl HirMap {
     }
 
     pub fn push_ref_at_allocation(&mut self, r: HirElem, allocation: HirId) {
-        debug_assert_eq!(self.buffer[allocation.id], HirElem::__Allocated(allocation.span));
+        debug_assert_eq!(
+            self.buffer[allocation.id],
+            HirElem::__Allocated(allocation.span)
+        );
         debug_assert_eq!(r.get_hir_id_in_self(), allocation);
         self.buffer[allocation.id] = r;
     }

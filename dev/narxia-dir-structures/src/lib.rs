@@ -1,8 +1,11 @@
 pub extern crate dir_structure;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
-use dir_structure::{DeferredReadOrOwn, DirStructure, FileString};
+use dir_structure::DeferredReadOrOwn;
+use dir_structure::DirStructure;
+use dir_structure::FileString;
 
 pub fn ws_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))

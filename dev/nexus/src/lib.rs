@@ -1,19 +1,33 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
-use std::fmt::{self, Write as _};
-use std::io::{BufRead, Read, Seek, Write};
-use std::path::{Path, PathBuf};
+use std::fmt::Write as _;
+use std::fmt::{self};
+use std::fs;
+use std::io;
+use std::io::BufRead;
+use std::io::Read;
+use std::io::Seek;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
+use std::process;
+use std::thread;
 use std::time::Instant;
-use std::{fs, io, process, thread};
 
 use bin_context::NexusContext;
-use cargo_interface::{
-    BuildCmdBuildingProgress, BuildTarget, LintConfig, RunCompilerCommand, SysTarget,
-};
-use clap::{Parser, Subcommand, ValueEnum};
-use miette::{bail, IntoDiagnostic};
-use narxia_dir_structures::dir_structure::{DeferredReadOrOwn, DirStructureItem};
+use cargo_interface::BuildCmdBuildingProgress;
+use cargo_interface::BuildTarget;
+use cargo_interface::LintConfig;
+use cargo_interface::RunCompilerCommand;
+use cargo_interface::SysTarget;
+use clap::Parser;
+use clap::Subcommand;
+use clap::ValueEnum;
+use miette::bail;
+use miette::IntoDiagnostic;
+use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
+use narxia_dir_structures::dir_structure::DirStructureItem;
 use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
@@ -1006,7 +1020,8 @@ macro bin_type {
     }
 }
 
-use reqwest::blocking::{self, Response};
+use reqwest::blocking::Response;
+use reqwest::blocking::{self};
 use xz::read;
 use zip::write::FileOptions;
 use zip::ZipWriter;

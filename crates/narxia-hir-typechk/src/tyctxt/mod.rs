@@ -1,7 +1,10 @@
-use std::{ops, sync};
-use std::sync::{Arc, RwLock};
+use std::ops;
+use std::sync;
+use std::sync::Arc;
+use std::sync::RwLock;
 
-use narxia_hir::hir_map::{HirElem, HirMap};
+use narxia_hir::hir_map::HirElem;
+use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirMapQ;
 use narxia_hir::HirId;
 use narxia_src_db::SrcFile;

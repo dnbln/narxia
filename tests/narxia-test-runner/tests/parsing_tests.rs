@@ -13,9 +13,11 @@
 // - Compare: The parser will compare the pretty-printed version of the parse tree with the
 //   contents of the `output.txt` file. If they don't match, the test fails.
 
-use miette::{bail, Context, IntoDiagnostic};
-use narxia_syn::syntree::TreePresenterStyle;
+use miette::bail;
+use miette::Context;
+use miette::IntoDiagnostic;
 use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_syn::syntree::TreePresenterStyle;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {

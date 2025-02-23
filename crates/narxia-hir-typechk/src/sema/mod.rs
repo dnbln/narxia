@@ -1,9 +1,12 @@
 use core::ops;
 
+use narxia_hir::hir;
 use narxia_hir::hir::HirIdNewtype;
-use narxia_hir::hir_map::{self, HirMap};
-use narxia_hir::visitor::{self as vis, HirVisitor};
-use narxia_hir::{hir, HirId};
+use narxia_hir::hir_map::HirMap;
+use narxia_hir::hir_map::{self};
+use narxia_hir::visitor::HirVisitor;
+use narxia_hir::visitor::{self as vis};
+use narxia_hir::HirId;
 
 use crate::def_id::DefId;
 use crate::tyctxt::TyCtxt;
@@ -243,10 +246,7 @@ struct ScopeDefinedName {
     def_id: DefId,
 }
 
-pub fn analyze_program_structure(
-    tcx: TyCtxt<'_>,
-    mod_id: hir::ModId,
-) -> SemanticAnalysisResult {
+pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> SemanticAnalysisResult {
     let program_structure = build_program_structure(tcx, mod_id);
 
     let scope_names = program_structure
@@ -316,11 +316,7 @@ fn use_path_imported_name(hir_map: &HirMap, path: &hir::UsePath) -> String {
     )
 }
 
-fn resolve_names(
-    tcx: TyCtxt<'_>,
-    mod_id: hir::ModId,
-    analysis_results: &SemanticAnalysisResult,
-) {
+fn resolve_names(tcx: TyCtxt<'_>, mod_id: hir::ModId, analysis_results: &SemanticAnalysisResult) {
     let hir_map = tcx.hir_map();
 
     for scope in analysis_results.program_structure.scopes() {

@@ -1,10 +1,17 @@
-use narxia_proc::{parse_fn, parse_fn_decl};
+use narxia_proc::parse_fn;
+use narxia_proc::parse_fn_decl;
 
-use super::{
-    expr, parse_block, parse_list_rep_simple2, parse_list_simple2, parse_pat, parse_ty_ref,
-    AttemptRecoveryLevel, CompletedMarker, Parser,
-};
-use crate::syntax_kind::{SyntaxKind, T};
+use super::expr;
+use super::parse_block;
+use super::parse_list_rep_simple2;
+use super::parse_list_simple2;
+use super::parse_pat;
+use super::parse_ty_ref;
+use super::AttemptRecoveryLevel;
+use super::CompletedMarker;
+use super::Parser;
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 
 parse_fn_decl! {
     // parser-test:fn-basic
@@ -185,7 +192,7 @@ parse_fn_decl! {
 
     // parser-test:fn-with-simple-params
     // fn input(a0: A0, a1: A1) {}
-    
+
     // parser-test:fn-with-simple-params-default
     // fn input_with_defaults(a0: A0, a1: A1 = A1()) {}
 

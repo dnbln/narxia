@@ -1,16 +1,28 @@
 use core::fmt;
+use std::env;
+use std::io;
 use std::path::PathBuf;
-use std::{env, io, thread, time};
+use std::thread;
+use std::time;
 
-use clap::{ArgAction, Parser};
+use clap::ArgAction;
+use clap::Parser;
 use nexus::bin_context::NexusContext;
-use nexus::cargo_interface::{tests, SysTarget};
+use nexus::cargo_interface;
+use nexus::cargo_interface::tests;
+use nexus::cargo_interface::SysTarget;
 use nexus::duration::NexusDuration;
-use nexus::{
-    cargo_interface, BuildDistribCommand, BuildDistribsBins, BuildSysCmd, ColorConfig,
-    LLVMLinkBehavior, NarxiaNeededBins, NexusOutputGroups, NexusR, ProfileDeterminer,
-    RunCompilerBins, Target,
-};
+use nexus::BuildDistribCommand;
+use nexus::BuildDistribsBins;
+use nexus::BuildSysCmd;
+use nexus::ColorConfig;
+use nexus::LLVMLinkBehavior;
+use nexus::NarxiaNeededBins;
+use nexus::NexusOutputGroups;
+use nexus::NexusR;
+use nexus::ProfileDeterminer;
+use nexus::RunCompilerBins;
+use nexus::Target;
 use prodash::render::line;
 use prodash::unit;
 
@@ -103,8 +115,7 @@ enum App {
     },
 }
 
-#[derive(Debug, clap::ValueEnum, Clone)]
-#[derive(Default)]
+#[derive(Debug, clap::ValueEnum, Clone, Default)]
 enum ParserTestsMode {
     #[default]
     Check,
@@ -119,7 +130,6 @@ impl fmt::Display for ParserTestsMode {
         }
     }
 }
-
 
 fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
     match app {
@@ -184,9 +194,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 .env(llvm_k, llvm_v)
                 .parser_tests(match parser_tests {
                     ParserTestsMode::Check => tests::ParserTestsMode::Check,
-                    ParserTestsMode::Overwrite => {
-                        tests::ParserTestsMode::Overwrite
-                    }
+                    ParserTestsMode::Overwrite => tests::ParserTestsMode::Overwrite,
                 });
 
             #[cfg(debug_assertions)]
@@ -291,10 +299,7 @@ fn main() -> NexusR {
         Err(_) => ColorConfig::Auto,
     };
 
-    let groups = match (
-        env::var("NEXUS_GROUP_BEGIN"),
-        env::var("NEXUS_GROUP_END"),
-    ) {
+    let groups = match (env::var("NEXUS_GROUP_BEGIN"), env::var("NEXUS_GROUP_END")) {
         (Ok(begin), Ok(end)) => Some(NexusOutputGroups::new(begin, end)),
         _ => None,
     };

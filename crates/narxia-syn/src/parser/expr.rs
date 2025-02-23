@@ -1,10 +1,16 @@
-use narxia_proc::{parse_fn, parse_fn_decl};
+use narxia_proc::parse_fn;
+use narxia_proc::parse_fn_decl;
 
-use super::{
-    fun, parse_block, parse_block_insides, parse_list_rep_simple2, parse_list_simple2,
-    AttemptRecoveryLevel, CompletedMarker, Parser,
-};
-use crate::syntax_kind::{SyntaxKind, T};
+use super::fun;
+use super::parse_block;
+use super::parse_block_insides;
+use super::parse_list_rep_simple2;
+use super::parse_list_simple2;
+use super::AttemptRecoveryLevel;
+use super::CompletedMarker;
+use super::Parser;
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 
 parse_fn_decl! {
     // parser-test:num-lit-dec

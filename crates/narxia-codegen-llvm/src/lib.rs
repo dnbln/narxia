@@ -1,11 +1,14 @@
 #![allow(unsafe_code)]
 
-use std::ffi::{CStr, CString};
-use std::{fs, ptr};
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::fs;
+use std::ptr;
 
 use llvm_sys::prelude::*;
 use llvm_sys::*;
-use narxia_codegen::{ir, CodegenBackend};
+use narxia_codegen::ir;
+use narxia_codegen::CodegenBackend;
 
 pub struct Backend {
     context: LLVMContextRef,

@@ -6,9 +6,12 @@ use std::ops::RangeInclusive;
 use std::str::CharIndices;
 
 use super::TokParserState;
-use crate::syntax_kind::{SyntaxKind, T};
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 use crate::text_span::TextSpan;
-use crate::token_source::{Token, TokenError, TokenSource};
+use crate::token_source::Token;
+use crate::token_source::TokenError;
+use crate::token_source::TokenSource;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TextTokenSource<'text> {
@@ -20,9 +23,8 @@ pub struct TextTokenSource<'text> {
 
 #[expect(unsafe_code)]
 mod danger {
-    use crate::token_source::Token;
-
     use super::TextTokenSource;
+    use crate::token_source::Token;
 
     impl TextTokenSource<'_> {
         #[inline(always)]

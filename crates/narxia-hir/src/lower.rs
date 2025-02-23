@@ -12,11 +12,14 @@
 use narxia_src_db::SrcFile;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
-use narxia_syn::syntree::{Token, TreeNode};
+use narxia_syn::syntree::Token;
+use narxia_syn::syntree::TreeNode;
 
 use crate::hir::*;
-use crate::hir_map::{HirElem, HirMap};
-use crate::{HirId, HirSpan};
+use crate::hir_map::HirElem;
+use crate::hir_map::HirMap;
+use crate::HirId;
+use crate::HirSpan;
 
 struct HirLowerCtxt<'arena> {
     src_file: SrcFile,

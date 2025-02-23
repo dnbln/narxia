@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::black_box;
+use criterion::criterion_group;
+use criterion::criterion_main;
+use criterion::Criterion;
 use narxia_driver::DriverCtx;
 use narxia_hir::lower::LowerCtxt;
 use narxia_src_db::SrcFile;

@@ -1,8 +1,11 @@
-use std::{io, sync};
+use std::io;
+use std::sync;
 
 use narxia_hir::hir_map;
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
-use narxia_src_db::{FilePathInfo, Span, SrcFileDatabase};
+use narxia_src_db::FilePathInfo;
+use narxia_src_db::Span;
+use narxia_src_db::SrcFileDatabase;
 
 #[salsa::db]
 #[derive(Default, Clone)]

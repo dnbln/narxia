@@ -91,11 +91,14 @@
 //! }
 //! ```
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
-use std::ops::{Deref, DerefMut};
-use std::path::{Path, PathBuf};
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::path::Path;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Debug, thiserror::Error)]
@@ -240,7 +243,7 @@ where
 impl<T> Default for DirChildren<T>
 where
     T: DirStructureItem,
- {
+{
     fn default() -> Self {
         Self::new()
     }
@@ -481,7 +484,10 @@ pub mod json {
     use std::path::Path;
     use std::str::FromStr;
 
-    use crate::{FromRefForWriter, NewtypeToInner, ReadFrom, WriteTo};
+    use crate::FromRefForWriter;
+    use crate::NewtypeToInner;
+    use crate::ReadFrom;
+    use crate::WriteTo;
 
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
@@ -1021,7 +1027,7 @@ where
 /// let mut v = VersionedString::new("value".to_owned(), "path");
 /// assert!(v.is_clean());
 /// assert!(!v.is_dirty());
-/// 
+///
 /// *v = "new value".to_owned();
 /// assert!(v.is_dirty());
 /// ```

@@ -36,7 +36,9 @@ use core::hint;
 use std::intrinsics;
 use std::marker::PhantomData;
 
-use super::{TokParserState, Token, TokenSource};
+use super::TokParserState;
+use super::Token;
+use super::TokenSource;
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 

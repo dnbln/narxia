@@ -4,8 +4,10 @@ pub extern crate narxia_dir_structures;
 
 pub mod parser_tests {
     use dir_structure::DirStructureItem;
-    use miette::{bail, IntoDiagnostic};
-    use narxia_dir_structures::{parser_tests_dir, ParserTestSingleFolder};
+    use miette::bail;
+    use miette::IntoDiagnostic;
+    use narxia_dir_structures::parser_tests_dir;
+    use narxia_dir_structures::ParserTestSingleFolder;
     use narxia_driver::DriverCtx;
     use narxia_hir::hir_map;
     use narxia_hir_db::HirFile;

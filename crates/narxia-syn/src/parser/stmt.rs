@@ -1,7 +1,14 @@
-use narxia_proc::{parse_fn, parse_fn_decl};
+use narxia_proc::parse_fn;
+use narxia_proc::parse_fn_decl;
 
-use super::{expr, parse_block, parse_pat, parse_ty_ref, CompletedMarker, Parser};
-use crate::syntax_kind::{SyntaxKind, T};
+use super::expr;
+use super::parse_block;
+use super::parse_pat;
+use super::parse_ty_ref;
+use super::CompletedMarker;
+use super::Parser;
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 
 parse_fn_decl! {
     pub parse_stmt: Stmt ::=

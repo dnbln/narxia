@@ -1,14 +1,25 @@
+use std::fmt;
 use std::fmt::Debug;
-use std::{fmt, io, marker};
+use std::io;
+use std::marker;
 
-use owo_colors::{OwoColorize, Style};
-use tracing::field::{Field, Visit};
+use owo_colors::OwoColorize;
+use owo_colors::Style;
+use tracing::field::Field;
+use tracing::field::Visit;
 use tracing::span::Attributes;
-use tracing::{Event, Id, Level, Metadata, Subscriber};
+use tracing::Event;
+use tracing::Id;
+use tracing::Level;
+use tracing::Metadata;
+use tracing::Subscriber;
 use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::layer::{Context, SubscriberExt};
-use tracing_subscriber::registry::{LookupSpan, SpanRef};
-use tracing_subscriber::util::{SubscriberInitExt, TryInitError};
+use tracing_subscriber::layer::Context;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::registry::LookupSpan;
+use tracing_subscriber::registry::SpanRef;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::util::TryInitError;
 use tracing_subscriber::Layer;
 
 struct NarxiaLayerConfig {
@@ -152,11 +163,7 @@ where
             Level::ERROR => ("ERROR", Style::new().red()),
         };
 
-        write!(
-            w,
-            ">>> {}:",
-            style_color.bold().style(name.to_owned())
-        )?;
+        write!(w, ">>> {}:", style_color.bold().style(name.to_owned()))?;
 
         if let Some(message) = message {
             if message.contains('\n') {

@@ -1,9 +1,12 @@
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
+use std::sync::Weak;
 
 use prodash::tree::root::Options;
-use prodash::tree::{Item, Root as Tree};
+use prodash::tree::Item;
+use prodash::tree::Root as Tree;
 
-use crate::{LLVMManager, NexusOutputGroups};
+use crate::LLVMManager;
+use crate::NexusOutputGroups;
 
 struct Shell {
     pub tree: Arc<Tree>,

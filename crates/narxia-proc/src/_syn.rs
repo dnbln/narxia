@@ -1,16 +1,37 @@
 use std::ops;
 
-use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use proc_macro2::Ident;
+use proc_macro2::Span;
+use proc_macro2::TokenStream;
+use quote::format_ident;
+use quote::quote;
+use quote::quote_spanned;
+use quote::ToTokens;
+use syn::braced;
+use syn::bracketed;
+use syn::parenthesized;
 use syn::parse::discouraged::Speculative;
-use syn::parse::{Parse, ParseStream, Peek};
+use syn::parse::Parse;
+use syn::parse::ParseStream;
+use syn::parse::Peek;
+use syn::parse_quote;
+use syn::parse_quote_spanned;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
+use syn::token;
 use syn::token::Comma;
-use syn::{
-    braced, bracketed, parenthesized, parse_quote, parse_quote_spanned, token, Block, Data,
-    DataEnum, DeriveInput, Expr, ExprCall, ExprIf, FnArg, MetaList, Path, Token, Visibility,
-};
+use syn::Block;
+use syn::Data;
+use syn::DataEnum;
+use syn::DeriveInput;
+use syn::Expr;
+use syn::ExprCall;
+use syn::ExprIf;
+use syn::FnArg;
+use syn::MetaList;
+use syn::Path;
+use syn::Token;
+use syn::Visibility;
 
 pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(item as syn::DeriveInput);
@@ -39,7 +60,7 @@ pub fn derive_t(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
         Ok(p) => p,
         Err(e) => return e.to_compile_error().into(),
     };
-    
+
     expand_t(ident, data, sk_path).map_or_else(|e| e.to_compile_error().into(), |t| t.into())
 }
 
@@ -949,12 +970,9 @@ fn expand_match_arm(
                     let pats = no_catch_all
                         .iter()
                         .map(|it| match it {
-                            MatchExtraArmSelector::CatchAll { wild } => {
-                                Err(syn::Error::new_spanned(
-                                    wild,
-                                    "_ should be alone in an match arm",
-                                ))
-                            }
+                            MatchExtraArmSelector::CatchAll { wild } => Err(
+                                syn::Error::new_spanned(wild, "_ should be alone in an match arm"),
+                            ),
                             MatchExtraArmSelector::T { delimiter: _, tt } => Ok(tt),
                         })
                         .collect::<Result<Vec<_>, _>>()?;

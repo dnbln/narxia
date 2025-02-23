@@ -1,7 +1,9 @@
-use std::{cell::RefCell, fmt};
+use std::cell::RefCell;
+use std::fmt;
 
 use narxia_src_db::SrcFile;
-use owo_colors::{OwoColorize, Style};
+use owo_colors::OwoColorize;
+use owo_colors::Style;
 
 use super::*;
 use crate::hir_map::HirElem;
@@ -903,7 +905,6 @@ fn display_expr(f: &mut fmt::Formatter, expr: &Expr, hdc: HirDisplayContext) -> 
             display_expr_id(f, infix.arg, hdc)?;
         }
     }
-
 
     Ok(())
 }

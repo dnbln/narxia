@@ -1,4 +1,5 @@
-use std::{fmt, time};
+use std::fmt;
+use std::time;
 
 pub struct NexusDuration {
     duration: time::Duration,

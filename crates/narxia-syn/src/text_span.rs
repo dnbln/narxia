@@ -1,8 +1,10 @@
-use std::{fmt, ops::Range};
+use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Index;
+use std::ops::Range;
 
-use crate::syntree::{Node, Token};
+use crate::syntree::Node;
+use crate::syntree::Token;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct TextSpan {
@@ -14,13 +16,17 @@ impl TextSpan {
     pub fn of(token: &Token) -> Self {
         let r = token.text_range();
         #[expect(unsafe_code)]
-        unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
+        unsafe {
+            Self::new_unchecked(r.start().into(), r.end().into())
+        }
     }
 
     pub fn of_node(node: &Node) -> Self {
         let r = node.text_range();
         #[expect(unsafe_code)]
-        unsafe { Self::new_unchecked(r.start().into(), r.end().into()) }
+        unsafe {
+            Self::new_unchecked(r.start().into(), r.end().into())
+        }
     }
     pub const fn from_range(range: Range<u32>) -> Self {
         Self::new(range.start, range.end)
@@ -29,7 +35,9 @@ impl TextSpan {
     pub const fn new(start: u32, end: u32) -> Self {
         debug_assert!(start <= end);
         #[expect(unsafe_code)]
-        unsafe { Self::new_unchecked(start, end) }
+        unsafe {
+            Self::new_unchecked(start, end)
+        }
     }
 
     /// # Safety

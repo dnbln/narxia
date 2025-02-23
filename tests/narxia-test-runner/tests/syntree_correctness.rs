@@ -26,10 +26,12 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use miette::{bail, IntoDiagnostic};
-use narxia_syn::syntree::tests_data::{
-    AccessorCalledDataList, AccessorCalledDataReturned, AccessorInfo, ElemRef,
-};
+use miette::bail;
+use miette::IntoDiagnostic;
+use narxia_syn::syntree::tests_data::AccessorCalledDataList;
+use narxia_syn::syntree::tests_data::AccessorCalledDataReturned;
+use narxia_syn::syntree::tests_data::AccessorInfo;
+use narxia_syn::syntree::tests_data::ElemRef;
 use owo_colors::OwoColorize;
 
 struct InputFile {

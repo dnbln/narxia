@@ -1,8 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::path::PathBuf;
 
-use dir_structure::{
-    DirChild, DirChildren, DirStructureItem, ReadFrom, Versioned, VersionedString, WriteTo,
-};
+use dir_structure::DirChild;
+use dir_structure::DirChildren;
+use dir_structure::DirStructureItem;
+use dir_structure::ReadFrom;
+use dir_structure::Versioned;
+use dir_structure::VersionedString;
+use dir_structure::WriteTo;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))

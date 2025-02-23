@@ -46,14 +46,18 @@
 //! Here, `EnumName` doesn't have to match the name of a variant in the [`SyntaxKind`] enum,
 //! but all the variants have to be created through [`syntree_node`].
 
-use std::fmt::{Debug, Formatter};
-use std::{any, fmt};
+use std::any;
+use std::fmt;
+use std::fmt::Debug;
+use std::fmt::Formatter;
 
-use narxia_proc::{syntree_enum, syntree_node};
+use narxia_proc::syntree_enum;
+use narxia_proc::syntree_node;
 use owo_colors::Style;
 
 use crate::language::NarxiaLanguage;
-use crate::syntax_kind::{SyntaxKind, T};
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 use crate::text_span::TextSpan;
 
 pub type Node = rowan::SyntaxNode<NarxiaLanguage>;
@@ -381,7 +385,7 @@ pub trait TreeNode: Sized {
 
     /// # Safety
     /// The following must hold before calling this.
-    /// 
+    ///
     /// ```rust,ignore
     /// Self::can_cast_from_syntax_kind(n.kind()) == true
     /// ```
@@ -1109,7 +1113,8 @@ macro_rules! dbg_node {
 
 pub mod tests_data {
     use crate::syntax_kind::SyntaxKind;
-    use crate::syntree::{Token, TreeNode};
+    use crate::syntree::Token;
+    use crate::syntree::TreeNode;
     use crate::text_span::TextSpan;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

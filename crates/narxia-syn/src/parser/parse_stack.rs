@@ -1,8 +1,9 @@
 use std::cell::RefCell;
-use std::{fmt, panic};
+use std::fmt;
+use std::panic;
 use std::rc::Rc;
-use ::std::thread;
 
+use ::std::thread;
 use owo_colors::OwoColorize;
 
 use crate::parser::ParserDbgStyling;

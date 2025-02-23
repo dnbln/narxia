@@ -1,8 +1,11 @@
 use core::fmt;
 use std::borrow::Cow;
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
-use std::{fs, io};
+use std::fs;
+use std::io;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 use path_absolutize::Absolutize;
 

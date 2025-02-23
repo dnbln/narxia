@@ -1,6 +1,8 @@
+use crate::hir;
 use crate::hir::HirIdNewtype;
 use crate::hir_map::HirMap;
-use crate::{hir, HirId, HirSpan};
+use crate::HirId;
+use crate::HirSpan;
 
 pub trait HirMapQ<'hir> {
     fn run_hir_map_query<T: 'hir, Q: FnOnce(&'hir HirMap) -> T>(&self, q: Q) -> T;

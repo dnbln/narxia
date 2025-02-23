@@ -1,6 +1,11 @@
-use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote};
-use syn::{Field, ItemStruct, Token, Type};
+use proc_macro2::Ident;
+use proc_macro2::TokenStream;
+use quote::format_ident;
+use quote::quote;
+use syn::Field;
+use syn::ItemStruct;
+use syn::Token;
+use syn::Type;
 
 #[proc_macro_derive(DirStructure, attributes(dir_structure))]
 pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -1,12 +1,12 @@
 //! This test checks that the visitor visits all the HIR IDs in the HIR map.
-//! 
+//!
 //! This is useful to ensure that the visitor is not missing any HIR nodes.
 
 use miette::bail;
+use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::HirId;
-use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_test_runner::parser_tests::lower_to_hir;
 
 struct Visitor<'hir> {

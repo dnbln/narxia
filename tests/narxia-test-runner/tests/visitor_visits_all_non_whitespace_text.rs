@@ -16,7 +16,8 @@
 use std::fmt::Write as _;
 
 use dir_structure::NewtypeToInner;
-use miette::{bail, IntoDiagnostic};
+use miette::bail;
+use miette::IntoDiagnostic;
 use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirVisitor;

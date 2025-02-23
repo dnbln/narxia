@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::IntoDiagnostic;
-use narxia_codegen::{ir, CodegenBackend};
+use narxia_codegen::ir;
+use narxia_codegen::CodegenBackend;
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
 use narxia_hir_typechk::sema;

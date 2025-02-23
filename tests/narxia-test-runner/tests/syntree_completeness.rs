@@ -14,15 +14,19 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
-use miette::{bail, IntoDiagnostic};
-use narxia_syn::syntax_kind::SyntaxKind;
-use narxia_syn::syntree::tests_data::{
-    AccessorCalledDataList, AccessorCalledDataReturned, ElemRef,
-};
-use narxia_syn::syntree::{Node, Token, TreeNode};
-use narxia_syn::text_span::TextSpan;
+use miette::bail;
+use miette::IntoDiagnostic;
 use narxia_dir_structures::ParserTestSingleFolder;
-use owo_colors::{OwoColorize, Style};
+use narxia_syn::syntax_kind::SyntaxKind;
+use narxia_syn::syntree::tests_data::AccessorCalledDataList;
+use narxia_syn::syntree::tests_data::AccessorCalledDataReturned;
+use narxia_syn::syntree::tests_data::ElemRef;
+use narxia_syn::syntree::Node;
+use narxia_syn::syntree::Token;
+use narxia_syn::syntree::TreeNode;
+use narxia_syn::text_span::TextSpan;
+use owo_colors::OwoColorize;
+use owo_colors::Style;
 
 fn node_chk(node: &Node) -> impl Fn(&ElemRef) -> bool + '_ {
     |e| e.kind == node.kind() && e.span == TextSpan::of_node(node)
@@ -144,6 +148,4 @@ fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
     Ok(())
 }
 
-narxia_test_runner::test_main_parser_tests_foreach!(|test| {
-    run_for_test(test)
-});
+narxia_test_runner::test_main_parser_tests_foreach!(|test| { run_for_test(test) });

@@ -23,19 +23,26 @@
 
 use std::fmt;
 
-use narxia_proc::{parse_fn, parse_fn_decl};
-use owo_colors::{OwoColorize, Style};
+use narxia_proc::parse_fn;
+use narxia_proc::parse_fn_decl;
+use owo_colors::OwoColorize;
+use owo_colors::Style;
 
 use self::parse_event_handler::GreenTreeBuilderSD;
-use crate::parse_error::{ParseError, ParseErrorInfo};
-use crate::parser::parse_event_handler::{
-    CompletedMarker, ParseEventHandler, ParseEventHandlerPos, TreeBuilder,
-};
-use crate::parser::parse_stack::{ParseStack, ParseStackGuard};
-use crate::syntax_kind::{SyntaxKind, T};
+use crate::parse_error::ParseError;
+use crate::parse_error::ParseErrorInfo;
+use crate::parser::parse_event_handler::CompletedMarker;
+use crate::parser::parse_event_handler::ParseEventHandler;
+use crate::parser::parse_event_handler::ParseEventHandlerPos;
+use crate::parser::parse_event_handler::TreeBuilder;
+use crate::parser::parse_stack::ParseStack;
+use crate::parser::parse_stack::ParseStackGuard;
+use crate::syntax_kind::SyntaxKind;
+use crate::syntax_kind::T;
 use crate::syntree::GreenTree;
 use crate::token_source::buffered_ts::BufferedTokenSource;
-use crate::token_source::{DynTsContainer, TokenSource};
+use crate::token_source::DynTsContainer;
+use crate::token_source::TokenSource;
 
 mod parse_event_handler;
 mod parse_stack;
@@ -208,7 +215,6 @@ impl<'a> Parser<'a> {
     #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
-        
         self.pstk.push(name, can_recover, self.ts.current_pos())
     }
 

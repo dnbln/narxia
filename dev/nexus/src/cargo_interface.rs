@@ -1,22 +1,33 @@
 use std::ffi::OsString;
 use std::fmt::Write;
-use std::io::{self, BufRead, Read};
+use std::io::BufRead;
+use std::io::Read;
+use std::io::{self};
+use std::mem;
 use std::path::PathBuf;
-use std::sync::mpsc::{self, TryRecvError};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::process;
+use std::sync::mpsc::TryRecvError;
+use std::sync::mpsc::{self};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
+use std::thread;
 use std::thread::JoinHandle;
+use std::time;
 use std::time::Instant;
-use std::{mem, process, thread, time};
 
-use cargo_metadata::{diagnostic, TargetKind};
-use miette::{bail, IntoDiagnostic};
+use cargo_metadata::diagnostic;
+use cargo_metadata::TargetKind;
+use miette::bail;
+use miette::IntoDiagnostic;
 use owo_colors::OwoColorize;
 use owo_colors::Stream::*;
 use prodash::tree::Item;
 use prodash::unit;
 
 use crate::duration::NexusDuration;
-use crate::{LLVMPrefixInfo, NexusR};
+use crate::LLVMPrefixInfo;
+use crate::NexusR;
 
 #[derive(Debug, Clone)]
 pub enum PkgSpec {
@@ -595,7 +606,11 @@ impl RunCompilerCommand {
 
 pub mod tests {
     use core::fmt;
-    use std::{io, mem, process, str, thread};
+    use std::io;
+    use std::mem;
+    use std::process;
+    use std::str;
+    use std::thread;
 
     use owo_colors::Style;
 
@@ -1199,7 +1214,7 @@ impl Format {
 
     pub fn run(&self, item: &mut Item) -> NexusR {
         let mut cmd = cargo_command();
-        cmd.arg("fmt").arg("--workspace");
+        cmd.arg("fmt").arg("--all");
 
         let mut child = cmd.spawn().into_diagnostic()?;
         let status = child.wait().into_diagnostic()?;

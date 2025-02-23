@@ -1,9 +1,10 @@
 #![feature(trait_upcasting)]
 
-
 use std::sync;
 
-use narxia_hir::{hir, hir_map::HirMap, lower};
+use narxia_hir::hir;
+use narxia_hir::hir_map::HirMap;
+use narxia_hir::lower;
 
 #[salsa::db]
 pub trait HirDb: salsa::Database + narxia_syn_db::SynDb {
