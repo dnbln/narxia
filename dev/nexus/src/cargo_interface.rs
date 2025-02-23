@@ -607,7 +607,6 @@ impl RunCompilerCommand {
 pub mod tests {
     use core::fmt;
     use std::io;
-    use std::mem;
     use std::process;
     use std::str;
     use std::thread;
@@ -758,8 +757,8 @@ pub mod tests {
 
             let start_time = Instant::now();
 
-            let stdout = mem::take(&mut child.stdout).unwrap();
-            let stderr = mem::take(&mut child.stderr).unwrap();
+            let stdout = child.stdout.take().unwrap();
+            let stderr = child.stderr.take().unwrap();
 
             {
                 let capture = self.capture_nextest_stderr;
@@ -816,7 +815,7 @@ pub mod tests {
 
             for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
-                // println!("{}", message);
+                println!("{}", message);
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;
 
                 match line {
