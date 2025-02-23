@@ -634,17 +634,23 @@ pub mod tests {
 
         cmd.envs(env);
 
-        let output = cmd.output().into_diagnostic()?;
+        let mut proc = cmd.spawn().into_diagnostic()?;
 
-        if !output.status.success() {
-            bail!(
-                "cargo nextest list failed:\n{}",
-                String::from_utf8_lossy_owned(output.stderr)
-            );
+        let stdout = proc.stdout.take().unwrap();
+        let stderr = proc.stderr.take().unwrap();
+
+        let stdout = async_read(stdout);
+        let stderr = async_read(stderr);
+
+        let result = proc.wait().into_diagnostic()?;
+        let stdout = stdout.join().unwrap();
+
+        if !result.success() {
+            let stderr = stderr.join().unwrap();
+            bail!("cargo nextest list failed:\n{stderr}");
         }
 
-        let stdout = str::from_utf8(&output.stdout).into_diagnostic()?;
-        let summary = nextest_metadata::TestListSummary::parse_json(stdout).into_diagnostic()?;
+        let summary = nextest_metadata::TestListSummary::parse_json(&stdout).into_diagnostic()?;
 
         Ok(summary)
     }
