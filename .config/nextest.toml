@@ -1,3 +1,6 @@
+[profile.default]
+retries = { backoff = "exponential", count = 3, delay = "5s" }
+
 [[profile.default.overrides]]
 filter = "package(=narxia-test-runner) & binary(*_nxtimq*)"
 slow-timeout = { period = "2s", terminate-after = 2, grace-period = "1s" }
