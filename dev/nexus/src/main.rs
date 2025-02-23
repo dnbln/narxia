@@ -168,19 +168,21 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             };
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
-                Some(
-                    tests::list_tests(
-                        test_filter.as_ref(),
-                        [bins
-                            .llvm
-                            .as_ref()
-                            .cloned()
-                            .map(|p| p.to_env())
-                            .map(|(a, b)| (a.into(), b.into()))
-                            .unwrap()],
-                    )?
-                    .test_count,
-                )
+                let test_count = tests::list_tests(
+                    test_filter.as_ref(),
+                    [bins
+                        .llvm
+                        .as_ref()
+                        .cloned()
+                        .map(|p| p.to_env())
+                        .map(|(a, b)| (a.into(), b.into()))
+                        .unwrap()],
+                )?
+                .test_count;
+
+                item.info(format!("Running {test_count} tests"));
+
+                Some(test_count)
             } else {
                 None
             };
