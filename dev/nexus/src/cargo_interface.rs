@@ -1205,18 +1205,18 @@ impl Lint {
                     diagnostic::DiagnosticLevel::Error => {
                         let rendered = compiler_message.message.rendered.as_ref().unwrap();
                         diagnostics.push_str(rendered);
-                        diagnostics.push('\n');
+                        diagnostics.push_str("\n\n\n");
                     }
                     diagnostic::DiagnosticLevel::Warning => {
                         let rendered = compiler_message.message.rendered.as_ref().unwrap();
-                        eprintln!("{rendered}");
+                        eprintln!("{rendered}\n\n");
                     }
                     _ => {}
                 }
             }
         }
 
-        eprintln!("{diagnostics}");
+        eprintln!("{diagnostics}\n\n");
 
         let status = child.wait().into_diagnostic()?;
 

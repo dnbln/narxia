@@ -199,7 +199,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     ParserTestsMode::Overwrite => tests::ParserTestsMode::Overwrite,
                 })
                 .debug_nextest_messages(
-                    std::env::var("NEXUS_DEBUG_NEXTEST_OUTPUT").is_ok_and(|it| it == "1"),
+                    env::var("NEXUS_DEBUG_NEXTEST_OUTPUT").is_ok_and(|it| it == "1"),
                 );
 
             #[cfg(debug_assertions)]
