@@ -57,7 +57,7 @@ jobs:
       - name: Test
         run: cargo nexus test --no-fail-fast
         timeout-minutes: 3
-      # - name: Build
-      #   run: cargo build -p narxia-driver --bin narxia-driver
-      # - name: Test
-      #   run: cargo nextest run --workspace
+      - name: Format check
+        run: cargo nexus build-sys fmt --check
+      - name: Lint
+        run: cargo nexus build-sys lint

@@ -1174,8 +1174,7 @@ impl Lint {
                     }
                     diagnostic::DiagnosticLevel::Warning => {
                         let rendered = compiler_message.message.rendered.as_ref().unwrap();
-                        weak_diagnostics.push_str(rendered);
-                        weak_diagnostics.push('\n');
+                        eprintln!("{rendered}");
                     }
                     _ => {}
                 }
@@ -1199,7 +1198,9 @@ impl Lint {
     }
 }
 
-pub struct Format {}
+pub struct Format {
+    check: bool,
+}
 
 impl Default for Format {
     fn default() -> Self {
@@ -1209,12 +1210,21 @@ impl Default for Format {
 
 impl Format {
     pub fn new() -> Self {
-        Self {}
+        Self { check: false }
+    }
+
+    pub fn check(mut self, check: bool) -> Self {
+        self.check = check;
+        self
     }
 
     pub fn run(&self, item: &mut Item) -> NexusR {
         let mut cmd = cargo_command();
         cmd.arg("fmt").arg("--all");
+
+        if self.check {
+            cmd.arg("--check");
+        }
 
         let mut child = cmd.spawn().into_diagnostic()?;
         let status = child.wait().into_diagnostic()?;

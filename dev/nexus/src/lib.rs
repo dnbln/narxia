@@ -57,7 +57,10 @@ pub enum BuildSysCmd {
 
     #[clap(name = "format")]
     #[clap(alias = "fmt")]
-    Format,
+    Format {
+        #[clap(long)]
+        check: bool,
+    },
 }
 
 impl BuildSysCmd {
@@ -96,9 +99,9 @@ impl BuildSysCmd {
                     .fix(fix)
                     .run(&mut item)?;
             }
-            Self::Format => {
+            Self::Format { check } => {
                 let mut item = cx.new_child("Format");
-                cargo_interface::Format::new().run(&mut item)?;
+                cargo_interface::Format::new().check(check).run(&mut item)?;
             }
         }
 
