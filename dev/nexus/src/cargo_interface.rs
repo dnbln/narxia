@@ -817,7 +817,7 @@ pub mod tests {
 
             for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
-                println!("{}", message);
+                // println!("{}", message);
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;
 
                 match line {

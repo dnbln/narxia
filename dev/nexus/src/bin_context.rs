@@ -23,7 +23,7 @@ impl NexusContext {
     pub fn new(groups: Option<NexusOutputGroups>) -> (Self, Weak<Tree>) {
         let tree = Arc::new(
             Options {
-                message_buffer_capacity: 300,
+                message_buffer_capacity: 30,
                 ..Default::default()
             }
             .create(),
