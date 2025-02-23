@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: sudo apt update && sudo apt install clang ninja-build
       - name: Install rust
-        run: rustup install nightly && rustup default nightly
+        run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v1
         with:
