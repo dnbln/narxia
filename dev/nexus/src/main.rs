@@ -197,7 +197,10 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 .parser_tests(match parser_tests {
                     ParserTestsMode::Check => tests::ParserTestsMode::Check,
                     ParserTestsMode::Overwrite => tests::ParserTestsMode::Overwrite,
-                });
+                })
+                .debug_nextest_messages(
+                    std::env::var("NEXUS_DEBUG_NEXTEST_OUTPUT").is_ok_and(|it| it == "1"),
+                );
 
             #[cfg(debug_assertions)]
             let run_tests = run_tests.capture_nextest_output(capture_nextest);

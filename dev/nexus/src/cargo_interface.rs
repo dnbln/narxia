@@ -661,6 +661,7 @@ pub mod tests {
         profile: String,
         parser_tests_mode: ParserTestsMode,
         envs: Vec<(OsString, OsString)>,
+        debug_nextest_messages: bool,
     }
 
     #[derive(Default)]
@@ -685,6 +686,7 @@ pub mod tests {
                 profile: "dev".to_string(),
                 parser_tests_mode: ParserTestsMode::default(),
                 envs: Vec::new(),
+                debug_nextest_messages: false,
             }
         }
 
@@ -715,6 +717,11 @@ pub mod tests {
 
         pub fn parser_tests(mut self, mode: ParserTestsMode) -> Self {
             self.parser_tests_mode = mode;
+            self
+        }
+
+        pub fn debug_nextest_messages(mut self, debug: bool) -> Self {
+            self.debug_nextest_messages = debug;
             self
         }
 
@@ -817,7 +824,9 @@ pub mod tests {
 
             for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
-                // println!("{}", message);
+                if self.debug_nextest_messages {
+                    println!("{}", message);
+                }
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;
 
                 match line {

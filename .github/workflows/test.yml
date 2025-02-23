@@ -20,6 +20,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Setup debug environment variables
+        if: ${{ runner.debug == '1' }}
+        run: |
+          echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
       - name: Install dependencies
         run: sudo apt update && sudo apt install clang ninja-build
       - name: Install rust
