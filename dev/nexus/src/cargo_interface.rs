@@ -813,6 +813,8 @@ pub mod tests {
                 total_time: 0.0,
             };
 
+            let _tests = groups.map(|g| g.begin("Test results"));
+
             for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
                 println!("{}", message);
@@ -1002,10 +1004,8 @@ pub mod tests {
                 }
             }
 
-            {
-                let _tests = groups.map(|g| g.begin("Test results"));
-                println!("{out}\n");
-            }
+            println!("{out}\n");
+            drop(_tests);
 
             if let Some(item) = item {
                 let initial = match (summary.passed, summary.failed) {
