@@ -758,7 +758,10 @@ pub mod tests {
             }
 
             cmd.stdout(process::Stdio::piped());
-            cmd.stderr(process::Stdio::piped());
+
+            if self.capture_nextest_stderr {
+                cmd.stderr(process::Stdio::piped());
+            }
 
             let mut child = cmd.spawn().into_diagnostic()?;
 
@@ -768,15 +771,25 @@ pub mod tests {
             let stderr = child.stderr.take().unwrap();
 
             {
-                let capture = self.capture_nextest_stderr;
-                thread::spawn(move || {
-                    let mut stderr = stderr;
-                    if capture {
-                        let _ = io::copy(&mut stderr, &mut io::sink());
-                    } else {
-                        let _ = io::copy(&mut stderr, &mut io::stderr());
-                    }
-                });
+                if self.capture_nextest_stderr {
+                    thread::spawn(move || {
+                        let mut stderr = stderr;
+                        loop {
+                            let num = stderr.read(&mut [0; 1024]);
+                            match num {
+                                Ok(0) => break,
+                                Ok(_) => {}
+                                Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+                                    break;
+                                }
+                                Err(e) => {
+                                    eprintln!("Error reading stderr: {e}");
+                                    break;
+                                }
+                            }
+                        }
+                    });
+                }
             }
 
             struct TestResult {
@@ -833,32 +846,27 @@ pub mod tests {
                     OutputLine::Test(test_event) => match test_event {
                         TestEvent::Started { name } => {}
                         TestEvent::Ok { name, exec_time } => {
-                            if let Some(item) = &mut item {
-                                let (suite, test) = name.split_once('$').unwrap();
-                                tests.push(TestResult {
-                                    suite: suite.to_owned(),
-                                    test: test.to_owned(),
-                                    result: TestResultKind::Passed { exec_time },
-                                });
-                                item.inc();
-                            }
+                            let (suite, test) = name.split_once('$').unwrap();
+                            tests.push(TestResult {
+                                suite: suite.to_owned(),
+                                test: test.to_owned(),
+                                result: TestResultKind::Passed { exec_time },
+                            });
+                            item.as_deref().map(Item::inc);
                         }
                         TestEvent::Failed {
                             name,
                             exec_time,
                             info,
                         } => {
-                            if let Some(item) = &mut item {
-                                let (suite, test) = name.split_once('$').unwrap();
+                            let (suite, test) = name.split_once('$').unwrap();
 
-                                tests.push(TestResult {
-                                    suite: suite.to_owned(),
-                                    test: test.to_owned(),
-                                    result: TestResultKind::Failed { exec_time, info },
-                                });
-
-                                item.inc();
-                            }
+                            tests.push(TestResult {
+                                suite: suite.to_owned(),
+                                test: test.to_owned(),
+                                result: TestResultKind::Failed { exec_time, info },
+                            });
+                            item.as_deref().map(Item::inc);
                         }
                     },
                     OutputLine::Suite(suite_event) => match suite_event {
