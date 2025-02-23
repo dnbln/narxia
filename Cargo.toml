@@ -58,7 +58,7 @@ glob = "0.3.0"
 human-panic = "2.0.0"
 humantime = "2.1.0"
 libtest-mimic = "0.7.0"
-llvm-sys = { version = "191.0.0" }
+llvm-sys = { version = "191.0.0", features = ["prefer-dynamic"] }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"

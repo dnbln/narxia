@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::IntoDiagnostic;
+use narxia_codegen::CodegenBackend;
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
 
@@ -10,7 +11,7 @@ use narxia_driver::HirDbg;
 #[command(author, version)]
 enum NarxiaDriverCommand {
     /// Parse the given file.
-    /// 
+    ///
     /// This command will parse the given file and print the resulting syntax tree.
     #[clap(name = "parse")]
     Parse(NarxiaDriverParseCommand),
@@ -22,6 +23,9 @@ enum NarxiaDriverCommand {
     Hiri(NarxiaDriverHiriCommand),
     #[clap(name = "sema-analysis")]
     SemaAnalysis(NarxiaDriverSemaAnalysisCommand),
+    #[clap(name = "codegen")]
+    #[clap(alias = "cg")]
+    Codegen(NarxiaDriverCodegenCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -47,6 +51,13 @@ pub struct NarxiaDriverHiriCommand {
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverSemaAnalysisCommand {
     file: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct NarxiaDriverCodegenCommand {
+    file: PathBuf,
+    #[clap(long, short, default_value = "out.ll")]
+    out: PathBuf,
 }
 
 fn main() -> miette::Result<()> {
@@ -143,7 +154,8 @@ fn main() -> miette::Result<()> {
 
             let hir_mod = hir.mod_def(&ctx.db);
 
-            let analysis_results = narxia_hir_typechk::sema::analyze_program_structure(tcx, hir_mod);
+            let analysis_results =
+                narxia_hir_typechk::sema::analyze_program_structure(tcx, hir_mod);
 
             println!("{:?}", analysis_results);
 
@@ -200,6 +212,58 @@ fn main() -> miette::Result<()> {
             let mut ictx = narxia_hiri::InterpContext::new(&*hir_map);
 
             narxia_hiri::interp_mod(&mut ictx, hir_map.get_mod(hir_mod));
+        }
+
+        NarxiaDriverCommand::Codegen(cg) => {
+            narxia_log::i!("Codegen command: {cg:?}");
+
+            let file = cg.file;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+
+            narxia_log::i!("Read file");
+
+            ctx.trace_file(file);
+
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+
+            narxia_log::i!("Parsed file");
+
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
+
+            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            narxia_log::i!("Lowered file");
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
+
+            let mut cg_tyctxt = narxia_codegen::TyCtxt::new();
+            let unit_ty = cg_tyctxt.add_ty(narxia_codegen::ir::Ty::Unit);
+            let fty = cg_tyctxt.add_ty(narxia_codegen::ir::Ty::Function(
+                narxia_codegen::ir::FunctionTy {
+                    args: vec![],
+                    ret: unit_ty,
+                },
+            ));
+
+            narxia_codegen_llvm::Backend::new()
+                .generate_code(
+                    &cg_tyctxt,
+                    &narxia_codegen::ir::Mod {
+                        globals: vec![],
+                        functions: vec![],
+                        global_code: narxia_codegen::ir::Function {
+                            name: "global".to_string(),
+                            ty: fty,
+                            block: narxia_codegen::ir::Block { instr: vec![] },
+                        },
+                    },
+                    narxia_codegen::Out::File(cg.out.clone()),
+                )
+                .unwrap();
         }
     }
 

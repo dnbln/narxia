@@ -17,6 +17,7 @@ miette.workspace = true
 salsa.workspace = true
 human-panic.workspace = true
 
+narxia-codegen.workspace = true
 narxia-codegen-llvm.workspace = true
 narxia-log.workspace = true
 narxia-log-impl.workspace = true

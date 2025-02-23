@@ -1353,6 +1353,7 @@ dependencies = [
  "criterion",
  "human-panic",
  "miette",
+ "narxia-codegen",
  "narxia-codegen-llvm",
  "narxia-data-structures",
  "narxia-hir",
