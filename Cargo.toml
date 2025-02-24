@@ -84,6 +84,7 @@ zip = "0.5.11"
 [workspace.lints.rust]
 unsafe_code = "deny"
 unused_imports = "deny"
+unused_unsafe = "deny"
 
 [workspace.lints.clippy]
 absolute_paths = "deny"
