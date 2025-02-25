@@ -1,4 +1,4 @@
-#![allow(unsafe_code)]
+#![expect(unsafe_code, reason = "This module is a wrapper around LLVM's C API.")]
 
 use std::ffi;
 use std::iter;
@@ -8,6 +8,53 @@ use std::slice;
 use llvm_sys::analysis;
 use llvm_sys::core;
 use llvm_sys::prelude::*;
+use llvm_sys::LLVMIntPredicate;
+
+fn transparent_downcast_slice<T, U>(t: &[T]) -> &[U]
+where
+    T: TransparentDowncast<Inner = U>,
+{
+    let p = t.as_ptr();
+    let len = t.len();
+
+    unsafe { slice::from_raw_parts(p as *const U, len) }
+}
+
+fn transparent_downcast<T, U>(t: &[T]) -> (*const U, u32)
+where
+    T: TransparentDowncast<Inner = U>,
+{
+    let downcasted = transparent_downcast_slice(t);
+    let p = downcasted.as_ptr();
+    let len = downcasted.len();
+
+    (p as *const U, len as u32)
+}
+
+fn transparent_downcast_to_slice_mut<T, U>(t: &mut [T]) -> &mut [U]
+where
+    T: TransparentDowncast<Inner = U>,
+{
+    let p = t.as_mut_ptr();
+    let len = t.len();
+
+    unsafe { slice::from_raw_parts_mut(p as *mut U, len) }
+}
+
+fn transparent_downcast_mut<T, U>(t: &mut [T]) -> (*mut U, u32)
+where
+    T: TransparentDowncast<Inner = U>,
+{
+    let downcasted = transparent_downcast_to_slice_mut(t);
+    let p = downcasted.as_mut_ptr();
+    let len = downcasted.len();
+
+    (p as *mut U, len as u32)
+}
+
+unsafe trait TransparentDowncast {
+    type Inner;
+}
 
 #[derive(Clone, Copy)]
 #[repr(transparent)]
@@ -15,19 +62,16 @@ pub struct Ty {
     ty: LLVMTypeRef,
 }
 
+unsafe impl TransparentDowncast for Ty {
+    type Inner = LLVMTypeRef;
+}
+
 impl Ty {
     pub fn function(params: &mut [Ty], ret: Ty, is_var_arg: bool) -> Self {
-        let p = params.as_mut_ptr();
-        let params_len = params.len();
-        let params_p = unsafe { slice::from_raw_parts_mut(p as *mut LLVMTypeRef, params_len) };
+        let (params, params_len) = transparent_downcast_mut(params);
         Self {
             ty: unsafe {
-                core::LLVMFunctionType(
-                    ret.ty,
-                    params_p.as_mut_ptr(),
-                    params_p.len() as u32,
-                    is_var_arg as LLVMBool,
-                )
+                core::LLVMFunctionType(ret.ty, params, params_len, is_var_arg as LLVMBool)
             },
         }
     }
@@ -36,6 +80,14 @@ impl Ty {
         VRef {
             value: unsafe { core::LLVMConstInt(self.ty, value, sign_extend as LLVMBool) },
         }
+    }
+
+    pub fn true_value(&self) -> VRef {
+        self.const_int(1, false)
+    }
+
+    pub fn false_value(&self) -> VRef {
+        self.const_int(0, false)
     }
 }
 
@@ -121,14 +173,28 @@ impl Drop for Builder {
     }
 }
 
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct BRef {
+    block: LLVMBasicBlockRef,
+}
+
+unsafe impl TransparentDowncast for BRef {
+    type Inner = LLVMBasicBlockRef;
+}
+
 impl Builder {
     fn new_in_context(context: &Ctxt) -> Self {
         let builder = unsafe { core::LLVMCreateBuilderInContext(context.context) };
         Self { builder }
     }
 
-    pub fn make_block(&self, context: &Ctxt, func: VRef, name: &str) -> BlockBuilder {
-        BlockBuilder::new(context, self, func, name)
+    pub fn build_block(&self, block: BRef) -> BlockBuilder {
+        BlockBuilder::build_block(self, block)
+    }
+
+    pub fn create_block(&self, context: &Ctxt, func: VRef, name: &str) -> BRef {
+        BlockBuilder::create_block(context, func, name)
     }
 
     fn build_add(&self, left: VRef, right: VRef, name: &str) -> VRef {
@@ -187,6 +253,61 @@ impl Builder {
         })
     }
 
+    fn build_phi(&self, ty: Ty, phi: impl FnOnce(&mut PhiBuilder), name: &str) -> VRef {
+        let phi_v = with_string(name, |name| unsafe {
+            VRef {
+                value: core::LLVMBuildPhi(self.builder, ty.ty, name),
+            }
+        });
+        let mut phi_builder = PhiBuilder { phi: phi_v };
+        phi(&mut phi_builder);
+        
+        phi_v
+    }
+
+    fn build_int_cmp(&self, op: IntCmp, left: VRef, right: VRef, name: &str) -> VRef {
+        with_string(name, |name| unsafe {
+            VRef {
+                value: core::LLVMBuildICmp(
+                    self.builder,
+                    op.to_llvm_int_predicate(),
+                    left.value,
+                    right.value,
+                    name,
+                ),
+            }
+        })
+    }
+
+    fn build_br(&self, block: BRef) {
+        unsafe {
+            core::LLVMBuildBr(self.builder, block.block);
+        }
+    }
+
+    fn build_cond_br(&self, cond: VRef, then_block: BRef, else_block: BRef) {
+        unsafe {
+            core::LLVMBuildCondBr(self.builder, cond.value, then_block.block, else_block.block);
+        }
+    }
+
+    fn build_call(&self, func: VRef, func_ty: Ty, args: &mut [VRef], name: &str) -> VRef {
+        let (args, args_count) = transparent_downcast_mut(args);
+
+        with_string(name, |name| unsafe {
+            VRef {
+                value: core::LLVMBuildCall2(
+                    self.builder,
+                    func_ty.ty,
+                    func.value,
+                    args,
+                    args_count,
+                    name,
+                ),
+            }
+        })
+    }
+
     fn build_ret(&self, value: VRef) -> VRef {
         VRef {
             value: unsafe { core::LLVMBuildRet(self.builder, value.value) },
@@ -200,26 +321,91 @@ impl Builder {
     }
 }
 
+pub(crate) struct PhiBuilder {
+    phi: VRef,
+}
+
+impl PhiBuilder {
+    pub fn branch(&mut self, block: BRef, value: VRef) {
+        unsafe {
+            core::LLVMAddIncoming(
+                self.phi.value,
+                &mut [value.value] as *mut LLVMValueRef,
+                &mut [block.block] as *mut LLVMBasicBlockRef,
+                1,
+            );
+        }
+    }
+}
+
 pub(crate) struct BlockBuilder<'b> {
     builder: &'b Builder,
-    block: LLVMBasicBlockRef,
+    block: BRef,
 }
 
 impl<'b> BlockBuilder<'b> {
-    pub fn new(context: &Ctxt, builder: &'b Builder, func: VRef, name: &str) -> Self {
-        let s = ffi::CString::new(name).unwrap();
-        let block = unsafe {
-            let block =
-                core::LLVMAppendBasicBlockInContext(context.context, func.value, s.as_ptr());
-            core::LLVMPositionBuilderAtEnd(builder.builder, block);
-            block
-        };
+    pub fn build_block(builder: &'b Builder, block: BRef) -> Self {
+        unsafe {
+            core::LLVMPositionBuilderAtEnd(builder.builder, block.block);
+        }
 
         Self { builder, block }
     }
 
+    pub fn create_block(context: &Ctxt, func: VRef, name: &str) -> BRef {
+        with_string(name, |name| unsafe {
+            BRef {
+                block: core::LLVMAppendBasicBlockInContext(context.context, func.value, name),
+            }
+        })
+    }
+
     pub fn add(&self, left: VRef, right: VRef) -> VRef {
         self.builder.build_add(left, right, "add")
+    }
+
+    pub fn sub(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_sub(left, right, "sub")
+    }
+
+    pub fn mul(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_mul(left, right, "mul")
+    }
+
+    pub fn idiv(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_idiv(left, right, "idiv")
+    }
+
+    pub fn udiv(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_udiv(left, right, "udiv")
+    }
+
+    pub fn imod(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_imod(left, right, "imod")
+    }
+
+    pub fn umod(&self, left: VRef, right: VRef) -> VRef {
+        self.builder.build_umod(left, right, "umod")
+    }
+
+    pub fn phi(&self, ty: Ty, phi: impl FnOnce(&mut PhiBuilder)) -> VRef {
+        self.builder.build_phi(ty, phi, "phi")
+    }
+
+    pub fn int_cmp(&self, op: IntCmp, left: VRef, right: VRef) -> VRef {
+        self.builder.build_int_cmp(op, left, right, "cmp")
+    }
+
+    pub fn br(&self, block: BRef) {
+        self.builder.build_br(block);
+    }
+
+    pub fn cond_br(&self, cond: VRef, then_block: BRef, else_block: BRef) {
+        self.builder.build_cond_br(cond, then_block, else_block);
+    }
+
+    pub fn call(&self, func: VRef, func_ty: Ty, args: &mut [VRef]) -> VRef {
+        self.builder.build_call(func, func_ty, args, "call")
     }
 
     pub fn ret_void(&self) -> VRef {
@@ -232,9 +418,52 @@ impl<'b> BlockBuilder<'b> {
 }
 
 #[derive(Clone, Copy)]
+pub enum IntCmp {
+    EQ,
+    NE,
+    UGT,
+    UGE,
+    ULT,
+    ULE,
+    SGT,
+    SGE,
+    SLT,
+    SLE,
+}
+
+impl IntCmp {
+    fn to_llvm_int_predicate(self) -> LLVMIntPredicate {
+        match self {
+            IntCmp::EQ => LLVMIntPredicate::LLVMIntEQ,
+            IntCmp::NE => LLVMIntPredicate::LLVMIntNE,
+            IntCmp::UGT => LLVMIntPredicate::LLVMIntUGT,
+            IntCmp::UGE => LLVMIntPredicate::LLVMIntUGE,
+            IntCmp::ULT => LLVMIntPredicate::LLVMIntULT,
+            IntCmp::ULE => LLVMIntPredicate::LLVMIntULE,
+            IntCmp::SGT => LLVMIntPredicate::LLVMIntSGT,
+            IntCmp::SGE => LLVMIntPredicate::LLVMIntSGE,
+            IntCmp::SLT => LLVMIntPredicate::LLVMIntSLT,
+            IntCmp::SLE => LLVMIntPredicate::LLVMIntSLE,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
 #[repr(transparent)]
 pub struct VRef {
     value: LLVMValueRef,
+}
+
+unsafe impl TransparentDowncast for VRef {
+    type Inner = LLVMValueRef;
+}
+
+impl VRef {
+    pub fn get_param(&self, param_id: u32) -> VRef {
+        VRef {
+            value: unsafe { core::LLVMGetParam(self.value, param_id) },
+        }
+    }
 }
 
 pub struct StandardTypes {
@@ -297,7 +526,7 @@ impl StandardTypes {
     }
 
     pub fn i32_ty(&self) -> Ty {
-        Ty { ty: self.i8 }
+        Ty { ty: self.i32 }
     }
 }
 
