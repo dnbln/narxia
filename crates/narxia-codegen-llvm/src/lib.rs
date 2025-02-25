@@ -78,7 +78,7 @@ impl CodegenBackend for Backend {
         let n = factorial.get_param(0);
         let eq_zero = entry_bb.int_cmp(IntCmp::EQ, n, i32_ty.const_int(0, false));
 
-        let _ = entry_bb.cond_br(eq_zero, end, recursive_case);
+        entry_bb.cond_br(eq_zero, end, recursive_case);
 
         let recursive_case_bb = self.builder.build_block(recursive_case);
 

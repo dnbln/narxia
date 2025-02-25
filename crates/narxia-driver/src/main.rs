@@ -1,3 +1,6 @@
+use core::fmt;
+use std::ffi::OsString;
+use std::io;
 use std::path::PathBuf;
 
 use clap::Parser;
@@ -55,11 +58,36 @@ pub struct NarxiaDriverSemaAnalysisCommand {
     file: PathBuf,
 }
 
+#[derive(Debug, Clone)]
+enum Out {
+    File(PathBuf),
+    Stdout,
+}
+
+impl From<OsString> for Out {
+    fn from(value: OsString) -> Self {
+        if value == "-" {
+            Out::Stdout
+        } else {
+            Out::File(value.into())
+        }
+    }
+}
+
+impl fmt::Display for Out {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Out::File(path) => write!(f, "{}", path.display()),
+            Out::Stdout => write!(f, "stdout"),
+        }
+    }
+}
+
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverCodegenCommand {
     file: PathBuf,
-    #[clap(long, short, default_value = "out.ll")]
-    out: PathBuf,
+    #[clap(long, short, default_value = "-")]
+    out: Out,
 }
 
 fn main() -> miette::Result<()> {
@@ -248,6 +276,12 @@ fn main() -> miette::Result<()> {
                 ret: unit_ty,
             }));
 
+            let mut stdout = io::stdout();
+            let out = match &cg.out {
+                Out::File(path_buf) => narxia_codegen::Out::File(path_buf.clone()),
+                Out::Stdout => narxia_codegen::Out::ToWrite(&mut stdout),
+            };
+
             narxia_codegen_llvm::Backend::new()
                 .generate_code(
                     &cg_tyctxt,
@@ -260,7 +294,7 @@ fn main() -> miette::Result<()> {
                             block: ir::Block { instr: vec![] },
                         },
                     },
-                    narxia_codegen::Out::File(cg.out.clone()),
+                    out,
                 )
                 .unwrap();
         }

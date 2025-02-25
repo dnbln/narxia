@@ -25,10 +25,8 @@ where
     T: TransparentDowncast<Inner = U>,
 {
     let downcasted = transparent_downcast_slice(t);
-    let p = downcasted.as_ptr();
-    let len = downcasted.len();
 
-    (p as *const U, len as u32)
+    (downcasted.as_ptr(), downcasted.len() as u32)
 }
 
 fn transparent_downcast_to_slice_mut<T, U>(t: &mut [T]) -> &mut [U]
@@ -46,12 +44,12 @@ where
     T: TransparentDowncast<Inner = U>,
 {
     let downcasted = transparent_downcast_to_slice_mut(t);
-    let p = downcasted.as_mut_ptr();
-    let len = downcasted.len();
 
-    (p as *mut U, len as u32)
+    (downcasted.as_mut_ptr(), downcasted.len() as u32)
 }
 
+/// # Safety
+/// `Self` should be a `#[repr(transparent)]` wrapper around `Self::Inner`.
 unsafe trait TransparentDowncast {
     type Inner;
 }
@@ -261,7 +259,7 @@ impl Builder {
         });
         let mut phi_builder = PhiBuilder { phi: phi_v };
         phi(&mut phi_builder);
-        
+
         phi_v
     }
 
@@ -418,6 +416,10 @@ impl<'b> BlockBuilder<'b> {
 }
 
 #[derive(Clone, Copy)]
+#[expect(
+    clippy::upper_case_acronyms,
+    reason = "LLVM uses acronyms for this, it's easier."
+)]
 pub enum IntCmp {
     EQ,
     NE,

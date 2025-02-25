@@ -3,6 +3,9 @@ nt = "nextest run"
 nta = "nt --workspace"
 nexus = "run -p nexus --"
 nexusr = "run -p nexus --release --"
+nr = "nexus run --"
+nfmt = "nexus build-sys fmt"
+nlint = "nexus build-sys lint"
 
 [unstable]
 codegen-backend = true
