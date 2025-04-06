@@ -191,6 +191,7 @@ hir_visitor_fns! {
     visit_item(hir::Item) -> walk_item,
     visit_stmt(hir::Stmt) -> walk_stmt,
     visit_expr(hir::Expr) -> walk_expr,
+    visit_expr_atom_ident(hir::ExprAtomIdent) -> walk_expr_atom_ident,
     visit_block(hir::Block) -> walk_block,
     visit_ident(hir::Ident) -> walk_ident,
     visit_num_literal(hir::NumLit) -> walk_num_literal,
@@ -206,6 +207,7 @@ hir_visitor_fns! {
     visit_fn_param(hir::FnParam) -> walk_fn_param,
     visit_fn_ret_ty(hir::FnRetTy) -> walk_fn_ret_ty,
     visit_pat(hir::Pat) -> walk_pat,
+    visit_pat_ident(hir::PatIdent) -> walk_pat_ident,
     visit_ty_ref(hir::TyRef) -> walk_ty_ref,
     visit_ty_generic_args(hir::TyGenericArgs) -> walk_ty_generic_args,
     visit_ty_generic_arg(hir::TyGenericArg) -> walk_ty_generic_arg,
@@ -237,6 +239,8 @@ hir_visitor_hir_ids! {
     visit_use_path_segment_id(hir::UsePathSegmentId) -> get_use_segment,
     visit_expr_id(hir::ExprId) -> get_expr,
     visit_ty_generic_arg_id(hir::TyGenericArgId) -> get_ty_generic_arg,
+    visit_pat_ident_id(hir::PatIdentId) -> get_pat_ident,
+    visit_expr_atom_ident_id(hir::ExprAtomIdentId) -> get_expr_atom_ident,
 }
 
 contextualised_hir_visitors! {
@@ -588,6 +592,13 @@ pub fn walk_expr_atom<'hir, V: HirVisitor<'hir> + ?Sized>(
     }
 }
 
+pub fn walk_expr_atom_ident<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    atom: &'hir hir::ExprAtomIdent,
+) {
+    atom.ident.accept(visitor);
+}
+
 pub fn walk_ty_ref<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, ty_ref: &'hir hir::TyRef) {
     match &ty_ref.kind {
         hir::TyRefKind::Named(name, generics) => {
@@ -901,6 +912,13 @@ pub fn walk_pat<'hir, V: HirVisitor<'hir> + ?Sized>(visitor: &mut V, pat: &'hir 
             w.accept(visitor);
         }
     }
+}
+
+pub fn walk_pat_ident<'hir, V: HirVisitor<'hir> + ?Sized>(
+    visitor: &mut V,
+    pat_ident: &'hir hir::PatIdent,
+) {
+    pat_ident.ident.accept(visitor);
 }
 
 pub fn walk_call_args<'hir, V: HirVisitor<'hir> + ?Sized>(

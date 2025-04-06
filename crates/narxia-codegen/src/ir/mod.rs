@@ -3,10 +3,16 @@ use crate::TyRef;
 pub struct Mod {
     pub globals: Vec<Global>,
     pub functions: Vec<Function>,
-    pub global_code: Function,
+    pub global_code: Block,
 }
 
 pub struct Global {
+    pub name: String,
+    pub ty: TyRef,
+    pub value: Expr,
+}
+
+pub struct Local {
     pub name: String,
     pub ty: TyRef,
     pub value: Expr,
@@ -94,17 +100,22 @@ pub enum ExprAtomKind {
 }
 
 pub struct GlobalRef {
-    pub id: usize,
+    pub(crate) id: usize,
 }
 
 pub struct LocalRef {
-    pub id: usize,
+    pub(crate) id: usize,
+}
+
+pub struct FunctionRef {
+    pub(crate) id: usize,
 }
 
 pub struct Function {
     pub name: String,
     pub ty: TyRef,
     pub block: Block,
+    pub locals: Vec<Local>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]

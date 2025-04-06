@@ -488,7 +488,7 @@ pub struct ExprAtom {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ExprAtomKind {
-    Ident(Ident),
+    Ident(ExprAtomIdentId),
     Str(StrLiteral),
     Num(NumLit),
     LoopExpr(LoopExpr),
@@ -500,6 +500,14 @@ pub enum ExprAtomKind {
     TupleExpr(TupleExpr),
     LambdaExpr(LambdaExpr),
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct ExprAtomIdent {
+    pub ident: Ident,
+    pub hir_id: ExprAtomIdentId,
+}
+
+hir_id_newtype!(ExprAtomIdentId, ExprAtomIdent);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum NumLit {
@@ -866,10 +874,18 @@ pub struct Pat {
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum PatKind {
-    Ident(Ident),
+    Ident(PatIdentId),
     Tuple(Vec<Pat>),
-    Wildcard(Ident),
+    Wildcard(PatIdentId),
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct PatIdent {
+    pub ident: Ident,
+    pub hir_id: PatIdentId,
+}
+
+hir_id_newtype!(PatIdentId, PatIdent);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct TyRef {

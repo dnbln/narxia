@@ -9,6 +9,7 @@ use narxia_codegen::ir;
 use narxia_codegen::CodegenBackend;
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
+use narxia_hir::hir_map::FnLookupVisitor;
 use narxia_hir_typechk::sema;
 
 /// Compiler for narxia.
@@ -31,6 +32,8 @@ enum NarxiaDriverCommand {
     #[clap(name = "codegen")]
     #[clap(alias = "cg")]
     Codegen(NarxiaDriverCodegenCommand),
+    #[clap(name = "ssa")]
+    Ssa(NarxiaDriverSsaCommand),
 }
 
 #[derive(Parser, Debug)]
@@ -58,6 +61,13 @@ pub struct NarxiaDriverSemaAnalysisCommand {
     file: PathBuf,
 }
 
+#[derive(Parser, Debug)]
+pub struct NarxiaDriverSsaCommand {
+    file: PathBuf,
+    #[clap(long = "fn")]
+    fn_name: String,
+}
+
 #[derive(Debug, Clone)]
 enum Out {
     File(PathBuf),
@@ -78,7 +88,7 @@ impl fmt::Display for Out {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Out::File(path) => write!(f, "{}", path.display()),
-            Out::Stdout => write!(f, "stdout"),
+            Out::Stdout => write!(f, "-"),
         }
     }
 }
@@ -206,6 +216,8 @@ fn main() -> miette::Result<()> {
                     }
                 }
             }
+
+            sema::resolve_work(tcx, hir_mod, &analysis_results);
         }
 
         NarxiaDriverCommand::Hiri(hiri_cmd) => {
@@ -270,11 +282,6 @@ fn main() -> miette::Result<()> {
                 .set_current_file(None);
 
             let mut cg_tyctxt = narxia_codegen::TyCtxt::new();
-            let unit_ty = cg_tyctxt.add_ty(ir::Ty::Unit);
-            let fty = cg_tyctxt.add_ty(ir::Ty::Function(ir::FunctionTy {
-                args: vec![],
-                ret: unit_ty,
-            }));
 
             let mut stdout = io::stdout();
             let out = match &cg.out {
@@ -288,15 +295,44 @@ fn main() -> miette::Result<()> {
                     &ir::Mod {
                         globals: vec![],
                         functions: vec![],
-                        global_code: ir::Function {
-                            name: "global".to_string(),
-                            ty: fty,
-                            block: ir::Block { instr: vec![] },
-                        },
+                        global_code: ir::Block { instr: vec![] },
                     },
                     out,
                 )
                 .unwrap();
+        }
+        NarxiaDriverCommand::Ssa(ssa) => {
+            narxia_log::i!("Ssa command: {ssa:?}");
+
+            let file = ssa.file;
+            let fn_name = ssa.fn_name;
+            let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+
+            narxia_log::i!("Read file");
+
+            ctx.trace_file(file);
+
+            let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+
+            narxia_log::i!("Parsed file");
+
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(Some(file));
+
+            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            narxia_log::i!("Lowered file");
+            ctx.db
+                .get_global_ty_ctxt()
+                .hir_map_mut_ref()
+                .set_current_file(None);
+
+            let hir_map = ctx.db.get_global_ty_ctxt().hir_map_mut_ref();
+            let f =
+                FnLookupVisitor::lookup(&*hir_map, hir.mod_def(&ctx.db), fn_name.clone()).unwrap();
+            let f = narxia_ssa::convert(&hir_map, &hir_map.get_fn(f));
+            println!("{:#?}", f);
         }
     }
 

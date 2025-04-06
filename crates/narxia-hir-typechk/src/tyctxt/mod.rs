@@ -3,6 +3,7 @@ use std::sync;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use narxia_data_structures::FxBTreeMap;
 use narxia_hir::hir_map::HirElem;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirMapQ;
@@ -35,6 +36,11 @@ impl DefMap {
 pub struct GlobalTyCtxtInner {
     def_map: RwLock<DefMap>,
     pub hir_map: RwLock<HirMap>,
+    name_resolution: RwLock<NameResolution>,
+}
+
+pub struct NameResolution {
+    name_map: FxBTreeMap<HirId, DefId>,
 }
 
 #[derive(Clone)]
@@ -56,6 +62,9 @@ impl GlobalTyCtxt {
                     def_ids: Vec::new(),
                 }),
                 hir_map: RwLock::new(HirMap::new()),
+                name_resolution: RwLock::new(NameResolution {
+                    name_map: FxBTreeMap::new(),
+                }),
             }),
         }
     }
@@ -92,6 +101,26 @@ impl GlobalTyCtxt {
     pub fn get_file_of(&self, hir_id: HirId) -> SrcFile {
         self.make_ty_ctxt().hir_map().get_file(hir_id)
     }
+
+    fn resolved_name(&self, id: HirId, def_id: DefId) {
+        self.inner
+            .name_resolution
+            .write()
+            .unwrap()
+            .name_map
+            .insert(id, def_id);
+    }
+
+    fn get_name_resolution(&self, id: HirId) -> DefId {
+        self.inner
+            .name_resolution
+            .read()
+            .unwrap()
+            .name_map
+            .get(&id)
+            .copied()
+            .unwrap()
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -110,6 +139,18 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn hir_map(self) -> GlobalHirMapRef<'tcx> {
         GlobalHirMapRef(self.global_ctxt.inner.hir_map.read().unwrap())
+    }
+
+    pub fn lookup_def_id(self, def_id: DefId) -> HirId {
+        self.global_ctxt.lookup_def_id(def_id)
+    }
+
+    pub fn resolved_name(self, id: HirId, def_id: DefId) {
+        self.global_ctxt.resolved_name(id, def_id);
+    }
+
+    pub fn get_name_resolution(self, id: HirId) -> DefId {
+        self.global_ctxt.get_name_resolution(id)
     }
 }
 

@@ -662,6 +662,7 @@ pub mod tests {
         parser_tests_mode: ParserTestsMode,
         envs: Vec<(OsString, OsString)>,
         debug_nextest_messages: bool,
+        miri: bool,
     }
 
     #[derive(Default)]
@@ -687,6 +688,7 @@ pub mod tests {
                 parser_tests_mode: ParserTestsMode::default(),
                 envs: Vec::new(),
                 debug_nextest_messages: false,
+                miri: false,
             }
         }
 
@@ -725,12 +727,20 @@ pub mod tests {
             self
         }
 
+        pub fn miri(mut self, miri: bool) -> Self {
+            self.miri = miri;
+            self
+        }
+
         pub fn run(
             self,
             mut item: Option<&mut Item>,
             groups: Option<&NexusOutputGroups>,
         ) -> NexusR {
             let mut cmd = cargo_command();
+            if self.miri {
+                cmd.arg("miri");
+            }
             cmd.arg("nextest")
                 .args([
                     "run",
@@ -768,10 +778,10 @@ pub mod tests {
             let start_time = Instant::now();
 
             let stdout = child.stdout.take().unwrap();
-            let stderr = child.stderr.take().unwrap();
 
             {
                 if self.capture_nextest_stderr {
+                    let stderr = child.stderr.take().unwrap();
                     thread::spawn(move || {
                         let mut stderr = stderr;
                         loop {

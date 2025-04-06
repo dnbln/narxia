@@ -1,0 +1,7 @@
+fn main() {
+    println("Factorial of 5 is ${factorial(5)}")
+}
+
+fn factorial(n: i32) -> i32 {
+    return if (n == 0) 1 else n * factorial(n - 1)
+}

@@ -4,6 +4,7 @@ use narxia_data_structures::FxBTreeMap;
 use narxia_src_db::SrcFile;
 
 use crate::hir::*;
+use crate::visitor;
 use crate::visitor::HirVisitor;
 use crate::HirId;
 use crate::HirSpan;
@@ -12,11 +13,12 @@ use crate::HirSpan;
 pub enum HirElem {
     Mod(ModDef),
     Item(Item),
-    Ident(Ident),
+    PatIdent(PatIdent),
     Fn(FnDef),
     FnParam(FnParam),
     FnRetTy(FnRetTy),
     Expr(Expr),
+    ExprAtomIdent(ExprAtomIdent),
     LoopExpr(LoopExpr),
     BreakExpr(BreakExpr),
     ContinueExpr(ContinueExpr),
@@ -44,11 +46,12 @@ impl HirElem {
         match self {
             HirElem::Mod(mod_def) => mod_def.hir_id.hir_id(),
             HirElem::Item(item) => item.hir_id.hir_id(),
-            HirElem::Ident(ident) => todo!(),
+            HirElem::PatIdent(pat_ident) => pat_ident.hir_id.hir_id(),
             HirElem::Fn(fn_def) => fn_def.hir_id.hir_id(),
             HirElem::FnParam(fn_param) => todo!(),
             HirElem::FnRetTy(fn_ret_ty) => todo!(),
             HirElem::Expr(expr) => expr.hir_id.hir_id(),
+            HirElem::ExprAtomIdent(expr_atom_ident) => expr_atom_ident.hir_id.hir_id(),
             HirElem::LoopExpr(loop_expr) => todo!(),
             HirElem::BreakExpr(break_expr) => todo!(),
             HirElem::ContinueExpr(continue_expr) => todo!(),
@@ -77,11 +80,12 @@ impl fmt::Display for HirElem {
         match self {
             Self::Mod(m) => write!(f, "{}", m),
             Self::Item(i) => write!(f, "{}", i),
-            Self::Ident(i) => write!(f, "{}", i),
+            Self::PatIdent(p) => write!(f, "{}", p),
             Self::Fn(fn_def) => write!(f, "{}", fn_def),
             Self::FnParam(p) => write!(f, "{}", p),
             Self::FnRetTy(r) => write!(f, "{}", r),
             Self::Expr(e) => write!(f, "{}", e),
+            Self::ExprAtomIdent(e) => write!(f, "{}", e),
             Self::ReturnExpr(e) => write!(f, "{}", e),
             Self::BreakExpr(e) => write!(f, "{}", e),
             Self::ContinueExpr(e) => write!(f, "{}", e),
@@ -255,6 +259,20 @@ impl HirMap {
         }
     }
 
+    pub fn get_pat_ident(&self, at: PatIdentId) -> &PatIdent {
+        match self.get(at.0) {
+            HirElem::PatIdent(p) => p,
+            x => panic!("Expected PatIdent, found {x:?}"),
+        }
+    }
+
+    pub fn get_expr_atom_ident(&self, at: ExprAtomIdentId) -> &ExprAtomIdent {
+        match self.get(at.0) {
+            HirElem::ExprAtomIdent(x) => x,
+            x => panic!("Expected ExprAtomIdent, found {x:?}"),
+        }
+    }
+
     fn update_parent(&mut self, at: HirId, parent: HirId) {
         self.parents[at.id] = parent;
     }
@@ -330,5 +348,37 @@ pub fn hir_map_update_parents_in_mod(hir_map: &mut HirMap, mod_id: ModId) {
 
     for (hir_id, parent) in visitor.parents.iter() {
         hir_map.update_parent(*hir_id, *parent);
+    }
+}
+
+pub struct FnLookupVisitor<'hir> {
+    hir_map: &'hir HirMap,
+    fn_name: String,
+    found: Option<FnId>,
+}
+
+impl<'hir> FnLookupVisitor<'hir> {
+    pub fn lookup(hir_map: &'hir HirMap, module: ModId, fn_name: impl Into<String>) -> Option<FnId> {
+        let mut visitor = FnLookupVisitor {
+            hir_map,
+            fn_name: fn_name.into(),
+            found: None,
+        };
+
+        visitor.visit_mod_id(module);
+
+        visitor.found
+    }
+}
+
+impl<'hir> visitor::HirVisitor<'hir> for FnLookupVisitor<'hir> {
+    fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q) {
+        q(self, self.hir_map);
+    }
+
+    fn visit_fn_def(&mut self, hir: &'hir crate::hir::FnDef) {
+        if hir.name.text == self.fn_name {
+            self.found = Some(hir.hir_id);
+        }
     }
 }

@@ -4,8 +4,8 @@ use narxia_hir::hir;
 use narxia_hir::hir::HirIdNewtype;
 use narxia_hir::hir_map;
 use narxia_hir::hir_map::HirMap;
+use narxia_hir::visitor as vis;
 use narxia_hir::visitor::HirVisitor;
-use narxia_hir::visitor::{self as vis};
 use narxia_hir::HirId;
 
 use crate::def_id::DefId;
@@ -209,6 +209,7 @@ impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
 
     scope_adding_elements! {
         visit_use_stmt(hir::UseStmt) => walk_use_stmt;
+        visit_pat_ident(hir::PatIdent) => walk_pat_ident;
     }
 }
 
@@ -289,6 +290,12 @@ pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> Semanti
                         });
                     }
                     hir_map::HirElem::Block(block) => {}
+                    hir_map::HirElem::PatIdent(pat_ident) => {
+                        names.push(ScopeDefinedName {
+                            name: pat_ident.ident.text.clone(),
+                            def_id,
+                        });
+                    }
                     _ => todo!(),
                 }
             }
@@ -316,8 +323,22 @@ fn use_path_imported_name(hir_map: &HirMap, path: &hir::UsePath) -> String {
     )
 }
 
-fn resolve_names(tcx: TyCtxt<'_>, mod_id: hir::ModId, analysis_results: &SemanticAnalysisResult) {
+struct ResolveWorkQueue {
+    work_queue: Vec<HirId>,
+    push_back: Vec<HirId>,
+}
+
+pub fn resolve_work(
+    tcx: TyCtxt<'_>,
+    mod_id: hir::ModId,
+    analysis_results: &SemanticAnalysisResult,
+) {
     let hir_map = tcx.hir_map();
+
+    let mut work_queue = ResolveWorkQueue {
+        work_queue: Vec::new(),
+        push_back: Vec::new(),
+    };
 
     for scope in analysis_results.program_structure.scopes() {
         for elem in analysis_results
@@ -327,27 +348,132 @@ fn resolve_names(tcx: TyCtxt<'_>, mod_id: hir::ModId, analysis_results: &Semanti
             .chain(analysis_results.program_structure.elements(scope))
         {
             let hir_id = analysis_results.program_structure.element(elem);
-            let def_id = tcx.add_def_id(hir_id);
 
-            let hir_elem = hir_map.get(hir_id);
+            work_queue.work_queue.push(hir_id);
+        }
+    }
 
-            match hir_elem {
-                hir_map::HirElem::Mod(mod_def) => {
-                    tcx.add_def_id(hir_id);
+    while !work_queue.work_queue.is_empty() {
+        let ResolveWorkQueue {
+            work_queue,
+            push_back,
+        } = &mut work_queue;
+        for hir_id in work_queue.drain(..) {
+            match attempt_to_resolve(tcx, hir_id, &hir_map, analysis_results) {
+                Ok(()) => {}
+                Err(()) => {
+                    push_back.push(hir_id);
                 }
-                hir_map::HirElem::Fn(fn_def) => {
-                    tcx.add_def_id(hir_id);
-                }
-                hir_map::HirElem::UseStmt(use_stmt) => {
-                    let path = &use_stmt.path;
+            }
+        }
 
-                    let imported_name = use_path_imported_name(&hir_map, path);
+        std::mem::swap(work_queue, push_back);
+    }
+}
 
-                    tcx.add_def_id(hir_id);
+fn attempt_to_resolve(
+    tcx: TyCtxt<'_>,
+    hir_id: HirId,
+    hir_map: &HirMap,
+    analysis_results: &SemanticAnalysisResult,
+) -> Result<(), ()> {
+    match hir_map.get(hir_id) {
+        hir_map::HirElem::Mod(mod_def) => {}
+        hir_map::HirElem::Item(item) => {}
+        hir_map::HirElem::ExprAtomIdent(ident) => {
+            attempt_to_resolve_expr_atom_ident(tcx, ident, hir_map, analysis_results)?;
+        }
+        hir_map::HirElem::PatIdent(pat_ident) => {}
+        hir_map::HirElem::Fn(fn_def) => {}
+        hir_map::HirElem::FnParam(fn_param) => {}
+        hir_map::HirElem::FnRetTy(fn_ret_ty) => {}
+        hir_map::HirElem::Expr(expr) => {}
+        hir_map::HirElem::LoopExpr(loop_expr) => todo!(),
+        hir_map::HirElem::BreakExpr(break_expr) => todo!(),
+        hir_map::HirElem::ContinueExpr(continue_expr) => todo!(),
+        hir_map::HirElem::ReturnExpr(return_expr) => todo!(),
+        hir_map::HirElem::Pat(pat) => todo!(),
+        hir_map::HirElem::Stmt(stmt) => todo!(),
+        hir_map::HirElem::ForStmt(for_stmt) => todo!(),
+        hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
+        hir_map::HirElem::UseStmt(use_stmt) => todo!(),
+        hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
+        hir_map::HirElem::Block(block) => {}
+        hir_map::HirElem::TyRef(ty_ref) => todo!(),
+        hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
+        hir_map::HirElem::LetStmt(let_stmt) => todo!(),
+        hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
+        hir_map::HirElem::StrLiteral(str_literal) => todo!(),
+        hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
+        hir_map::HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => todo!(),
+        x => todo!("{:?}", x),
+    }
+    Ok(())
+}
+
+fn attempt_to_resolve_expr_atom_ident(
+    tcx: TyCtxt<'_>,
+    ident: &hir::ExprAtomIdent,
+    hir_map: &HirMap,
+    analysis_results: &SemanticAnalysisResult,
+) -> Result<(), ()> {
+    while let Some(parent) = analysis_results
+        .program_structure
+        .parent_scope_of_hir_node(hir_map, ident.hir_id.hir_id())
+    {
+        for name in &analysis_results.scope_names[parent.0].names {
+            if name.name == ident.ident.text {
+                let target = tcx.lookup_def_id(name.def_id);
+                match hir_map.get(target) {
+                    hir_map::HirElem::PatIdent(pat_ident) => {
+                        match hir_map.get(hir_map.get_parent(target)) {
+                            hir_map::HirElem::LetStmt(let_stmt) => {
+                                tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
+                                return Ok(());
+                            }
+                            hir_map::HirElem::FnParam(fn_param) => {
+                                tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
+                                return Ok(());
+                            }
+                            _ => {
+                                todo!()
+                            }
+                        }
+                    }
+                    hir_map::HirElem::Fn(fn_def) => todo!(),
+                    hir_map::HirElem::FnParam(fn_param) => todo!(),
+                    hir_map::HirElem::FnRetTy(fn_ret_ty) => todo!(),
+                    hir_map::HirElem::Expr(expr) => todo!(),
+                    hir_map::HirElem::ExprAtomIdent(expr_atom_ident) => todo!(),
+                    hir_map::HirElem::LoopExpr(loop_expr) => todo!(),
+                    hir_map::HirElem::BreakExpr(break_expr) => todo!(),
+                    hir_map::HirElem::ContinueExpr(continue_expr) => todo!(),
+                    hir_map::HirElem::ReturnExpr(return_expr) => todo!(),
+                    hir_map::HirElem::Pat(pat) => todo!(),
+                    hir_map::HirElem::Stmt(stmt) => todo!(),
+                    hir_map::HirElem::ForStmt(for_stmt) => todo!(),
+                    hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
+                    hir_map::HirElem::UseStmt(use_stmt) => {
+                        tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
+                        return Ok(());
+                    }
+                    hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
+                    hir_map::HirElem::Block(block) => todo!(),
+                    hir_map::HirElem::TyRef(ty_ref) => todo!(),
+                    hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
+                    hir_map::HirElem::LetStmt(let_stmt) => todo!(),
+                    hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
+                    hir_map::HirElem::StrLiteral(str_literal) => todo!(),
+                    hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => {
+                        todo!()
+                    }
+                    hir_map::HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => {
+                        todo!()
+                    }
+                    _ => todo!(),
                 }
-                hir_map::HirElem::Block(block) => {}
-                _ => todo!(),
             }
         }
     }
+    Ok(())
 }

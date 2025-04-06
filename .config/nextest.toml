@@ -4,3 +4,10 @@ retries = { backoff = "fixed", count = 2, delay = "1s" }
 [[profile.default.overrides]]
 filter = "package(=narxia-test-runner) & binary(*_nxtimq*)"
 slow-timeout = { period = "2s", terminate-after = 2, grace-period = "1s" }
+
+[profile.default-miri]
+retries = { backoff = "fixed", count = 2, delay = "1s" }
+
+[[profile.default-miri.overrides]]
+filter = "package(=narxia-test-runner) & binary(*_nxtimq*)"
+slow-timeout = { period = "60s", terminate-after = 2, grace-period = "10s" }

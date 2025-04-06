@@ -58,16 +58,16 @@ impl CodegenBackend for Backend {
             .module
             .add_function("main", Ty::function(&mut [], i32_ty, false));
 
+        let factorial_ty = Ty::function(&mut [i32_ty], i32_ty, false);
+        let factorial = self.module.add_function("factorial", factorial_ty);
+
         let entry = self.builder.create_block(&self.context, main, "entry");
         let entry_bb = self.builder.build_block(entry);
-        let one = i32_ty.const_int(1, false);
-        let two = i32_ty.const_int(2, false);
-        let sum = entry_bb.add(one, two);
+        // let one = i32_ty.const_int(1, false);
+        // let two = i32_ty.const_int(2, false);
+        let sum = entry_bb.call(factorial, factorial_ty, &mut [i32_ty.const_int(10, false)]);
         let _ = entry_bb.ret(sum);
 
-        let factorial_ty = Ty::function(&mut [i32_ty], i32_ty, false);
-
-        let factorial = self.module.add_function("factorial", factorial_ty);
         let entry = self.builder.create_block(&self.context, factorial, "entry");
         let recursive_case = self
             .builder

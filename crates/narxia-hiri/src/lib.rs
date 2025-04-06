@@ -171,7 +171,7 @@ fn interp_stmt(ctx: &mut InterpContext, stmt: &Stmt) -> CFResult {
                 PatKind::Ident(ident) => {
                     ctx.environment.insert(
                         Name {
-                            name: ident.text.clone(),
+                            name: ctx.hir_map.get_pat_ident(*ident).ident.text.clone(),
                         },
                         place_id,
                     );
@@ -216,7 +216,7 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                 Ok(InterpValue::Num(v))
             }
             ExprAtomKind::Ident(id) => Ok(ctx.fetch_store(ctx.resolve_name(&Name {
-                name: id.text.clone(),
+                name: ctx.hir_map.get_expr_atom_ident(*id).ident.text.clone(),
             }))),
             ExprAtomKind::Str(s) => {
                 let mut constructed_string = String::new();

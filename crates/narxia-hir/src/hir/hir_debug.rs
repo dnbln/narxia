@@ -565,7 +565,7 @@ impl fmt::Display for FnParam {
 fn display_pat(f: &mut fmt::Formatter, pat: &Pat, hdc: HirDisplayContext) -> fmt::Result {
     match &pat.kind {
         PatKind::Ident(ident) => {
-            write!(f, "{}", ident.text.var_name())?;
+            display_pat_ident_id(f, *ident, hdc)?;
         }
         PatKind::Tuple(pats) => {
             write!(f, "{}", "(".punctuation())?;
@@ -584,6 +584,38 @@ fn display_pat(f: &mut fmt::Formatter, pat: &Pat, hdc: HirDisplayContext) -> fmt
     }
 
     Ok(())
+}
+
+fn display_pat_ident_id(
+    f: &mut fmt::Formatter,
+    id: PatIdentId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+impl fmt::Display for PatIdentId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_pat_ident_id(f, *self, HirDisplayContext::new())
+    }
+}
+
+fn display_pat_ident(
+    f: &mut fmt::Formatter,
+    ident: &PatIdent,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", ident.ident.text.var_name())?;
+
+    Ok(())
+}
+
+impl fmt::Display for PatIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_pat_ident(f, self, HirDisplayContext::new())
+    }
 }
 
 impl fmt::Display for Pat {
@@ -973,7 +1005,7 @@ fn display_expr_atom(
             }
         }
         ExprAtomKind::Ident(name) => {
-            write!(f, "{}", name.text)?;
+            display_expr_atom_ident_id(f, *name, hdc)?;
         }
         ExprAtomKind::IfExpr(if_expr) => {
             display_if_expr(f, if_expr, hdc)?;
@@ -1004,6 +1036,38 @@ fn display_expr_atom(
     }
 
     Ok(())
+}
+
+fn display_expr_atom_ident_id(
+    f: &mut fmt::Formatter,
+    id: ExprAtomIdentId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", id.0)?;
+
+    Ok(())
+}
+
+fn display_expr_atom_ident(
+    f: &mut fmt::Formatter,
+    ident: &ExprAtomIdent,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", ident.ident.text.var_name())?;
+
+    Ok(())
+}
+
+impl fmt::Display for ExprAtomIdent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_expr_atom_ident(f, self, HirDisplayContext::new())
+    }
+}
+
+impl fmt::Display for ExprAtomIdentId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        display_expr_atom_ident_id(f, *self, HirDisplayContext::new())
+    }
 }
 
 fn display_lambda_expr(

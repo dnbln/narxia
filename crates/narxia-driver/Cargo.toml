@@ -38,6 +38,7 @@ narxia-hir.workspace = true
 narxia-hir-db.workspace = true
 narxia-hir-typechk.workspace = true
 narxia-hiri.workspace = true
+narxia-ssa.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

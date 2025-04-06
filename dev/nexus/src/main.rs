@@ -90,6 +90,10 @@ enum App {
         /// This mode will run the parser tests.
         #[clap(long, default_value_t = ParserTestsMode::Check)]
         parser_tests: ParserTestsMode,
+
+        /// Whether to run the tests with Miri.
+        #[clap(long)]
+        miri: bool,
     },
     /// Runs the narxia compiler driver.
     ///
@@ -145,6 +149,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             profile,
             llvm_link_behavior,
             parser_tests,
+            miri,
         } => {
             let profile = profile.get_profile();
             let llvm_link_behavior =
@@ -200,7 +205,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 })
                 .debug_nextest_messages(
                     env::var("NEXUS_DEBUG_NEXTEST_OUTPUT").is_ok_and(|it| it == "1"),
-                );
+                )
+                .miri(miri);
 
             #[cfg(debug_assertions)]
             let run_tests = run_tests.capture_nextest_output(capture_nextest);

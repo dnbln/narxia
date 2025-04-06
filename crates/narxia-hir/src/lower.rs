@@ -784,7 +784,7 @@ fn lower_expr_node(hir_lower_ctxt: &mut HirLowerCtxt, expr_node: &syntree::ExprN
 fn lower_expr_atom(hir_lower_ctxt: &mut HirLowerCtxt, atom: &syntree::ExprAtom) -> ExprAtom {
     if let Some(ident) = atom.get_ident() {
         ExprAtom {
-            kind: ExprAtomKind::Ident(lower_ident(hir_lower_ctxt, &ident)),
+            kind: ExprAtomKind::Ident(lower_expr_atom_ident(hir_lower_ctxt, &ident)),
         }
     } else if let Some(str_literal) = atom.get_string_literal() {
         ExprAtom {
@@ -829,6 +829,19 @@ fn lower_expr_atom(hir_lower_ctxt: &mut HirLowerCtxt, atom: &syntree::ExprAtom) 
     } else {
         todo!()
     }
+}
+
+fn lower_expr_atom_ident(
+    hir_lower_ctxt: &mut HirLowerCtxt,
+    ident: &syntree::Token,
+) -> ExprAtomIdentId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(ident));
+    let ident = lower_ident(hir_lower_ctxt, ident);
+
+    hir_lower_ctxt.push_ref_at_allocation(
+        hir_id,
+        HirElem::ExprAtomIdent(ExprAtomIdent { ident, hir_id }),
+    )
 }
 
 fn lower_num_literal(hir_lower_ctxt: &mut HirLowerCtxt, num_lit: &syntree::NumLit) -> NumLit {
@@ -1126,7 +1139,10 @@ fn lower_displayable_to_expr(
             let hir_id = hir_lower_ctxt.allocate_hir_id(e.span());
             Expr {
                 kind: ExprKind::Atom(ExprAtom {
-                    kind: ExprAtomKind::Ident(lower_ident(hir_lower_ctxt, &e.get_ident())),
+                    kind: ExprAtomKind::Ident(lower_expr_atom_ident(
+                        hir_lower_ctxt,
+                        &e.get_ident(),
+                    )),
                 }),
                 hir_id,
             }
@@ -1138,15 +1154,37 @@ fn lower_displayable_to_expr(
 
 fn lower_pat(hir_lower_ctxt: &mut HirLowerCtxt, pat: &syntree::Pat) -> Pat {
     if let pat_ident = pat.get_ident() {
-        let pat_ident = lower_ident(hir_lower_ctxt, &pat_ident);
-        let kind = match pat_ident.text.as_str() {
-            "_" => PatKind::Wildcard(pat_ident),
-            _ => PatKind::Ident(pat_ident),
+        let (pat_ident, is_wild) = lower_pat_ident(hir_lower_ctxt, &pat_ident);
+        let kind = match is_wild {
+            IsWild::Yes => PatKind::Wildcard(pat_ident),
+            IsWild::No => PatKind::Ident(pat_ident),
         };
         Pat { kind }
     } else {
         todo!()
     }
+}
+
+enum IsWild {
+    Yes,
+    No,
+}
+
+fn lower_pat_ident(
+    hir_lower_ctxt: &mut HirLowerCtxt,
+    pat_ident: &syntree::Token,
+) -> (PatIdentId, IsWild) {
+    let ident = lower_ident(hir_lower_ctxt, pat_ident);
+    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(pat_ident));
+    let is_wild = match ident.text.as_str() {
+        "_" => IsWild::Yes,
+        _ => IsWild::No,
+    };
+    (
+        hir_lower_ctxt
+            .push_ref_at_allocation(hir_id, HirElem::PatIdent(PatIdent { ident, hir_id })),
+        is_wild,
+    )
 }
 
 fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRefId {
