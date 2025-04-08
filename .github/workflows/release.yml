@@ -35,30 +35,14 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
-      - name: Cache llvm
-        id: llvm-cache
-        uses: actions/cache/restore@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
-      - name: Build llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        run: cargo nexus build-sys build --targets llvm
-      - name: Save llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
+      - uses: ./.github/actions/build-llvm
       - name: Build distributable package
         run: cargo nexus dist --pkg narxia-linux.zip
       - uses: actions/upload-artifact@v4
         with:
           name: narxia-linux
           path: narxia-linux.zip
-  build-macos:
+  build-macos-arm:
     runs-on: macos-latest
 
     steps:
@@ -75,33 +59,41 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
-      - name: Cache llvm
-        id: llvm-cache
-        uses: actions/cache/restore@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
-      - name: Build llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        run: cargo nexus build-sys build --targets llvm
-      - name: Save llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
+      - uses: ./.github/actions/build-llvm
       - name: Build distributable package
-        run: cargo nexus dist --pkg narxia-macos.zip
+        run: cargo nexus dist --pkg narxia-macos-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: narxia-macos
-          path: narxia-macos.zip
+          name: narxia-macos-arm64
+          path: narxia-macos-arm64.zip
+  build-macos-x86:
+    runs-on: macos-13
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup debug environment variables
+        if: ${{ runner.debug == '1' }}
+        run: |
+          echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: brew install llvm ninja
+      - name: Install rust
+        run: rustup install nightly && rustup default nightly
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build nexus
+        run: cargo build -p nexus
+      - uses: ./.github/actions/build-llvm
+      - name: Build distributable package
+        run: cargo nexus dist --pkg narxia-macos-x86_64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: narxia-macos-x86_64
+          path: narxia-macos-x86_64.zip
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos-arm, build-macos-x86]
 
     steps:
       - uses: actions/checkout@v4
@@ -111,10 +103,14 @@ jobs:
           path: narxia-linux
       - uses: actions/download-artifact@v4
         with:
-          name: narxia-macos
-          path: narxia-macos
+          name: narxia-macos-arm64
+          path: narxia-macos-arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: narxia-macos-x86_64
+          path: narxia-macos-x86_64
       - name: Date
-        run: printf "TODAY=" >> $GITHUB_ENV; date +%Y-%m-%d >> $GITHUB_ENV
+        run: echo "TODAY=$(date +%Y-%m-%d)" >> $GITHUB_ENV
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -126,4 +122,5 @@ jobs:
           gh release upload "nightly/$TODAY" \
               --repo="$GITHUB_REPOSITORY" \
               narxia-linux/narxia-linux.zip \
-              narxia-macos/narxia-macos.zip
+              narxia-macos-arm64/narxia-macos-arm64.zip \
+              narxia-macos-x86_64/narxia-macos-x86_64.zip

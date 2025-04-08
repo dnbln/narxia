@@ -1,0 +1,24 @@
+name: "Build LLVM"
+description: "Build LLVM"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Cache llvm
+      id: llvm-cache
+      uses: actions/cache/restore@v4
+      with:
+        key: ${{ runner.os }}-${{ runner.arch }}-built-llvm
+        path: |
+          nexusbuild/llvm/install
+    - name: Build llvm
+      if: steps.llvm-cache.outputs.cache-hit != 'true'
+      run: cargo nexus build-sys build --targets llvm
+      shell: bash
+    - name: Save llvm
+      if: steps.llvm-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ runner.os }}-${{ runner.arch }}-built-llvm
+        path: |
+          nexusbuild/llvm/install

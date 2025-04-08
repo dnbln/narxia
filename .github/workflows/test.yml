@@ -37,23 +37,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Build nexus
         run: cargo build -p nexus
-      - name: Cache llvm
-        id: llvm-cache
-        uses: actions/cache/restore@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
-      - name: Build llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        run: cargo nexus build-sys build --targets llvm
-      - name: Save llvm
-        if: steps.llvm-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          key: ${{ runner.os }}-built-llvm
-          path: |
-            nexusbuild/llvm/install
+      - uses: ./.github/actions/build-llvm
       - name: Build narxia
         run: cargo nexus build-sys build --targets compiler
       - name: Build tests

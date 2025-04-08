@@ -738,9 +738,9 @@ fn build_llvm(
         .map(|bp| bp.make_progress_lock("Build::LLVM".to_owned(), Instant::now()))
         .transpose()?;
     let version = LLVMVersion {
-        major: 19,
+        major: 20,
         minor: 1,
-        patch: 7,
+        patch: 2,
         extra: None,
     };
     if llvm_manager.check_install(&version) {
