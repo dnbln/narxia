@@ -1,0 +1,129 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+  CC: clang
+  CXX: clang++
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup debug environment variables
+        if: ${{ runner.debug == '1' }}
+        run: |
+          echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install clang ninja-build
+      - name: Install rust
+        run: rustup install nightly && rustup default nightly
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build nexus
+        run: cargo build -p nexus
+      - name: Cache llvm
+        id: llvm-cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm/install
+      - name: Build llvm
+        if: steps.llvm-cache.outputs.cache-hit != 'true'
+        run: cargo nexus build-sys build --targets llvm
+      - name: Save llvm
+        if: steps.llvm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm/install
+      - name: Build distributable package
+        run: cargo nexus dist --pkg narxia-linux.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: narxia-linux
+          path: narxia-linux.zip
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup debug environment variables
+        if: ${{ runner.debug == '1' }}
+        run: |
+          echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
+      - name: Install dependencies
+        run: brew install llvm ninja
+      - name: Install rust
+        run: rustup install nightly && rustup default nightly
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build nexus
+        run: cargo build -p nexus
+      - name: Cache llvm
+        id: llvm-cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm/install
+      - name: Build llvm
+        if: steps.llvm-cache.outputs.cache-hit != 'true'
+        run: cargo nexus build-sys build --targets llvm
+      - name: Save llvm
+        if: steps.llvm-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ runner.os }}-built-llvm
+          path: |
+            nexusbuild/llvm/install
+      - name: Build distributable package
+        run: cargo nexus dist --pkg narxia-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: narxia-macos
+          path: narxia-macos.zip
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-macos]
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: narxia-linux
+          path: narxia-linux.zip
+      - uses: actions/download-artifact@v4
+        with:
+          name: narxia-macos
+          path: narxia-macos.zip
+      - name: Date
+        run: printf "TODAY=" >> $GITHUB_ENV; date +%Y-%m-%d >> $GITHUB_ENV
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "nightly $TODAY" \
+              --repo="$GITHUB_REPOSITORY" \
+              --title="${GITHUB_REPOSITORY#*/} nightly $TODAY" \
+              --generate-notes --draft --prerelease --fail-on-no-commits
+          gh release upload "nightly $TODAY" \
+              --repo="$GITHUB_REPOSITORY" \
+              narxia-linux.zip \
+              narxia-macos.zip
