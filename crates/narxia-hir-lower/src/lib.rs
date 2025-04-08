@@ -1349,7 +1349,7 @@ trait FromTokenConstToken: ConstToken + Sized {
         debug_assert_eq!(token.kind(), Self::SYNTAX_KIND);
         debug_assert_eq!(token.text(), Self::text());
 
-        Self::from_span(HirSpan::of(&token))
+        Self::from_span(HirSpan::of(token))
     }
 }
 
