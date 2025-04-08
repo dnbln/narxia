@@ -10,6 +10,7 @@ use llvm_sys::analysis;
 use llvm_sys::core;
 use llvm_sys::error;
 use llvm_sys::prelude::*;
+use llvm_sys::target;
 use llvm_sys::target_machine;
 use llvm_sys::transforms::pass_builder;
 use llvm_sys::LLVMIntPredicate;
@@ -249,12 +250,12 @@ pub struct LLVMTarget {
 impl LLVMTarget {
     pub(crate) fn init() {
         unsafe {
-            llvm_sys::target::LLVM_InitializeAllTargets();
-            llvm_sys::target::LLVM_InitializeAllTargetInfos();
-            llvm_sys::target::LLVM_InitializeAllTargetMCs();
-            llvm_sys::target::LLVM_InitializeAllAsmPrinters();
-            llvm_sys::target::LLVM_InitializeAllAsmParsers();
-            llvm_sys::target::LLVM_InitializeAllDisassemblers();
+            target::LLVM_InitializeAllTargets();
+            target::LLVM_InitializeAllTargetInfos();
+            target::LLVM_InitializeAllTargetMCs();
+            target::LLVM_InitializeAllAsmPrinters();
+            target::LLVM_InitializeAllAsmParsers();
+            target::LLVM_InitializeAllDisassemblers();
         }
     }
 
