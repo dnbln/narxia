@@ -18,3 +18,4 @@ workspace = true
 salsa.workspace = true
 narxia-syn-db.workspace = true
 narxia-hir.workspace = true
+narxia-hir-lower.workspace = true

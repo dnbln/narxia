@@ -3,9 +3,10 @@ use std::path::PathBuf;
 use criterion::black_box;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use criterion::Bencher;
 use criterion::Criterion;
 use narxia_driver::DriverCtx;
-use narxia_hir::lower::LowerCtxt;
+use narxia_hir_lower::LowerCtxt;
 use narxia_src_db::SrcFile;
 use narxia_syn::syntree::SynTree;
 
@@ -41,25 +42,25 @@ fn make_input(num: usize) -> String {
     }
     fn f<T>(v: T) {
     }
-    
+
     fn f<T, U>(v: T, w: U) {
     }
-    
+
     fn f<T: Copy+Clone = i32>(v: T) {
     }
     fn input(a0: A0, a1: A1) {
     }
-    
+
     fn input_with_defaults(a0: A0, a1: A1 = A1()) {
     }
     fn main() -> i32 { 0 }
-    
+
     fn main() {
         for (i in f()) {
         }
     }
     for (i in j) {}
-    
+
     if (a) b else c
     loop {}
     while (a == b) {}
@@ -92,7 +93,7 @@ fn make_input(num: usize) -> String {
 fn hir_lower(root: &SynTree, src_file: SrcFile, ctx: &DriverCtx) {
     let mut hir_map = ctx.db.get_global_ty_ctxt().hir_map_mut_ref();
     hir_map.__test_clean();
-    let hir = narxia_hir::lower::lower_mod_def(
+    let hir = narxia_hir_lower::lower_mod_def(
         &mut LowerCtxt {
             src_file,
             hir_map: &mut hir_map,
@@ -101,38 +102,32 @@ fn hir_lower(root: &SynTree, src_file: SrcFile, ctx: &DriverCtx) {
     );
 }
 
+fn do_bench(b: &mut Bencher, ctx: &DriverCtx, input: &str) {
+    let file = narxia_driver::load_file(&ctx, PathBuf::from("input.nrx"), input);
+    let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
+    ctx.db
+        .get_global_ty_ctxt()
+        .hir_map_mut_ref()
+        .set_current_file(Some(file_map_entry));
+    let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
+    let root = tree.tree(&ctx.db).red();
+    b.iter(|| hir_lower(black_box(&root), file, &ctx));
+    ctx.db
+        .get_global_ty_ctxt()
+        .hir_map_mut_ref()
+        .set_current_file(None);
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
     let ctx = DriverCtx::initialize_in_test();
     c.bench_function("hirlower 10", |b| {
         let input = make_input(10);
-        let file = narxia_driver::load_file(&ctx, PathBuf::from("input.nrx"), &input);
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(Some(file));
-        let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
-        let root = tree.tree(&ctx.db).red();
-        b.iter(|| hir_lower(black_box(&root), file, &ctx));
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(None);
+        do_bench(b, &ctx, &input);
     });
 
     c.bench_function("hirlower 1000", |b| {
         let input = make_input(1000);
-        let file = narxia_driver::load_file(&ctx, PathBuf::from("input.nrx"), &input);
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(Some(file));
-        let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
-        let root = tree.tree(&ctx.db).red();
-        b.iter(|| hir_lower(black_box(&root), file, &ctx));
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(None);
+        do_bench(b, &ctx, &input);
     });
 }
 

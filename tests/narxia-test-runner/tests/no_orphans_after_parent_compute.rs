@@ -1,13 +1,14 @@
 //! This test checks that there are no orphan hir_ids after the parent
 //! of each hir_id is computed, except for the root module.
 
+use hir::hir_map::HirMap;
+use hir::visitor::HirVisitor;
+use hir::HirIdNewtype;
+use hir::SpecialIdents;
 use miette::bail;
 use narxia_dir_structures::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
-use narxia_hir::hir::HirIdNewtype;
-use narxia_hir::hir::SpecialIdents;
-use narxia_hir::hir_map::HirMap;
-use narxia_hir::visitor::HirVisitor;
+use narxia_hir as hir;
 use narxia_test_runner::parser_tests::lower_to_hir;
 
 struct OrphanHirIdVisitor<'hir> {
@@ -16,24 +17,24 @@ struct OrphanHirIdVisitor<'hir> {
 }
 
 impl<'hir> HirVisitor<'hir> for OrphanHirIdVisitor<'hir> {
-    fn q_id_strategy<Q: FnOnce(&mut Self, &'hir narxia_hir::hir_map::HirMap)>(&mut self, q: Q) {
+    fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q) {
         q(self, self.hir_map);
     }
 
-    fn visit_hir_id(&mut self, hir_id: narxia_hir::HirId) {
+    fn visit_hir_id(&mut self, hir_id: hir::HirId) {
         let parent = self.hir_map.get_parent(hir_id);
         if parent.is_orphan_parent() {
             self.hir_ids.push(hir_id);
         }
     }
 
-    fn visit_mod_id(&mut self, mod_id: narxia_hir::hir::ModId) {
+    fn visit_mod_id(&mut self, mod_id: hir::ModId) {
         self.q_id_strategy(|this, hir_map| {
             this.visit_mod_def(hir_map.get_mod(mod_id));
         });
     }
 
-    fn visit_mod_def(&mut self, mod_def: &'hir narxia_hir::hir::ModDef) {
+    fn visit_mod_def(&mut self, mod_def: &'hir hir::ModDef) {
         if mod_def.name.text != SpecialIdents::ROOT_MODULE {
             self.visit_hir_id(mod_def.hir_id.hir_id());
         }

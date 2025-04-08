@@ -127,6 +127,7 @@ fn main() -> miette::Result<()> {
 
             let file = display_hir_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             ctx.trace_file(file);
 
@@ -134,7 +135,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             ctx.db
                 .get_global_ty_ctxt()
@@ -151,6 +152,7 @@ fn main() -> miette::Result<()> {
 
             let file = display_hir_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             ctx.trace_file(file);
 
@@ -158,7 +160,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             ctx.db
                 .get_global_ty_ctxt()
@@ -173,6 +175,7 @@ fn main() -> miette::Result<()> {
 
             let file = sema_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             ctx.trace_file(file);
 
@@ -183,7 +186,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
 
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             narxia_log::i!("Lowered file");
@@ -225,6 +228,7 @@ fn main() -> miette::Result<()> {
 
             let file = hiri_cmd.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             narxia_log::i!("Read file");
 
@@ -237,7 +241,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
 
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             narxia_log::i!("Lowered file");
@@ -260,6 +264,7 @@ fn main() -> miette::Result<()> {
 
             let file = cg.file;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             narxia_log::i!("Read file");
 
@@ -272,7 +277,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
 
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             narxia_log::i!("Lowered file");
@@ -307,6 +312,7 @@ fn main() -> miette::Result<()> {
             let file = ssa.file;
             let fn_name = ssa.fn_name;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
+            let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
             narxia_log::i!("Read file");
 
@@ -319,7 +325,7 @@ fn main() -> miette::Result<()> {
             ctx.db
                 .get_global_ty_ctxt()
                 .hir_map_mut_ref()
-                .set_current_file(Some(file));
+                .set_current_file(Some(file_map_entry));
 
             let hir = narxia_hir_db::lower_file(&ctx.db, tree);
             narxia_log::i!("Lowered file");

@@ -1,4 +1,5 @@
 use std::io;
+use std::path::PathBuf;
 use std::sync;
 
 use narxia_hir::hir_map;
@@ -17,8 +18,16 @@ pub struct Database {
 }
 
 impl Database {
-    pub(crate) fn lookup_hir_id_file(&self, hir_id: narxia_hir::HirId) -> narxia_src_db::SrcFile {
+    pub(crate) fn lookup_hir_id_file(&self, hir_id: narxia_hir::HirId) -> hir_map::FileMapEntry {
         self.global_ty_ctxt.get_file_of(hir_id)
+    }
+
+    pub(crate) fn get_presentable_path_of_file(&self, file: hir_map::FileMapEntry) -> PathBuf {
+        self.global_ty_ctxt.get_presentable_path_of_file(self, file)
+    }
+
+    pub(crate) fn get_file_text(&self, file: hir_map::FileMapEntry) -> String {
+        self.global_ty_ctxt.get_file_text(self, file)
     }
 
     pub fn get_global_ty_ctxt(&self) -> &GlobalTyCtxt {

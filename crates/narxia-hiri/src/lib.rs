@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use narxia_data_structures::FxBTreeMap;
-use narxia_hir::hir::*;
 use narxia_hir::hir_map::HirMap;
+use narxia_hir::*;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Clone, Copy)]
 pub struct PlaceId {

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::fmt;
 
-use narxia_hir::hir::ExprAtomKind;
-use narxia_hir::hir::{self};
+use hir::ExprAtomKind;
+use narxia_hir as hir;
 use narxia_hir::hir_map::HirMap;
 
 #[derive(Clone, PartialEq, Eq, Hash)]

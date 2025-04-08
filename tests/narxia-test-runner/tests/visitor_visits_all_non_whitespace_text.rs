@@ -16,11 +16,12 @@
 use std::fmt::Write as _;
 
 use dir_structure::NewtypeToInner;
+use hir::hir_map::HirMap;
+use hir::visitor::HirVisitor;
 use miette::bail;
 use miette::IntoDiagnostic;
 use narxia_dir_structures::ParserTestSingleFolder;
-use narxia_hir::hir_map::HirMap;
-use narxia_hir::visitor::HirVisitor;
+use narxia_hir as hir;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::token_source::TokenSource;
 use narxia_test_runner::parser_tests::lower_to_hir;
@@ -55,11 +56,11 @@ impl<'hir> HirVisitor<'hir> for OrphanSpanVisitor<'hir> {
         replace_in_utf8(&mut self.buffer, span.get_start(), span.get_end(), ' ');
     }
 
-    fn visit_ident(&mut self, ident: &'hir narxia_hir::hir::Ident) {
+    fn visit_ident(&mut self, ident: &'hir hir::Ident) {
         self.visit_token_span(ident.span);
     }
 
-    fn visit_use_stmt(&mut self, use_stmt: &'hir narxia_hir::hir::UseStmt) {
+    fn visit_use_stmt(&mut self, use_stmt: &'hir hir::UseStmt) {
         // due to the way we construct use statements, we need to ignore these
         self.ignore_sets.push((use_stmt.span.get_range(), ':'));
         self.ignore_sets.push((use_stmt.span.get_range(), '{'));
@@ -68,10 +69,7 @@ impl<'hir> HirVisitor<'hir> for OrphanSpanVisitor<'hir> {
         narxia_hir::visitor::walk_use_stmt(self, use_stmt);
     }
 
-    fn visit_generic_param_ty_bounds(
-        &mut self,
-        ty_bounds: &'hir narxia_hir::hir::GenericParamTyBounds,
-    ) {
+    fn visit_generic_param_ty_bounds(&mut self, ty_bounds: &'hir hir::GenericParamTyBounds) {
         self.ignore_sets.push((ty_bounds.span.get_range(), '+'));
 
         narxia_hir::visitor::walk_generic_param_ty_bounds(self, ty_bounds);

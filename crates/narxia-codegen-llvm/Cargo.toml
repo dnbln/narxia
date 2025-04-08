@@ -16,8 +16,11 @@ workspace = true
 default = []
 llvm-force-static = ["llvm-sys/force-static"]
 llvm-prefer-dynamic = ["llvm-sys/prefer-dynamic"]
+llvm-force-dynamic = ["llvm-sys/force-dynamic"]
 
 [dependencies]
 narxia-codegen.workspace = true
+narxia-log.workspace = true
 
+libc.workspace = true
 llvm-sys.workspace = true

@@ -19,6 +19,4 @@ owo-colors.workspace = true
 bumpalo.workspace = true
 
 narxia-proc.workspace = true
-narxia-syn.workspace = true
-narxia-src-db.workspace = true
 narxia-data-structures.workspace = true

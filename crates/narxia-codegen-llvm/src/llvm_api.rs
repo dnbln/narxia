@@ -1,13 +1,17 @@
 #![expect(unsafe_code, reason = "This module is a wrapper around LLVM's C API.")]
 
 use std::ffi;
+use std::fmt;
 use std::iter;
 use std::ptr;
 use std::slice;
 
 use llvm_sys::analysis;
 use llvm_sys::core;
+use llvm_sys::error;
 use llvm_sys::prelude::*;
+use llvm_sys::target_machine;
+use llvm_sys::transforms::pass_builder;
 use llvm_sys::LLVMIntPredicate;
 
 fn transparent_downcast_slice<T, U>(t: &[T]) -> &[U]
@@ -103,7 +107,7 @@ impl Ctxt {
     pub fn create_module_with_name(&self, name: &str) -> Module {
         with_string(name, |name| unsafe {
             Module {
-                module: core::LLVMModuleCreateWithNameInContext(name, self.context),
+                module: core::LLVMModuleCreateWithNameInContext(*name, self.context),
             }
         })
     }
@@ -138,7 +142,7 @@ impl Module {
     pub fn add_function(&self, name: &str, ty: Ty) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMAddFunction(self.module, name, ty.ty),
+                value: core::LLVMAddFunction(self.module, *name, ty.ty),
             }
         })
     }
@@ -153,8 +157,184 @@ impl Module {
         }
     }
 
+    pub fn optimize(&mut self, optimization_level: OptLevel, tm: &TargetMachine) {
+        let pm =
+            PassManager::new(unsafe { core::LLVMCreateFunctionPassManagerForModule(self.module) });
+        pm.optimize_module_with_profile(self, optimization_level, tm, PassBuilderOptions::new())
+            .cant_fail();
+    }
+
     pub fn print_to_string(&self) -> LLVMMessage {
         LLVMMessage::new(unsafe { core::LLVMPrintModuleToString(self.module) })
+    }
+}
+
+struct PassManager {
+    pm: LLVMPassManagerRef,
+}
+
+impl PassManager {
+    fn new(pm: LLVMPassManagerRef) -> Self {
+        Self { pm }
+    }
+
+    fn optimize_module_with_profile(
+        &self,
+        m: &mut Module,
+        optimization_level: OptLevel,
+        tm: &TargetMachine,
+        options: PassBuilderOptions,
+    ) -> LLVMError {
+        let passes = match optimization_level {
+            OptLevel::O0 => "default<O0>",
+            OptLevel::O1 => "default<O1>",
+            OptLevel::O2 => "default<O2>",
+            OptLevel::O3 => "default<O3>",
+            OptLevel::Os => "default<Os>",
+            OptLevel::Oz => "default<Oz>",
+        };
+        with_string(passes, |passes| unsafe {
+            LLVMError::new(pass_builder::LLVMRunPasses(
+                m.module,
+                *passes,
+                tm.target_machine,
+                options.pass_builder_options,
+            ))
+        })
+    }
+}
+
+impl Drop for PassManager {
+    fn drop(&mut self) {
+        unsafe {
+            core::LLVMDisposePassManager(self.pm);
+        }
+    }
+}
+
+struct PassBuilderOptions {
+    pass_builder_options: pass_builder::LLVMPassBuilderOptionsRef,
+}
+
+impl PassBuilderOptions {
+    fn new() -> Self {
+        let pass_builder_options = unsafe { pass_builder::LLVMCreatePassBuilderOptions() };
+        Self {
+            pass_builder_options,
+        }
+    }
+}
+
+impl Drop for PassBuilderOptions {
+    fn drop(&mut self) {
+        unsafe {
+            pass_builder::LLVMDisposePassBuilderOptions(self.pass_builder_options);
+        }
+    }
+}
+
+pub enum OptLevel {
+    O0,
+    O1,
+    O2,
+    O3,
+    Os,
+    Oz,
+}
+
+pub struct LLVMTarget {
+    target: target_machine::LLVMTargetRef,
+}
+
+impl LLVMTarget {
+    pub(crate) fn init() {
+        unsafe {
+            llvm_sys::target::LLVM_InitializeAllTargets();
+            llvm_sys::target::LLVM_InitializeAllTargetInfos();
+            llvm_sys::target::LLVM_InitializeAllTargetMCs();
+            llvm_sys::target::LLVM_InitializeAllAsmPrinters();
+            llvm_sys::target::LLVM_InitializeAllAsmParsers();
+            llvm_sys::target::LLVM_InitializeAllDisassemblers();
+        }
+    }
+
+    pub fn new_default() -> Self {
+        Self::new_from_triple_internal(unsafe { target_machine::LLVMGetDefaultTargetTriple() })
+            .expect("Default target triple doesn't exist")
+    }
+
+    pub fn new_from_triple(triple: &str) -> Result<Self, LLVMMessage> {
+        with_string(triple, |triple| Self::new_from_triple_internal(*triple))
+    }
+
+    fn new_from_triple_internal(triple: *const libc::c_char) -> Result<Self, LLVMMessage> {
+        let mut target_ref = ptr::null_mut();
+        let mut error = ptr::null_mut();
+        let target_found = unsafe {
+            target_machine::LLVMGetTargetFromTriple(
+                triple,
+                &mut target_ref as *mut _,
+                &mut error as *mut _,
+            )
+        };
+        if target_found == 1 {
+            return Err(LLVMMessage::new(error));
+        }
+        Ok(Self { target: target_ref })
+    }
+
+    pub fn get_name(&self) -> &str {
+        unsafe { ffi::CStr::from_ptr(target_machine::LLVMGetTargetName(self.target)) }
+            .to_str()
+            .unwrap()
+    }
+}
+
+pub struct TargetMachine {
+    target_machine: target_machine::LLVMTargetMachineRef,
+}
+
+impl TargetMachine {
+    pub fn new_from_triple(target_triple: &str) -> Self {
+        with_string(target_triple, |target_triple| {
+            Self::new_with_triple(
+                LLVMTarget::new_from_triple_internal(*target_triple).expect("Unknown target"),
+                *target_triple,
+            )
+        })
+    }
+
+    pub fn new_with_triple(target: LLVMTarget, triple: *const libc::c_char) -> Self {
+        let target_machine_options = unsafe { target_machine::LLVMCreateTargetMachineOptions() };
+        let machine = unsafe {
+            target_machine::LLVMCreateTargetMachineWithOptions(
+                target.target,
+                triple,
+                target_machine_options,
+            )
+        };
+        Self {
+            target_machine: machine,
+        }
+    }
+}
+
+struct TargetMachineOptions {
+    options: target_machine::LLVMTargetMachineOptionsRef,
+}
+
+impl TargetMachineOptions {
+    fn new() -> Self {
+        let options = unsafe { target_machine::LLVMCreateTargetMachineOptions() };
+        Self { options }
+    }
+}
+
+impl Drop for TargetMachineOptions {
+    fn drop(&mut self) {
+        unsafe {
+            target_machine::LLVMDisposeTargetMachineOptions(self.options);
+        }
     }
 }
 
@@ -198,7 +378,7 @@ impl Builder {
     fn build_add(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildAdd(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildAdd(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -206,7 +386,7 @@ impl Builder {
     fn build_sub(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildSub(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildSub(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -214,7 +394,7 @@ impl Builder {
     fn build_mul(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildMul(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildMul(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -222,7 +402,7 @@ impl Builder {
     fn build_idiv(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildSDiv(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildSDiv(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -230,7 +410,7 @@ impl Builder {
     fn build_imod(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildSRem(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildSRem(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -238,7 +418,7 @@ impl Builder {
     fn build_udiv(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildUDiv(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildUDiv(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -246,7 +426,7 @@ impl Builder {
     fn build_umod(&self, left: VRef, right: VRef, name: &str) -> VRef {
         with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildURem(self.builder, left.value, right.value, name),
+                value: core::LLVMBuildURem(self.builder, left.value, right.value, *name),
             }
         })
     }
@@ -254,7 +434,7 @@ impl Builder {
     fn build_phi(&self, ty: Ty, phi: impl FnOnce(&mut PhiBuilder), name: &str) -> VRef {
         let phi_v = with_string(name, |name| unsafe {
             VRef {
-                value: core::LLVMBuildPhi(self.builder, ty.ty, name),
+                value: core::LLVMBuildPhi(self.builder, ty.ty, *name),
             }
         });
         let mut phi_builder = PhiBuilder { phi: phi_v };
@@ -271,7 +451,7 @@ impl Builder {
                     op.to_llvm_int_predicate(),
                     left.value,
                     right.value,
-                    name,
+                    *name,
                 ),
             }
         })
@@ -300,7 +480,7 @@ impl Builder {
                     func.value,
                     args,
                     args_count,
-                    name,
+                    *name,
                 ),
             }
         })
@@ -353,7 +533,7 @@ impl<'b> BlockBuilder<'b> {
     pub fn create_block(context: &Ctxt, func: VRef, name: &str) -> BRef {
         with_string(name, |name| unsafe {
             BRef {
-                block: core::LLVMAppendBasicBlockInContext(context.context, func.value, name),
+                block: core::LLVMAppendBasicBlockInContext(context.context, func.value, *name),
             }
         })
     }
@@ -532,9 +712,12 @@ impl StandardTypes {
     }
 }
 
-fn with_string<T>(s: &str, f: impl FnOnce(*const i8) -> T) -> T {
+fn with_string<T, F>(s: &str, f: F) -> T
+where
+    F: for<'a> FnOnce(&'a *mut libc::c_char) -> T,
+{
     let s = ffi::CString::new(s).unwrap();
-    f(s.as_ptr())
+    f(&(s.as_ptr() as *mut libc::c_char))
 }
 
 fn with_strings<
@@ -560,15 +743,15 @@ trait OwnedStringsTuple {
 }
 
 struct SBuffer {
-    buf: Vec<ffi::c_char>,
+    buf: Vec<libc::c_char>,
 }
 
 impl SBuffer {
-    fn new(buf: Vec<i8>) -> Self {
+    fn new(buf: Vec<libc::c_char>) -> Self {
         Self { buf }
     }
 
-    fn push_str(&mut self, s: &str) -> *const ffi::c_char {
+    fn push_str(&mut self, s: &str) -> *mut ffi::c_char {
         if s.len() + 1 + self.buf.len() > self.buf.capacity() {
             panic!("buffer overflow");
         }
@@ -578,7 +761,7 @@ impl SBuffer {
         self.buf
             .extend(s.bytes().chain(iter::once(0)).map(|b| b as ffi::c_char));
 
-        self.buf[current_offset..].as_ptr()
+        self.buf[current_offset..].as_mut_ptr()
     }
 }
 
@@ -605,25 +788,25 @@ macro_rules! impl_string_tuple {
 }
 
 impl_string_tuple!(
-    a: &str => *const i8 => *const i8,
+    a: &str => *mut libc::c_char => *mut libc::c_char,
 );
 
 impl_string_tuple!(
-    a: &str => *const i8 => *const i8,
-    b: &str => *const i8 => *const i8,
+    a: &str => *mut libc::c_char => *mut libc::c_char,
+    b: &str => *mut libc::c_char => *mut libc::c_char,
 );
 
 impl_string_tuple!(
-    a: &str => *const i8 => *const i8,
-    b: &str => *const i8 => *const i8,
-    c: &str => *const i8 => *const i8,
+    a: &str => *mut libc::c_char => *mut libc::c_char,
+    b: &str => *mut libc::c_char => *mut libc::c_char,
+    c: &str => *mut libc::c_char => *mut libc::c_char,
 );
 
 impl_string_tuple!(
-    a: &str => *const i8 => *const i8,
-    b: &str => *const i8 => *const i8,
-    c: &str => *const i8 => *const i8,
-    d: &str => *const i8 => *const i8,
+    a: &str => *mut libc::c_char => *mut libc::c_char,
+    b: &str => *mut libc::c_char => *mut libc::c_char,
+    c: &str => *mut libc::c_char => *mut libc::c_char,
+    d: &str => *mut libc::c_char => *mut libc::c_char,
 );
 
 #[repr(transparent)]
@@ -641,10 +824,33 @@ impl LLVMMessage {
     }
 }
 
+impl fmt::Debug for LLVMMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.string().to_str().unwrap())
+    }
+}
+
 impl Drop for LLVMMessage {
     fn drop(&mut self) {
         unsafe {
             core::LLVMDisposeMessage(self.ptr as *mut _);
+        }
+    }
+}
+
+#[must_use]
+pub struct LLVMError {
+    ptr: error::LLVMErrorRef,
+}
+
+impl LLVMError {
+    pub fn new(ptr: error::LLVMErrorRef) -> Self {
+        Self { ptr }
+    }
+
+    pub fn cant_fail(self) {
+        unsafe {
+            error::LLVMCantFail(self.ptr);
         }
     }
 }

@@ -299,7 +299,7 @@ pub trait HirVisitor<'hir> {
     }
 
     #[inline(always)]
-    fn visit_generic_token(&mut self, token: &hir::Tk) {
+    fn visit_generic_token(&mut self, token: &hir::GenericToken) {
         self.visit_token_span(token.span);
     }
 
@@ -1133,7 +1133,7 @@ macro_rules! impl_visitable {
 visitor_fns_impl_visitable!();
 
 impl_visitable! {
-    visit_generic_token(hir::Tk),
+    visit_generic_token(hir::GenericToken),
 }
 
 const_token_implement_acceptors!();

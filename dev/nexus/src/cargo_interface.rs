@@ -58,6 +58,7 @@ pub struct BuildCmd {
     sys_target: SysTarget,
     envs: Vec<(OsString, OsString)>,
     targets: Vec<BuildTarget>,
+    features: Vec<OsString>,
     config: BuildCmdConfig,
 }
 
@@ -136,6 +137,15 @@ impl BuildCmd {
         self
     }
 
+    pub fn feature(self, feature: impl Into<OsString>) -> Self {
+        self.features([feature])
+    }
+
+    pub fn features<T: Into<OsString>>(mut self, features: impl IntoIterator<Item = T>) -> Self {
+        self.features.extend(features.into_iter().map(Into::into));
+        self
+    }
+
     pub fn build_targets(mut self, targets: impl IntoIterator<Item = BuildTarget>) -> Self {
         self.targets = targets.into_iter().collect();
         self
@@ -157,6 +167,7 @@ impl BuildCmd {
             profile,
             sys_target,
             envs,
+            features,
             config,
         } = self;
 
@@ -231,6 +242,10 @@ impl BuildCmd {
             SysTarget::Target { name } => {
                 cmd.arg("--target").arg(name);
             }
+        }
+
+        for feature in features {
+            cmd.arg("--features").arg(feature);
         }
 
         if config.use_ansi {

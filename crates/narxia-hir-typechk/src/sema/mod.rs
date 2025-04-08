@@ -1,13 +1,13 @@
 use core::ops;
 use std::mem;
 
-use narxia_hir::hir;
-use narxia_hir::hir::HirIdNewtype;
-use narxia_hir::hir_map;
-use narxia_hir::hir_map::HirMap;
-use narxia_hir::visitor as vis;
-use narxia_hir::visitor::HirVisitor;
-use narxia_hir::HirId;
+use hir::hir_map;
+use hir::hir_map::HirMap;
+use hir::visitor as vis;
+use hir::visitor::HirVisitor;
+use hir::HirId;
+use hir::HirIdNewtype;
+use narxia_hir as hir;
 
 use crate::def_id::DefId;
 use crate::tyctxt::TyCtxt;

@@ -603,8 +603,8 @@ impl LLVMManager {
                 }
 
                 if !llvm_config.exists() {
-                    item.fail("LLVM build path exists, but llvm-config does not");
-                    bail!("LLVM build path exists, but llvm-config does not");
+                    item.info("LLVM build path exists, but llvm-config does not; build probably failed midway");
+                    break 'configure;
                 }
 
                 item.done("LLVM already built");
@@ -762,6 +762,7 @@ fn build_compiler(
     llvm_prefix_info: &LLVMPrefixInfo,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
+    llvm_link_behavior: LLVMLinkBehavior,
 ) -> NexusR<PathBuf> {
     let mut item = item.add_child("Build::Compiler");
     item.init(None, Some(unit::label("artifacts")));
@@ -774,6 +775,11 @@ fn build_compiler(
         .profile(profile.cargo_name())
         .sys_target(sys.clone())
         .env(llvm_k, llvm_v)
+        .feature(match llvm_link_behavior {
+            LLVMLinkBehavior::PreferDynamic => "llvm-prefer-dynamic",
+            LLVMLinkBehavior::ForceStatic => "llvm-force-static",
+            LLVMLinkBehavior::ForceDynamic => "llvm-force-dynamic",
+        })
         .run(Some(&mut item), build_progress)?;
 
     let executable = if output.status.success() {
@@ -888,6 +894,7 @@ impl BuildI {
                         bins.llvm.as_ref().unwrap(),
                         item,
                         build_progress.clone(),
+                        self.llvm_link_behavior,
                     )?);
                 }
                 Target::Tests => {
@@ -1203,6 +1210,7 @@ impl fmt::Display for NextestEndGroup<'_> {
 pub enum LLVMLinkBehavior {
     ForceStatic,
     PreferDynamic,
+    ForceDynamic,
 }
 
 impl fmt::Display for LLVMLinkBehavior {
@@ -1210,6 +1218,7 @@ impl fmt::Display for LLVMLinkBehavior {
         match self {
             Self::ForceStatic => write!(f, "force-static"),
             Self::PreferDynamic => write!(f, "prefer-dynamic"),
+            Self::ForceDynamic => write!(f, "force-dynamic"),
         }
     }
 }

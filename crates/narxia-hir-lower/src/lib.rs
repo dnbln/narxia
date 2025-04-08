@@ -9,17 +9,16 @@
 //!
 //! This module contains the code that lowers the syntax tree to the HIR.
 
+use hir::hir_map::HirElem;
+use hir::hir_map::HirMap;
+use hir::*;
+use narxia_hir as hir;
 use narxia_src_db::SrcFile;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
 use narxia_syn::syntree::Token;
 use narxia_syn::syntree::TreeNode;
-
-use crate::hir::*;
-use crate::hir_map::HirElem;
-use crate::hir_map::HirMap;
-use crate::HirId;
-use crate::HirSpan;
+use narxia_syn::text_span::TextSpan;
 
 struct HirLowerCtxt<'arena> {
     src_file: SrcFile,
@@ -36,12 +35,6 @@ where
 {
     fn span(&self) -> HirSpan {
         HirSpan::of_node(self)
-    }
-}
-
-impl HasHirSpan for HirSpan {
-    fn span(&self) -> HirSpan {
-        *self
     }
 }
 
@@ -846,13 +839,13 @@ fn lower_expr_atom_ident(
 
 fn lower_num_literal(hir_lower_ctxt: &mut HirLowerCtxt, num_lit: &syntree::NumLit) -> NumLit {
     if let Some(num_bin) = num_lit.get_num_bin() {
-        NumLit::Bin(Tk::from_token(&num_bin))
+        NumLit::Bin(GenericToken::from_token(&num_bin))
     } else if let Some(num_oct) = num_lit.get_num_oct() {
-        NumLit::Oct(Tk::from_token(&num_oct))
+        NumLit::Oct(GenericToken::from_token(&num_oct))
     } else if let Some(num_dec) = num_lit.get_num_dec() {
-        NumLit::Dec(Tk::from_token(&num_dec))
+        NumLit::Dec(GenericToken::from_token(&num_dec))
     } else if let Some(num_hex) = num_lit.get_num_hex() {
-        NumLit::Hex(Tk::from_token(&num_hex))
+        NumLit::Hex(GenericToken::from_token(&num_hex))
     } else {
         todo!()
     }
@@ -1065,7 +1058,7 @@ fn lower_str_literal_fragment(
     match fragment {
         syntree::StringLiteralFragment::StringLiteralFragTextPart(t) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Text(StrLiteralTextFragment {
-                token: Tk::from_token(&t.get_string_literal_frag_text_part()),
+                token: GenericToken::from_token(&t.get_string_literal_frag_text_part()),
             }),
             span: HirSpan::of_node(fragment),
         },
@@ -1086,7 +1079,7 @@ fn lower_str_literal_fragment(
                 x => x,
             };
             StrLiteralFragment {
-                kind: StrLiteralFragmentKind::EscapedChar(Tk::from_token(&t), c),
+                kind: StrLiteralFragmentKind::EscapedChar(GenericToken::from_token(&t), c),
                 span: HirSpan::of_node(fragment),
             }
         }
@@ -1095,7 +1088,7 @@ fn lower_str_literal_fragment(
         }
         syntree::StringLiteralFragment::StringLiteralFragDisplay(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Display(StrLiteralDisplayFragment {
-                display_token: Tk::from_token(&e.get_display_tok()),
+                display_token: GenericToken::from_token(&e.get_display_tok()),
                 span: HirSpan::of_node(fragment),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
@@ -1106,7 +1099,7 @@ fn lower_str_literal_fragment(
         },
         syntree::StringLiteralFragment::StringLiteralFragDebug(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Debug(StrLiteralDebugFragment {
-                debug_token: Tk::from_token(&e.get_debug_tok()),
+                debug_token: GenericToken::from_token(&e.get_debug_tok()),
                 span: HirSpan::of_node(fragment),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
@@ -1348,3 +1341,46 @@ fn lower_ident(hir_lower_ctxt: &mut HirLowerCtxt, ident: &Token) -> Ident {
     let text = ident.text().to_owned();
     Ident { span, text }
 }
+
+trait FromTokenConstToken: ConstToken + Sized {
+    const SYNTAX_KIND: SyntaxKind;
+
+    fn from_token(token: &Token) -> Self {
+        debug_assert_eq!(token.kind(), Self::SYNTAX_KIND);
+        debug_assert_eq!(token.text(), Self::text());
+
+        Self::from_span(HirSpan::of(&token))
+    }
+}
+
+trait HirSpanImpl {
+    fn of_node<T: syntree::TreeNode>(node: &T) -> Self;
+    fn of(token: &Token) -> Self;
+}
+
+impl HirSpanImpl for HirSpan {
+    fn of_node<T: syntree::TreeNode>(node: &T) -> Self {
+        let span = TextSpan::of_node(node.get_node()).range_usize();
+        Self::new(span.start, span.end)
+    }
+
+    fn of(token: &Token) -> Self {
+        let span = TextSpan::of(token).range_usize();
+        Self::new(span.start, span.end)
+    }
+}
+
+trait GenericTokenImpl {
+    fn from_token(token: &Token) -> Self;
+}
+
+impl GenericTokenImpl for GenericToken {
+    fn from_token(token: &Token) -> Self {
+        Self {
+            span: HirSpan::of(token),
+            text: token.text().to_string(),
+        }
+    }
+}
+
+narxia_hir::const_tokens_impls!();

@@ -4,9 +4,6 @@
 
 use std::fmt;
 
-use narxia_syn::syntax_kind::SyntaxKind;
-use narxia_syn::syntree::Token;
-
 use crate::HirId;
 use crate::HirSpan;
 use crate::DUMMY_SP;
@@ -54,9 +51,7 @@ macro_rules! hir_id_newtype {
     };
 }
 
-pub(crate) trait ConstToken {
-    const KIND: SyntaxKind;
-
+pub trait ConstToken {
     fn make_virtual() -> Self
     where
         Self: Sized,
@@ -65,42 +60,42 @@ pub(crate) trait ConstToken {
     }
 
     fn from_span(span: HirSpan) -> Self;
-    fn from_token(token: &Token) -> Self
-    where
-        Self: Sized,
-    {
-        debug_assert_eq!(token.kind(), Self::KIND);
-        debug_assert_eq!(token.text(), Self::text());
-        debug_assert_eq!(HirSpan::of(token).span.len_usize(), Self::text().len());
-
-        let span = HirSpan::of(token);
-        Self::from_span(span)
-    }
 
     fn span(&self) -> HirSpan;
     fn text() -> &'static str;
 }
 
-macro_rules! const_token {
-    ($name:ident, $kind:ident, $text:literal) => {
-        #[derive(Debug, Eq, PartialEq, Clone, Copy)]
-        pub struct $name {
-            pub span: HirSpan,
-        }
-
-        impl ConstToken for $name {
-            const KIND: SyntaxKind = SyntaxKind::$kind;
-
-            fn from_span(span: HirSpan) -> Self {
-                Self { span }
+macro_rules! const_tokens {
+    ($($name:ident, $kind:ident, $text:literal),* $(,)?) => {
+        $(
+            #[derive(Debug, Eq, PartialEq, Clone, Copy)]
+            pub struct $name {
+                pub span: HirSpan,
             }
 
-            fn span(&self) -> HirSpan {
-                self.span
-            }
+            impl ConstToken for $name {
+                fn from_span(span: HirSpan) -> Self {
+                    Self { span }
+                }
 
-            fn text() -> &'static str {
-                $text
+                fn span(&self) -> HirSpan {
+                    self.span
+                }
+
+                fn text() -> &'static str {
+                    $text
+                }
+            }
+        )*
+
+        #[macro_export]
+        macro_rules! const_tokens_impls {
+            () => {
+                $(
+                    impl FromTokenConstToken for $name {
+                        const SYNTAX_KIND: SyntaxKind = SyntaxKind::$kind;
+                    }
+                )*
             }
         }
     };
@@ -114,8 +109,6 @@ pub struct ItemList {
 }
 
 hir_id_newtype!(ModId, ModDef);
-
-const_token!(ModuleKw, MODULE_KW, "module");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ModDef {
@@ -156,8 +149,6 @@ impl AttrList {
         Self { attrs: Vec::new() }
     }
 }
-
-const_token!(Hash, HASH, "#");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Attr {
@@ -211,8 +202,6 @@ pub enum ItemKind {
 }
 
 hir_id_newtype!(UseStmtId, UseStmt);
-
-const_token!(UseKw, USE_KW, "use");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UseStmt {
@@ -274,8 +263,6 @@ impl fmt::Debug for Ident {
 }
 
 hir_id_newtype!(FnId, FnDef);
-
-const_token!(FnKw, FN_KW, "fn");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnDef {
@@ -511,10 +498,10 @@ hir_id_newtype!(ExprAtomIdentId, ExprAtomIdent);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum NumLit {
-    Bin(Tk),
-    Oct(Tk),
-    Dec(Tk),
-    Hex(Tk),
+    Bin(GenericToken),
+    Oct(GenericToken),
+    Dec(GenericToken),
+    Hex(GenericToken),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -617,74 +604,187 @@ impl NumLit {
     }
 }
 
-const_token!(IfKw, IF_KW, "if");
-const_token!(ElseKw, ELSE_KW, "else");
-const_token!(ReturnKw, RETURN_KW, "return");
-const_token!(BreakKw, BREAK_KW, "break");
-const_token!(ContinueKw, CONTINUE_KW, "continue");
-const_token!(AsKw, AS_KW, "as");
-const_token!(ConstKw, CONST_KW, "const");
-const_token!(ForKw, FOR_KW, "for");
-const_token!(InKw, IN_KW, "in");
-const_token!(WhileKw, WHILE_KW, "while");
-const_token!(LoopKw, LOOP_KW, "loop");
-const_token!(TrueKw, TRUE_KW, "true");
-const_token!(FalseKw, FALSE_KW, "false");
-
-const_token!(Dot, DOT, ".");
-const_token!(Comma, COMMA, ",");
-const_token!(Colon2, COLON2, "::");
-const_token!(Colon, COLON, ":");
-const_token!(ThinArrow, THIN_ARROW, "->");
-const_token!(FatArrow, FAT_ARROW, "=>");
-const_token!(LBrace, L_BRACE, "{");
-const_token!(RBrace, R_BRACE, "}");
-const_token!(LParen, L_PAREN, "(");
-const_token!(RParen, R_PAREN, ")");
-const_token!(LBracket, L_BRACK, "[");
-const_token!(RBracket, R_BRACK, "]");
-const_token!(LAngle, L_ANGLE, "<");
-const_token!(RAngle, R_ANGLE, ">");
-
-const_token!(Eq, EQ, "=");
-const_token!(PlusEq, PLUS_EQ, "+=");
-const_token!(MinusEq, MINUS_EQ, "-=");
-const_token!(AsteriskEq, ASTERISK_EQ, "*=");
-const_token!(SlashEq, SLASH_EQ, "/=");
-const_token!(PercentEq, PERCENT_EQ, "%=");
-const_token!(AmpEq, AMP_EQ, "&=");
-const_token!(PipeEq, PIPE_EQ, "|=");
-const_token!(CaretEq, CARET_EQ, "^=");
-const_token!(Plus, PLUS, "+");
-const_token!(Minus, MINUS, "-");
-const_token!(Asterisk, ASTERISK, "*");
-const_token!(Slash, SLASH, "/");
-const_token!(Percent, PERCENT, "%");
-const_token!(Amp, AMP, "&");
-const_token!(Pipe, PIPE, "|");
-const_token!(Caret, CARET, "^");
-const_token!(Eq2, EQ2, "==");
-const_token!(Neq, NEQ, "!=");
-const_token!(LEq, LE, "<=");
-const_token!(GEq, GE, ">=");
-const_token!(Amp2, AMP2, "&&");
-const_token!(Pipe2, PIPE2, "||");
+const_tokens!(
+    ModuleKw,
+    MODULE_KW,
+    "module",
+    IfKw,
+    IF_KW,
+    "if",
+    ElseKw,
+    ELSE_KW,
+    "else",
+    ReturnKw,
+    RETURN_KW,
+    "return",
+    BreakKw,
+    BREAK_KW,
+    "break",
+    ContinueKw,
+    CONTINUE_KW,
+    "continue",
+    AsKw,
+    AS_KW,
+    "as",
+    ConstKw,
+    CONST_KW,
+    "const",
+    ForKw,
+    FOR_KW,
+    "for",
+    InKw,
+    IN_KW,
+    "in",
+    WhileKw,
+    WHILE_KW,
+    "while",
+    LoopKw,
+    LOOP_KW,
+    "loop",
+    TrueKw,
+    TRUE_KW,
+    "true",
+    FalseKw,
+    FALSE_KW,
+    "false",
+    LetKw,
+    LET_KW,
+    "let",
+    MutKw,
+    MUT_KW,
+    "mut",
+    UseKw,
+    USE_KW,
+    "use",
+    FnKw,
+    FN_KW,
+    "fn",
+    Dot,
+    DOT,
+    ".",
+    Comma,
+    COMMA,
+    ",",
+    Colon2,
+    COLON2,
+    "::",
+    Colon,
+    COLON,
+    ":",
+    ThinArrow,
+    THIN_ARROW,
+    "->",
+    FatArrow,
+    FAT_ARROW,
+    "=>",
+    LBrace,
+    L_BRACE,
+    "{",
+    RBrace,
+    R_BRACE,
+    "}",
+    LParen,
+    L_PAREN,
+    "(",
+    RParen,
+    R_PAREN,
+    ")",
+    LBracket,
+    L_BRACK,
+    "[",
+    RBracket,
+    R_BRACK,
+    "]",
+    LAngle,
+    L_ANGLE,
+    "<",
+    RAngle,
+    R_ANGLE,
+    ">",
+    Hash,
+    HASH,
+    "#",
+    Eq,
+    EQ,
+    "=",
+    PlusEq,
+    PLUS_EQ,
+    "+=",
+    MinusEq,
+    MINUS_EQ,
+    "-=",
+    AsteriskEq,
+    ASTERISK_EQ,
+    "*=",
+    SlashEq,
+    SLASH_EQ,
+    "/=",
+    PercentEq,
+    PERCENT_EQ,
+    "%=",
+    AmpEq,
+    AMP_EQ,
+    "&=",
+    PipeEq,
+    PIPE_EQ,
+    "|=",
+    CaretEq,
+    CARET_EQ,
+    "^=",
+    Plus,
+    PLUS,
+    "+",
+    Minus,
+    MINUS,
+    "-",
+    Asterisk,
+    ASTERISK,
+    "*",
+    Slash,
+    SLASH,
+    "/",
+    Percent,
+    PERCENT,
+    "%",
+    Amp,
+    AMP,
+    "&",
+    Pipe,
+    PIPE,
+    "|",
+    Caret,
+    CARET,
+    "^",
+    Eq2,
+    EQ2,
+    "==",
+    Neq,
+    NEQ,
+    "!=",
+    LEq,
+    LE,
+    "<=",
+    GEq,
+    GE,
+    ">=",
+    Amp2,
+    AMP2,
+    "&&",
+    Pipe2,
+    PIPE2,
+    "||",
+    LQuote,
+    BEGIN_STRING,
+    "\"",
+    RQuote,
+    END_STRING,
+    "\""
+);
 
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
-pub struct Tk {
+pub struct GenericToken {
     pub span: HirSpan,
-    pub kind: SyntaxKind,
     pub text: String,
-}
-
-impl Tk {
-    pub(crate) fn from_token(token: &Token) -> Self {
-        Self {
-            span: HirSpan::of(token),
-            kind: token.kind(),
-            text: token.text().to_string(),
-        }
-    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -720,9 +820,6 @@ pub struct ContinueExpr {
     pub continue_kw: ContinueKw,
 }
 
-const_token!(LQuote, BEGIN_STRING, "\"");
-const_token!(RQuote, END_STRING, "\"");
-
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteral {
     pub lquote: LQuote,
@@ -740,27 +837,27 @@ pub struct StrLiteralFragment {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum StrLiteralFragmentKind {
     Text(StrLiteralTextFragment),
-    EscapedChar(Tk, char),
-    EscapeSequence(Tk, char),
+    EscapedChar(GenericToken, char),
+    EscapeSequence(GenericToken, char),
     Display(StrLiteralDisplayFragment),
     Debug(StrLiteralDebugFragment),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteralTextFragment {
-    pub token: Tk,
+    pub token: GenericToken,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteralDisplayFragment {
-    pub display_token: Tk,
+    pub display_token: GenericToken,
     pub span: HirSpan,
     pub expr: ExprId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct StrLiteralDebugFragment {
-    pub debug_token: Tk,
+    pub debug_token: GenericToken,
     pub span: HirSpan,
     pub expr: ExprId,
 }
@@ -828,9 +925,6 @@ pub enum AssignmentOp {
     BitOrAssign(PipeEq),
     BitXorAssign(CaretEq),
 }
-
-const_token!(LetKw, LET_KW, "let");
-const_token!(MutKw, MUT_KW, "mut");
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct LetStmt {

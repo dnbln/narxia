@@ -32,6 +32,7 @@ narxia-data-structures = { path = "crates/narxia-data-structures" }
 narxia-dir-structures = { path = "dev/narxia-dir-structures" }
 narxia-driver = { path = "crates/narxia-driver" }
 narxia-hir = { path = "crates/narxia-hir" }
+narxia-hir-lower = { path = "crates/narxia-hir-lower" }
 narxia-hir-db = { path = "crates/narxia-hir-db" }
 narxia-hir-typechk = { path = "crates/narxia-hir-typechk" }
 narxia-hiri = { path = "crates/narxia-hiri" }
@@ -57,8 +58,9 @@ drop_bomb = "0.1.5"
 glob = "0.3.0"
 human-panic = "2.0.0"
 humantime = "2.1.0"
+libc = "0.2"
 libtest-mimic = "0.7.0"
-llvm-sys = { version = "201.0.0", features = ["prefer-dynamic"] }
+llvm-sys = { version = "201.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"

@@ -22,6 +22,7 @@ pub mod parser_tests {
             .into_diagnostic()?
             .clone();
         let src_file = narxia_driver::load_file(ctx, folder.input_file_path(), &input.0);
+        let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(src_file);
         ctx.trace_file(src_file);
         let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(ctx, src_file);
         if !errors.is_empty() {
@@ -30,7 +31,7 @@ pub mod parser_tests {
         ctx.db
             .get_global_ty_ctxt()
             .hir_map_mut_ref()
-            .set_current_file(Some(src_file));
+            .set_current_file(Some(file_map_entry));
         let hir = narxia_hir_db::lower_file(&ctx.db, syn_file);
         ctx.db
             .get_global_ty_ctxt()

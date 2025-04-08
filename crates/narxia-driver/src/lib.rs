@@ -5,9 +5,10 @@ use std::fmt::Formatter;
 use std::io;
 use std::path::PathBuf;
 
-use narxia_hir::hir;
-use narxia_hir::hir_map::HirElem;
-use narxia_hir::HirId;
+use hir::hir_map::HirElem;
+use hir::HirId;
+use narxia_hir as hir;
+use narxia_hir::hir_map::FileMapEntry;
 use narxia_src_db::FilePathInfo;
 use narxia_src_db::SrcFile;
 use narxia_syn::parse_error::ParseError;
@@ -109,7 +110,7 @@ fn dbg_impl_code<H>(
 
     let _guard = ContextResetGuard;
 
-    fn debug_hir_id_get_src_file(hir_id: HirId) -> SrcFile {
+    fn debug_hir_id_get_src_file(hir_id: HirId) -> FileMapEntry {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
             #[expect(unsafe_code)]
@@ -118,21 +119,24 @@ fn dbg_impl_code<H>(
         })
     }
 
-    fn debug_hir_id_path_callback(src_file: SrcFile) -> String {
+    fn debug_hir_id_path_callback(src_file: FileMapEntry) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
             #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
-            format!("{}", src_file.get_presentable_path(&ctx.db).display())
+            format!(
+                "{}",
+                ctx.db.get_presentable_path_of_file(src_file).display()
+            )
         })
     }
 
-    fn debug_file_contents_callback(file: SrcFile) -> String {
+    fn debug_file_contents_callback(file: FileMapEntry) -> String {
         DRIVER_CTXT.with(|f| {
             let f = f.borrow();
             #[expect(unsafe_code)]
             let ctx: &DriverCtx = unsafe { &**f };
-            file.get_text(&ctx.db)
+            ctx.db.get_file_text(file)
         })
     }
 

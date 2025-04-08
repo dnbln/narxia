@@ -18,6 +18,7 @@ workspace = true
 default = []
 llvm-force-static = ["narxia-codegen-llvm/llvm-force-static"]
 llvm-prefer-dynamic = ["narxia-codegen-llvm/llvm-prefer-dynamic"]
+llvm-force-dynamic = ["narxia-codegen-llvm/llvm-force-dynamic"]
 
 [dependencies]
 clap.workspace = true
@@ -42,6 +43,7 @@ narxia-ssa.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
+narxia-hir-lower.workspace = true
 
 [[bench]]
 name = "parser-bench"

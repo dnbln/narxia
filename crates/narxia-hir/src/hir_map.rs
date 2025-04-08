@@ -1,7 +1,6 @@
 use std::fmt;
 
 use narxia_data_structures::FxBTreeMap;
-use narxia_src_db::SrcFile;
 
 use crate::hir;
 use crate::hir::*;
@@ -114,8 +113,8 @@ impl fmt::Display for HirElem {
 pub struct HirMap {
     buffer: Vec<HirElem>,
     parents: Vec<HirId>,
-    files: Vec<SrcFile>,
-    current_file: Option<SrcFile>,
+    files: Vec<FileMapEntry>,
+    current_file: Option<FileMapEntry>,
 }
 
 impl Default for HirMap {
@@ -134,7 +133,7 @@ impl HirMap {
         }
     }
 
-    pub fn set_current_file(&mut self, file: Option<SrcFile>) {
+    pub fn set_current_file(&mut self, file: Option<FileMapEntry>) {
         self.current_file = file;
     }
 
@@ -282,7 +281,7 @@ impl HirMap {
         self.parents[at.id]
     }
 
-    pub fn get_file(&self, at: HirId) -> SrcFile {
+    pub fn get_file(&self, at: HirId) -> FileMapEntry {
         self.files[at.id]
     }
 
@@ -385,5 +384,18 @@ impl<'hir> visitor::HirVisitor<'hir> for FnLookupVisitor<'hir> {
         if hir.name.text == self.fn_name {
             self.found = Some(hir.hir_id);
         }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FileMapEntry(usize);
+
+impl FileMapEntry {
+    pub fn new(file: usize) -> Self {
+        Self(file)
+    }
+
+    pub fn get_id(&self) -> usize {
+        self.0
     }
 }

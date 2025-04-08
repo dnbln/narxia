@@ -5,6 +5,7 @@ use llvm_api::Ctxt;
 use llvm_api::IntCmp;
 use llvm_api::Module;
 use llvm_api::StandardTypes;
+use llvm_api::TargetMachine;
 use llvm_api::Ty;
 use narxia_codegen::ir;
 use narxia_codegen::CodegenBackend;
@@ -98,6 +99,15 @@ impl CodegenBackend for Backend {
         let _ = end_bb.ret(final_result);
 
         self.module.verify();
+
+        narxia_log::info!("Verified module");
+
+        llvm_api::LLVMTarget::init();
+        let tm = TargetMachine::new_from_triple("x86_64-apple-darwin");
+
+        narxia_log::info!("Target machine created");
+
+        self.module.optimize(llvm_api::OptLevel::O3, &tm);
 
         let s = self.module.print_to_string();
 

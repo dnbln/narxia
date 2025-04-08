@@ -1,9 +1,11 @@
 use std::ops;
+use std::path::PathBuf;
 use std::sync;
 use std::sync::Arc;
 use std::sync::RwLock;
 
 use narxia_data_structures::FxBTreeMap;
+use narxia_hir::hir_map::FileMapEntry;
 use narxia_hir::hir_map::HirElem;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirMapQ;
@@ -37,6 +39,7 @@ pub struct GlobalTyCtxtInner {
     def_map: RwLock<DefMap>,
     pub hir_map: RwLock<HirMap>,
     name_resolution: RwLock<NameResolution>,
+    src_files: RwLock<Vec<SrcFile>>,
 }
 
 pub struct NameResolution {
@@ -65,6 +68,7 @@ impl GlobalTyCtxt {
                 name_resolution: RwLock::new(NameResolution {
                     name_map: FxBTreeMap::new(),
                 }),
+                src_files: RwLock::new(Vec::new()),
             }),
         }
     }
@@ -98,8 +102,29 @@ impl GlobalTyCtxt {
         self.inner.hir_map.write().unwrap()
     }
 
-    pub fn get_file_of(&self, hir_id: HirId) -> SrcFile {
+    pub fn get_file_of(&self, hir_id: HirId) -> FileMapEntry {
         self.make_ty_ctxt().hir_map().get_file(hir_id)
+    }
+
+    pub fn get_presentable_path_of_file(
+        &self,
+        db: &dyn narxia_src_db::SrcDb,
+        file: FileMapEntry,
+    ) -> PathBuf {
+        let f = self.inner.src_files.read().unwrap()[file.get_id()];
+        f.get_presentable_path(db)
+    }
+
+    pub fn get_file_text(&self, db: &dyn narxia_src_db::SrcDb, file: FileMapEntry) -> String {
+        let f = self.inner.src_files.read().unwrap()[file.get_id()];
+        f.get_text(db)
+    }
+
+    pub fn add_file_map_entry(&self, file: SrcFile) -> FileMapEntry {
+        let mut rf = self.inner.src_files.write().unwrap();
+        let idx = rf.len();
+        rf.push(file);
+        FileMapEntry::new(idx)
     }
 
     fn resolved_name(&self, id: HirId, def_id: DefId) {

@@ -1,17 +1,17 @@
 use std::cell::RefCell;
 use std::fmt;
 
-use narxia_src_db::SrcFile;
 use owo_colors::OwoColorize;
 use owo_colors::Style;
 
 use super::*;
+use crate::hir_map::FileMapEntry;
 use crate::hir_map::HirElem;
 
-pub struct HirDebugContext {
-    get_file_fn: fn(HirId) -> SrcFile,
-    get_path_fn: fn(SrcFile) -> String,
-    get_file_contents_fn: fn(SrcFile) -> String,
+struct HirDebugContext {
+    get_file_fn: fn(HirId) -> FileMapEntry,
+    get_path_fn: fn(FileMapEntry) -> String,
+    get_file_contents_fn: fn(FileMapEntry) -> String,
     hir_map_lookup_fn: fn(HirId) -> HirElem,
 }
 
@@ -20,9 +20,9 @@ thread_local! {
 }
 
 pub fn dbg_hir(
-    get_file_fn: fn(HirId) -> SrcFile,
-    get_path_fn: fn(SrcFile) -> String,
-    get_file_contents_fn: fn(SrcFile) -> String,
+    get_file_fn: fn(HirId) -> FileMapEntry,
+    get_path_fn: fn(FileMapEntry) -> String,
+    get_file_contents_fn: fn(FileMapEntry) -> String,
     hir_map_lookup_fn: fn(HirId) -> HirElem,
     cb: impl FnOnce() -> fmt::Result,
 ) -> fmt::Result {
@@ -53,9 +53,9 @@ pub fn dbg_hir(
 }
 
 pub fn display_hir(
-    get_file_fn: fn(HirId) -> SrcFile,
-    get_path_fn: fn(SrcFile) -> String,
-    get_file_contents_fn: fn(SrcFile) -> String,
+    get_file_fn: fn(HirId) -> FileMapEntry,
+    get_path_fn: fn(FileMapEntry) -> String,
+    get_file_contents_fn: fn(FileMapEntry) -> String,
     hir_map_lookup_fn: fn(HirId) -> HirElem,
     cb: impl FnOnce() -> fmt::Result,
 ) -> fmt::Result {

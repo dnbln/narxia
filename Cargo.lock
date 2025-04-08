@@ -1318,8 +1318,10 @@ version = "0.0.0"
 name = "narxia-codegen-llvm"
 version = "0.0.0"
 dependencies = [
+ "libc",
  "llvm-sys",
  "narxia-codegen",
+ "narxia-log",
 ]
 
 [[package]]
@@ -1349,6 +1351,7 @@ dependencies = [
  "narxia-data-structures",
  "narxia-hir",
  "narxia-hir-db",
+ "narxia-hir-lower",
  "narxia-hir-typechk",
  "narxia-hiri",
  "narxia-log",
@@ -1368,8 +1371,6 @@ dependencies = [
  "bumpalo",
  "narxia-data-structures",
  "narxia-proc",
- "narxia-src-db",
- "narxia-syn",
  "owo-colors",
 ]
 
@@ -1378,8 +1379,18 @@ name = "narxia-hir-db"
 version = "0.0.0"
 dependencies = [
  "narxia-hir",
+ "narxia-hir-lower",
  "narxia-syn-db",
  "salsa 0.0.0",
+]
+
+[[package]]
+name = "narxia-hir-lower"
+version = "0.0.0"
+dependencies = [
+ "narxia-hir",
+ "narxia-src-db",
+ "narxia-syn",
 ]
 
 [[package]]
