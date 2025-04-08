@@ -3,6 +3,7 @@ use std::fmt;
 use narxia_data_structures::FxBTreeMap;
 use narxia_src_db::SrcFile;
 
+use crate::hir;
 use crate::hir::*;
 use crate::visitor;
 use crate::visitor::HirVisitor;
@@ -380,7 +381,7 @@ impl<'hir> visitor::HirVisitor<'hir> for FnLookupVisitor<'hir> {
         q(self, self.hir_map);
     }
 
-    fn visit_fn_def(&mut self, hir: &'hir crate::hir::FnDef) {
+    fn visit_fn_def(&mut self, hir: &'hir hir::FnDef) {
         if hir.name.text == self.fn_name {
             self.found = Some(hir.hir_id);
         }

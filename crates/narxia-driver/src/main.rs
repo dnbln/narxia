@@ -331,7 +331,7 @@ fn main() -> miette::Result<()> {
             let hir_map = ctx.db.get_global_ty_ctxt().hir_map_mut_ref();
             let f =
                 FnLookupVisitor::lookup(&*hir_map, hir.mod_def(&ctx.db), fn_name.clone()).unwrap();
-            let f = narxia_ssa::convert(&hir_map, &hir_map.get_fn(f));
+            let f = narxia_ssa::convert(&hir_map, hir_map.get_fn(f));
             println!("{:#?}", f);
         }
     }

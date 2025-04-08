@@ -1,4 +1,5 @@
 use core::ops;
+use std::mem;
 
 use narxia_hir::hir;
 use narxia_hir::hir::HirIdNewtype;
@@ -367,7 +368,7 @@ pub fn resolve_work(
             }
         }
 
-        std::mem::swap(work_queue, push_back);
+        mem::swap(work_queue, push_back);
     }
 }
 

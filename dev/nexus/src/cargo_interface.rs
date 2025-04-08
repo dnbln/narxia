@@ -732,11 +732,7 @@ pub mod tests {
             self
         }
 
-        pub fn run(
-            self,
-            mut item: Option<&mut Item>,
-            groups: Option<&NexusOutputGroups>,
-        ) -> NexusR {
+        pub fn run(self, item: Option<&mut Item>, groups: Option<&NexusOutputGroups>) -> NexusR {
             let mut cmd = cargo_command();
             if self.miri {
                 cmd.arg("miri");
@@ -779,28 +775,28 @@ pub mod tests {
 
             let stdout = child.stdout.take().unwrap();
 
-            {
-                if self.capture_nextest_stderr {
-                    let stderr = child.stderr.take().unwrap();
-                    thread::spawn(move || {
-                        let mut stderr = stderr;
-                        loop {
-                            let num = stderr.read(&mut [0; 1024]);
-                            match num {
-                                Ok(0) => break,
-                                Ok(_) => {}
-                                Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-                                    break;
-                                }
-                                Err(e) => {
-                                    eprintln!("Error reading stderr: {e}");
-                                    break;
-                                }
+            let stderr_join = if self.capture_nextest_stderr {
+                let stderr = child.stderr.take().unwrap();
+                Some(thread::spawn(move || {
+                    let mut stderr = stderr;
+                    loop {
+                        let num = stderr.read(&mut [0; 1024]);
+                        match num {
+                            Ok(0) => break,
+                            Ok(_) => {}
+                            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
+                                break;
+                            }
+                            Err(e) => {
+                                eprintln!("Error reading stderr: {e}");
+                                break;
                             }
                         }
-                    });
-                }
-            }
+                    }
+                }))
+            } else {
+                None
+            };
 
             struct TestResult {
                 suite: String,
@@ -918,6 +914,10 @@ pub mod tests {
                         }
                     },
                 }
+            }
+
+            if let Some(stderr_join) = stderr_join {
+                stderr_join.join().unwrap();
             }
 
             let out_stream = Stdout;

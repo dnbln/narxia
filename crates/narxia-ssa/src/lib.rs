@@ -394,15 +394,13 @@ impl LocalSsaBuilder {
 
                     self.position_at_block(end);
 
-                    let v = self.push_to_current_block(IValue::Phi({
+                    self.push_to_current_block(IValue::Phi({
                         let mut phi = vec![(then_block, then_value)];
                         if let Some(else_value) = else_value {
                             phi.push((else_block, else_value));
                         }
                         phi
-                    }));
-
-                    v
+                    }))
                 }
                 hir::ExprAtomKind::ReturnExpr(return_expr) => {
                     if let Some(ret_expr) = return_expr.expr {
