@@ -105,10 +105,7 @@ fn check_all(input_files: Vec<InputFile>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let mut global_called_list = AllCalledData::new();
     for (id, input_file) in input_files.iter().enumerate() {
-        eprintln!(
-            "Checking file {}",
-            format!("{}", input_file.path.display()).bright_blue()
-        );
+        eprintln!("Checking file {}", input_file.path.display().bright_blue());
         eprintln!("{}", ">>>".bright_white());
         eprintln!("{}", input_file.contents.bright_blue());
         eprintln!("{}", "<<<".bright_white());
@@ -154,12 +151,13 @@ no guarantee now that the parse tree matches our syn models.
             for call in called.call_set {
                 eprintln!(
                     "    Called at {}@{}",
-                    format!("{:?}", call.called_at.1.kind).bright_green(),
-                    format!("{}", call.called_at.1.span).purple().bold(),
+                    format_args!("{:?}", call.called_at.1.kind).bright_green(),
+                    format_args!("{}", call.called_at.1.span).purple().bold(),
                 );
                 eprintln!(
                     "    In file {}",
-                    format!("{}", input_files[call.called_at.0 .0].path.display()).bright_blue()
+                    format_args!("{}", input_files[call.called_at.0 .0].path.display())
+                        .bright_blue()
                 );
             }
         }

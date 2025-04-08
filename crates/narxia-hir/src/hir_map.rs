@@ -358,7 +358,11 @@ pub struct FnLookupVisitor<'hir> {
 }
 
 impl<'hir> FnLookupVisitor<'hir> {
-    pub fn lookup(hir_map: &'hir HirMap, module: ModId, fn_name: impl Into<String>) -> Option<FnId> {
+    pub fn lookup(
+        hir_map: &'hir HirMap,
+        module: ModId,
+        fn_name: impl Into<String>,
+    ) -> Option<FnId> {
         let mut visitor = FnLookupVisitor {
             hir_map,
             fn_name: fn_name.into(),

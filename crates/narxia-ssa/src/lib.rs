@@ -356,7 +356,7 @@ impl LocalSsaBuilder {
                     // let value = value.unwrap();
                     // *value
                     LocalRef { id: 1000 }
-                },
+                }
                 hir::ExprAtomKind::Str(str_literal) => {
                     todo!()
                 }
