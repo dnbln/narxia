@@ -119,11 +119,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "nightly $TODAY" \
+          gh release create "nightly/$TODAY" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} nightly $TODAY" \
               --generate-notes --draft --prerelease --fail-on-no-commits
-          gh release upload "nightly $TODAY" \
+          gh release upload "nightly/$TODAY" \
               --repo="$GITHUB_REPOSITORY" \
               narxia-linux/narxia-linux.zip \
               narxia-macos/narxia-macos.zip
