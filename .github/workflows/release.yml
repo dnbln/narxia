@@ -108,11 +108,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: narxia-linux
-          path: narxia-linux.zip
+          path: narxia-linux
       - uses: actions/download-artifact@v4
         with:
           name: narxia-macos
-          path: narxia-macos.zip
+          path: narxia-macos
       - name: Date
         run: printf "TODAY=" >> $GITHUB_ENV; date +%Y-%m-%d >> $GITHUB_ENV
       - name: Create release
@@ -125,5 +125,5 @@ jobs:
               --generate-notes --draft --prerelease --fail-on-no-commits
           gh release upload "nightly $TODAY" \
               --repo="$GITHUB_REPOSITORY" \
-              narxia-linux.zip \
-              narxia-macos.zip
+              narxia-linux/narxia-linux.zip \
+              narxia-macos/narxia-macos.zip
