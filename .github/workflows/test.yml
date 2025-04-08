@@ -59,7 +59,7 @@ jobs:
       - name: Build tests
         run: cargo nexus build-sys build --targets tests
       - name: Test
-        run: cargo nexus test --no-fail-fast --capture-nextest
+        run: cargo nexus test --no-fail-fast
         timeout-minutes: 3
       - name: Format check
         run: cargo nexus build-sys fmt --check
