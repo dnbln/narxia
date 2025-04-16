@@ -605,7 +605,26 @@ macro_rules! dir_children_wrapper {
 pub use dir_structure_macros::DirStructure;
 
 macro_rules! data_format_impl {
-    ($(#[$mod_attr:meta])* $mod_name:ident, $(#[$main_ty_attrs:meta])* $main_ty:ident, $from_str_impl:expr, $from_str_error:ty, $(#[$to_str_ty_attrs:meta])* $to_str_ty:ident, $to_str_impl:expr, $(#[$writer_ty_attrs:meta])* $writer_ty:ident, $extension:literal, $text:literal $(,)?) => {
+    (
+        $(#[$mod_attr:meta])*
+        $mod_name:ident,
+        $(#[$main_ty_attrs:meta])*
+        $main_ty:ident,
+
+        $from_str_impl:expr,
+        $from_str_error:ty,
+
+        $(#[$to_str_ty_attrs:meta])*
+        $to_str_ty:ident,
+        $to_str_impl:expr,
+        $to_str_error:ty,
+
+        $(#[$writer_ty_attrs:meta])*
+        $writer_ty:ident,
+
+        $extension:literal,
+        $text:literal $(,)?
+    ) => {
         $(#[$mod_attr])*
         pub mod $mod_name {
             #![doc = concat!(r##"
@@ -718,12 +737,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             where
                 T: serde::Serialize + 'a;
 
+            impl<'a, T> $to_str_ty<'a, T>
+            where
+                T: serde::Serialize + 'a
+            {
+                fn to_str(&self) -> Result<String, $to_str_error> {
+                    $to_str_impl(&self.0)
+                }
+            }
+
             impl<'a, T> fmt::Display for $to_str_ty<'a, T>
             where
                 T: serde::Serialize + 'a,
             {
                 fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-                    let s = $to_str_impl(&self.0)?;
+                    let s = self.to_str().map_err(|_| fmt::Error)?;
                     write!(f, "{}", s)
                 }
             }
@@ -792,8 +820,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 T: serde::Serialize + 'a,
             {
                 fn write_to(&self, path: &Path) -> crate::Result<()> {
-                    crate::FileString::from_ref_for_writer(&format!("{}", $to_str_ty(self.0)))
-                        .write_to(path)
+                    let s = $to_str_ty(self.0).to_str().unwrap();
+
+                    crate::FileString::from_ref_for_writer(&s).write_to(path)
                 }
             }
         }
@@ -810,7 +839,8 @@ data_format_impl!(
     |s| serde_json::from_str(s),
     serde_json::Error,
     JsonToStr,
-    |v| serde_json::to_string(&v).map_err(|_| fmt::Error),
+    |v| serde_json::to_string(&v),
+    serde_json::Error,
     /// [`FromRefForWriter`] implementation for [`Json`].
     JsonRefWr,
     ".json", r##"r#"{"name":"John","age":30}"#"##,
@@ -826,7 +856,8 @@ data_format_impl!(
     |s| toml::de::from_str(s),
     toml::de::Error,
     TomlToStr,
-    |v| toml::ser::to_string(&v).map_err(|_| fmt::Error),
+    |v| toml::ser::to_string(&v),
+    toml::ser::Error,
     /// [`FromRefForWriter`] implementation for [`Toml`].
     TomlRefWr,
     ".toml", r##"r#"
@@ -845,7 +876,8 @@ data_format_impl!(
     |s| serde_yaml::from_str(s),
     serde_yaml::Error,
     YamlToStr,
-    |v| serde_yaml::to_string(&v).map_err(|_| fmt::Error),
+    |v| serde_yaml::to_string(&v),
+    serde_yaml::Error,
     /// [`FromRefForWriter`] implementation for [`Yaml`].
     YamlRefWr,
     ".yaml", r##"r#"
@@ -864,7 +896,8 @@ data_format_impl!(
     |s| ron::de::from_str(s),
     ron::error::SpannedError,
     RonToStr,
-    |v| ron::ser::to_string(&v).map_err(|_| fmt::Error),
+    |v| ron::ser::to_string(&v),
+    ron::error::Error,
     /// [`FromRefForWriter`] implementation for [`Ron`].
     RonRefWr,
     ".ron", r##"r#"(name:"John",age:30)"#"##,
