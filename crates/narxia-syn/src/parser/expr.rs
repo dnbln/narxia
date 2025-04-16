@@ -61,13 +61,23 @@ fn parse_string_lit(p: &mut Parser) -> CompletedMarker {
         }
 
         if p.at(T![string_literal_frag_text_part_t]) {
-            let m = p.ev.begin();
-            p.expect(T![string_literal_frag_text_part_t]);
-            p.ev.end(m, SyntaxKind::StringLiteralFragTextPart);
+            parse_fn_decl! {
+                parse_string_literal_frag_text_part: StringLiteralFragTextPart ::=
+                    $![string_literal_frag_text_part_t]
+            }
+            parse_string_literal_frag_text_part(p);
         } else if p.at(T![string_literal_frag_escaped_char_t]) {
-            p.expect(T![string_literal_frag_escaped_char_t])
+            parse_fn_decl! {
+                parse_string_literal_frag_escaped_char: StringLiteralFragEscapedChar ::=
+                    $![string_literal_frag_escaped_char_t]
+            }
+            parse_string_literal_frag_escaped_char(p);
         } else if p.at(T![string_literal_frag_escape_sequence_t]) {
-            p.expect(T![string_literal_frag_escape_sequence_t])
+            parse_fn_decl! {
+                parse_string_literal_frag_escape_sequence: StringLiteralFragEscapeSequence ::=
+                    $![string_literal_frag_escape_sequence_t]
+            }
+            parse_string_literal_frag_escape_sequence(p);
         } else if p.at(T![string_literal_frag_display_t]) {
             let m0 = p.ev.begin();
             p.expect(T![string_literal_frag_display_t]);
