@@ -95,16 +95,20 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
+use std::marker;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+/// The error type for this library.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// An IO error.
     #[error("IO error at {0:?}: {1}")]
     Io(PathBuf, #[source] std::io::Error),
+    /// Parse error.
     #[error("Parse error at {0:?}: {1}")]
     Parse(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
 }
@@ -227,7 +231,7 @@ pub trait NewtypeToInner {
 ///
 /// The [`WriteTo`] implementation will directly write the children to the directory it
 /// is passed, with no regards to the path stored in `self_path`.
-pub struct DirChildren<T>
+pub struct DirChildren<T, F: Filter = NoFilter>
 where
     T: DirStructureItem,
 {
@@ -238,6 +242,81 @@ where
     pub self_path: PathBuf,
     /// The children of the root directory.
     pub children: Vec<DirChild<T>>,
+
+    filter: marker::PhantomData<F>,
+}
+
+/// A filter for the children of a [`DirChildren`] structure.
+///
+/// This is used to filter out children that we don't want to
+/// read into the structure. For example, if we have a directory
+/// with a lot of files, we can use this to only read the
+/// files we want, for example, that have just a certain extension.
+///
+/// # Examples
+///
+/// For example, for a [`Filter`] that only allows `.txt` files:
+///
+/// ```rust
+/// use std::path::Path;
+/// use std::path::PathBuf;
+///
+/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+///
+/// pub struct TextFileFilter;
+///
+/// impl Filter for TextFileFilter {
+///     fn make_filter() -> Self {
+///        Self
+///     }
+///
+///     fn allows(&self, path: &Path) -> bool {
+///         path.extension()
+///             .and_then(|s| s.to_str())
+///             .map_or(false, |s| s == "txt")
+///     }
+/// }
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let path = PathBuf::from("dir");
+///     #[derive(DirStructure)]
+///     struct Dir {
+///        #[dir_structure(path = self)]
+///        text_files: DirChildren<String, TextFileFilter>,
+///     }
+///
+///     # std::fs::create_dir_all(&path)?;
+///
+///     std::fs::write(path.join("file1.txt"), "file1")?;
+///     std::fs::write(path.join("file2.txt"), "file2")?;
+///     std::fs::write(path.join("file3.bin"), "aaa")?;
+///
+///     let dir = Dir::read(&path)?;
+///     assert_eq!(dir.text_files.len(), 2);
+///     assert_eq!(dir.text_files.get_value_by_name("file1.txt"), Some(&String::from("file1")));
+///     assert_eq!(dir.text_files.get_value_by_name("file2.txt"), Some(&String::from("file2")));
+///     assert_eq!(dir.text_files.get_value_by_name("file3.bin"), None);
+///
+///     # std::fs::remove_dir_all(&path)?;
+///
+///     Ok(())
+/// }
+/// ```
+pub trait Filter {
+    fn make_filter() -> Self;
+    fn allows(&self, path: &Path) -> bool;
+}
+
+pub struct NoFilter;
+
+impl Filter for NoFilter {
+    fn make_filter() -> Self {
+        Self
+    }
+
+    fn allows(&self, _path: &Path) -> bool {
+        true
+    }
 }
 
 impl<T> Default for DirChildren<T>
@@ -249,15 +328,17 @@ where
     }
 }
 
-impl<T> DirChildren<T>
+impl<T, F> DirChildren<T, F>
 where
     T: DirStructureItem,
+    F: Filter,
 {
     /// Creates an empty [`DirChildren`], with no children.
     pub fn new() -> Self {
         Self {
             self_path: PathBuf::new(),
             children: Vec::new(),
+            filter: marker::PhantomData,
         }
     }
 
@@ -269,6 +350,31 @@ where
         Self {
             self_path: self_path.into(),
             children: children.into_iter().collect(),
+            filter: marker::PhantomData,
+        }
+    }
+
+    pub fn map<U, MapF>(self, f: MapF) -> DirChildren<U, F>
+    where
+        MapF: FnMut(DirChild<T>) -> DirChild<U>,
+        U: DirStructureItem,
+    {
+        let children = self.children.into_iter().map(f).collect();
+        DirChildren {
+            self_path: self.self_path,
+            children,
+            filter: marker::PhantomData,
+        }
+    }
+
+    pub fn map_filter<NewF: Filter>(self) -> DirChildren<T, NewF>
+    where
+        NewF: Filter,
+    {
+        DirChildren {
+            self_path: self.self_path,
+            children: self.children,
+            filter: marker::PhantomData,
         }
     }
 
@@ -289,38 +395,53 @@ where
             .find(|child| child.file_name == name.as_ref())
     }
 
+    pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
+        self.get_name(name).map(|child| &child.value)
+    }
+
     /// Returns an iterator over the children.
     pub fn iter(&self) -> DirChildrenIter<'_, T> {
         DirChildrenIter(self.children.iter())
     }
 }
 
-impl<T> ReadFrom for DirChildren<T>
+impl<T, F> ReadFrom for DirChildren<T, F>
 where
     T: DirStructureItem,
+    F: Filter,
 {
     fn read_from(path: &Path) -> Result<Self>
     where
         Self: Sized,
     {
+        let filter = F::make_filter();
+
         let mut children = Vec::new();
         for child in path.read_dir().wrap_io_error_with(path)? {
             let child = child.wrap_io_error_with(path)?;
+            let child_path = child.path();
+
+            if !filter.allows(&child_path) {
+                continue;
+            }
+
+            let value = T::read_from(&child_path)?;
             let file_name = child.file_name();
-            let value = T::read_from(&child.path())?;
             children.push(DirChild { file_name, value });
         }
 
         Ok(DirChildren {
             self_path: path.to_path_buf(),
             children,
+            filter: marker::PhantomData,
         })
     }
 }
 
-impl<T> WriteTo for DirChildren<T>
+impl<T, F> WriteTo for DirChildren<T, F>
 where
     T: DirStructureItem,
+    F: Filter,
 {
     fn write_to(&self, path: &Path) -> Result<()> {
         for child in &self.children {
@@ -333,6 +454,7 @@ where
 }
 
 /// A single child of a [`DirChildren`] structure.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DirChild<T>
 where
     T: DirStructureItem,
@@ -424,6 +546,15 @@ where
     }
 }
 
+impl<T> DoubleEndedIterator for DirChildrenIter<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+}
+
 /// A simple macro that generates a DirChildren<T> newtype, together with
 /// a few impls to make it easy to use.
 #[macro_export]
@@ -473,123 +604,271 @@ macro_rules! dir_children_wrapper {
 
 pub use dir_structure_macros::DirStructure;
 
-#[cfg(feature = "json")]
-pub mod json {
-    //! With the `json` feature, this module provides the [`Json`] type,
-    //!
-    //! This allows us to read and parse json files to some `serde::Deserialize` type,
-    //! and write them back to disk.
-    use std::fmt;
-    use std::fmt::Formatter;
-    use std::path::Path;
-    use std::str::FromStr;
+macro_rules! data_format_impl {
+    ($(#[$mod_attr:meta])* $mod_name:ident, $(#[$main_ty_attrs:meta])* $main_ty:ident, $from_str_impl:expr, $from_str_error:ty, $(#[$to_str_ty_attrs:meta])* $to_str_ty:ident, $to_str_impl:expr, $(#[$writer_ty_attrs:meta])* $writer_ty:ident, $extension:literal, $text:literal $(,)?) => {
+        $(#[$mod_attr])*
+        pub mod $mod_name {
+            #![doc = concat!(r##"
+With the `"##, stringify!($mod_name), r##"` feature, this module provides the [`"##, stringify!($main_ty), r##"`] type,
 
-    use crate::FromRefForWriter;
-    use crate::NewtypeToInner;
-    use crate::ReadFrom;
-    use crate::WriteTo;
+This allows us to read and parse `"##, stringify!($mod_name), r##"` files to some `serde::Deserialize` type,
+and write them back to disk.
 
+# Examples
+
+## Reading a "##, stringify!($mod_name), r##" file
+
+```
+use std::path::Path;
+
+use dir_structure::DirStructureItem;
+use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";
+
+#[derive(dir_structure::DirStructure)]
+struct Dir {
+    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]
+    f: Obj,
+}
+
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct Obj {
+    name: String,
+    age: u32,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let d = Path::new("dir");
+    std::fs::create_dir_all(&d)?;
+    std::fs::write(d.join("f"##, $extension, r##""), "##, $text, r##")?;
+    let dir = Dir::read(&d)?;
+    assert_eq!(dir.f, Obj { name: "John".to_owned(), age: 30 });
+    # std::fs::remove_dir_all(&d)?;
+    Ok(())
+}
+```
+
+## Writing a "##, stringify!($mod_name), r##" file
+
+```
+use std::path::Path;
+
+use dir_structure::DirStructureItem;
+use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";
+
+#[derive(dir_structure::DirStructure)]
+struct Dir {
+    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]
+    f: Obj,
+}
+
+#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct Obj {
+    name: String,
+    age: u32,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let d = Path::new("dir");
+    let dir = Dir {
+        f: Obj {
+            name: "John".to_owned(),
+            age: 30,
+        },
+    };
+    dir.write(&d)?;
+    assert_eq!(std::fs::read_to_string(d.join("f"##, $extension, r##""))?,
+        "##, $text, r##"
+    );
+    # std::fs::remove_dir_all(&d)?;
+    Ok(())
+}
+```
+"##)]
+
+            use std::fmt;
+            use std::fmt::Formatter;
+            use std::path::Path;
+            use std::str::FromStr;
+
+            use crate::FromRefForWriter;
+            use crate::NewtypeToInner;
+            use crate::ReadFrom;
+            use crate::WriteTo;
+
+            $(#[$main_ty_attrs])*
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
+            #[serde(transparent)]
+            pub struct $main_ty<T>(#[serde(bound = "")] pub T)
+            where
+                T: 'static + serde::Serialize + for<'d> serde::Deserialize<'d>;
+
+            impl<T> FromStr for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                type Err = $from_str_error;
+
+                fn from_str(s: &str) -> Result<Self, Self::Err> {
+                    $from_str_impl(s).map(Self)
+                }
+            }
+
+            $(#[$to_str_ty_attrs])*
+            struct $to_str_ty<'a, T>(&'a T)
+            where
+                T: serde::Serialize + 'a;
+
+            impl<'a, T> fmt::Display for $to_str_ty<'a, T>
+            where
+                T: serde::Serialize + 'a,
+            {
+                fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                    let s = $to_str_impl(&self.0)?;
+                    write!(f, "{}", s)
+                }
+            }
+
+            impl<T> fmt::Display for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+                    $to_str_ty(&self.0).fmt(f)
+                }
+            }
+
+            impl<T> ReadFrom for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                fn read_from(path: &Path) -> crate::Result<Self> {
+                    let contents = crate::FileString::read_from(path)?.0;
+                    let v = contents
+                        .parse::<$main_ty<T>>()
+                        .map_err(|e| crate::Error::Parse(path.to_path_buf(), e.into()))?;
+                    Ok(v)
+                }
+            }
+
+            impl<T> WriteTo for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                fn write_to(&self, path: &Path) -> crate::Result<()> {
+                    Self::from_ref_for_writer(&self.0).write_to(path)
+                }
+            }
+
+            impl<T> NewtypeToInner for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                type Inner = T;
+
+                fn into_inner(self) -> Self::Inner {
+                    self.0
+                }
+            }
+
+            impl<'a, T> FromRefForWriter<'a> for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                type Inner = T;
+                type Wr = $writer_ty<'a, T>;
+
+                fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+                    $writer_ty(value)
+                }
+            }
+
+            $(#[$writer_ty_attrs])*
+            pub struct $writer_ty<'a, T>(&'a T)
+            where
+                T: serde::Serialize + 'a;
+
+            impl<'a, T> WriteTo for $writer_ty<'a, T>
+            where
+                T: serde::Serialize + 'a,
+            {
+                fn write_to(&self, path: &Path) -> crate::Result<()> {
+                    crate::FileString::from_ref_for_writer(&format!("{}", $to_str_ty(self.0)))
+                        .write_to(path)
+                }
+            }
+        }
+    };
+}
+
+data_format_impl!(
+    #[cfg(feature = "json")]
+    json,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
     /// directory structure.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
-    #[serde(transparent)]
-    pub struct Json<T>(#[serde(bound = "")] pub T)
-    where
-        T: 'static + serde::Serialize + for<'d> serde::Deserialize<'d>;
+    Json,
+    |s| serde_json::from_str(s),
+    serde_json::Error,
+    JsonToStr,
+    |v| serde_json::to_string(&v).map_err(|_| fmt::Error),
+    /// [`FromRefForWriter`] implementation for [`Json`].
+    JsonRefWr,
+    ".json", r##"r#"{"name":"John","age":30}"#"##,
+);
 
-    impl<T> FromStr for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        type Err = serde_json::Error;
+data_format_impl!(
+    #[cfg(feature = "toml")]
+    toml,
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to toml when we read / write a
+    /// directory structure.
+    Toml,
+    |s| toml::de::from_str(s),
+    toml::de::Error,
+    TomlToStr,
+    |v| toml::ser::to_string(&v).map_err(|_| fmt::Error),
+    /// [`FromRefForWriter`] implementation for [`Toml`].
+    TomlRefWr,
+    ".toml", r##"r#"
+name = "John"
+age = 30
+"#.trim_start()"##,
+);
 
-        fn from_str(s: &str) -> Result<Self, Self::Err> {
-            serde_json::from_str(s).map(Self)
-        }
-    }
+data_format_impl!(
+    #[cfg(feature = "yaml")]
+    yaml,
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to yaml when we read / write a
+    /// directory structure.
+    Yaml,
+    |s| serde_yaml::from_str(s),
+    serde_yaml::Error,
+    YamlToStr,
+    |v| serde_yaml::to_string(&v).map_err(|_| fmt::Error),
+    /// [`FromRefForWriter`] implementation for [`Yaml`].
+    YamlRefWr,
+    ".yaml", r##"r#"
+name: John
+age: 30
+"#.trim_start()"##,
+);
 
-    struct JsonToStr<'a, T>(&'a T)
-    where
-        T: serde::Serialize + 'a;
-
-    impl<'a, T> fmt::Display for JsonToStr<'a, T>
-    where
-        T: serde::Serialize + 'a,
-    {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            let s = serde_json::to_string(&self.0).map_err(|_| fmt::Error)?;
-            write!(f, "{}", s)
-        }
-    }
-
-    impl<T> fmt::Display for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-            JsonToStr(&self.0).fmt(f)
-        }
-    }
-
-    impl<T> ReadFrom for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        fn read_from(path: &Path) -> crate::Result<Self> {
-            let contents = crate::FileString::read_from(path)?.0;
-            let v = serde_json::from_str::<Self>(&contents)
-                .map_err(|e| crate::Error::Parse(path.to_path_buf(), e.into()))?;
-            Ok(v)
-        }
-    }
-
-    impl<T> WriteTo for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        fn write_to(&self, path: &Path) -> crate::Result<()> {
-            Self::from_ref_for_writer(&self.0).write_to(path)
-        }
-    }
-
-    impl<T> NewtypeToInner for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        type Inner = T;
-
-        fn into_inner(self) -> Self::Inner {
-            self.0
-        }
-    }
-
-    impl<'a, T> FromRefForWriter<'a> for Json<T>
-    where
-        T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
-    {
-        type Inner = T;
-        type Wr = JsonWr<'a, T>;
-
-        fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
-            JsonWr(value)
-        }
-    }
-
-    /// [`WriteTo`] impl for [`Json`].
-    pub struct JsonWr<'a, T>(&'a T)
-    where
-        T: serde::Serialize + 'a;
-
-    impl<'a, T> WriteTo for JsonWr<'a, T>
-    where
-        T: serde::Serialize + 'a,
-    {
-        fn write_to(&self, path: &Path) -> crate::Result<()> {
-            crate::FileString::from_ref_for_writer(&format!("{}", JsonToStr(self.0))).write_to(path)
-        }
-    }
-}
+data_format_impl!(
+    #[cfg(feature = "ron")]
+    ron,
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to ron when we read / write a
+    /// directory structure.
+    Ron,
+    |s| ron::de::from_str(s),
+    ron::error::SpannedError,
+    RonToStr,
+    |v| ron::ser::to_string(&v).map_err(|_| fmt::Error),
+    /// [`FromRefForWriter`] implementation for [`Ron`].
+    RonRefWr,
+    ".ron", r##"r#"(name:"John",age:30)"#"##,
+);
 
 /// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
 /// for serialization / deserialization.
@@ -823,7 +1102,7 @@ where
 
 /// A wrapper that defers the reading of a file until it is actually needed.
 #[derive(Debug, Clone, Hash)]
-pub struct DeferredRead<T>(pub PathBuf, std::marker::PhantomData<T>)
+pub struct DeferredRead<T>(pub PathBuf, marker::PhantomData<T>)
 where
     T: ReadFrom;
 
@@ -835,7 +1114,7 @@ where
     where
         Self: Sized,
     {
-        Ok(Self(path.to_path_buf(), std::marker::PhantomData))
+        Ok(Self(path.to_path_buf(), marker::PhantomData))
     }
 }
 
@@ -859,8 +1138,8 @@ where
             // we are supposed to read from. We can just ignore it, since
             // the file / directory should already be in the given state.
 
-            // If T doesn't have non-trivial ReadFrom / WriteTo implementations,
-            // this should not be a problem, but if it is, a custom DeferredRead
+            // If `T` has trivial `ReadFrom` / `WriteTo` implementations,
+            // this should not be a problem, but if it is, a custom `DeferredRead`
             // implementation should be written for it.
             return Ok(());
         }
