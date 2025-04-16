@@ -9,7 +9,6 @@ repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["ron", "json", "toml", "yaml"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]

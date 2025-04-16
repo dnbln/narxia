@@ -226,14 +226,15 @@ pub trait NewtypeToInner {
 /// and as such we cannot use the derive macro.
 ///
 /// Instead we know that all the entries in the directory are folders,
-/// and that they all have the same structure inside (defined by the [`T`] type parameter),
+/// and that they all have the same structure inside (defined by the `T` type parameter),
 /// or they are all files (which can be read with [`DirChildren`]<[`String`]> for example).
 ///
-/// In either case, [`<T as ReadFrom>::read_from`] must be able to read all the entries in
+/// In either case, [`ReadFrom::read_from`] must be able to read all the entries in
 /// the directory.
 ///
 /// The [`WriteTo`] implementation will directly write the children to the directory it
 /// is passed, with no regards to the path stored in `self_path`.
+#[derive(Debug, PartialEq, Eq)]
 pub struct DirChildren<T, F: Filter = NoFilter>
 where
     T: DirStructureItem,
@@ -247,6 +248,20 @@ where
     pub children: Vec<DirChild<T>>,
 
     filter: marker::PhantomData<F>,
+}
+
+impl<T, F> Clone for DirChildren<T, F>
+where
+    T: DirStructureItem + Clone,
+    F: Filter,
+{
+    fn clone(&self) -> Self {
+        Self {
+            self_path: self.self_path.clone(),
+            children: self.children.clone(),
+            filter: marker::PhantomData,
+        }
+    }
 }
 
 /// A filter for the children of a [`DirChildren`] structure.
@@ -306,10 +321,33 @@ where
 /// }
 /// ```
 pub trait Filter {
+    /// Creates an instance of this filter.
     fn make_filter() -> Self;
+    /// Checks if the path is allowed by this filter.
     fn allows(&self, path: &Path) -> bool;
 }
 
+/// A [`Filter`] that allows all paths.
+///
+/// ```rust
+/// # use std::path::Path;
+/// # use dir_structure::{Filter, NoFilter};
+/// #
+/// let filter = NoFilter::make_filter();
+/// assert!(filter.allows(Path::new("foo.txt")));
+/// assert!(filter.allows(Path::new("foo/bar.txt")));
+/// assert!(filter.allows(Path::new("foo/bar/baz.txt")));
+/// assert!(filter.allows(Path::new("foo/bar/baz")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/.")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../../..")));
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NoFilter;
 
 impl Filter for NoFilter {
@@ -357,6 +395,59 @@ where
         }
     }
 
+    /// Maps the children of this [`DirChildren`] to a new type.
+    ///
+    /// This is useful for converting the children to a different type,
+    /// for example, if you want to convert the children to a different
+    /// type of [`DirStructureItem`].
+    ///
+    /// This is a convenience method that allows you to use the
+    /// `map` method on the children of this [`DirChildren`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use std::path::PathBuf;
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild, ReadFrom, WriteTo};
+    ///
+    /// #[derive(Debug, PartialEq, Eq)]
+    /// struct NewType(String);
+    ///
+    /// impl ReadFrom for NewType {
+    ///     fn read_from(path: &Path) -> dir_structure::Result<Self> {
+    ///         String::read_from(path).map(Self)
+    ///     }
+    /// }
+    ///
+    /// impl WriteTo for NewType {
+    ///     fn write_to(&self, path: &Path) -> dir_structure::Result<()> {
+    ///         self.0.write_to(path)
+    ///     }
+    /// }
+    ///
+    /// let d = PathBuf::from("dir");
+    /// let dir = DirChildren::<_, dir_structure::NoFilter>::with_children_from_iter(
+    ///     d.clone(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///         DirChild::new("file3.txt", "file3".to_owned()),
+    ///     ],
+    /// );
+    /// let dir = dir.map(|child| child.map_value(NewType));
+    /// assert_eq!(
+    ///     dir,
+    ///     DirChildren::with_children_from_iter(
+    ///         d.clone(),
+    ///         vec![
+    ///             DirChild::new("file1.txt", NewType("file1".to_owned())),
+    ///             DirChild::new("file2.txt", NewType("file2".to_owned())),
+    ///             DirChild::new("file3.txt", NewType("file3".to_owned())),
+    ///         ],
+    ///     )
+    /// );
+    /// ```
     pub fn map<U, MapF>(self, f: MapF) -> DirChildren<U, F>
     where
         MapF: FnMut(DirChild<T>) -> DirChild<U>,
@@ -370,6 +461,33 @@ where
         }
     }
 
+    /// Maps the filter type. The children remain unchanged.
+    ///
+    /// This is useful if you are trying to pass a DirChildren<T, F1> to
+    /// a function requiring a DirChildren<T, F2>, where F1 and F2 are two
+    /// distinct types implementing [`Filter`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use dir_structure::{Filter, DirChildren};
+    ///
+    /// struct NewFilter;
+    ///
+    /// impl Filter for NewFilter {
+    ///     fn make_filter() -> Self {
+    ///         Self
+    ///     }
+    ///
+    ///     fn allows(&self, _path: &Path) -> bool {
+    ///         true
+    ///     }
+    /// }
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// let d2: DirChildren<String, NewFilter> = d.map_filter::<NewFilter>();
+    /// ```
     pub fn map_filter<NewF: Filter>(self) -> DirChildren<T, NewF>
     where
         NewF: Filter,
@@ -382,27 +500,142 @@ where
     }
 
     /// Returns the number of children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.len(), 0);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.len(), 2);
+    /// ```
     pub fn len(&self) -> usize {
         self.children.len()
     }
 
     /// Gets the child at the specified index.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get(0), None);
+    /// assert_eq!(d.get(1), None);
+    /// assert_eq!(d.get(100), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get(0), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get(1), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get(2), None);
+    /// assert_eq!(d.get(100), None);
+    /// ```
     pub fn get(&self, index: usize) -> Option<&DirChild<T>> {
         self.children.get(index)
     }
 
     /// Gets the child with the specified "file" name (last segment of path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_name(""), None);
+    /// assert_eq!(d.get_name("any_name"), None);
+    /// assert_eq!(d.get_name("aaaa"), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_name("file1.txt"), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get_name("file2.txt"), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get_name("any_name"), None);
+    /// assert_eq!(d.get_name("aaaa"), None);
+    /// ```
     pub fn get_name(&self, name: impl AsRef<OsStr>) -> Option<&DirChild<T>> {
         self.children
             .iter()
             .find(|child| child.file_name == name.as_ref())
     }
 
+    /// Gets the value of the child with the specified "file" name (last segment of path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_value_by_name(""), None);
+    /// assert_eq!(d.get_value_by_name("any_name"), None);
+    /// assert_eq!(d.get_value_by_name("aaaa"), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_value_by_name("file1.txt"), Some(&"file1".to_owned()));
+    /// assert_eq!(d.get_value_by_name("file2.txt"), Some(&"file2".to_owned()));
+    /// assert_eq!(d.get_value_by_name("any_name"), None);
+    /// assert_eq!(d.get_value_by_name("aaaa"), None);
+    /// ```
     pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
         self.get_name(name).map(|child| &child.value)
     }
 
     /// Returns an iterator over the children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
     pub fn iter(&self) -> DirChildrenIter<'_, T> {
         DirChildrenIter(self.children.iter())
     }
@@ -473,6 +706,17 @@ where
     T: DirStructureItem,
 {
     /// Creates a new [`DirChild`] with the specified file name and value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
     pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
         Self {
             file_name: file_name.into(),
@@ -481,6 +725,16 @@ where
     }
 
     /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// ```
     pub fn file_name(&self) -> &OsString {
         &self.file_name
     }
@@ -488,6 +742,18 @@ where
     /// Gets the file name of the child (or the name of the directory; the last segment in the path).
     ///
     /// Mutable reference version of [`Self::file_name`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// *d.file_name_mut() = OsString::from("new_file.txt");
+    /// assert_eq!(d.file_name(), &OsString::from("new_file.txt"));
+    /// ```
     pub fn file_name_mut(&mut self) -> &mut OsString {
         &mut self.file_name
     }
@@ -495,6 +761,16 @@ where
     /// Gets the value of the child.
     ///
     /// This is the parsed value of the file / directory.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
     pub fn value(&self) -> &T {
         &self.value
     }
@@ -504,8 +780,71 @@ where
     /// This is the parsed value of the file / directory.
     ///
     /// Mutable reference version of [`Self::value`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// *d.value_mut() = "new_file".to_owned();
+    /// assert_eq!(d.value(), &"new_file".to_owned());
+    /// ```
     pub fn value_mut(&mut self) -> &mut T {
         &mut self.value
+    }
+
+    /// Maps the file name of this [`DirChild`] to a new value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.map_file_name(|s| s.to_str().unwrap().to_uppercase()), DirChild::new("FILE.TXT", "file".to_owned()));
+    /// ```
+    pub fn map_file_name<F, O>(self, f: F) -> Self
+    where
+        F: FnOnce(OsString) -> O,
+        O: Into<OsString>,
+    {
+        let file_name = f(self.file_name).into();
+        DirChild {
+            file_name,
+            value: self.value,
+        }
+    }
+
+    /// Maps the value of this [`DirChild`] to a new type.
+    ///
+    /// This is useful for converting the value to a different type,
+    /// for example, if you want to convert the value to a different
+    /// type of [`DirStructureItem`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    /// use dir_structure::FileString;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt", FileString("file".to_owned())));
+    /// ```
+    pub fn map_value<U, F>(self, f: F) -> DirChild<U>
+    where
+        F: FnOnce(T) -> U,
+        U: DirStructureItem,
+    {
+        let value = f(self.value);
+        DirChild {
+            file_name: self.file_name,
+            value,
+        }
     }
 }
 
@@ -558,7 +897,7 @@ where
     }
 }
 
-/// A simple macro that generates a DirChildren<T> newtype, together with
+/// A simple macro that generates a [`DirChildren`] newtype, together with
 /// a few impls to make it easy to use.
 #[macro_export]
 macro_rules! dir_children_wrapper {
@@ -758,6 +1097,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             enum ToWriterError {
+                #[allow(unused)]
                 Io(std::io::Error),
                 Serde($to_str_error),
             }
@@ -936,6 +1276,40 @@ data_format_impl!(
 /// for serialization / deserialization.
 ///
 /// For example: u8, i8, i16, u16, all integer types... bool etc.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::Path;
+/// use dir_structure::DirStructureItem;
+///
+/// use dir_structure::FmtWrapper;
+///
+/// #[derive(dir_structure::DirStructure, PartialEq, Debug)]
+/// struct Dir {
+///    #[dir_structure(path = "f.txt", with_newtype = FmtWrapper<u8>)]
+///    f: u8,
+///    #[dir_structure(path = "b.txt", with_newtype = FmtWrapper<bool>)]
+///    b: bool,
+/// }
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let d = Path::new("dir");
+///     std::fs::create_dir_all(&d)?;
+///     std::fs::write(d.join("f.txt"), "42")?;
+///     std::fs::write(d.join("b.txt"), "true")?;
+///     let mut dir = Dir::read(&d)?;
+///     assert_eq!(dir.f, 42);
+///     assert_eq!(dir.b, true);
+///     dir.f = 100;
+///     dir.b = false;
+///     dir.write(&d)?;
+///     assert_eq!(std::fs::read_to_string(d.join("f.txt"))?, "100");
+///     assert_eq!(std::fs::read_to_string(d.join("b.txt"))?, "false");
+///     # std::fs::remove_dir_all(&d)?;
+///     Ok(())
+/// }
+/// ```
 pub struct FmtWrapper<T>(pub T);
 
 impl<T> NewtypeToInner for FmtWrapper<T> {
@@ -1001,12 +1375,12 @@ where
     }
 }
 
-/// A newtype around a [`Vec`]<[`u8`]>.
+/// A newtype around a `Vec<u8>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileBytes(pub Vec<u8>);
 
 impl FileBytes {
-    /// Creates a new [`FileBytes`] from the specified [`Vec`]<[`u8`]>.
+    /// Creates a new [`FileBytes`] from the specified `Vec<u8>`.
     pub fn new(v: impl Into<Vec<u8>>) -> Self {
         Self(v.into())
     }
@@ -1163,6 +1537,11 @@ where
 }
 
 /// A wrapper that defers the reading of a file until it is actually needed.
+///
+/// The only thing you can do with a [`DeferredRead`] is to call [`DeferredRead::perform_read`],
+/// which will read the file and return the value.
+///
+/// See the [`DeferredRead::perform_read`] method for more details.
 #[derive(Debug, Clone, Hash)]
 pub struct DeferredRead<T>(pub PathBuf, marker::PhantomData<T>)
 where
@@ -1185,6 +1564,41 @@ where
     T: ReadFrom,
 {
     /// Performs the read and returns the value.
+    ///
+    /// If the value changed on disk since the [`DeferredRead`] was created, then the
+    /// new value will be read from disk and returned.
+    ///
+    /// For a cached version see [`DeferredReadOrOwn`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use dir_structure::DirStructureItem;
+    /// use dir_structure::DeferredRead;
+    ///
+    /// #[derive(dir_structure::DirStructure)]
+    /// struct Dir {
+    ///     #[dir_structure(path = "f.txt")]
+    ///     f: DeferredRead<String>,
+    /// }
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let d = Path::new("dir");
+    ///
+    ///     std::fs::create_dir_all(&d)?;
+    ///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
+    ///
+    ///     let dir = Dir::read(&d)?;
+    ///     assert_eq!(dir.f.perform_read()?, "Hello, world!");
+    ///
+    ///     std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+    ///     assert_eq!(dir.f.perform_read()?, "Goodbye, world!");
+    ///
+    ///     # std::fs::remove_dir_all(&d)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn perform_read(&self) -> Result<T> {
         T::read_from(&self.0)
     }
@@ -1211,9 +1625,27 @@ where
     }
 }
 
-/// A wrapper that defers the reading of a file until it is actually needed.
+/// A wrapper that defers the reading of a file until it is actually needed,
+/// but can also store the value.
 ///
-/// It can also store the value.
+/// It allows us to read the value from disk, and then store it in memory,
+/// and if we ever need it again, we can just return the stored value.
+///
+/// This type exposes 2 functions: [`DeferredReadOrOwn::get`] and
+/// [`DeferredReadOrOwn::perform_and_store_read`].
+///
+/// The table below summarizes the differences between the two functions:
+///
+/// | State             | [`DeferredReadOrOwn::get`]               | [`DeferredReadOrOwn::perform_and_store_read`] |
+/// |-------------------|------------------------------------------|-----------------------------------------------|
+/// | New, not cached   | Reads the value, does not cache          | Reads the value, and caches it                |
+/// | Cached            | Returns the cached value                 | Returns the cached value                      |
+///
+/// As such, [`DeferredReadOrOwn::get`] has the signature of `fn(&self) -> Result<T>` and
+/// [`DeferredReadOrOwn::perform_and_store_read`] has the signature of `fn(&mut self) -> Result<&T>`.
+///
+/// If you never call [`DeferredReadOrOwn::perform_and_store_read`], and only ever call [`DeferredReadOrOwn::get`],
+/// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.
 #[derive(Debug, Clone, Hash)]
 pub enum DeferredReadOrOwn<T>
 where
@@ -1228,6 +1660,38 @@ where
     T: ReadFrom,
 {
     /// Gets the value. If it is not already read, it will read it, but without saving it.
+    ///
+    /// This is useful if you want to read the value, but you don't want to store it.
+    ///
+    /// Though never calling [`DeferredReadOrOwn::perform_and_store_read`] and only calling
+    /// [`DeferredReadOrOwn::get`] is equivalent to using a [`DeferredRead`], and that should be preferred.
+    ///
+    /// See [`DeferredReadOrOwn`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use dir_structure::DirStructureItem;
+    /// use dir_structure::DeferredRead;
+    /// use dir_structure::DeferredReadOrOwn;
+    /// use dir_structure::ReadFrom;
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let d = Path::new("dir");
+    ///     std::fs::create_dir_all(&d)?;
+    ///     let deferred = DeferredReadOrOwn::<String>::Deferred(
+    ///         DeferredRead::read_from(&d.join("f.txt")).unwrap()
+    ///     );
+    ///     assert!(deferred.get().is_err());
+    ///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
+    ///     assert_eq!(deferred.get()?, "Hello, world!");
+    ///     std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+    ///     assert_eq!(deferred.get()?, "Goodbye, world!");
+    ///     # std::fs::remove_dir_all(&d)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn get(&self) -> Result<T>
     where
         T: Clone,
@@ -1240,6 +1704,33 @@ where
 
     /// Performs the read and stores the value. If the value is already read, it will
     /// just return a reference to it.
+    ///
+    /// See [`DeferredReadOrOwn`] for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use dir_structure::DirStructureItem;
+    /// use dir_structure::DeferredRead;
+    /// use dir_structure::DeferredReadOrOwn;
+    /// use dir_structure::ReadFrom;
+    ///
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let d = Path::new("dir");
+    ///     std::fs::create_dir_all(&d)?;
+    ///     let mut deferred = DeferredReadOrOwn::<String>::Deferred(
+    ///         DeferredRead::read_from(&d.join("f.txt")).unwrap()
+    ///     );
+    ///     assert!(deferred.perform_and_store_read().is_err());
+    ///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
+    ///     assert_eq!(deferred.perform_and_store_read()?, "Hello, world!");
+    ///     std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+    ///     assert_eq!(deferred.perform_and_store_read()?, "Hello, world!");
+    ///     # std::fs::remove_dir_all(&d)?;
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn perform_and_store_read(&mut self) -> Result<&T> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
@@ -1285,6 +1776,34 @@ where
 /// This is useful when we want to write a directory structure, but we want
 /// to make sure that the directory is clean before writing it, so that there
 /// are no old files / directories left in it.
+///
+/// ```rust
+/// use std::path::Path;
+///
+/// use dir_structure::DirStructureItem;
+/// use dir_structure::CleanDir;
+///
+/// #[derive(dir_structure::DirStructure)]
+/// struct Dir {
+///    #[dir_structure(path = "f.txt")]
+///    f: String,
+/// }
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let d = Path::new("dir");
+///     std::fs::create_dir_all(&d)?;
+///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
+///     std::fs::write(d.join("f2.txt"), "Hello, world! (2)")?;
+///     let dir = Dir::read(&d)?;
+///     assert_eq!(dir.f, "Hello, world!");
+///     assert_eq!(std::fs::read_to_string(d.join("f2.txt"))?, "Hello, world! (2)");
+///     CleanDir(dir).write(&d)?;
+///     assert_eq!(std::fs::read_to_string(d.join("f.txt"))?, "Hello, world!");
+///     assert!(!d.join("f2.txt").exists());
+///     # std::fs::remove_dir_all(&d)?;
+///     Ok(())
+/// }
+/// ```
 pub struct CleanDir<T: DirStructureItem>(pub T);
 
 impl<T> ReadFrom for CleanDir<T>
