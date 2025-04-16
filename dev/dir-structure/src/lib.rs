@@ -111,6 +111,9 @@ pub enum Error {
     /// Parse error.
     #[error("Parse error at {0:?}: {1}")]
     Parse(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
+    /// Serde error.
+    #[error("Serde error at {0:?}: {1}")]
+    Serde(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
 trait WrapIoError: Sized {
@@ -617,6 +620,7 @@ macro_rules! data_format_impl {
         $(#[$to_str_ty_attrs:meta])*
         $to_str_ty:ident,
         $to_str_impl:expr,
+        $to_writer_impl:expr,
         $to_str_error:ty,
 
         $(#[$writer_ty_attrs:meta])*
@@ -744,6 +748,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 fn to_str(&self) -> Result<String, $to_str_error> {
                     $to_str_impl(&self.0)
                 }
+
+                fn to_writer<W>(&self, writer: &mut W) -> Result<(), ToWriterError>
+                where
+                    W: std::io::Write,
+                {
+                    $to_writer_impl(&self.0, writer)
+                }
+            }
+
+            enum ToWriterError {
+                Io(std::io::Error),
+                Serde($to_str_error),
             }
 
             impl<'a, T> fmt::Display for $to_str_ty<'a, T>
@@ -820,9 +836,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 T: serde::Serialize + 'a,
             {
                 fn write_to(&self, path: &Path) -> crate::Result<()> {
-                    let s = $to_str_ty(self.0).to_str().unwrap();
+                    let mut f = crate::StreamingFileWriter::new(path)?;
+                    $to_str_ty(self.0).to_writer(&mut f)
+                        .map_err(|e| match e {
+                            ToWriterError::Io(e) => crate::Error::Io(path.to_path_buf(), e),
+                            ToWriterError::Serde(e) => crate::Error::Serde(path.to_path_buf(), e.into()),
+                        })?;
 
-                    crate::FileString::from_ref_for_writer(&s).write_to(path)
+                    Ok(())
                 }
             }
         }
@@ -840,6 +861,7 @@ data_format_impl!(
     serde_json::Error,
     JsonToStr,
     |v| serde_json::to_string(&v),
+    |v, w| serde_json::to_writer(w, v).map_err(ToWriterError::Serde),
     serde_json::Error,
     /// [`FromRefForWriter`] implementation for [`Json`].
     JsonRefWr,
@@ -857,6 +879,11 @@ data_format_impl!(
     toml::de::Error,
     TomlToStr,
     |v| toml::ser::to_string(&v),
+    |v, w: &mut dyn std::io::Write| {
+        let s = toml::ser::to_string(&v).map_err(ToWriterError::Serde)?;
+        w.write_all(s.as_bytes()).map_err(ToWriterError::Io)?;
+        Ok(())
+    },
     toml::ser::Error,
     /// [`FromRefForWriter`] implementation for [`Toml`].
     TomlRefWr,
@@ -877,6 +904,7 @@ data_format_impl!(
     serde_yaml::Error,
     YamlToStr,
     |v| serde_yaml::to_string(&v),
+    |v, w| serde_yaml::to_writer(w, v).map_err(ToWriterError::Serde),
     serde_yaml::Error,
     /// [`FromRefForWriter`] implementation for [`Yaml`].
     YamlRefWr,
@@ -897,6 +925,7 @@ data_format_impl!(
     ron::error::SpannedError,
     RonToStr,
     |v| ron::ser::to_string(&v),
+    |v, w| ron::ser::to_writer(w, v).map_err(ToWriterError::Serde),
     ron::error::Error,
     /// [`FromRefForWriter`] implementation for [`Ron`].
     RonRefWr,
@@ -1526,6 +1555,39 @@ mod utils {
                 std::fs::create_dir_all(parent).wrap_io_error_with(parent)?;
             }
         }
+        Ok(())
+    }
+}
+
+struct StreamingFileWriter {
+    f: File,
+}
+
+impl StreamingFileWriter {
+    fn new(path: &Path) -> Result<Self> {
+        utils::create_parent_dir(path)?;
+        let f = File::create(path).wrap_io_error_with(path)?;
+        Ok(Self { f })
+    }
+}
+
+impl std::io::Write for StreamingFileWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.f.write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.f.flush()
+    }
+}
+
+impl std::fmt::Write for StreamingFileWriter {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        use std::io::Write;
+
+        self.f
+            .write_all(s.as_bytes())
+            .map_err(|_| std::fmt::Error)?;
         Ok(())
     }
 }
