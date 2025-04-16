@@ -44,8 +44,8 @@ narxia-ssa = { path = "crates/narxia-ssa" }
 narxia-syn = { path = "crates/narxia-syn" }
 narxia-syn-db = { path = "crates/narxia-syn-db" }
 
-dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.4" }
-dir-structure = { path = "dev/dir-structure", version = "0.1.4" }
+dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.5" }
+dir-structure = { path = "dev/dir-structure", version = "0.1.5" }
 
 bumpalo = "3.6.0"
 cargo_metadata = "0.19.1"

@@ -91,6 +91,8 @@
 //! }
 //! ```
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fmt::Display;
@@ -1192,6 +1194,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 data_format_impl!(
     #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     json,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
@@ -1210,6 +1213,7 @@ data_format_impl!(
 
 data_format_impl!(
     #[cfg(feature = "toml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     toml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to toml when we read / write a
@@ -1235,6 +1239,7 @@ age = 30
 
 data_format_impl!(
     #[cfg(feature = "yaml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     yaml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to yaml when we read / write a
@@ -1256,6 +1261,7 @@ age: 30
 
 data_format_impl!(
     #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     ron,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to ron when we read / write a

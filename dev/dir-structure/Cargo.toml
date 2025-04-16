@@ -1,10 +1,14 @@
 [package]
 name = "dir-structure"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Simple crate to create directory structures."
 repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
