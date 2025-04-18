@@ -121,7 +121,7 @@ jobs:
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} nightly $TODAY" \
               --generate-notes --prerelease --fail-on-no-commits \
-              --discussion-category "Nightly Releases" \
+              --discussion-category "Nightly" \
               narxia-linux/narxia-linux.zip \
               narxia-macos-arm64/narxia-macos-arm64.zip \
               narxia-macos-x86_64/narxia-macos-x86_64.zip
