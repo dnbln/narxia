@@ -111,16 +111,27 @@ jobs:
           path: narxia-macos-x86_64
       - name: Date
         run: echo "TODAY=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+      - name: Create release name
+        run: echo "RELEASE_NAME=nightly/$TODAY" >> $GITHUB_ENV
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "nightly/$TODAY" \
+          gh release create "$RELEASE_NAME" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} nightly $TODAY" \
               --generate-notes --draft --prerelease --fail-on-no-commits
-          gh release upload "nightly/$TODAY" \
+      - name: Upload release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$RELEASE_NAME" \
               --repo="$GITHUB_REPOSITORY" \
               narxia-linux/narxia-linux.zip \
               narxia-macos-arm64/narxia-macos-arm64.zip \
               narxia-macos-x86_64/narxia-macos-x86_64.zip
+      - name: Publish release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "$RELEASE_NAME" --draft=false
