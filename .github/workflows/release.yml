@@ -120,18 +120,8 @@ jobs:
           gh release create "$RELEASE_NAME" \
               --repo="$GITHUB_REPOSITORY" \
               --title="${GITHUB_REPOSITORY#*/} nightly $TODAY" \
-              --generate-notes --draft --prerelease --fail-on-no-commits
-      - name: Upload release assets
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "$RELEASE_NAME" \
-              --repo="$GITHUB_REPOSITORY" \
+              --generate-notes --prerelease --fail-on-no-commits \
+              --discussion-category "Nightly Releases" \
               narxia-linux/narxia-linux.zip \
               narxia-macos-arm64/narxia-macos-arm64.zip \
               narxia-macos-x86_64/narxia-macos-x86_64.zip
-      - name: Publish release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release edit "$RELEASE_NAME" --draft=false
