@@ -187,7 +187,7 @@ where
             // self.buffer_len is always in [0, 4].
             // n is always in [0, 3].
             // so (n * 5 + self.buffer_len) will give us all the values we care about
-            match n << 3 + self.buffer_len {
+            match (n << 3) + self.buffer_len {
                 0 => {
                     // (0, 0)
                     let t0 = self.ts.next()?; // token at position = 0
