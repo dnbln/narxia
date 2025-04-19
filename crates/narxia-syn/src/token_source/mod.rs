@@ -85,8 +85,7 @@ impl TokenRepr {
     #[inline(always)]
     pub fn span_start(self) -> u32 {
         let repr = self.repr.get();
-        let start = Self::span_start_from_repr(repr);
-        start
+        Self::span_start_from_repr(repr)
     }
 
     #[inline(always)]

@@ -36,7 +36,8 @@ use core::hint;
 use std::intrinsics;
 use std::marker::PhantomData;
 
-use super::{TokParserState, TokenRepr};
+use super::TokParserState;
+use super::TokenRepr;
 use super::TokenSource;
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
@@ -63,7 +64,8 @@ where
     }
 
     pub fn current_token_span_start(&mut self) -> u32 {
-        self.lookahead0_span_start().unwrap_or_else(|| self.ts.eof_span().start)
+        self.lookahead0_span_start()
+            .unwrap_or_else(|| self.ts.eof_span().start)
     }
 
     #[inline(always)]
@@ -643,7 +645,11 @@ where
     #[track_caller]
     pub fn skip_whitespace_wcn(&mut self, mut push_token_evt: impl FnMut(TokenRepr)) {
         let check_sk = |t: TokenRepr| -> bool {
-            t.kind_is_any([SyntaxKind::WHITESPACE, SyntaxKind::NEWLINE, SyntaxKind::COMMENT])
+            t.kind_is_any([
+                SyntaxKind::WHITESPACE,
+                SyntaxKind::NEWLINE,
+                SyntaxKind::COMMENT,
+            ])
         };
 
         match self.buffer_len {
@@ -793,7 +799,11 @@ where
     }
 
     #[inline(always)]
-    pub fn bump_until(&mut self, kind: SyntaxKind, mut push_token_evt: impl FnMut(TokenRepr)) -> bool {
+    pub fn bump_until(
+        &mut self,
+        kind: SyntaxKind,
+        mut push_token_evt: impl FnMut(TokenRepr),
+    ) -> bool {
         unsafe {
             match self.buffer_len {
                 0 => {

@@ -202,7 +202,8 @@ impl<'a, Ts: TokenSource<'a>> Parser<'a, Ts> {
     #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
-        self.pstk.push(name, can_recover, self.ts.current_token_span_start())
+        self.pstk
+            .push(name, can_recover, self.ts.current_token_span_start())
     }
 
     #[cfg(not(debug_assertions))]

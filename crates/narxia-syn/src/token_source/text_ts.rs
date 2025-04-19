@@ -5,7 +5,8 @@
 use std::ops::RangeInclusive;
 use std::str::CharIndices;
 
-use super::{TokParserState, TokenRepr};
+use super::TokParserState;
+use super::TokenRepr;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 use crate::text_span::TextSpan;
