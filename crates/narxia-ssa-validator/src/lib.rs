@@ -1,11 +1,15 @@
 use std::collections::BTreeMap;
 use std::fmt;
-use narxia_ssa::{BlockRef, EndInstr, EndInstrKind, PhiInstr};
+
+use narxia_ssa::BlockRef;
+use narxia_ssa::EndInstr;
+use narxia_ssa::EndInstrKind;
 use narxia_ssa::Function;
 use narxia_ssa::FunctionRef;
 use narxia_ssa::IValue;
 use narxia_ssa::LocalRef;
 use narxia_ssa::Module;
+use narxia_ssa::PhiInstr;
 use narxia_ssa::Value;
 
 #[derive(Debug, thiserror::Error)]
@@ -21,13 +25,7 @@ pub enum ValidationError {
     #[error(
         "local ref {0:?} is declared in block {1:?} but used as phi value in block link {2:?} -> {3:?} (at {4:?})"
     )]
-    PhiLinksToLocalRefOutsideOfPhiBlock(
-        LocalRef,
-        BlockRef,
-        BlockRef,
-        BlockRef,
-        LocalRef,
-    ),
+    PhiLinksToLocalRefOutsideOfPhiBlock(LocalRef, BlockRef, BlockRef, BlockRef, LocalRef),
     #[error("pred phi link missing for block link {0:?} -> {1:?} (at {2:?})")]
     PredPhiLinkMissing(BlockRef, BlockRef, LocalRef),
     #[error("pred phi linked twice for block link {0:?} -> {1:?} (at {2:?})")]
@@ -75,7 +73,8 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
         for instr in &block.instrs {
             let mut check_lref = |l: LocalRef| {
                 if !lref_declarations.contains_key(&l) {
-                    validation_errors.push(ValidationError::UndeclaredLocalRef(l, block.id, instr.lhs));
+                    validation_errors
+                        .push(ValidationError::UndeclaredLocalRef(l, block.id, instr.lhs));
                 } else if lref_declarations[&l] != block.id {
                     validation_errors.push(
                         ValidationError::LocalRefDeclaredInBlockButUsedInAnother(
@@ -98,11 +97,13 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
                         check_lref(l);
                     }
                 }
-                IValue::Call(call) => for arg in &call.args {
-                    if let Value::Local(l) = arg {
-                        check_lref(*l);
+                IValue::Call(call) => {
+                    for arg in &call.args {
+                        if let Value::Local(l) = arg {
+                            check_lref(*l);
+                        }
                     }
-                },
+                }
                 IValue::Debug(l) | IValue::Display(l) => {
                     check_lref(*l);
                 }
@@ -120,15 +121,21 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
             }
         }
 
-        if let Some(EndInstr {local_ref, kind: EndInstrKind::Return(v) | EndInstrKind::ConditionalBranch(v, ..)}) = &block.end {
+        if let Some(EndInstr {
+            local_ref,
+            kind: EndInstrKind::Return(v) | EndInstrKind::ConditionalBranch(v, ..),
+        }) = &block.end
+        {
             if let Value::Local(l) = v {
-                if !lref_declarations.contains_key(&l) {
-                    validation_errors.push(ValidationError::UndeclaredLocalRef(*l, block.id, *local_ref));
-                } else if lref_declarations[&l] != block.id {
+                if !lref_declarations.contains_key(l) {
+                    validation_errors.push(ValidationError::UndeclaredLocalRef(
+                        *l, block.id, *local_ref,
+                    ));
+                } else if lref_declarations[l] != block.id {
                     validation_errors.push(
                         ValidationError::LocalRefDeclaredInBlockButUsedInAnother(
                             *l,
-                            lref_declarations[&l],
+                            lref_declarations[l],
                             block.id,
                             *local_ref,
                         ),
@@ -145,7 +152,11 @@ fn check_phi_links(f: &Function, validation_errors: &mut Vec<ValidationError>) {
             let mut phis_remaining = block.preds.clone();
             for (b, l) in &phi_link.rhs {
                 let Some(p) = phis_remaining.iter().position(|i| i == b) else {
-                    validation_errors.push(ValidationError::PredPhiLinkTwice(*b, block.id, phi_link.lhs));
+                    validation_errors.push(ValidationError::PredPhiLinkTwice(
+                        *b,
+                        block.id,
+                        phi_link.lhs,
+                    ));
                     continue;
                 };
                 phis_remaining.remove(p);
@@ -193,7 +204,10 @@ pub fn validate(m: &Module) -> Result<(), BTreeMap<FunctionRef, Vec<ValidationEr
     }
 }
 
-pub fn present_validation_errors(m: &Module, validation_errors: &BTreeMap<FunctionRef, Vec<ValidationError>>) {
+pub fn present_validation_errors(
+    m: &Module,
+    validation_errors: &BTreeMap<FunctionRef, Vec<ValidationError>>,
+) {
     use std::fmt::Write;
     let mut buffer = String::new();
 
@@ -201,45 +215,51 @@ pub fn present_validation_errors(m: &Module, validation_errors: &BTreeMap<Functi
         let f = m.functions.iter().find(|it| it.fn_id == *fn_ref).unwrap();
         writeln!(buffer, "Errors in function:\n{:?}\n", f).unwrap();
 
-        let lookup_block = |block_ref: BlockRef| {
-            f.blocks.iter().find(|it| it.id == block_ref).unwrap()
-        };
+        let lookup_block =
+            |block_ref: BlockRef| f.blocks.iter().find(|it| it.id == block_ref).unwrap();
 
         enum Instr<'a> {
-            PhiInstr(&'a PhiInstr),
-            VarPhiInstr(&'a PhiInstr),
-            NormalInstr(&'a narxia_ssa::Instr),
-            EndInstr(&'a EndInstr),
+            Phi(&'a PhiInstr),
+            VarPhi(&'a PhiInstr),
+            Normal(&'a narxia_ssa::Instr),
+            End(&'a EndInstr),
         }
-        
+
         impl<'a> Instr<'a> {
             fn local_ref(&self) -> LocalRef {
                 match self {
-                    Instr::PhiInstr(it) => it.lhs,
-                    Instr::VarPhiInstr(it) => it.lhs,
-                    Instr::NormalInstr(it) => it.lhs,
-                    Instr::EndInstr(it) => it.local_ref,
+                    Instr::Phi(it) => it.lhs,
+                    Instr::VarPhi(it) => it.lhs,
+                    Instr::Normal(it) => it.lhs,
+                    Instr::End(it) => it.local_ref,
                 }
             }
         }
-        
+
         impl<'a> fmt::Debug for Instr<'a> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
-                    Instr::PhiInstr(it) => it.fmt(f),
-                    Instr::VarPhiInstr(it) => it.fmt(f),
-                    Instr::NormalInstr(it) => it.fmt(f),
-                    Instr::EndInstr(it) => it.fmt(f),
+                    Instr::Phi(it) => it.fmt(f),
+                    Instr::VarPhi(it) => it.fmt(f),
+                    Instr::Normal(it) => it.fmt(f),
+                    Instr::End(it) => it.fmt(f),
                 }
             }
         }
 
         let lookup_instr = |local_ref: LocalRef| {
-            f.blocks.iter().flat_map(|b| b.phi.iter().map(Instr::PhiInstr)
-                .chain(b.var_phi.iter().map(Instr::VarPhiInstr))
-                .chain(b.instrs.iter().map(Instr::NormalInstr))
-                .chain(b.end.as_ref().map(Instr::EndInstr)))
-                .find(|it| it.local_ref() == local_ref).unwrap()
+            f.blocks
+                .iter()
+                .flat_map(|b| {
+                    b.phi
+                        .iter()
+                        .map(Instr::Phi)
+                        .chain(b.var_phi.iter().map(Instr::VarPhi))
+                        .chain(b.instrs.iter().map(Instr::Normal))
+                        .chain(b.end.as_ref().map(Instr::End))
+                })
+                .find(|it| it.local_ref() == local_ref)
+                .unwrap()
         };
 
         for error in errors {
@@ -255,21 +275,55 @@ pub fn present_validation_errors(m: &Module, validation_errors: &BTreeMap<Functi
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*at)).unwrap();
                 }
                 ValidationError::LocalRefDeclaredInBlockButUsedInAnother(l, declared, used, at) => {
-                    writeln!(buffer, "Local ref declared in block:\n{:?}\n", lookup_block(*declared)).unwrap();
+                    writeln!(
+                        buffer,
+                        "Local ref declared in block:\n{:?}\n",
+                        lookup_block(*declared)
+                    )
+                    .unwrap();
                     writeln!(buffer, "Used in block:\n{:?}\n", lookup_block(*used)).unwrap();
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*at)).unwrap();
                 }
-                ValidationError::PhiLinksToLocalRefOutsideOfPhiBlock(v, declared_in, phi_pre, phi_post, used_at) => {
-                    writeln!(buffer, "Local ref declared in block:\n{:?}\n", lookup_block(*declared_in)).unwrap();
-                    writeln!(buffer, "Used in phi link:\n{:?}\n\nto\n\n{:?}\n", lookup_block(*phi_pre), lookup_block(*phi_post)).unwrap();
+                ValidationError::PhiLinksToLocalRefOutsideOfPhiBlock(
+                    v,
+                    declared_in,
+                    phi_pre,
+                    phi_post,
+                    used_at,
+                ) => {
+                    writeln!(
+                        buffer,
+                        "Local ref declared in block:\n{:?}\n",
+                        lookup_block(*declared_in)
+                    )
+                    .unwrap();
+                    writeln!(
+                        buffer,
+                        "Used in phi link:\n{:?}\n\nto\n\n{:?}\n",
+                        lookup_block(*phi_pre),
+                        lookup_block(*phi_post)
+                    )
+                    .unwrap();
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*used_at)).unwrap();
                 }
                 ValidationError::PredPhiLinkMissing(phi_pre, phi_post, at) => {
-                    writeln!(buffer, "Pred phi link missing:\n{:?}\n\nto\n\n{:?}\n", lookup_block(*phi_pre), lookup_block(*phi_post)).unwrap();
+                    writeln!(
+                        buffer,
+                        "Pred phi link missing:\n{:?}\n\nto\n\n{:?}\n",
+                        lookup_block(*phi_pre),
+                        lookup_block(*phi_post)
+                    )
+                    .unwrap();
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*at)).unwrap();
                 }
                 ValidationError::PredPhiLinkTwice(phi_pre, phi_post, at) => {
-                    writeln!(buffer, "Pred phi link twice:\n{:?}\n\nto\n\n{:?}\n", lookup_block(*phi_pre), lookup_block(*phi_post)).unwrap();
+                    writeln!(
+                        buffer,
+                        "Pred phi link twice:\n{:?}\n\nto\n\n{:?}\n",
+                        lookup_block(*phi_pre),
+                        lookup_block(*phi_post)
+                    )
+                    .unwrap();
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*at)).unwrap();
                 }
             }

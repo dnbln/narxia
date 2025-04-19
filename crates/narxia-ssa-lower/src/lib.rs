@@ -59,7 +59,9 @@ impl SsaBuilder {
             Some(ret) => TyRef { id: 0 },
             None => TyRef { id: 0 },
         };
-        let fn_id = FunctionRef { id: self.module.functions.len() };
+        let fn_id = FunctionRef {
+            id: self.module.functions.len(),
+        };
         let mut builder =
             LocalSsaBuilder::new(tcx, fn_id, f.name.text.clone(), FunctionTy { params, ret });
         builder.build(hir_map, f);
