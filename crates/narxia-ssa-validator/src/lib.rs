@@ -329,4 +329,6 @@ pub fn present_validation_errors(
             }
         }
     }
+    
+    narxia_log::error!("{}", buffer);
 }

@@ -111,6 +111,7 @@ enum App {
         llvm_link_behavior: Option<LLVMLinkBehavior>,
         #[clap(flatten)]
         profile: ProfileDeterminer,
+        #[clap(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
     /// Build a distributalbe package.

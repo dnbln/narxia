@@ -1,8 +1,10 @@
 fn main {
     let s = "Hello world"
     println(s)
+    return
 }
 
 fn println(s: str) {
     // ...
+    return
 }

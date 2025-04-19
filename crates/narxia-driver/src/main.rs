@@ -362,20 +362,7 @@ fn main() -> miette::Result<()> {
                     return Ok(());
                 };
 
-                for (error_fn_ref, errors) in result {
-                    let error_fn = module
-                        .functions
-                        .iter()
-                        .find(|it| it.fn_id == error_fn_ref)
-                        .unwrap();
-                    narxia_log::error!("Errors in function:\n{:?}", error_fn);
-
-                    for error in errors {
-                        narxia_log::error!("Error:\n{}", error);
-                    }
-                }
-
-                miette::bail!("Validation errors");
+                narxia_ssa_validator::present_validation_errors(&module, &result);
             }
         }
     }
