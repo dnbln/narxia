@@ -6,7 +6,7 @@ use hir::visitor::HirVisitor;
 use hir::HirIdNewtype;
 use hir::SpecialIdents;
 use miette::bail;
-use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir as hir;
 use narxia_test_runner::parser_tests::lower_to_hir;

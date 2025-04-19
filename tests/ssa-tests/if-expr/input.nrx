@@ -1,0 +1,14 @@
+// test if-expr at crates/narxia-ssa/src/lib.rs
+fn main() {
+    if (1) {
+        println("Hello world")
+    } else {
+        println("Goodbye world")
+    }
+    println("Goodbye world2")
+    return
+}
+
+fn println(s: str) {
+    // ...
+}

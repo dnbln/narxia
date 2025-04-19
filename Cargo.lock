@@ -1376,6 +1376,7 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "narxia-data-structures",
+ "narxia-log",
  "narxia-proc",
  "owo-colors",
 ]
@@ -1405,6 +1406,7 @@ version = "0.0.0"
 dependencies = [
  "narxia-data-structures",
  "narxia-hir",
+ "narxia-log",
  "narxia-src-db",
 ]
 
@@ -1455,6 +1457,7 @@ name = "narxia-ssa"
 version = "0.0.0"
 dependencies = [
  "narxia-hir",
+ "narxia-hir-typechk",
 ]
 
 [[package]]
@@ -1491,6 +1494,9 @@ dependencies = [
  "narxia-driver",
  "narxia-hir",
  "narxia-hir-db",
+ "narxia-hir-typechk",
+ "narxia-src-db",
+ "narxia-ssa",
  "narxia-syn",
  "owo-colors",
  "similar",

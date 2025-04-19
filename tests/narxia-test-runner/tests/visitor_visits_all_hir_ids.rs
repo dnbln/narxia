@@ -3,7 +3,7 @@
 //! This is useful to ensure that the visitor is not missing any HIR nodes.
 
 use miette::bail;
-use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::HirId;

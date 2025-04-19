@@ -1,0 +1,30 @@
+fn main: () -> t@0
+b@0:
+  l@0 = 1
+  l@9 = br l@0 b@2 b@3
+
+b@1:   # preds: b@2, b@3
+  l@10 = phi(b@2 l@3, b@3 l@7)
+  l@11 = "Goodbye world2"
+  l@12 = sconcat(l@11)
+  l@13 = call f@0(l@12)
+  l@14 = ret
+
+b@2:   # preds: b@0
+  l@1 = "Hello world"
+  l@2 = sconcat(l@1)
+  l@3 = call f@0(l@2)
+  l@4 = br b@1
+
+b@3:   # preds: b@0
+  l@5 = "Goodbye world"
+  l@6 = sconcat(l@5)
+  l@7 = call f@0(l@6)
+  l@8 = br b@1
+
+
+fn println: () -> t@0
+b@0:
+  l@0 = param@0
+
+

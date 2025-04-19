@@ -16,7 +16,10 @@ narxia-dir-structures.workspace = true
 narxia-driver.workspace = true
 narxia-hir.workspace = true
 narxia-hir-db.workspace = true
+narxia-hir-typechk.workspace = true
+narxia-ssa.workspace = true
 narxia-syn.workspace = true
+narxia-src-db.workspace = true
 
 [lints]
 workspace = true
@@ -54,3 +57,9 @@ harness = false
 name = "no_allocated_and_unused_hirids_nxtimq"
 path = "tests/no_allocated_and_unused_hirids.rs"
 harness = false
+
+[[test]]
+name = "ssa_tests_nxtimq"
+path = "tests/ssa_tests.rs"
+harness = false
+

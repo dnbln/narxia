@@ -1,1 +1,8 @@
-println("Hello world")
+fn main {
+    let s = "Hello world"
+    println(s)
+}
+
+fn println(s: str) {
+    // ...
+}

@@ -16,7 +16,7 @@
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
-use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_syn::syntree::TreePresenterStyle;
 
 #[derive(Debug, Clone, Copy)]

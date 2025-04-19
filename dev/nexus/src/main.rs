@@ -88,8 +88,14 @@ enum App {
         /// Parser test mode.
         ///
         /// This mode will run the parser tests.
-        #[clap(long, default_value_t = ParserTestsMode::Check)]
-        parser_tests: ParserTestsMode,
+        #[clap(long, default_value_t = SnapshotsTestMode::Check)]
+        parser_tests: SnapshotsTestMode,
+
+        /// SSA test mode.
+        ///
+        /// This mode will run the SSA tests.
+        #[clap(long, default_value_t = SnapshotsTestMode::Check)]
+        ssa_tests: SnapshotsTestMode,
 
         /// Whether to run the tests with Miri.
         #[clap(long)]
@@ -119,18 +125,27 @@ enum App {
     },
 }
 
-#[derive(Debug, clap::ValueEnum, Clone, Default)]
-enum ParserTestsMode {
+#[derive(Debug, clap::ValueEnum, Copy, Clone, Default)]
+enum SnapshotsTestMode {
     #[default]
     Check,
     Overwrite,
 }
 
-impl fmt::Display for ParserTestsMode {
+impl SnapshotsTestMode {
+    fn into_lib_ty(self) -> tests::SnapshotsTestMode {
+        match self {
+            SnapshotsTestMode::Check => tests::SnapshotsTestMode::Check,
+            SnapshotsTestMode::Overwrite => tests::SnapshotsTestMode::Overwrite,
+        }
+    }
+}
+
+impl fmt::Display for SnapshotsTestMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParserTestsMode::Check => write!(f, "check"),
-            ParserTestsMode::Overwrite => write!(f, "overwrite"),
+            SnapshotsTestMode::Check => write!(f, "check"),
+            SnapshotsTestMode::Overwrite => write!(f, "overwrite"),
         }
     }
 }
@@ -149,6 +164,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             profile,
             llvm_link_behavior,
             parser_tests,
+            ssa_tests,
             miri,
         } => {
             let profile = profile.get_profile();
@@ -199,10 +215,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 .fail_fast(fail_fast)
                 .profile(profile.cargo_name())
                 .env(llvm_k, llvm_v)
-                .parser_tests(match parser_tests {
-                    ParserTestsMode::Check => tests::ParserTestsMode::Check,
-                    ParserTestsMode::Overwrite => tests::ParserTestsMode::Overwrite,
-                })
+                .parser_tests(parser_tests.into_lib_ty())
+                .ssa_tests(ssa_tests.into_lib_ty())
                 .debug_nextest_messages(
                     env::var("NEXUS_DEBUG_NEXTEST_OUTPUT").is_ok_and(|it| it == "1"),
                 )

@@ -146,6 +146,16 @@ impl GlobalTyCtxt {
             .copied()
             .unwrap()
     }
+
+    fn dump_resolutions(&self) {
+        use std::fmt::Write;
+        let rf = self.inner.name_resolution.read().unwrap();
+        let mut s = String::new();
+        for (id, def_id) in rf.name_map.iter() {
+            writeln!(&mut s, "Resolved: {:?} -> {:?}", id, def_id).unwrap();
+        }
+        narxia_log::info!("Name Resolutions:\n{}", s);
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -176,6 +186,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn get_name_resolution(self, id: HirId) -> DefId {
         self.global_ctxt.get_name_resolution(id)
+    }
+
+    pub fn lookup_hir_id_def(self, hir_id: HirId) -> Option<DefId> {
+        self.global_ctxt.lookup_hir_id_def(hir_id)
+    }
+
+    pub fn dump_resolutions(self) {
+        self.global_ctxt.dump_resolutions();
     }
 }
 

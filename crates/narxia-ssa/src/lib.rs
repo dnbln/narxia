@@ -1,14 +1,23 @@
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fmt;
 
-use hir::ExprAtomKind;
 use narxia_hir as hir;
 use narxia_hir::hir_map::HirMap;
+use narxia_hir::HirIdNewtype;
+use narxia_hir_typechk::def_id::DefId;
+use narxia_hir_typechk::tyctxt::TyCtxt;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Instr {
     pub lhs: LocalRef,
     pub rhs: IValue,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct PhiInstr {
+    pub lhs: LocalRef,
+    pub rhs: Vec<(BlockRef, LocalRef)>,
 }
 
 impl fmt::Debug for Instr {
@@ -20,7 +29,25 @@ impl fmt::Debug for Instr {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Block {
     pub id: BlockRef,
+    pub preds: Vec<BlockRef>,
+    pub var_phi: Vec<PhiInstr>,
+    pub phi: Vec<PhiInstr>,
     pub instrs: Vec<Instr>,
+    pub end: Option<EndInstr>,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct EndInstr {
+    local_ref: LocalRef,
+    kind: EndInstrKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub enum EndInstrKind {
+    Branch(BlockRef),
+    ConditionalBranch(Value, BlockRef, BlockRef),
+    Return(Value),
+    RetVoid,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord)]
@@ -36,9 +63,31 @@ impl fmt::Debug for PlaceRef {
 
 impl fmt::Debug for Block {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{:?}:", self.id)?;
+        write!(f, "{:?}:", self.id)?;
+
+        if !self.preds.is_empty() {
+            write!(f, "   # preds: ")?;
+            for (id, pred) in self.preds.iter().enumerate() {
+                if id != 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{:?}", pred)?;
+            }
+        }
+
+        writeln!(f)?;
+
+        for var_phi in &self.var_phi {
+            writeln!(f, "  {:?}", var_phi)?;
+        }
+        for phi in &self.phi {
+            writeln!(f, "  {:?}", phi)?;
+        }
         for instr in &self.instrs {
             writeln!(f, "  {:?}", instr)?;
+        }
+        if let Some(end) = &self.end {
+            writeln!(f, "  {:?}", end)?;
         }
         Ok(())
     }
@@ -48,6 +97,7 @@ impl fmt::Debug for Block {
 pub enum Value {
     Local(LocalRef),
     Const(i32),
+    ConstStr(String),
 }
 
 impl fmt::Debug for Value {
@@ -55,6 +105,25 @@ impl fmt::Debug for Value {
         match self {
             Self::Local(arg0) => arg0.fmt(f),
             Self::Const(arg0) => arg0.fmt(f),
+            Self::ConstStr(arg0) => {
+                write!(f, "\"")?;
+                for c in arg0.chars() {
+                    if c == '"' {
+                        write!(f, "\\\"")?;
+                    } else if c == '\\' {
+                        write!(f, "\\\\")?;
+                    } else if c == '\n' {
+                        write!(f, "\\n")?;
+                    } else if c == '\r' {
+                        write!(f, "\\r")?;
+                    } else if c == '\t' {
+                        write!(f, "\\t")?;
+                    } else {
+                        write!(f, "{}", c)?;
+                    }
+                }
+                write!(f, "\"")
+            }
         }
     }
 }
@@ -65,11 +134,9 @@ pub enum IValue {
     Param(usize),
     BinaryExpr(BinaryExpr),
     Call(CallExpr),
-    Phi(Vec<(BlockRef, LocalRef)>),
-    Branch(BlockRef),
-    ConditionalBranch(Value, BlockRef, BlockRef),
-    Return(Value),
-    RetVoid,
+    SConcat(Vec<LocalRef>),
+    Debug(LocalRef),
+    Display(LocalRef),
     DoNothing,
 }
 
@@ -79,16 +146,51 @@ impl fmt::Debug for IValue {
             Self::Value(arg0) => arg0.fmt(f),
             Self::BinaryExpr(arg0) => arg0.fmt(f),
             Self::Call(arg0) => arg0.fmt(f),
-            Self::Phi(arg0) => {
-                write!(f, "phi(")?;
-                for (id, (block, value)) in arg0.iter().enumerate() {
+            Self::DoNothing => write!(f, "__"),
+            Self::Param(p) => {
+                write!(f, "param@{}", p)
+            }
+            Self::SConcat(arg0) => {
+                write!(f, "sconcat(")?;
+                for (id, value) in arg0.iter().enumerate() {
                     if id != 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:?} -> {:?}", block, value)?;
+                    write!(f, "{:?}", value)?;
                 }
                 write!(f, ")")
             }
+            Self::Debug(arg0) => {
+                write!(f, "debug({:?})", arg0)
+            }
+            Self::Display(arg0) => {
+                write!(f, "display({:?})", arg0)
+            }
+        }
+    }
+}
+
+impl fmt::Debug for EndInstr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} = ", self.local_ref)?;
+        match &self.kind {
+            EndInstrKind::Branch(arg0) => {
+                write!(f, "br {:?}", arg0)
+            }
+            EndInstrKind::ConditionalBranch(arg0, arg1, arg2) => {
+                write!(f, "br {:?} {:?} {:?}", arg0, arg1, arg2)
+            }
+            EndInstrKind::Return(arg0) => {
+                write!(f, "ret {:?}", arg0)
+            }
+            EndInstrKind::RetVoid => write!(f, "ret"),
+        }
+    }
+}
+
+impl fmt::Debug for EndInstrKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             Self::Branch(arg0) => {
                 write!(f, "br {:?}", arg0)
             }
@@ -99,11 +201,20 @@ impl fmt::Debug for IValue {
                 write!(f, "ret {:?}", arg0)
             }
             Self::RetVoid => write!(f, "ret"),
-            Self::DoNothing => write!(f, "__"),
-            Self::Param(p) => {
-                write!(f, "param@{}", p)
-            }
         }
+    }
+}
+
+impl fmt::Debug for PhiInstr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?} = phi(", self.lhs)?;
+        for (id, (block, value)) in self.rhs.iter().enumerate() {
+            if id != 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{:?} {:?}", block, value)?;
+        }
+        write!(f, ")")
     }
 }
 
@@ -172,7 +283,7 @@ impl fmt::Debug for FunctionRef {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord)]
 pub struct LocalRef {
     id: usize,
 }
@@ -203,7 +314,7 @@ pub struct Function {
 
 impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "fn {}: {:?}", self.name, self.ty)?;
+        writeln!(f, "fn {}: {}", self.name, self.ty)?;
         for block in &self.blocks {
             writeln!(f, "{:?}", block)?;
         }
@@ -213,8 +324,21 @@ impl fmt::Debug for Function {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTy {
-    args: Vec<TyRef>,
+    params: Vec<TyRef>,
     ret: TyRef,
+}
+
+impl fmt::Display for FunctionTy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(")?;
+        for (id, arg) in self.params.iter().enumerate() {
+            if id != 0 {
+                write!(f, ", ")?;
+            }
+            write!(f, "{:?}", arg)?;
+        }
+        write!(f, ") -> {:?}", self.ret)
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -228,40 +352,66 @@ impl fmt::Debug for TyRef {
     }
 }
 
-struct SsaBuilder {
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct Module {
     functions: Vec<Function>,
 }
 
-struct LocalSsaBuilder {
+impl fmt::Debug for Module {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for function in &self.functions {
+            function.fmt(f)?;
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+}
+
+struct SsaBuilder {
+    module: Module,
+}
+
+struct LocalSsaBuilder<'tcx> {
+    tcx: TyCtxt<'tcx>,
     function: Function,
     current_block_ref: BlockRef,
     current_local_ref: usize,
     current_place_ref: usize,
+    def_id_to_place: BTreeMap<DefId, PlaceRef>,
+    init_place_phis: Vec<BTreeMap<PlaceRef, LocalRef>>,
     last_place_values: Vec<BTreeMap<PlaceRef, LocalRef>>,
-    block_scopes: Vec<BTreeMap<String, PlaceRef>>,
+    preds: Vec<Vec<BlockRef>>,
+    all_placerefs: BTreeSet<PlaceRef>,
 }
 
 impl SsaBuilder {
     fn new() -> Self {
-        Self { functions: vec![] }
+        Self {
+            module: Module { functions: vec![] },
+        }
     }
 
-    fn build(&mut self, hir_map: &HirMap, f: &hir::FnDef) {
-        let mut builder = LocalSsaBuilder::new(
-            "".to_string(),
-            FunctionTy {
-                args: vec![],
-                ret: TyRef { id: 0 },
-            },
-        );
+    fn build(&mut self, tcx: TyCtxt, hir_map: &HirMap, f: &hir::FnDef) {
+        let params = if let Some(params) = &f.params {
+            params.params.iter().map(|it| TyRef { id: 0 }).collect()
+        } else {
+            vec![]
+        };
+        let ret = match &f.ret_ty {
+            Some(ret) => TyRef { id: 0 },
+            None => TyRef { id: 0 },
+        };
+        let mut builder =
+            LocalSsaBuilder::new(tcx, f.name.text.clone(), FunctionTy { params, ret });
         builder.build(hir_map, f);
-        self.functions.push(builder.function);
+        self.module.functions.push(builder.function);
     }
 }
 
-impl LocalSsaBuilder {
-    fn new(fn_name: String, ty: FunctionTy) -> Self {
+impl<'tcx> LocalSsaBuilder<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, fn_name: String, ty: FunctionTy) -> Self {
         Self {
+            tcx,
             function: Function {
                 name: fn_name,
                 ty,
@@ -270,13 +420,20 @@ impl LocalSsaBuilder {
             current_local_ref: 0,
             current_block_ref: BlockRef { id: 0 },
             current_place_ref: 0,
+            def_id_to_place: BTreeMap::new(),
+            init_place_phis: vec![],
             last_place_values: vec![],
-            block_scopes: vec![],
+            preds: vec![],
+            all_placerefs: BTreeSet::new(),
         }
     }
 
+    #[track_caller]
     fn push_to_current_block(&mut self, value: IValue) -> LocalRef {
         let block = &mut self.function.blocks[self.current_block_ref.id];
+        if block.end.is_some() {
+            panic!("block end already set");
+        }
         let lref = LocalRef {
             id: self.current_local_ref,
         };
@@ -288,19 +445,121 @@ impl LocalSsaBuilder {
         lref
     }
 
+    fn push_phi_to_current_block(&mut self, phi: Vec<(BlockRef, LocalRef)>) -> LocalRef {
+        let lref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        block.phi.push(PhiInstr {
+            lhs: lref,
+            rhs: phi,
+        });
+        lref
+    }
+
+    fn push_var_phi_to_current_block(&mut self, phi: Vec<(BlockRef, LocalRef)>) -> LocalRef {
+        let lref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        block.var_phi.push(PhiInstr {
+            lhs: lref,
+            rhs: phi,
+        });
+        lref
+    }
+
+    fn new_local_ref(&mut self) -> LocalRef {
+        let lref = LocalRef {
+            id: self.current_local_ref,
+        };
+        self.current_local_ref += 1;
+        lref
+    }
+    fn branch(&mut self, bref: BlockRef) -> LocalRef {
+        let local_ref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        if block.end.is_some() {
+            panic!("block end already set");
+        }
+
+        block.end = Some(EndInstr {
+            local_ref,
+            kind: EndInstrKind::Branch(bref),
+        });
+        self.preds[bref.id].push(block.id);
+        local_ref
+    }
+
+    fn conditional_branch(
+        &mut self,
+        cond: Value,
+        true_block: BlockRef,
+        false_block: BlockRef,
+    ) -> LocalRef {
+        let local_ref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        if block.end.is_some() {
+            panic!("block end already set");
+        }
+        block.end = Some(EndInstr {
+            local_ref,
+            kind: EndInstrKind::ConditionalBranch(cond, true_block, false_block),
+        });
+        self.preds[true_block.id].push(block.id);
+        self.preds[false_block.id].push(block.id);
+        local_ref
+    }
+
+    fn return_value(&mut self, value: Value) -> LocalRef {
+        let local_ref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        if block.end.is_some() {
+            panic!("block end already set");
+        }
+        block.end = Some(EndInstr {
+            local_ref,
+            kind: EndInstrKind::Return(value),
+        });
+        local_ref
+    }
+
+    fn return_void(&mut self) -> LocalRef {
+        let local_ref = self.new_local_ref();
+        let block = &mut self.function.blocks[self.current_block_ref.id];
+        if block.end.is_some() {
+            panic!("block end already set");
+        }
+        block.end = Some(EndInstr {
+            local_ref,
+            kind: EndInstrKind::RetVoid,
+        });
+        local_ref
+    }
+
     fn push_new_block(&mut self) -> BlockRef {
         let bref = BlockRef {
             id: self.function.blocks.len(),
         };
         let block = Block {
             id: bref,
+            preds: vec![],
+            var_phi: vec![],
+            phi: vec![],
             instrs: vec![],
+            end: None,
         };
-        self.last_place_values.push(BTreeMap::new());
-        self.block_scopes.push(BTreeMap::new());
         self.function.blocks.push(block);
+        self.preds.push(Vec::new());
         self.current_block_ref = bref;
+        let t = self.make_phi_place_table();
+        self.last_place_values.push(t.clone());
+        self.init_place_phis.push(t);
         bref
+    }
+
+    fn make_phi_place_table(&mut self) -> BTreeMap<PlaceRef, LocalRef> {
+        let mut map = BTreeMap::new();
+        for place in self.all_placerefs.clone() {
+            map.insert(place, self.push_var_phi_to_current_block(vec![]));
+        }
+        map
     }
 
     fn position_at_block(&mut self, bref: BlockRef) {
@@ -355,10 +614,82 @@ impl LocalSsaBuilder {
                     // let value = self.last_place_values[self.current_block_ref.id].get(place);
                     // let value = value.unwrap();
                     // *value
-                    LocalRef { id: 1000 }
+                    let def_id = self.tcx.get_name_resolution(ident.hir_id());
+                    let place = self.def_id_to_place.get(&def_id).unwrap();
+                    let value = self.last_place_values[self.current_block_ref.id]
+                        .get(place)
+                        .unwrap();
+                    *value
                 }
                 hir::ExprAtomKind::Str(str_literal) => {
-                    todo!()
+                    enum StrConcatElem {
+                        Literal(String),
+                        DebugLocal(LocalRef),
+                        DisplayLocal(LocalRef),
+                    }
+
+                    let mut str_concats = vec![];
+                    for fragment in &str_literal.fragments {
+                        match &fragment.kind {
+                            hir::StrLiteralFragmentKind::Text(str_lit) => {
+                                if let Some(StrConcatElem::Literal(s)) = str_concats.last_mut() {
+                                    s.push_str(&str_lit.token.text);
+                                } else {
+                                    str_concats
+                                        .push(StrConcatElem::Literal(str_lit.token.text.clone()));
+                                }
+                            }
+                            hir::StrLiteralFragmentKind::EscapedChar(e, ..) => {
+                                let c = match e.text.as_str() {
+                                    "\\n" => '\n',
+                                    "\\r" => '\r',
+                                    "\\t" => '\t',
+                                    "\\\"" => '"',
+                                    "\\\\" => '\\',
+                                    t => {
+                                        todo!("unexpected escape in string literal fragment: {t}");
+                                    }
+                                };
+                                if let Some(StrConcatElem::Literal(s)) = str_concats.last_mut() {
+                                    s.push(c);
+                                } else {
+                                    str_concats.push(StrConcatElem::Literal(c.to_string()));
+                                }
+                            }
+                            hir::StrLiteralFragmentKind::Debug(expr) => {
+                                let expr = hir_map.get_expr(expr.expr);
+                                let local = self.build_expr(hir_map, expr);
+                                str_concats.push(StrConcatElem::DebugLocal(local));
+                            }
+                            hir::StrLiteralFragmentKind::Display(expr) => {
+                                let expr = hir_map.get_expr(expr.expr);
+                                let local = self.build_expr(hir_map, expr);
+                                str_concats.push(StrConcatElem::DisplayLocal(local));
+                            }
+                            hir::StrLiteralFragmentKind::EscapeSequence(..) => {
+                                todo!()
+                            }
+                        }
+                    }
+
+                    let mut locals = vec![];
+                    for elem in str_concats {
+                        match elem {
+                            StrConcatElem::Literal(s) => {
+                                locals.push(
+                                    self.push_to_current_block(IValue::Value(Value::ConstStr(s))),
+                                );
+                            }
+                            StrConcatElem::DebugLocal(l) => {
+                                locals.push(self.push_to_current_block(IValue::Debug(l)));
+                            }
+                            StrConcatElem::DisplayLocal(l) => {
+                                locals.push(self.push_to_current_block(IValue::Display(l)));
+                            }
+                        }
+                    }
+
+                    self.push_to_current_block(IValue::SConcat(locals))
                 }
                 hir::ExprAtomKind::Num(num_lit) => {
                     match num_lit.parse_to_size(hir::NumLitSize::I32) {
@@ -370,44 +701,84 @@ impl LocalSsaBuilder {
                 }
                 hir::ExprAtomKind::LoopExpr(loop_expr) => todo!(),
                 hir::ExprAtomKind::IfExpr(if_expr) => {
+                    // ssa-test:if-expr
+                    // fn main() {
+                    //     if (1) {
+                    //         println("Hello world")
+                    //     } else {
+                    //         println("Goodbye world")
+                    //     }
+                    //     println("Goodbye world2")
+                    //     return
+                    // }
+                    //
+                    // fn println(s: str) {
+                    //     // ...
+                    // }
+
+                    // ssa-test:nested-if-exprs
+                    // fn main() {
+                    //     if (1) {
+                    //         let s = "Hello world"
+                    //         if (1) {
+                    //             println(s)
+                    //         } else {
+                    //             println("Goodbye world1")
+                    //         }
+                    //     } else {
+                    //         let s = "Goodbye world"
+                    //         if (1) {
+                    //             println(s)
+                    //         } else {
+                    //             println("Goodbye world3")
+                    //         }
+                    //     }
+                    //
+                    //     println("Goodbye world4")
+                    //     return
+                    // }
+                    //
+                    // fn println(s: str) {
+                    //     // ...
+                    // }
                     let cond = self.build_expr(hir_map, hir_map.get_expr(if_expr.cond));
                     let begin_block = self.current_block_ref;
                     let end = self.push_new_block();
                     let then_block = self.push_new_block();
+                    self.position_at_block(then_block);
                     let then_value = self.build_expr(hir_map, hir_map.get_expr(if_expr.then));
-                    self.push_to_current_block(IValue::Branch(end));
-                    let (else_value, else_block) = if let Some(else_expr) = &if_expr.else_ {
-                        let else_block = self.push_new_block();
-                        let value = self.build_expr(hir_map, hir_map.get_expr(else_expr.expr));
-                        self.push_to_current_block(IValue::Branch(end));
-                        (Some(value), else_block)
-                    } else {
-                        (None, end)
-                    };
+                    let then_block_end = self.current_block_ref;
+                    self.branch(end);
+                    let (else_value, else_block, else_block_end) =
+                        if let Some(else_expr) = &if_expr.else_ {
+                            let else_block = self.push_new_block();
+                            let value = self.build_expr(hir_map, hir_map.get_expr(else_expr.expr));
+                            let else_block_end = self.current_block_ref;
+                            self.branch(end);
+                            (Some(value), else_block, else_block_end)
+                        } else {
+                            (None, end, end)
+                        };
 
                     self.position_at_block(begin_block);
-                    self.push_to_current_block(IValue::ConditionalBranch(
-                        Value::Local(cond),
-                        then_block,
-                        else_block,
-                    ));
+                    self.conditional_branch(Value::Local(cond), then_block, else_block);
 
                     self.position_at_block(end);
 
-                    self.push_to_current_block(IValue::Phi({
-                        let mut phi = vec![(then_block, then_value)];
+                    self.push_phi_to_current_block({
+                        let mut phi = vec![(then_block_end, then_value)];
                         if let Some(else_value) = else_value {
-                            phi.push((else_block, else_value));
+                            phi.push((else_block_end, else_value));
                         }
                         phi
-                    }))
+                    })
                 }
                 hir::ExprAtomKind::ReturnExpr(return_expr) => {
                     if let Some(ret_expr) = return_expr.expr {
                         let v = self.build_expr(hir_map, hir_map.get_expr(ret_expr));
-                        self.push_to_current_block(IValue::Return(Value::Local(v)))
+                        self.return_value(Value::Local(v))
                     } else {
-                        self.push_to_current_block(IValue::RetVoid)
+                        self.return_void()
                     }
                 }
                 hir::ExprAtomKind::BreakExpr(break_expr) => todo!(),
@@ -484,10 +855,44 @@ impl LocalSsaBuilder {
         match &let_stmt.pat.kind {
             hir::PatKind::Ident(ident) => {
                 let new_place_ref = self.push_place_ref();
+                let def_id = self.tcx.lookup_hir_id_def(ident.hir_id()).unwrap();
+                self.insert_decl(def_id, new_place_ref);
                 self.insert_last_place_value(new_place_ref, init.unwrap());
             }
-            hir::PatKind::Tuple(pats) => todo!(),
+            hir::PatKind::Tuple(pats) => {
+                todo!()
+            }
             hir::PatKind::Wildcard(ident) => todo!(),
+        }
+    }
+
+    fn insert_decl(&mut self, def_id: DefId, place_ref: PlaceRef) {
+        self.def_id_to_place.insert(def_id, place_ref);
+
+        let Self {
+            current_local_ref,
+            function,
+            init_place_phis,
+            last_place_values,
+            all_placerefs,
+            ..
+        } = self;
+
+        all_placerefs.insert(place_ref);
+
+        for (block_id, block) in function.blocks.iter_mut().enumerate() {
+            let block_id = BlockRef { id: block_id };
+            let lref = LocalRef {
+                id: *current_local_ref,
+            };
+            *current_local_ref += 1;
+            let phi = PhiInstr {
+                lhs: lref,
+                rhs: vec![],
+            };
+            block.var_phi.push(phi);
+            init_place_phis[block_id.id].insert(place_ref, lref);
+            last_place_values[block_id.id].insert(place_ref, lref);
         }
     }
 
@@ -496,31 +901,97 @@ impl LocalSsaBuilder {
     }
 
     fn process_assignment_stmt(&mut self, hir_map: &HirMap, assignment_stmt: &hir::AssignmentStmt) {
-        let lhs_name = if let hir::Expr {
-            kind:
-                hir::ExprKind::Atom(hir::ExprAtom {
-                    kind: ExprAtomKind::Ident(ident),
-                    ..
-                }),
+        todo!()
+    }
+
+    fn phi_var_transfers(&mut self) {
+        let Self {
+            preds,
+            function,
+            last_place_values,
+            init_place_phis,
             ..
-        } = hir_map.get_expr(assignment_stmt.lhs)
-        {
-            hir_map.get_expr_atom_ident(*ident).ident.text.clone()
-        } else {
-            todo!()
-        };
-        // let lhs = self.build_expr(hir_map, hir_map.get_expr(assignment_stmt.lhs));
-        let rhs = self.build_expr(hir_map, hir_map.get_expr(assignment_stmt.rhs));
-        let place = *self.block_scopes[self.current_block_ref.id]
-            .get(&lhs_name)
-            .unwrap();
-        self.insert_last_place_value(place, rhs);
+        } = self;
+
+        for block in &mut function.blocks {
+            for pred in &preds[block.id.id] {
+                for (place_ref, local_ref) in &init_place_phis[block.id.id] {
+                    let Some(last_value) = last_place_values[pred.id].get(place_ref) else {
+                        panic!("last value not found");
+                    };
+                    let Some(vphi) = block.var_phi.iter_mut().find(|phi| phi.lhs == *local_ref)
+                    else {
+                        panic!("var phi not found");
+                    };
+                    vphi.rhs.push((*pred, *last_value));
+                }
+            }
+        }
+    }
+
+    fn fill_block_preds(&mut self) {
+        let Self {
+            preds, function, ..
+        } = self;
+        for block in &mut function.blocks {
+            for pred in &preds[block.id.id] {
+                block.preds.push(*pred);
+            }
+        }
+    }
+
+    fn dead_phi_elimination(&mut self) {
+        let Self {
+            function,
+            init_place_phis,
+            ..
+        } = self;
+
+        let mut continue_eliminating = true;
+        let mut eliminated_local_refs = BTreeSet::new();
+
+        while continue_eliminating {
+            continue_eliminating = false;
+            for block in &mut function.blocks {
+                if block.preds.is_empty() {
+                    for phi in &mut block.var_phi {
+                        eliminated_local_refs.insert(phi.lhs);
+                    }
+                    block.var_phi.clear();
+                    init_place_phis.get_mut(block.id.id).unwrap().clear();
+                    continue;
+                }
+
+                let mut alive_phis = Vec::new();
+                for phi in &block.var_phi {
+                    let mut preds_left_to_see = block.preds.clone();
+                    for (pred, v) in &phi.rhs {
+                        if let Some(pos) = preds_left_to_see.iter().position(|x| x == pred) {
+                            if !eliminated_local_refs.contains(v) {
+                                preds_left_to_see.remove(pos);
+                            }
+                        } else {
+                            panic!("malformed phi");
+                        }
+                    }
+
+                    if preds_left_to_see.is_empty() {
+                        alive_phis.push(phi.clone());
+                    } else {
+                        continue_eliminating = true;
+                        eliminated_local_refs.insert(phi.lhs);
+                    }
+                }
+
+                block.var_phi = alive_phis;
+            }
+        }
     }
 
     fn build(&mut self, hir_map: &HirMap, f: &hir::FnDef) {
         self.function.name = f.name.text.clone();
         self.function.ty = FunctionTy {
-            args: vec![],
+            params: vec![],
             ret: TyRef { id: 0 },
         };
         self.function.blocks = vec![];
@@ -565,11 +1036,20 @@ impl LocalSsaBuilder {
                 }
             }
         }
+
+        self.fill_block_preds();
+        self.phi_var_transfers();
+        self.dead_phi_elimination();
     }
 }
 
-pub fn convert(hir_map: &HirMap, f: &hir::FnDef) -> Function {
+pub fn convert(tcx: TyCtxt, hir_map: &HirMap, module: hir::ModId) -> Module {
     let mut builder = SsaBuilder::new();
-    builder.build(hir_map, f);
-    builder.functions.pop().unwrap()
+    for item in &hir_map.get_mod(module).body.as_ref().unwrap().items.items {
+        let item = hir_map.get_item(*item);
+        if let hir::ItemKind::FnDef(f) = item.kind {
+            builder.build(tcx, hir_map, hir_map.get_fn(f));
+        }
+    }
+    builder.module
 }

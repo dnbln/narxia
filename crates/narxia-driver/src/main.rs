@@ -9,8 +9,9 @@ use narxia_codegen::ir;
 use narxia_codegen::CodegenBackend;
 use narxia_driver::ctxt::DriverCtx;
 use narxia_driver::HirDbg;
-use narxia_hir::hir_map::FnLookupVisitor;
+use narxia_hir::hir_map;
 use narxia_hir_typechk::sema;
+use narxia_log::info;
 
 /// Compiler for narxia.
 #[derive(Parser, Debug)]
@@ -64,8 +65,6 @@ pub struct NarxiaDriverSemaAnalysisCommand {
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverSsaCommand {
     file: PathBuf,
-    #[clap(long = "fn")]
-    fn_name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -310,7 +309,6 @@ fn main() -> miette::Result<()> {
             narxia_log::i!("Ssa command: {ssa:?}");
 
             let file = ssa.file;
-            let fn_name = ssa.fn_name;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
             let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
@@ -334,11 +332,25 @@ fn main() -> miette::Result<()> {
                 .hir_map_mut_ref()
                 .set_current_file(None);
 
-            let hir_map = ctx.db.get_global_ty_ctxt().hir_map_mut_ref();
-            let f =
-                FnLookupVisitor::lookup(&*hir_map, hir.mod_def(&ctx.db), fn_name.clone()).unwrap();
-            let f = narxia_ssa::convert(&hir_map, hir_map.get_fn(f));
-            println!("{:#?}", f);
+            let hir_mod = hir.mod_def(&ctx.db);
+
+            hir_map::hir_map_update_parents_in_mod(
+                &mut ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
+                hir_mod,
+            );
+
+            info!("Hir map updated");
+
+            let analysis_results = sema::analyze_program_structure(tcx, hir_mod);
+            info!("Analysis results: {:?}", analysis_results);
+
+            sema::resolve_work(tcx, hir_mod, &analysis_results);
+
+            tcx.dump_resolutions();
+
+            let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
+            let module = narxia_ssa::convert(tcx, &hir_map, hir_mod);
+            println!("{:#?}", module);
         }
     }
 

@@ -27,7 +27,12 @@ use clap::ValueEnum;
 use miette::bail;
 use miette::IntoDiagnostic;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
-use narxia_dir_structures::dir_structure::DirStructureItem;
+use narxia_dir_structures::dir_structure::DirStructure;
+use narxia_dir_structures::dir_structure::FileString;
+use narxia_dir_structures::parser_tests;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
+use narxia_dir_structures::ssa_tests;
+use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
 use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
@@ -51,7 +56,12 @@ pub enum BuildSysCmd {
     /// Collect parser tests.
     #[clap(name = "collect-parser-tests")]
     #[clap(alias = "cpt")]
+    #[clap(alias = "ct-p")]
     CollectParserTests,
+    /// Collect SSA tests.
+    #[clap(name = "collect-ssa-tests")]
+    #[clap(alias = "ct-ssa")]
+    CollectSSATests,
 
     #[clap(name = "lint")]
     Lint {
@@ -78,24 +88,19 @@ impl BuildSysCmd {
             }
             Self::CollectParserTests => {
                 let mut item = cx.new_child("collect parser tests");
-                let paths = glob::glob(
-                    ws_root()
-                        .join("crates/narxia-syn/src/**/*.rs")
-                        .to_str()
-                        .unwrap(),
-                )
-                .into_diagnostic()?
-                .collect::<Vec<_>>();
-                item.init(Some(paths.len()), Some(unit::label("files")));
-                for entry in paths {
-                    let entry = entry.into_diagnostic()?;
-                    let file_repo = entry.strip_prefix(ws_root()).unwrap();
-                    let mut file_item = item.add_child("collect parser tests from file");
-
-                    collect_parser_tests_from_file(&entry, file_repo, &mut file_item)?;
-
-                    item.inc();
-                }
+                collect_tests_from_source::<ParserTestSingleFolder>(
+                    "crates/narxia-syn/src/**/*.rs",
+                    "// parser-test:",
+                    &mut item,
+                )?;
+            }
+            Self::CollectSSATests => {
+                let mut item = cx.new_child("collect ssa tests");
+                collect_tests_from_source::<SsaTestSingleFolder>(
+                    "crates/narxia-ssa/src/**/*.rs",
+                    "// ssa-test:",
+                    &mut item,
+                )?;
             }
             Self::Lint { fix } => {
                 let bins = {
@@ -129,22 +134,79 @@ impl BuildSysCmd {
     }
 }
 
-fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item) -> NexusR {
+trait GenericTestDirType: DirStructure {
+    fn path_to_write_to(&self) -> &Path;
+    fn from_name_and_code(name: &str, code: String) -> Self;
+}
+
+impl GenericTestDirType for ParserTestSingleFolder {
+    fn path_to_write_to(&self) -> &Path {
+        &self.self_path
+    }
+
+    fn from_name_and_code(name: &str, code: String) -> Self {
+        Self {
+            input: DeferredReadOrOwn::Own(FileString(code)),
+            output: None,
+            self_path: parser_tests::parser_tests_dir().join(name),
+        }
+    }
+}
+
+impl GenericTestDirType for SsaTestSingleFolder {
+    fn path_to_write_to(&self) -> &Path {
+        &self.self_path
+    }
+
+    fn from_name_and_code(name: &str, code: String) -> Self {
+        Self {
+            input: DeferredReadOrOwn::Own(FileString(code)),
+            output: None,
+            self_path: ssa_tests::ssa_tests_dir().join(name),
+        }
+    }
+}
+
+fn collect_tests_from_source<T: GenericTestDirType>(
+    glob: &str,
+    comment_header: &str,
+    item: &mut Item,
+) -> NexusR {
+    let paths = glob::glob(ws_root().join(glob).to_str().unwrap())
+        .into_diagnostic()?
+        .collect::<Vec<_>>();
+    item.init(Some(paths.len()), Some(unit::label("files")));
+    for entry in paths {
+        let entry = entry.into_diagnostic()?;
+        let file_repo = entry.strip_prefix(ws_root()).unwrap();
+        let mut file_item = item.add_child("collect tests from file");
+
+        collect_tests_from_source_file::<T>(&entry, file_repo, comment_header, &mut file_item)?;
+
+        item.inc();
+    }
+
+    Ok(())
+}
+
+fn collect_tests_from_source_file<T: GenericTestDirType>(
+    file: &Path,
+    file_repo: &Path,
+    prefix: &str,
+    item: &mut Item,
+) -> NexusR {
     let file_contents = fs::read(file).into_diagnostic()?;
     let file_contents = String::from_utf8_lossy(&file_contents);
 
     item.init(None, Some(unit::label("tests")));
 
-    let mut parser_tests = Vec::new();
+    let mut tests = Vec::new();
     let mut iter = file_contents.lines().enumerate().peekable();
     while let Some((line_number, line)) = iter.next() {
         let line_without_whitespace = line.trim();
 
-        const PARSER_TEST_PREFIX: &str = "// parser-test:";
-
-        if let Some(test_prefix_position) = line_without_whitespace.find(PARSER_TEST_PREFIX) {
-            let test_name =
-                &line_without_whitespace[test_prefix_position + PARSER_TEST_PREFIX.len()..];
+        if let Some(test_prefix_position) = line_without_whitespace.find(prefix) {
+            let test_name = &line_without_whitespace[test_prefix_position + prefix.len()..];
 
             let mut test_code = format!(
                 "// test {test_name} at {file_repo}\n",
@@ -155,6 +217,11 @@ fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item
             while let Some((_, next_line)) = iter.peek() {
                 let next_line_without_whitespace = next_line[test_prefix_position..].trim();
 
+                if next_line_without_whitespace == "//" {
+                    test_code.push('\n');
+                    iter.next();
+                    continue;
+                }
                 if !next_line_without_whitespace.starts_with("// ") {
                     break;
                 }
@@ -167,34 +234,30 @@ fn collect_parser_tests_from_file(file: &Path, file_repo: &Path, item: &mut Item
                 iter.next();
             }
 
-            parser_tests.push((line_number, test_name, test_code));
+            tests.push((line_number, test_name, test_code));
             item.inc();
         }
     }
 
-    if parser_tests.is_empty() {
+    if tests.is_empty() {
         item.done(format!(
             "{:<24} in {}",
-            "No parser tests found",
+            "No tests found",
             file_repo.display()
         ));
         return Ok(());
     }
     item.done(format!(
-        "Found {:>5} parser tests in {}",
-        parser_tests.len(),
+        "Found {:>5} tests in {}",
+        tests.len(),
         file_repo.display()
     ));
 
-    for (_line_number, name, code) in parser_tests {
-        let folder = narxia_dir_structures::ParserTestSingleFolder {
-            input: DeferredReadOrOwn::Own(code.into()),
-            output: None,
-            self_path: PathBuf::new(),
-        };
+    for (_line_number, name, code) in tests {
+        let folder = T::from_name_and_code(name, code);
 
         folder
-            .write(narxia_dir_structures::parser_tests_dir().join(name))
+            .write(T::path_to_write_to(&folder))
             .into_diagnostic()?;
     }
 

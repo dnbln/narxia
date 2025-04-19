@@ -16,7 +16,7 @@
 
 use miette::bail;
 use miette::IntoDiagnostic;
-use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree::tests_data::AccessorCalledDataList;
 use narxia_syn::syntree::tests_data::AccessorCalledDataReturned;

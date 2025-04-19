@@ -1,0 +1,64 @@
+fn main: () -> t@0
+b@0:
+  l@0 = 1
+  l@45 = br l@0 b@2 b@6
+
+b@1:   # preds: b@3, b@7
+  l@46 = phi(b@3 l@17, b@7 l@43)
+  l@47 = "Goodbye world4"
+  l@48 = sconcat(l@47)
+  l@49 = call f@0(l@48)
+  l@50 = ret
+
+b@2:   # preds: b@0
+  l@1 = "Hello world"
+  l@2 = sconcat(l@1)
+  l@6 = 1
+  l@16 = br l@6 b@4 b@5
+
+b@3:   # preds: b@4, b@5
+  l@7 = phi(b@4 l@8, b@5 l@11)
+  l@17 = phi(b@4 l@9, b@5 l@14)
+  l@18 = br b@1
+
+b@4:   # preds: b@2
+  l@8 = phi(b@2 l@2)
+  l@9 = call f@0(l@8)
+  l@10 = br b@3
+
+b@5:   # preds: b@2
+  l@11 = phi(b@2 l@2)
+  l@12 = "Goodbye world1"
+  l@13 = sconcat(l@12)
+  l@14 = call f@0(l@13)
+  l@15 = br b@3
+
+b@6:   # preds: b@0
+  l@20 = "Goodbye world"
+  l@21 = sconcat(l@20)
+  l@29 = 1
+  l@42 = br l@29 b@8 b@9
+
+b@7:   # preds: b@8, b@9
+  l@31 = phi(b@8 l@33, b@9 l@37)
+  l@43 = phi(b@8 l@34, b@9 l@40)
+  l@44 = br b@1
+
+b@8:   # preds: b@6
+  l@33 = phi(b@6 l@21)
+  l@34 = call f@0(l@33)
+  l@35 = br b@7
+
+b@9:   # preds: b@6
+  l@37 = phi(b@6 l@21)
+  l@38 = "Goodbye world3"
+  l@39 = sconcat(l@38)
+  l@40 = call f@0(l@39)
+  l@41 = br b@7
+
+
+fn println: () -> t@0
+b@0:
+  l@0 = param@0
+
+

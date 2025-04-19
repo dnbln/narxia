@@ -20,7 +20,7 @@ use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
 use miette::bail;
 use miette::IntoDiagnostic;
-use narxia_dir_structures::ParserTestSingleFolder;
+use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_hir as hir;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::token_source::TokenSource;

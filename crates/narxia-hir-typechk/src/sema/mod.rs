@@ -139,18 +139,34 @@ impl ProgramStructure {
         ))
     }
 
+    pub fn immediate_parent_scope_of_hir_node(&self, hir_id: HirId) -> Option<ScopeId> {
+        let elem_id = ElemId(
+            self.scope_tree
+                .elements
+                .iter()
+                .position(|it| it.hir_id == hir_id)?,
+        );
+        let scope_id = ScopeId(
+            self.scope_tree
+                .scopes
+                .iter()
+                .position(|scope| scope.child_elements.iter().any(|it| *it == elem_id))?,
+        );
+        Some(scope_id)
+    }
+
     pub fn parent_scope_of_hir_node(&self, hir_map: &HirMap, hir_id: HirId) -> Option<ScopeId> {
         let mut current = hir_id;
 
         loop {
+            if let Some(scope) = self.immediate_parent_scope_of_hir_node(current) {
+                return Some(scope);
+            }
+
             let parent = hir_map.get_parent(current);
 
             if parent.is_orphan_parent() {
                 return None;
-            }
-
-            if let Some(scope) = self.scope_of_hir_node(parent) {
-                return Some(scope);
             }
 
             current = parent;
@@ -211,6 +227,7 @@ impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
     scope_adding_elements! {
         visit_use_stmt(hir::UseStmt) => walk_use_stmt;
         visit_pat_ident(hir::PatIdent) => walk_pat_ident;
+        visit_expr_atom_ident(hir::ExprAtomIdent) => walk_expr_atom_ident;
     }
 }
 
@@ -235,6 +252,7 @@ pub fn build_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> ProgramSt
 pub struct SemanticAnalysisResult {
     pub program_structure: ProgramStructure,
     scope_names: Vec<ScopeDefinedNamesBuffer>,
+    references: Vec<ScopeUsedReferencesBuffer>,
 }
 
 #[derive(Debug)]
@@ -248,13 +266,25 @@ struct ScopeDefinedName {
     def_id: DefId,
 }
 
+#[derive(Debug)]
+struct ScopeUsedReferencesBuffer {
+    references: Vec<ScopeUsedReference>,
+}
+
+#[derive(Debug)]
+struct ScopeUsedReference {
+    name: String,
+    hir_id: HirId,
+}
+
 pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> SemanticAnalysisResult {
     let program_structure = build_program_structure(tcx, mod_id);
 
-    let scope_names = program_structure
+    let (scope_names, references) = program_structure
         .scopes()
         .map(|scope| {
             let mut names = Vec::new();
+            let mut references = Vec::new();
 
             for elem in program_structure
                 .children(scope)
@@ -262,25 +292,27 @@ pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> Semanti
                 .chain(program_structure.elements(scope))
             {
                 let hir_id = program_structure.element(elem);
-                let def_id = tcx.add_def_id(hir_id);
 
                 let hir_map = tcx.hir_map();
                 let hir_elem = hir_map.get(hir_id);
 
                 match hir_elem {
                     hir_map::HirElem::Mod(mod_def) => {
+                        let def_id = tcx.add_def_id(hir_id);
                         names.push(ScopeDefinedName {
                             name: mod_def.name.text.clone(),
                             def_id,
                         });
                     }
                     hir_map::HirElem::Fn(fn_def) => {
+                        let def_id = tcx.add_def_id(hir_id);
                         names.push(ScopeDefinedName {
                             name: fn_def.name.text.clone(),
                             def_id,
                         });
                     }
                     hir_map::HirElem::UseStmt(use_stmt) => {
+                        let def_id = tcx.add_def_id(hir_id);
                         let path = &use_stmt.path;
 
                         let imported_name = use_path_imported_name(&hir_map, path);
@@ -292,22 +324,33 @@ pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> Semanti
                     }
                     hir_map::HirElem::Block(block) => {}
                     hir_map::HirElem::PatIdent(pat_ident) => {
+                        let def_id = tcx.add_def_id(hir_id);
                         names.push(ScopeDefinedName {
                             name: pat_ident.ident.text.clone(),
                             def_id,
+                        });
+                    }
+                    hir_map::HirElem::ExprAtomIdent(ident) => {
+                        references.push(ScopeUsedReference {
+                            name: ident.ident.text.clone(),
+                            hir_id,
                         });
                     }
                     _ => todo!(),
                 }
             }
 
-            ScopeDefinedNamesBuffer { names }
+            (
+                ScopeDefinedNamesBuffer { names },
+                ScopeUsedReferencesBuffer { references },
+            )
         })
-        .collect();
+        .unzip();
 
     SemanticAnalysisResult {
         program_structure,
         scope_names,
+        references,
     }
 }
 
@@ -334,6 +377,8 @@ pub fn resolve_work(
     mod_id: hir::ModId,
     analysis_results: &SemanticAnalysisResult,
 ) {
+    let span = narxia_log::span!(narxia_log::Level::INFO, "resolve_work");
+    let _enter = span.enter();
     let hir_map = tcx.hir_map();
 
     let mut work_queue = ResolveWorkQueue {
@@ -354,11 +399,13 @@ pub fn resolve_work(
         }
     }
 
+    let mut prev_length = work_queue.work_queue.len();
     while !work_queue.work_queue.is_empty() {
         let ResolveWorkQueue {
             work_queue,
             push_back,
         } = &mut work_queue;
+        narxia_log::info!("{:?}", work_queue);
         for hir_id in work_queue.drain(..) {
             match attempt_to_resolve(tcx, hir_id, &hir_map, analysis_results) {
                 Ok(()) => {}
@@ -369,6 +416,13 @@ pub fn resolve_work(
         }
 
         mem::swap(work_queue, push_back);
+        let current_length = work_queue.len();
+
+        if current_length == prev_length {
+            panic!("Unresolvable state");
+        }
+
+        prev_length = current_length;
     }
 }
 
@@ -379,16 +433,30 @@ fn attempt_to_resolve(
     analysis_results: &SemanticAnalysisResult,
 ) -> Result<(), ()> {
     match hir_map.get(hir_id) {
-        hir_map::HirElem::Mod(mod_def) => {}
-        hir_map::HirElem::Item(item) => {}
-        hir_map::HirElem::ExprAtomIdent(ident) => {
-            attempt_to_resolve_expr_atom_ident(tcx, ident, hir_map, analysis_results)?;
+        hir_map::HirElem::Mod(mod_def) => {
+            return Ok(());
         }
-        hir_map::HirElem::PatIdent(pat_ident) => {}
-        hir_map::HirElem::Fn(fn_def) => {}
-        hir_map::HirElem::FnParam(fn_param) => {}
-        hir_map::HirElem::FnRetTy(fn_ret_ty) => {}
-        hir_map::HirElem::Expr(expr) => {}
+        hir_map::HirElem::Item(item) => {
+            return Ok(());
+        }
+        hir_map::HirElem::ExprAtomIdent(ident) => {
+            return attempt_to_resolve_expr_atom_ident(tcx, ident, hir_map, analysis_results);
+        }
+        hir_map::HirElem::PatIdent(pat_ident) => {
+            return Ok(());
+        }
+        hir_map::HirElem::Fn(fn_def) => {
+            return Ok(());
+        }
+        hir_map::HirElem::FnParam(fn_param) => {
+            return Ok(());
+        }
+        hir_map::HirElem::FnRetTy(fn_ret_ty) => {
+            return Ok(());
+        }
+        hir_map::HirElem::Expr(expr) => {
+            return Ok(());
+        }
         hir_map::HirElem::LoopExpr(loop_expr) => todo!(),
         hir_map::HirElem::BreakExpr(break_expr) => todo!(),
         hir_map::HirElem::ContinueExpr(continue_expr) => todo!(),
@@ -399,17 +467,18 @@ fn attempt_to_resolve(
         hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
         hir_map::HirElem::UseStmt(use_stmt) => todo!(),
         hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
-        hir_map::HirElem::Block(block) => {}
+        hir_map::HirElem::Block(block) => {
+            return Ok(());
+        }
         hir_map::HirElem::TyRef(ty_ref) => todo!(),
         hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
-        hir_map::HirElem::LetStmt(let_stmt) => todo!(),
         hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
         hir_map::HirElem::StrLiteral(str_literal) => todo!(),
         hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
         hir_map::HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => todo!(),
         x => todo!("{:?}", x),
     }
-    Ok(())
+    Err(())
 }
 
 fn attempt_to_resolve_expr_atom_ident(
@@ -418,21 +487,26 @@ fn attempt_to_resolve_expr_atom_ident(
     hir_map: &HirMap,
     analysis_results: &SemanticAnalysisResult,
 ) -> Result<(), ()> {
-    while let Some(parent) = analysis_results
+    let mut current_scope = analysis_results
         .program_structure
         .parent_scope_of_hir_node(hir_map, ident.hir_id.hir_id())
-    {
-        for name in &analysis_results.scope_names[parent.0].names {
+        .ok_or(())?;
+    loop {
+        narxia_log::info!("{:?}", current_scope);
+        for name in &analysis_results.scope_names[current_scope.0].names {
+            narxia_log::info!("{:?}", name);
             if name.name == ident.ident.text {
                 let target = tcx.lookup_def_id(name.def_id);
                 match hir_map.get(target) {
                     hir_map::HirElem::PatIdent(pat_ident) => {
-                        match hir_map.get(hir_map.get_parent(target)) {
-                            hir_map::HirElem::LetStmt(let_stmt) => {
+                        let parent = hir_map.get_parent(pat_ident.hir_id.hir_id());
+                        match hir_map.parent_of_type::<hir_map::PatIdentParent>(pat_ident.hir_id) {
+                            hir_map::PatIdentParent::LetStmt(stmt_id, let_stmt) => {
+                                narxia_log::info!("let_stmt: {:?}", let_stmt);
                                 tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
                                 return Ok(());
                             }
-                            hir_map::HirElem::FnParam(fn_param) => {
+                            hir_map::PatIdentParent::FnParam(fn_param) => {
                                 tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
                                 return Ok(());
                             }
@@ -441,7 +515,10 @@ fn attempt_to_resolve_expr_atom_ident(
                             }
                         }
                     }
-                    hir_map::HirElem::Fn(fn_def) => todo!(),
+                    hir_map::HirElem::Fn(fn_def) => {
+                        tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
+                        return Ok(());
+                    }
                     hir_map::HirElem::FnParam(fn_param) => todo!(),
                     hir_map::HirElem::FnRetTy(fn_ret_ty) => todo!(),
                     hir_map::HirElem::Expr(expr) => todo!(),
@@ -462,7 +539,6 @@ fn attempt_to_resolve_expr_atom_ident(
                     hir_map::HirElem::Block(block) => todo!(),
                     hir_map::HirElem::TyRef(ty_ref) => todo!(),
                     hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
-                    hir_map::HirElem::LetStmt(let_stmt) => todo!(),
                     hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
                     hir_map::HirElem::StrLiteral(str_literal) => todo!(),
                     hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => {
@@ -475,6 +551,9 @@ fn attempt_to_resolve_expr_atom_ident(
                 }
             }
         }
+        current_scope = analysis_results
+            .program_structure
+            .parent(current_scope)
+            .ok_or(())?;
     }
-    Ok(())
 }

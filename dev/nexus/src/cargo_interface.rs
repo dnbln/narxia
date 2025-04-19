@@ -674,17 +674,27 @@ pub mod tests {
         capture_nextest_stderr: bool,
         fail_fast: bool,
         profile: String,
-        parser_tests_mode: ParserTestsMode,
+        parser_tests_mode: SnapshotsTestMode,
+        ssa_tests_mode: SnapshotsTestMode,
         envs: Vec<(OsString, OsString)>,
         debug_nextest_messages: bool,
         miri: bool,
     }
 
-    #[derive(Default)]
-    pub enum ParserTestsMode {
+    #[derive(Default, Copy, Clone)]
+    pub enum SnapshotsTestMode {
         #[default]
         Check,
         Overwrite,
+    }
+
+    impl SnapshotsTestMode {
+        fn as_str(self) -> &'static str {
+            match self {
+                SnapshotsTestMode::Check => "check",
+                SnapshotsTestMode::Overwrite => "overwrite",
+            }
+        }
     }
 
     impl Default for RunTests {
@@ -700,7 +710,8 @@ pub mod tests {
                 capture_nextest_stderr: true,
                 fail_fast: true,
                 profile: "dev".to_string(),
-                parser_tests_mode: ParserTestsMode::default(),
+                parser_tests_mode: SnapshotsTestMode::default(),
+                ssa_tests_mode: SnapshotsTestMode::default(),
                 envs: Vec::new(),
                 debug_nextest_messages: false,
                 miri: false,
@@ -732,8 +743,13 @@ pub mod tests {
             self
         }
 
-        pub fn parser_tests(mut self, mode: ParserTestsMode) -> Self {
+        pub fn parser_tests(mut self, mode: SnapshotsTestMode) -> Self {
             self.parser_tests_mode = mode;
+            self
+        }
+
+        pub fn ssa_tests(mut self, mode: SnapshotsTestMode) -> Self {
+            self.ssa_tests_mode = mode;
             self
         }
 
@@ -762,10 +778,11 @@ pub mod tests {
                 .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1")
                 .env(
                     "NARXIA_PARSER_SNAPSHOTS_TEST_MODE",
-                    match self.parser_tests_mode {
-                        ParserTestsMode::Check => "check",
-                        ParserTestsMode::Overwrite => "overwrite",
-                    },
+                    self.parser_tests_mode.as_str(),
+                )
+                .env(
+                    "NARXIA_SSA_SNAPSHOTS_TEST_MODE",
+                    self.ssa_tests_mode.as_str(),
                 )
                 .env("NARXIA_TEST_GUARD", "1")
                 .envs(self.envs);

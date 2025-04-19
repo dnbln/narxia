@@ -32,7 +32,6 @@ pub enum HirElem {
     Block(Block),
     TyRef(TyRef),
     TyGenericArg(TyGenericArg),
-    LetStmt(LetStmt),
     AssignmentStmt(AssignmentStmt),
     StrLiteral(StrLiteral),
     StrLiteralDisplayFragment(StrLiteralDisplayFragment),
@@ -65,7 +64,6 @@ impl HirElem {
             HirElem::Block(block) => block.hir_id.hir_id(),
             HirElem::TyRef(ty_ref) => ty_ref.hir_id.hir_id(),
             HirElem::TyGenericArg(ty_generic_arg) => ty_generic_arg.hir_id.hir_id(),
-            HirElem::LetStmt(let_stmt) => todo!(),
             HirElem::AssignmentStmt(assignment_stmt) => todo!(),
             HirElem::StrLiteral(str_literal) => todo!(),
             HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
@@ -73,6 +71,14 @@ impl HirElem {
             HirElem::__Allocated(_) => unreachable!(),
         }
     }
+
+    fn downcast_ref<'a, T: HirTy<'a>>(&'a self) -> Option<T> {
+        T::from_hir_elem(self)
+    }
+}
+
+pub trait HirTy<'a>: Sized + 'a {
+    fn from_hir_elem(elem: &'a HirElem) -> Option<Self>;
 }
 
 impl fmt::Display for HirElem {
@@ -99,7 +105,6 @@ impl fmt::Display for HirElem {
             Self::Block(b) => write!(f, "{}", b),
             Self::TyRef(t) => write!(f, "{}", t),
             Self::TyGenericArg(t) => write!(f, "{}", t),
-            Self::LetStmt(l) => write!(f, "{}", l),
             Self::AssignmentStmt(a) => write!(f, "{}", a),
             Self::StrLiteral(s) => write!(f, "{}", s),
             Self::StrLiteralDisplayFragment(s) => write!(f, "{}", s),
@@ -273,6 +278,24 @@ impl HirMap {
         }
     }
 
+    pub fn opt_parent_of_type<'a, T: HirTy<'a>>(&'a self, at: impl HirIdNewtype) -> Option<T> {
+        let mut parent = at.hir_id();
+        while !parent.is_orphan_parent() {
+            narxia_log::info!("Parent: {parent:?}");
+            if let Some(elem) = self.get(parent).downcast_ref::<T>() {
+                return Some(elem);
+            }
+
+            parent = self.get_parent(parent);
+        }
+
+        None
+    }
+
+    pub fn parent_of_type<'a, T: HirTy<'a>>(&'a self, at: impl HirIdNewtype) -> T {
+        self.opt_parent_of_type(at).unwrap()
+    }
+
     fn update_parent(&mut self, at: HirId, parent: HirId) {
         self.parents[at.id] = parent;
     }
@@ -397,5 +420,24 @@ impl FileMapEntry {
 
     pub fn get_id(&self) -> usize {
         self.0
+    }
+}
+
+pub enum PatIdentParent<'a> {
+    FnParam(&'a FnParam),
+    LetStmt(StmtId, &'a LetStmt),
+}
+
+impl<'a> HirTy<'a> for PatIdentParent<'a> {
+    fn from_hir_elem(elem: &'a HirElem) -> Option<Self> {
+        match elem {
+            HirElem::FnParam(fn_param) => Some(PatIdentParent::FnParam(fn_param)),
+            HirElem::Stmt(Stmt {
+                kind: StmtKind::LetStmt(let_stmt),
+                hir_id,
+                ..
+            }) => Some(PatIdentParent::LetStmt(*hir_id, let_stmt)),
+            _ => None,
+        }
     }
 }

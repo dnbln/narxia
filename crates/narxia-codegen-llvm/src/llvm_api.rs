@@ -3,10 +3,12 @@
 use std::ffi;
 use std::fmt;
 use std::iter;
+use std::path::Path;
 use std::ptr;
 use std::slice;
 
 use llvm_sys::analysis;
+use llvm_sys::bit_writer;
 use llvm_sys::core;
 use llvm_sys::error;
 use llvm_sys::prelude::*;
@@ -167,6 +169,18 @@ impl Module {
 
     pub fn print_to_string(&self) -> LLVMMessage {
         LLVMMessage::new(unsafe { core::LLVMPrintModuleToString(self.module) })
+    }
+
+    pub fn write_bitcode_file(&self, filename: impl AsRef<Path>) -> Result<(), ()> {
+        let r = with_path(filename, |filename| unsafe {
+            bit_writer::LLVMWriteBitcodeToFile(self.module, *filename)
+        });
+
+        if r == 0 {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 
@@ -809,6 +823,10 @@ impl_string_tuple!(
     c: &str => *mut libc::c_char => *mut libc::c_char,
     d: &str => *mut libc::c_char => *mut libc::c_char,
 );
+
+fn with_path<T>(path: impl AsRef<Path>, f: impl FnOnce(&*mut libc::c_char) -> T) -> T {
+    with_string(path.as_ref().to_str().unwrap(), f)
+}
 
 #[repr(transparent)]
 pub(crate) struct LLVMMessage {

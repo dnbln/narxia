@@ -109,6 +109,8 @@ impl CodegenBackend for Backend {
 
         self.module.optimize(llvm_api::OptLevel::O3, &tm);
 
+        self.module.write_bitcode_file("out.bc")?;
+
         let s = self.module.print_to_string();
 
         match out {
