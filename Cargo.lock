@@ -1365,6 +1365,7 @@ dependencies = [
  "narxia-src-db",
  "narxia-ssa",
  "narxia-ssa-lower",
+ "narxia-ssa-validator",
  "narxia-syn",
  "narxia-syn-db",
  "owo-colors",
@@ -1467,6 +1468,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "narxia-ssa-validator"
+version = "0.0.0"
+dependencies = [
+ "narxia-log",
+ "narxia-ssa",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "narxia-syn"
 version = "0.0.0"
 dependencies = [
@@ -1501,9 +1511,11 @@ dependencies = [
  "narxia-hir",
  "narxia-hir-db",
  "narxia-hir-typechk",
+ "narxia-log",
  "narxia-src-db",
  "narxia-ssa",
  "narxia-ssa-lower",
+ "narxia-ssa-validator",
  "narxia-syn",
  "owo-colors",
  "similar",

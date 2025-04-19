@@ -59,21 +59,23 @@ impl SsaBuilder {
             Some(ret) => TyRef { id: 0 },
             None => TyRef { id: 0 },
         };
+        let fn_id = FunctionRef { id: self.module.functions.len() };
         let mut builder =
-            LocalSsaBuilder::new(tcx, f.name.text.clone(), FunctionTy { params, ret });
+            LocalSsaBuilder::new(tcx, fn_id, f.name.text.clone(), FunctionTy { params, ret });
         builder.build(hir_map, f);
         self.module.functions.push(builder.function);
     }
 }
 
 impl<'tcx> LocalSsaBuilder<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>, fn_name: String, ty: FunctionTy) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, fn_id: FunctionRef, fn_name: String, ty: FunctionTy) -> Self {
         Self {
             tcx,
             function: Function {
                 name: fn_name,
                 ty,
                 blocks: vec![],
+                fn_id,
             },
             current_local_ref: 0,
             current_block_ref: BlockRef { id: 0 },

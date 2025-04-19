@@ -207,9 +207,10 @@ where
 
         let print_extra = self.format_event_data(&mut writer, event)?;
         if print_extra.0 {
-            let scope = ctx.event_scope(event).unwrap();
-            for span in scope {
-                self.format_span_line(&mut writer, span)?;
+            if let Some(scope) = ctx.event_scope(event) {
+                for span in scope {
+                    self.format_span_line(&mut writer, span)?;
+                }
             }
         }
 

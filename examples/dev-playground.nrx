@@ -21,4 +21,5 @@ fn main() {
 
 fn println(s: str) {
     // ...
+    return
 }

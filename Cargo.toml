@@ -42,6 +42,7 @@ narxia-proc = { path = "crates/narxia-proc" }
 narxia-src-db = { path = "crates/narxia-src-db" }
 narxia-ssa = { path = "crates/narxia-ssa" }
 narxia-ssa-lower = { path = "crates/narxia-ssa-lower" }
+narxia-ssa-validator = { path = "crates/narxia-ssa-validator" }
 narxia-syn = { path = "crates/narxia-syn" }
 narxia-syn-db = { path = "crates/narxia-syn-db" }
 

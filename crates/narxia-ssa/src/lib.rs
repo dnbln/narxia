@@ -264,7 +264,7 @@ impl fmt::Debug for CallExpr {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Ord)]
 pub struct FunctionRef {
     pub id: usize,
 }
@@ -299,6 +299,7 @@ impl fmt::Debug for BlockRef {
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Function {
+    pub fn_id: FunctionRef,
     pub name: String,
     pub ty: FunctionTy,
     pub blocks: Vec<Block>,

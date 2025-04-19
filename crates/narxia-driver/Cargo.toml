@@ -41,6 +41,7 @@ narxia-hir-typechk.workspace = true
 narxia-hiri.workspace = true
 narxia-ssa.workspace = true
 narxia-ssa-lower.workspace = true
+narxia-ssa-validator.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true

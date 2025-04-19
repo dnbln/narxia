@@ -65,6 +65,8 @@ pub struct NarxiaDriverSemaAnalysisCommand {
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverSsaCommand {
     file: PathBuf,
+    #[clap(long)]
+    validate: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -309,6 +311,7 @@ fn main() -> miette::Result<()> {
             narxia_log::i!("Ssa command: {ssa:?}");
 
             let file = ssa.file;
+            let validate = ssa.validate;
             let file = narxia_driver::read_file(&ctx, file).into_diagnostic()?;
             let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(file);
 
@@ -351,6 +354,25 @@ fn main() -> miette::Result<()> {
             let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
             let module = narxia_ssa_lower::convert(tcx, &hir_map, hir_mod);
             println!("{:#?}", module);
+
+            if validate {
+                let result = narxia_ssa_validator::validate(&module);
+
+                let Err(result) = result else {
+                    return Ok(());
+                };
+
+                for (error_fn_ref, errors) in result {
+                    let error_fn = module.functions.iter().find(|it| it.fn_id == error_fn_ref).unwrap();
+                    narxia_log::error!("Errors in function:\n{:?}", error_fn);
+
+                    for error in errors {
+                        narxia_log::error!("Error:\n{}", error);
+                    }
+                }
+
+                miette::bail!("Validation errors");
+            }
         }
     }
 
