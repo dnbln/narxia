@@ -187,7 +187,7 @@ where
             // self.buffer_len is always in [0, 4].
             // n is always in [0, 3].
             // so (n * 5 + self.buffer_len) will give us all the values we care about
-            match n * 5 + self.buffer_len {
+            match n << 3 + self.buffer_len {
                 0 => {
                     // (0, 0)
                     let t0 = self.ts.next()?; // token at position = 0
@@ -200,7 +200,7 @@ where
                     // Safety: length != 0 means length >= 1 so we can use get_unchecked(0)
                     Some(self.get_buf_0())
                 }
-                5 => {
+                8 => {
                     // (1, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
@@ -208,19 +208,19 @@ where
                     self.buffer_len = 2;
                     Some(t1)
                 }
-                6 => {
+                9 => {
                     // (1, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     self.store_1(t1);
                     self.buffer_len = 2;
                     Some(t1)
                 }
-                7..=9 => {
+                10..=12 => {
                     // (1, 2) | (1, 3) | (1, 4)
                     // Safety: length != 0 && length != 1 means length >= 2 so we can use get_buf_1()
                     Some(self.get_buf_1())
                 }
-                10 => {
+                16 => {
                     // (2, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
@@ -229,7 +229,7 @@ where
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                11 => {
+                17 => {
                     // (2, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
@@ -237,20 +237,20 @@ where
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                12 => {
+                18 => {
                     // (2, 2)
                     let t2 = self.ts.next()?; // token at position = 2
                     self.store_2(t2);
                     self.buffer_len = 3;
                     Some(t2)
                 }
-                13 | 14 => {
+                19 | 20 => {
                     // (2, 3) | (2, 4)
                     // Safety: length != 0 && length != 1 && length != 2
                     // means length >= 3 so we can use get_unchecked(2)
                     Some(self.get_buf_2())
                 }
-                15 => {
+                24 => {
                     // (3, 0)
                     let t0 = self.ts.next()?; // token at position = 0
                     let t1 = self.ts.next()?; // token at position = 1
@@ -260,7 +260,7 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                16 => {
+                25 => {
                     // (3, 1)
                     let t1 = self.ts.next()?; // token at position = 1
                     let t2 = self.ts.next()?; // token at position = 2
@@ -269,7 +269,7 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                17 => {
+                26 => {
                     // (3, 2)
                     let t2 = self.ts.next()?; // token at position = 2
                     let t3 = self.ts.next()?; // token at position = 3
@@ -277,14 +277,14 @@ where
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                18 => {
+                27 => {
                     // (3, 3)
                     let t3 = self.ts.next()?; // token at position = 3
                     self.store_3(t3);
                     self.buffer_len = 4;
                     Some(t3)
                 }
-                19 => {
+                28 => {
                     // (3, 4)
                     Some(self.get_buf_3())
                 }
