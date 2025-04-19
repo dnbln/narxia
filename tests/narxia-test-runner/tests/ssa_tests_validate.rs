@@ -14,7 +14,7 @@ fn trial(mut test: SsaTestSingleFolder) -> miette::Result<()> {
     let Err(result) = result else {
         return Ok(());
     };
-    
+
     narxia_ssa_validator::present_validation_errors(&ssa_mod, &result);
 
     bail!("Validation errors");
