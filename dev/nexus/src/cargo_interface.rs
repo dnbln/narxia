@@ -798,7 +798,17 @@ pub mod tests {
             cmd.stdout(process::Stdio::piped());
 
             if self.capture_nextest_stderr {
-                cmd.stderr(process::Stdio::piped());
+                cmd.stderr(process::Stdio::piped()).args([
+                    "--hide-progress-bar",
+                    "--final-status-level",
+                    "none",
+                    "--status-level",
+                    "none",
+                    "--success-output",
+                    "never",
+                    "--failure-output",
+                    "never",
+                ]);
             }
 
             let mut child = cmd.spawn().into_diagnostic()?;
