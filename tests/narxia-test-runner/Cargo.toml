@@ -18,6 +18,7 @@ narxia-hir.workspace = true
 narxia-hir-db.workspace = true
 narxia-hir-typechk.workspace = true
 narxia-ssa.workspace = true
+narxia-ssa-lower.workspace = true
 narxia-syn.workspace = true
 narxia-src-db.workspace = true
 

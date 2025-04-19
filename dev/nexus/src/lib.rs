@@ -97,7 +97,7 @@ impl BuildSysCmd {
             Self::CollectSSATests => {
                 let mut item = cx.new_child("collect ssa tests");
                 collect_tests_from_source::<SsaTestSingleFolder>(
-                    "crates/narxia-ssa/src/**/*.rs",
+                    "crates/narxia-ssa-lower/src/**/*.rs",
                     "// ssa-test:",
                     &mut item,
                 )?;

@@ -1364,6 +1364,7 @@ dependencies = [
  "narxia-log-impl",
  "narxia-src-db",
  "narxia-ssa",
+ "narxia-ssa-lower",
  "narxia-syn",
  "narxia-syn-db",
  "owo-colors",
@@ -1455,9 +1456,14 @@ dependencies = [
 [[package]]
 name = "narxia-ssa"
 version = "0.0.0"
+
+[[package]]
+name = "narxia-ssa-lower"
+version = "0.0.0"
 dependencies = [
  "narxia-hir",
  "narxia-hir-typechk",
+ "narxia-ssa",
 ]
 
 [[package]]
@@ -1497,6 +1503,7 @@ dependencies = [
  "narxia-hir-typechk",
  "narxia-src-db",
  "narxia-ssa",
+ "narxia-ssa-lower",
  "narxia-syn",
  "owo-colors",
  "similar",

@@ -97,7 +97,7 @@ pub mod ssa_tests {
 
         sema::resolve_work(tcx, mod_id, &analysis_results);
 
-        Ok(narxia_ssa::convert(tcx, &hir_map, mod_id))
+        Ok(narxia_ssa_lower::convert(tcx, &hir_map, mod_id))
     }
 
     pub fn collect_ssa_tests() -> miette::Result<SsaTestsFolder> {

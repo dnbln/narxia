@@ -349,7 +349,7 @@ fn main() -> miette::Result<()> {
             tcx.dump_resolutions();
 
             let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
-            let module = narxia_ssa::convert(tcx, &hir_map, hir_mod);
+            let module = narxia_ssa_lower::convert(tcx, &hir_map, hir_mod);
             println!("{:#?}", module);
         }
     }
