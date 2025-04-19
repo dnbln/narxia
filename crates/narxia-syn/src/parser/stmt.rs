@@ -9,6 +9,7 @@ use super::CompletedMarker;
 use super::Parser;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
+use crate::token_source::TokenSource;
 
 parse_fn_decl! {
     pub parse_stmt: Stmt ::=
@@ -21,7 +22,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_expr_potential_assignment(p: &mut Parser) {
+fn parse_expr_potential_assignment<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) {
     // parser-test:assignment
     // x = y
     // x.y = z

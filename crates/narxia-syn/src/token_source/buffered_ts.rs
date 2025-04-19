@@ -36,21 +36,14 @@ use core::hint;
 use std::intrinsics;
 use std::marker::PhantomData;
 
-use super::TokParserState;
-use super::Token;
+use super::{TokParserState, TokenRepr};
 use super::TokenSource;
 use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 
 pub(crate) struct BufferedTokenSource<'l, T: TokenSource<'l> + 'l> {
     ts: T,
-    buffer_kinds: [SyntaxKind; 4],
-    // [0] => tokens[0].start
-    // [1] => tokens[0].end == tokens[1].start
-    // [2] => tokens[1].end == tokens[2].start
-    // [3] => tokens[2].end == tokens[3].start
-    // [4] => tokens[3].end
-    buffer_spans: [u32; 5],
+    buffer: [TokenRepr; 4],
     buffer_len: usize,
     _pd: PhantomData<&'l ()>,
 }
@@ -63,24 +56,19 @@ where
     pub fn new(ts: T) -> Self {
         Self {
             ts,
-            buffer_kinds: [SyntaxKind::__TOMBSTONE; 4],
-            buffer_spans: [0; 5],
+            buffer: [TokenRepr::new(SyntaxKind::ERROR, TextSpan::new(0, 0)); 4],
             buffer_len: 0,
             _pd: PhantomData,
         }
     }
 
-    pub fn current_pos(&mut self) -> usize {
-        self.current_token_span().start as usize
-    }
-
-    pub fn current_token_span(&mut self) -> TextSpan {
-        self.lookahead0_span().unwrap_or_else(|| self.ts.eof_span())
+    pub fn current_token_span_start(&mut self) -> u32 {
+        self.lookahead0_span_start().unwrap_or_else(|| self.ts.eof_span().start)
     }
 
     #[inline(always)]
-    pub fn get_token_text(&self, token: &Token) -> &'l str {
-        self.get_span_text(token.span)
+    pub fn get_token_text(&self, token: &TokenRepr) -> &'l str {
+        self.get_span_text(token.span())
     }
 
     #[inline(always)]
@@ -96,7 +84,7 @@ where
             0 => {}
             1..=4 => {
                 self.buffer_len = 0;
-                self.ts.restore_pos(self.buffer_spans[0] as usize);
+                self.ts.restore_pos(self.buffer[0].span_start());
             }
             _ => unsafe { hint::unreachable_unchecked() },
         }
@@ -114,7 +102,7 @@ where
 
     #[inline(always)]
     #[track_caller]
-    pub fn lookahead0(&mut self) -> Option<Token> {
+    pub fn lookahead0(&mut self) -> Option<TokenRepr> {
         if intrinsics::unlikely(self.buffer_len == 0) {
             let t0 = self.ts.next()?; // token at position = 0
             unsafe {
@@ -137,9 +125,9 @@ where
                 self.store_0(t0);
             }
             self.buffer_len = 1;
-            Some(t0.kind)
+            Some(t0.kind())
         } else {
-            Some(unsafe { self.get_buf_0_k() })
+            Some(unsafe { self.get_buf_0().kind() })
         }
     }
 
@@ -152,9 +140,24 @@ where
                 self.store_0(t0);
             }
             self.buffer_len = 1;
-            Some(t0.span)
+            Some(t0.span())
         } else {
             Some(unsafe { self.get_buf_0_span() })
+        }
+    }
+
+    #[inline(always)]
+    #[track_caller]
+    pub fn lookahead0_span_start(&mut self) -> Option<u32> {
+        if intrinsics::unlikely(self.buffer_len == 0) {
+            let t0 = self.ts.next()?; // token at position = 0
+            unsafe {
+                self.store_0(t0);
+            }
+            self.buffer_len = 1;
+            Some(t0.span_start())
+        } else {
+            Some(unsafe { self.get_buf_0().span_start() })
         }
     }
 
@@ -180,7 +183,7 @@ where
 
     #[inline(always)]
     #[track_caller]
-    pub fn lookahead(&mut self, n: usize) -> Option<Token> {
+    pub fn lookahead(&mut self, n: usize) -> Option<TokenRepr> {
         debug_assert!(n <= 3);
         unsafe {
             // perf: collapse tuple match into multiplication + match on result.
@@ -309,27 +312,27 @@ where
                     };
                     self.store_0(t0);
                     self.buffer_len = 1;
-                    t0.kind == kind0
+                    t0.kind_is(kind0)
                 }
-                _ => self.get_buf_0_k() == kind0,
+                _ => self.get_buf_0().kind_is(kind0),
             }
         }
     }
 
     #[inline(always)]
     #[track_caller]
-    pub fn at_1_and_token(&mut self, kind0: SyntaxKind) -> Option<Token> {
+    pub fn at_1_and_token(&mut self, kind0: SyntaxKind) -> Option<TokenRepr> {
         unsafe {
             match self.buffer_len {
                 0 => {
                     let t0 = self.ts.next()?;
                     self.store_0(t0);
                     self.buffer_len = 1;
-                    (t0.kind == kind0).then_some(t0)
+                    (t0.kind() == kind0).then_some(t0)
                 }
                 _ => {
                     let t = self.get_buf_0();
-                    (t.kind == kind0).then_some(t)
+                    (t.kind() == kind0).then_some(t)
                 }
             }
         }
@@ -337,14 +340,14 @@ where
 
     #[inline(always)]
     #[track_caller]
-    pub fn expect_1(&mut self, kind0: SyntaxKind, push_token_evt: impl FnOnce(Token)) -> bool {
+    pub fn expect_1(&mut self, kind0: SyntaxKind, push_token_evt: impl FnOnce(TokenRepr)) -> bool {
         unsafe {
             let t0 = match self.buffer_len {
                 0 => {
                     let Some(t0) = self.ts.next() else {
                         return false;
                     };
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         self.store_0(t0);
                         self.buffer_len = 1;
                         return false;
@@ -353,7 +356,7 @@ where
                 }
                 1 => {
                     let t = self.get_buf_0();
-                    if t.kind != kind0 {
+                    if t.kind() != kind0 {
                         return false;
                     }
                     self.buffer_len = 0;
@@ -361,7 +364,7 @@ where
                 }
                 2 => {
                     let t = self.get_buf_0();
-                    if t.kind != kind0 {
+                    if t.kind() != kind0 {
                         return false;
                     }
                     self.advance_n_1_bl_2();
@@ -369,7 +372,7 @@ where
                 }
                 3 => {
                     let t = self.get_buf_0();
-                    if t.kind != kind0 {
+                    if t.kind() != kind0 {
                         return false;
                     }
                     self.advance_n_1_bl_3();
@@ -377,7 +380,7 @@ where
                 }
                 4 => {
                     let t = self.get_buf_0();
-                    if t.kind != kind0 {
+                    if t.kind() != kind0 {
                         return false;
                     }
                     self.advance_n_1_bl_4();
@@ -397,7 +400,7 @@ where
         kind0: SyntaxKind,
         kind1: SyntaxKind,
         complete: SyntaxKind,
-        push_token_evt: impl FnOnce(Token, Token, Token),
+        push_token_evt: impl FnOnce(TokenRepr, TokenRepr, TokenRepr),
     ) -> bool {
         unsafe {
             let (t0, t1) = match self.buffer_len {
@@ -405,7 +408,7 @@ where
                     let Some(t0) = self.ts.next() else {
                         return false;
                     };
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         self.store_0(t0);
                         self.buffer_len = 1;
                         return false;
@@ -413,7 +416,7 @@ where
                     let Some(t1) = self.ts.next() else {
                         return false;
                     };
-                    if t1.kind != kind1 {
+                    if t1.kind() != kind1 {
                         self.store_01(t0, t1);
                         self.buffer_len = 2;
                         return false;
@@ -423,13 +426,13 @@ where
                 }
                 1 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         return false;
                     }
                     let Some(t1) = self.ts.next() else {
                         return false;
                     };
-                    if t1.kind != kind1 {
+                    if t1.kind() != kind1 {
                         self.store_1(t1);
                         self.buffer_len = 2;
                         return false;
@@ -439,11 +442,11 @@ where
                 }
                 2 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         return false;
                     }
                     let t1 = self.get_buf_1();
-                    if t1.kind != kind1 {
+                    if t1.kind() != kind1 {
                         return false;
                     }
                     self.buffer_len = 0;
@@ -451,11 +454,11 @@ where
                 }
                 3 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         return false;
                     }
                     let t1 = self.get_buf_1();
-                    if t1.kind != kind1 {
+                    if t1.kind() != kind1 {
                         return false;
                     }
                     self.advance_n_2_bl_3();
@@ -463,11 +466,11 @@ where
                 }
                 4 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         return false;
                     }
                     let t1 = self.get_buf_1();
-                    if t1.kind != kind1 {
+                    if t1.kind() != kind1 {
                         return false;
                     }
                     self.advance_n_2_bl_4();
@@ -492,7 +495,7 @@ where
                     };
                     self.store_0(t0);
                     self.buffer_len = 1;
-                    if t0.kind != kind0 {
+                    if t0.kind() != kind0 {
                         return false;
                     }
                     let Some(t1) = self.ts.next() else {
@@ -500,10 +503,10 @@ where
                     };
                     self.store_1(t1);
                     self.buffer_len = 2;
-                    t1.kind == kind1
+                    t1.kind() == kind1
                 }
                 1 => {
-                    if self.get_buf_0_k() != kind0 {
+                    if !self.get_buf_0_k_is(kind0) {
                         return false;
                     }
                     let Some(t1) = self.ts.next() else {
@@ -511,16 +514,16 @@ where
                     };
                     self.store_1(t1);
                     self.buffer_len = 2;
-                    t1.kind == kind1
+                    t1.kind() == kind1
                 }
-                _ => self.get_buf_0_k() == kind0 && self.get_buf_1_k() == kind1,
+                _ => self.get_buf_0_k_is(kind0) && self.get_buf_1_k_is(kind1),
             }
         }
     }
 
     #[inline(always)]
     #[track_caller]
-    pub fn skip_whitespace_wc(&mut self, mut push_token_evt: impl FnMut(Token)) {
+    pub fn skip_whitespace_wc(&mut self, mut push_token_evt: impl FnMut(TokenRepr)) {
         let check_sk =
             |sk: SyntaxKind| -> bool { SyntaxKind::WHITESPACE == sk || SyntaxKind::COMMENT == sk };
 
@@ -534,10 +537,10 @@ where
             }
             1 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
-                self.ts.restore_pos(t0.span.end as usize);
+                self.ts.restore_pos(t0.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wc();
@@ -554,18 +557,18 @@ where
             }
             2 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_2();
                     }
                     push_token_evt(t0.with_kind(SyntaxKind::COMPOSED_TRIVIA));
                     return;
                 }
-                self.ts.restore_pos(t1.span.end as usize);
+                self.ts.restore_pos(t1.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wc();
@@ -583,11 +586,11 @@ where
             }
             3 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_3();
                     }
@@ -595,7 +598,7 @@ where
                     return;
                 }
                 let t2 = unsafe { self.get_buf_2() };
-                if !check_sk(t2.kind) {
+                if !check_sk(t2.kind()) {
                     unsafe {
                         self.advance_n_2_bl_3();
                     }
@@ -603,7 +606,7 @@ where
                     push_token_evt(t);
                     return;
                 }
-                self.ts.restore_pos(t2.span.end as usize);
+                self.ts.restore_pos(t2.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wc();
@@ -621,11 +624,11 @@ where
             }
             4 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_4();
                     }
@@ -633,7 +636,7 @@ where
                     return;
                 }
                 let t2 = unsafe { self.get_buf_2() };
-                if !check_sk(t2.kind) {
+                if !check_sk(t2.kind()) {
                     unsafe {
                         self.advance_n_2_bl_4();
                     }
@@ -642,7 +645,7 @@ where
                     return;
                 }
                 let t3 = unsafe { self.get_buf_3() };
-                if !check_sk(t3.kind) {
+                if !check_sk(t3.kind()) {
                     unsafe {
                         self.advance_n_3_bl_4();
                     }
@@ -650,7 +653,7 @@ where
                     push_token_evt(t);
                     return;
                 }
-                self.ts.restore_pos(t3.span.end as usize);
+                self.ts.restore_pos(t3.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wc();
@@ -672,7 +675,7 @@ where
 
     #[inline(always)]
     #[track_caller]
-    pub fn skip_whitespace_wcn(&mut self, mut push_token_evt: impl FnMut(Token)) {
+    pub fn skip_whitespace_wcn(&mut self, mut push_token_evt: impl FnMut(TokenRepr)) {
         let check_sk = |sk: SyntaxKind| -> bool {
             sk == SyntaxKind::WHITESPACE || sk == SyntaxKind::NEWLINE || sk == SyntaxKind::COMMENT
         };
@@ -687,10 +690,10 @@ where
             }
             1 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
-                self.ts.restore_pos(t0.span.end as usize);
+                self.ts.restore_pos(t0.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wcn();
@@ -707,18 +710,18 @@ where
             }
             2 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_2();
                     }
                     push_token_evt(t0.with_kind(SyntaxKind::COMPOSED_TRIVIA));
                     return;
                 }
-                self.ts.restore_pos(t1.span.end as usize);
+                self.ts.restore_pos(t1.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wcn();
@@ -736,11 +739,11 @@ where
             }
             3 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_3();
                     }
@@ -748,7 +751,7 @@ where
                     return;
                 }
                 let t2 = unsafe { self.get_buf_2() };
-                if !check_sk(t2.kind) {
+                if !check_sk(t2.kind()) {
                     unsafe {
                         self.advance_n_2_bl_3();
                     }
@@ -756,7 +759,7 @@ where
                     push_token_evt(t);
                     return;
                 }
-                self.ts.restore_pos(t2.span.end as usize);
+                self.ts.restore_pos(t2.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wcn();
@@ -774,11 +777,11 @@ where
             }
             4 => {
                 let t0 = unsafe { self.get_buf_0() };
-                if !check_sk(t0.kind) {
+                if !check_sk(t0.kind()) {
                     return;
                 }
                 let t1 = unsafe { self.get_buf_1() };
-                if !check_sk(t1.kind) {
+                if !check_sk(t1.kind()) {
                     unsafe {
                         self.advance_n_1_bl_4();
                     }
@@ -786,7 +789,7 @@ where
                     return;
                 }
                 let t2 = unsafe { self.get_buf_2() };
-                if !check_sk(t2.kind) {
+                if !check_sk(t2.kind()) {
                     unsafe {
                         self.advance_n_2_bl_4();
                     }
@@ -795,7 +798,7 @@ where
                     return;
                 }
                 let t3 = unsafe { self.get_buf_3() };
-                if !check_sk(t3.kind) {
+                if !check_sk(t3.kind()) {
                     unsafe {
                         self.advance_n_3_bl_4();
                     }
@@ -803,7 +806,7 @@ where
                     push_token_evt(t);
                     return;
                 }
-                self.ts.restore_pos(t3.span.end as usize);
+                self.ts.restore_pos(t3.span().end);
                 self.buffer_len = 0;
 
                 let token = self.ts.skip_ws_wcn();
@@ -824,12 +827,12 @@ where
     }
 
     #[inline(always)]
-    pub fn bump_until(&mut self, kind: SyntaxKind, mut push_token_evt: impl FnMut(Token)) -> bool {
+    pub fn bump_until(&mut self, kind: SyntaxKind, mut push_token_evt: impl FnMut(TokenRepr)) -> bool {
         unsafe {
             match self.buffer_len {
                 0 => {
                     while let Some(token) = self.ts.next() {
-                        if token.kind == kind {
+                        if token.kind() == kind {
                             self.store_0(token);
                             self.buffer_len = 1;
                             return true;
@@ -840,14 +843,14 @@ where
                 }
                 1 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind == kind {
+                    if t0.kind() == kind {
                         return true;
                     } else {
                         self.buffer_len = 0;
                     }
                     push_token_evt(t0);
                     while let Some(token) = self.ts.next() {
-                        if token.kind == kind {
+                        if token.kind() == kind {
                             self.store_0(token);
                             self.buffer_len = 1;
                             return true;
@@ -858,12 +861,12 @@ where
                 }
                 2 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind == kind {
+                    if t0.kind() == kind {
                         return true;
                     }
                     push_token_evt(t0);
                     let t1 = self.get_buf_1();
-                    if t1.kind == kind {
+                    if t1.kind() == kind {
                         self.advance_n_1_bl_2();
                         return true;
                     } else {
@@ -871,7 +874,7 @@ where
                     }
                     push_token_evt(t1);
                     while let Some(token) = self.ts.next() {
-                        if token.kind == kind {
+                        if token.kind() == kind {
                             self.store_0(token);
                             self.buffer_len = 1;
                             return true;
@@ -882,18 +885,18 @@ where
                 }
                 3 => {
                     let t0 = self.get_buf_0();
-                    if t0.kind == kind {
+                    if t0.kind() == kind {
                         return true;
                     }
                     push_token_evt(t0);
                     let t1 = self.get_buf_1();
-                    if t1.kind == kind {
+                    if t1.kind() == kind {
                         self.advance_n_1_bl_3();
                         return true;
                     }
                     push_token_evt(t1);
                     let t2 = self.get_buf_2();
-                    if t2.kind == kind {
+                    if t2.kind() == kind {
                         self.advance_n_2_bl_3();
                         return true;
                     } else {
@@ -901,7 +904,7 @@ where
                     }
                     push_token_evt(t2);
                     while let Some(token) = self.ts.next() {
-                        if token.kind == kind {
+                        if token.kind() == kind {
                             self.store_0(token);
                             self.buffer_len = 1;
                             return true;
@@ -916,7 +919,7 @@ where
     }
 
     #[track_caller]
-    pub fn compose_token(&mut self, kind: SyntaxKind, n: usize) -> Option<Token> {
+    pub fn compose_token(&mut self, kind: SyntaxKind, n: usize) -> Option<TokenRepr> {
         debug_assert!(n > 0);
         debug_assert!(n <= 3);
         match n {
@@ -1021,7 +1024,7 @@ where
     }
 
     #[track_caller]
-    pub fn restore_pos(&mut self, pos: usize) {
+    pub fn restore_pos(&mut self, pos: u32) {
         unsafe {
             let pos_u32 = pos.try_into().unwrap_unchecked();
             match self.buffer_len {
@@ -1029,11 +1032,11 @@ where
                     self.ts.restore_pos(pos);
                 }
                 1 => {
-                    let t0 = self.get_buf_0();
-                    if t0.span.start == pos_u32 {
-                        self.ts.restore_pos(t0.span.end as usize);
+                    let t0_span = self.get_buf_0_span();
+                    if t0_span.start == pos_u32 {
+                        self.ts.restore_pos(t0_span.end);
                         return;
-                    } else if t0.span.end == pos_u32 {
+                    } else if t0_span.end == pos_u32 {
                         self.ts.restore_pos(pos);
                         self.buffer_len = 0;
                         return;
@@ -1043,13 +1046,14 @@ where
                     self.buffer_len = 0;
                 }
                 2 => {
-                    let t0 = self.get_buf_0();
+                    let t0_span = self.get_buf_0_span();
                     let t1 = self.get_buf_1();
-                    if t0.span.start == pos_u32 {
-                        self.ts.restore_pos(t1.span.end as usize);
+                    let t1_span = t1.span();
+                    if t0_span.start == pos_u32 {
+                        self.ts.restore_pos(t1_span.end);
                         return;
-                    } else if t1.span.start == pos_u32 {
-                        self.ts.restore_pos(t1.span.end as usize);
+                    } else if t1_span.start == pos_u32 {
+                        self.ts.restore_pos(t1_span.end);
                         self.store_0(t1);
                         self.buffer_len = 1;
                         return;
@@ -1059,19 +1063,21 @@ where
                     self.buffer_len = 0;
                 }
                 3 => {
-                    let t0 = self.get_buf_0();
+                    let t0_span = self.get_buf_0_span();
                     let t1 = self.get_buf_1();
+                    let t1_span = t1.span();
                     let t2 = self.get_buf_2();
-                    if t0.span.start == pos_u32 {
-                        self.ts.restore_pos(t2.span.end as usize);
+                    let t2_span = t2.span();
+                    if t0_span.start == pos_u32 {
+                        self.ts.restore_pos(t2_span.end);
                         return;
-                    } else if t1.span.start == pos_u32 {
-                        self.ts.restore_pos(t2.span.end as usize);
+                    } else if t1_span.start == pos_u32 {
+                        self.ts.restore_pos(t2_span.end);
                         self.store_01(t1, t2);
                         self.buffer_len = 2;
                         return;
-                    } else if t2.span.start == pos_u32 {
-                        self.ts.restore_pos(t2.span.end as usize);
+                    } else if t2_span.start == pos_u32 {
+                        self.ts.restore_pos(t2_span.end);
                         self.store_0(t2);
                         self.buffer_len = 1;
                         return;
@@ -1081,25 +1087,28 @@ where
                     self.buffer_len = 0;
                 }
                 4 => {
-                    let t0 = self.get_buf_0();
+                    let t0_span = self.get_buf_0_span();
                     let t1 = self.get_buf_1();
+                    let t1_span = t1.span();
                     let t2 = self.get_buf_2();
+                    let t2_span = t2.span();
                     let t3 = self.get_buf_3();
-                    if t0.span.start == pos_u32 {
-                        self.ts.restore_pos(t3.span.end as usize);
+                    let t3_span = t3.span();
+                    if t0_span.start == pos_u32 {
+                        self.ts.restore_pos(t3_span.end);
                         return;
-                    } else if t1.span.start == pos_u32 {
-                        self.ts.restore_pos(t3.span.end as usize);
+                    } else if t1_span.start == pos_u32 {
+                        self.ts.restore_pos(t3_span.end);
                         self.store_012(t1, t2, t3);
                         self.buffer_len = 3;
                         return;
-                    } else if t2.span.start == pos_u32 {
-                        self.ts.restore_pos(t3.span.end as usize);
+                    } else if t2_span.start == pos_u32 {
+                        self.ts.restore_pos(t3_span.end);
                         self.store_01(t2, t3);
                         self.buffer_len = 2;
                         return;
-                    } else if t3.span.start == pos_u32 {
-                        self.ts.restore_pos(t3.span.end as usize);
+                    } else if t3_span.start == pos_u32 {
+                        self.ts.restore_pos(t3_span.end);
                         self.store_0(t3);
                         self.buffer_len = 1;
                         return;
@@ -1121,265 +1130,176 @@ where
     T: TokenSource<'l>,
 {
     #[inline(always)]
-    unsafe fn get_buf_0(&self) -> Token {
-        Token {
-            kind: self.get_buf_0_k(),
-            span: self.get_buf_0_span(),
-        }
+    unsafe fn get_buf_0(&self) -> TokenRepr {
+        self.buffer[0]
     }
 
     #[inline(always)]
-    unsafe fn get_buf_1(&self) -> Token {
-        Token {
-            kind: self.get_buf_1_k(),
-            span: self.get_buf_1_span(),
-        }
+    unsafe fn get_buf_1(&self) -> TokenRepr {
+        self.buffer[1]
     }
 
     #[inline(always)]
-    unsafe fn get_buf_2(&self) -> Token {
-        Token {
-            kind: self.get_buf_2_k(),
-            span: self.get_buf_2_span(),
-        }
+    unsafe fn get_buf_2(&self) -> TokenRepr {
+        self.buffer[2]
     }
 
     #[inline(always)]
-    unsafe fn get_buf_3(&self) -> Token {
-        Token {
-            kind: self.get_buf_3_k(),
-            span: self.get_buf_3_span(),
-        }
+    unsafe fn get_buf_3(&self) -> TokenRepr {
+        self.buffer[3]
     }
 
     #[inline(always)]
-    unsafe fn get_buf_0_k(&self) -> SyntaxKind {
-        self.buffer_kinds[0]
+    unsafe fn get_buf_0_k_is(&self, k: SyntaxKind) -> bool {
+        self.buffer[0].kind_is(k)
     }
 
     #[inline(always)]
-    unsafe fn get_buf_1_k(&self) -> SyntaxKind {
-        self.buffer_kinds[1]
-    }
-
-    #[inline(always)]
-    unsafe fn get_buf_2_k(&self) -> SyntaxKind {
-        self.buffer_kinds[2]
-    }
-
-    #[inline(always)]
-    unsafe fn get_buf_3_k(&self) -> SyntaxKind {
-        self.buffer_kinds[3]
+    unsafe fn get_buf_1_k_is(&self, k: SyntaxKind) -> bool {
+        self.buffer[1].kind_is(k)
     }
 
     #[inline(always)]
     unsafe fn get_buf_0_span(&self) -> TextSpan {
-        let [start, end, _, _, _] = self.buffer_spans;
-        TextSpan::new_unchecked(start, end)
+        self.buffer[0].span()
     }
 
     #[inline(always)]
     unsafe fn get_buf_1_span(&self) -> TextSpan {
-        let [_, start, end, _, _] = self.buffer_spans;
-        TextSpan::new_unchecked(start, end)
+        self.buffer[1].span()
     }
 
     #[inline(always)]
     unsafe fn get_buf_2_span(&self) -> TextSpan {
-        let [_, _, start, end, _] = self.buffer_spans;
-        TextSpan::new_unchecked(start, end)
+        self.buffer[2].span()
     }
 
     #[inline(always)]
     unsafe fn get_buf_3_span(&self) -> TextSpan {
-        let [_, _, _, start, end] = self.buffer_spans;
-        TextSpan::new_unchecked(start, end)
+        self.buffer[3].span()
     }
 
     #[inline(always)]
     unsafe fn advance_n_1_bl_2(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[1];
-        self.buffer_spans[1] = self.buffer_spans[2];
-
-        self.buffer_kinds[0] = self.buffer_kinds[1];
+        self.buffer[0] = self.buffer[1];
 
         self.buffer_len = 1;
     }
 
     #[inline(always)]
     unsafe fn advance_n_1_bl_3(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[1];
-        self.buffer_spans[1] = self.buffer_spans[2];
-        self.buffer_spans[2] = self.buffer_spans[3];
-
-        self.buffer_kinds[0] = self.buffer_kinds[1];
-        self.buffer_kinds[1] = self.buffer_kinds[2];
+        self.buffer[0] = self.buffer[1];
+        self.buffer[1] = self.buffer[2];
 
         self.buffer_len = 2;
     }
 
     #[inline(always)]
     unsafe fn advance_n_2_bl_3(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[2];
-        self.buffer_spans[1] = self.buffer_spans[3];
-
-        self.buffer_kinds[0] = self.buffer_kinds[2];
+        self.buffer[0] = self.buffer[2];
 
         self.buffer_len = 1;
     }
 
     #[inline(always)]
     unsafe fn advance_n_1_bl_4(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[1];
-        self.buffer_spans[1] = self.buffer_spans[2];
-        self.buffer_spans[2] = self.buffer_spans[3];
-        self.buffer_spans[3] = self.buffer_spans[4];
-
-        self.buffer_kinds[0] = self.buffer_kinds[1];
-        self.buffer_kinds[1] = self.buffer_kinds[2];
-        self.buffer_kinds[2] = self.buffer_kinds[3];
+        self.buffer[0] = self.buffer[1];
+        self.buffer[1] = self.buffer[2];
+        self.buffer[2] = self.buffer[3];
 
         self.buffer_len = 3;
     }
 
     #[inline(always)]
     unsafe fn advance_n_2_bl_4(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[2];
-        self.buffer_spans[1] = self.buffer_spans[3];
-        self.buffer_spans[2] = self.buffer_spans[4];
-
-        self.buffer_kinds[0] = self.buffer_kinds[2];
-        self.buffer_kinds[1] = self.buffer_kinds[3];
+        self.buffer[0] = self.buffer[2];
+        self.buffer[1] = self.buffer[3];
 
         self.buffer_len = 2;
     }
 
     #[inline(always)]
     unsafe fn advance_n_3_bl_4(&mut self) {
-        self.buffer_spans[0] = self.buffer_spans[3];
-        self.buffer_spans[1] = self.buffer_spans[4];
-
-        self.buffer_kinds[0] = self.buffer_kinds[3];
+        self.buffer[0] = self.buffer[3];
 
         self.buffer_len = 1;
     }
 
     #[inline(always)]
-    unsafe fn store_0(&mut self, t0: Token) {
-        self.buffer_spans[0] = t0.span.start;
-        self.buffer_spans[1] = t0.span.end;
-
-        self.buffer_kinds[0] = t0.kind;
+    unsafe fn store_0(&mut self, t0: TokenRepr) {
+        self.buffer[0] = t0;
     }
 
     #[inline(always)]
-    unsafe fn store_01(&mut self, t0: Token, t1: Token) {
-        debug_assert_eq!(t0.span.end, t1.span.start);
+    unsafe fn store_01(&mut self, t0: TokenRepr, t1: TokenRepr) {
+        let t0_span = t0.span();
+        let t1_span = t1.span();
+        debug_assert_eq!(t0_span.end, t1_span.start);
 
-        self.buffer_spans[0] = t0.span.start;
-        self.buffer_spans[1] = t0.span.end;
-        self.buffer_spans[2] = t1.span.end;
-
-        self.buffer_kinds[0] = t0.kind;
-        self.buffer_kinds[1] = t1.kind;
+        self.buffer[0] = t0;
+        self.buffer[1] = t1;
     }
 
     #[inline(always)]
-    unsafe fn store_012(&mut self, t0: Token, t1: Token, t2: Token) {
-        debug_assert_eq!(t0.span.end, t1.span.start);
-        debug_assert_eq!(t1.span.end, t2.span.start);
+    unsafe fn store_012(&mut self, t0: TokenRepr, t1: TokenRepr, t2: TokenRepr) {
+        let t0_span = t0.span();
+        let t1_span = t1.span();
+        let t2_span = t2.span();
+        debug_assert_eq!(t0_span.end, t1_span.start);
+        debug_assert_eq!(t1_span.end, t2_span.start);
 
-        self.buffer_spans[0] = t0.span.start;
-        self.buffer_spans[1] = t0.span.end;
-        self.buffer_spans[2] = t1.span.end;
-        self.buffer_spans[3] = t2.span.end;
-
-        self.buffer_kinds[0] = t0.kind;
-        self.buffer_kinds[1] = t1.kind;
-        self.buffer_kinds[2] = t2.kind;
+        self.buffer[0] = t0;
+        self.buffer[1] = t1;
+        self.buffer[2] = t2;
     }
 
     #[inline(always)]
-    unsafe fn store_0123(&mut self, t0: Token, t1: Token, t2: Token, t3: Token) {
-        debug_assert_eq!(t0.span.end, t1.span.start);
-        debug_assert_eq!(t1.span.end, t2.span.start);
-        debug_assert_eq!(t2.span.end, t3.span.start);
+    unsafe fn store_0123(&mut self, t0: TokenRepr, t1: TokenRepr, t2: TokenRepr, t3: TokenRepr) {
+        let t0_span = t0.span();
+        let t1_span = t1.span();
+        let t2_span = t2.span();
+        let t3_span = t3.span();
+        debug_assert_eq!(t0_span.end, t1_span.start);
+        debug_assert_eq!(t1_span.end, t2_span.start);
+        debug_assert_eq!(t2_span.end, t3_span.start);
 
-        self.buffer_spans[0] = t0.span.start;
-        self.buffer_spans[1] = t0.span.end;
-        self.buffer_spans[2] = t1.span.end;
-        self.buffer_spans[3] = t2.span.end;
-        self.buffer_spans[4] = t3.span.end;
-
-        self.buffer_kinds[0] = t0.kind;
-        self.buffer_kinds[1] = t1.kind;
-        self.buffer_kinds[2] = t2.kind;
-        self.buffer_kinds[3] = t3.kind;
+        self.buffer[0] = t0;
+        self.buffer[1] = t1;
+        self.buffer[2] = t2;
+        self.buffer[3] = t3;
     }
 
     #[inline(always)]
-    unsafe fn store_1(&mut self, t1: Token) {
-        debug_assert_eq!(t1.span.start, self.buffer_spans[1]);
-
-        self.buffer_spans[2] = t1.span.end;
-
-        self.buffer_kinds[1] = t1.kind;
+    unsafe fn store_1(&mut self, t1: TokenRepr) {
+        self.buffer[1] = t1;
     }
 
     #[inline(always)]
-    unsafe fn store_12(&mut self, t1: Token, t2: Token) {
-        debug_assert_eq!(t1.span.start, self.buffer_spans[1]);
-        debug_assert_eq!(t1.span.end, t2.span.start);
-
-        self.buffer_spans[2] = t1.span.end;
-        self.buffer_spans[3] = t2.span.end;
-
-        self.buffer_kinds[1] = t1.kind;
-        self.buffer_kinds[2] = t2.kind;
+    unsafe fn store_12(&mut self, t1: TokenRepr, t2: TokenRepr) {
+        self.buffer[1] = t1;
+        self.buffer[2] = t2;
     }
 
     #[inline(always)]
-    unsafe fn store_123(&mut self, t1: Token, t2: Token, t3: Token) {
-        debug_assert_eq!(t1.span.start, self.buffer_spans[1]);
-        debug_assert_eq!(t1.span.end, t2.span.start);
-        debug_assert_eq!(t2.span.end, t3.span.start);
-
-        self.buffer_spans[2] = t1.span.end;
-        self.buffer_spans[3] = t2.span.end;
-        self.buffer_spans[4] = t3.span.end;
-
-        self.buffer_kinds[1] = t1.kind;
-        self.buffer_kinds[2] = t2.kind;
-        self.buffer_kinds[3] = t3.kind;
+    unsafe fn store_123(&mut self, t1: TokenRepr, t2: TokenRepr, t3: TokenRepr) {
+        self.buffer[1] = t1;
+        self.buffer[2] = t2;
+        self.buffer[3] = t3;
     }
 
     #[inline(always)]
-    unsafe fn store_2(&mut self, t2: Token) {
-        debug_assert_eq!(t2.span.start, self.buffer_spans[2]);
-
-        self.buffer_spans[3] = t2.span.end;
-
-        self.buffer_kinds[2] = t2.kind;
+    unsafe fn store_2(&mut self, t2: TokenRepr) {
+        self.buffer[2] = t2;
     }
 
     #[inline(always)]
-    unsafe fn store_23(&mut self, t2: Token, t3: Token) {
-        debug_assert_eq!(t2.span.start, self.buffer_spans[2]);
-        debug_assert_eq!(t2.span.end, t3.span.start);
-
-        self.buffer_spans[3] = t2.span.end;
-        self.buffer_spans[4] = t3.span.end;
-
-        self.buffer_kinds[2] = t2.kind;
-        self.buffer_kinds[3] = t3.kind;
+    unsafe fn store_23(&mut self, t2: TokenRepr, t3: TokenRepr) {
+        self.buffer[2] = t2;
+        self.buffer[3] = t3;
     }
 
     #[inline(always)]
-    unsafe fn store_3(&mut self, t3: Token) {
-        debug_assert_eq!(t3.span.start, self.buffer_spans[3]);
-
-        self.buffer_spans[4] = t3.span.end;
-
-        self.buffer_kinds[3] = t3.kind;
+    unsafe fn store_3(&mut self, t3: TokenRepr) {
+        self.buffer[3] = t3;
     }
 }

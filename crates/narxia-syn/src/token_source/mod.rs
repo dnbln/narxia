@@ -6,6 +6,7 @@
 
 use std::fmt;
 use std::fmt::Formatter;
+use std::num::NonZeroU64;
 
 use owo_colors::OwoColorize;
 
@@ -15,42 +16,95 @@ use crate::syntax_kind::SyntaxKind;
 use crate::text_span::TextSpan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
 pub(crate) struct TokenRepr {
     /// upper 32 bits => span start
     /// bits 32..48 => span length
     /// bits 48..64 => SyntaxKind
-    repr: u64,
+    repr: NonZeroU64,
 }
 
 impl TokenRepr {
+    #[inline(always)]
     pub fn new(kind: SyntaxKind, span: TextSpan) -> Self {
+        #[expect(unsafe_code)]
         Self {
-            repr: ((span.start as u64) << 32)
-                | (((span.end - span.start) as u64) << 16)
-                | (kind as u64),
+            repr: unsafe {
+                NonZeroU64::new_unchecked(
+                    ((span.start as u64) << 32)
+                        | (((span.end - span.start) as u64) << 16)
+                        | (kind as u64),
+                )
+            },
         }
     }
 
+    #[inline(always)]
     #[expect(unsafe_code)]
     pub fn kind(self) -> SyntaxKind {
         NarxiaLanguage::kind_from_u16(unsafe {
-            u16::try_from(self.repr & 0xFFFF).unwrap_unchecked()
+            u16::try_from(self.kind_value()).unwrap_unchecked()
         })
     }
 
+    #[inline(always)]
+    fn kind_value(self) -> u64 {
+        self.repr.get() & 0xFFFF
+    }
+
+    #[inline(always)]
+    pub fn kind_is(self, kind: SyntaxKind) -> bool {
+        self.repr.get() & 0xFFFF == kind as u64
+    }
+
+    #[inline(always)]
+    pub fn kind_is_any<const N: usize>(self, kinds: [SyntaxKind; N]) -> bool {
+        let kv = self.kind_value();
+        kinds.into_iter().any(|k| k as u64 == kv)
+    }
+
+    #[inline(always)]
     pub fn with_kind(self, kind: SyntaxKind) -> Self {
+        #[expect(unsafe_code)]
         TokenRepr {
-            repr: (self.repr & (!0xFFFF)) | (kind as u64),
+            repr: unsafe {
+                NonZeroU64::new_unchecked((self.repr.get() & (!0xFFFF)) | (kind as u64))
+            },
         }
     }
 
+    #[inline(always)]
     #[expect(unsafe_code)]
     pub fn span(self) -> TextSpan {
-        let start =
-            unsafe { u32::try_from((self.repr & 0xFFFFFFFF00000000) >> 32).unwrap_unchecked() };
-        let end =
-            start + unsafe { u32::try_from((self.repr & 0xFFFF0000) >> 16).unwrap_unchecked() };
+        let repr = self.repr.get();
+        let start = Self::span_start_from_repr(repr);
+        let end = start + Self::span_len_from_repr(repr);
         unsafe { TextSpan::new_unchecked(start, end) }
+    }
+
+    #[inline(always)]
+    pub fn span_start(self) -> u32 {
+        let repr = self.repr.get();
+        let start = Self::span_start_from_repr(repr);
+        start
+    }
+
+    #[inline(always)]
+    #[expect(unsafe_code)]
+    fn span_start_from_repr(repr: u64) -> u32 {
+        unsafe { u32::try_from((repr & 0xFFFFFFFF00000000) >> 32).unwrap_unchecked() }
+    }
+
+    #[inline(always)]
+    #[expect(unsafe_code)]
+    fn span_len_from_repr(repr: u64) -> u32 {
+        unsafe { u32::try_from((repr & 0xFFFF0000) >> 16).unwrap_unchecked() }
+    }
+
+    #[inline(always)]
+    #[expect(unsafe_code)]
+    pub unsafe fn compose(self, other: TokenRepr, kind: SyntaxKind) -> TokenRepr {
+        TokenRepr::new(kind, TextSpan::new(self.span().start, other.span().end))
     }
 }
 
@@ -71,6 +125,17 @@ impl Token {
         Self {
             kind: self.kind,
             span: self.span.add_offset(offset),
+        }
+    }
+
+    pub(crate) fn repr(self) -> TokenRepr {
+        TokenRepr::new(self.kind, self.span)
+    }
+
+    pub(crate) fn from_repr(repr: TokenRepr) -> Self {
+        Self {
+            kind: repr.kind(),
+            span: repr.span(),
         }
     }
 
@@ -123,19 +188,19 @@ pub(crate) mod buffered_ts;
 
 pub trait TokenSource<'l> {
     #[track_caller]
-    fn next(&mut self) -> Option<Token>;
+    fn next(&mut self) -> Option<TokenRepr>;
 
     #[track_caller]
-    fn skip_ws_wc(&mut self) -> Option<Token>;
+    fn skip_ws_wc(&mut self) -> Option<TokenRepr>;
     #[track_caller]
-    fn skip_ws_wcn(&mut self) -> Option<Token>;
+    fn skip_ws_wcn(&mut self) -> Option<TokenRepr>;
 
     fn get_span_text(&self, span: TextSpan) -> &'l str;
     fn get_error(&self) -> Option<TokenError> {
         None
     }
     fn eof_span(&self) -> TextSpan;
-    fn restore_pos(&mut self, pos: usize);
+    fn restore_pos(&mut self, pos: u32);
     fn set_parser_state(&mut self, state: TokParserState);
 }
 
@@ -149,17 +214,17 @@ pub(crate) struct DynTsContainer<'l>(pub &'l mut dyn TokenSource<'l>);
 
 impl<'l> TokenSource<'l> for DynTsContainer<'l> {
     #[inline(always)]
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<TokenRepr> {
         self.0.next()
     }
 
     #[inline(always)]
-    fn skip_ws_wc(&mut self) -> Option<Token> {
+    fn skip_ws_wc(&mut self) -> Option<TokenRepr> {
         self.0.skip_ws_wc()
     }
 
     #[inline(always)]
-    fn skip_ws_wcn(&mut self) -> Option<Token> {
+    fn skip_ws_wcn(&mut self) -> Option<TokenRepr> {
         self.0.skip_ws_wcn()
     }
 
@@ -174,7 +239,7 @@ impl<'l> TokenSource<'l> for DynTsContainer<'l> {
     }
 
     #[inline(always)]
-    fn restore_pos(&mut self, pos: usize) {
+    fn restore_pos(&mut self, pos: u32) {
         self.0.restore_pos(pos)
     }
 

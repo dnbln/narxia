@@ -35,8 +35,8 @@ impl ParsingErrors {
 pub fn parse_file<'db>(db: &'db dyn SynDb, file: SrcFile) -> SynFile<'db> {
     let (tree, errors) = {
         let text = file.get_text(db);
-        let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(&text);
-        let mut parser = narxia_syn::parser::Parser::new(&mut ts);
+        let ts = narxia_syn::token_source::text_ts::TextTokenSource::new(&text);
+        let mut parser = narxia_syn::parser::Parser::new(ts);
         parser.parse();
         parser.finish_to_tree()
     };

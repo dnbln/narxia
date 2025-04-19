@@ -11,6 +11,7 @@ use super::CompletedMarker;
 use super::Parser;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
+use crate::token_source::TokenSource;
 
 parse_fn_decl! {
     // parser-test:num-lit-dec
@@ -44,7 +45,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_string_lit(p: &mut Parser) -> CompletedMarker {
+fn parse_string_lit<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     let m = p.ev.begin();
 
     p.expect_1(T![begin_string]);
@@ -153,7 +154,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_block_expr_or_lambda(p: &mut Parser) -> CompletedMarker {
+fn parse_block_expr_or_lambda<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     let s = p.state();
     p.expect(T!['{']);
     p.skip_ws_wcn();
@@ -207,10 +208,10 @@ parse_fn_decl! {
         $parse_block()
 }
 
-fn infix_binary_op(
-    p: &mut Parser,
-    mut lower: impl FnMut(&mut Parser) -> CompletedMarker,
-    mut handle_operator: impl FnMut(&mut Parser) -> bool,
+fn infix_binary_op<'a, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
+    mut lower: impl FnMut(&mut Parser<'a, Ts>) -> CompletedMarker,
+    mut handle_operator: impl FnMut(&mut Parser<'a, Ts>) -> bool,
 ) -> CompletedMarker {
     let mut m = lower(p);
     if p.is_recovering() {
@@ -236,9 +237,9 @@ fn infix_binary_op(
     }
 }
 
-fn infix_binary_op_simple<const N: usize>(
-    p: &mut Parser,
-    lower: impl FnMut(&mut Parser) -> CompletedMarker,
+fn infix_binary_op_simple<'a, Ts: TokenSource<'a>, const N: usize>(
+    p: &mut Parser<'a, Ts>,
+    lower: impl FnMut(&mut Parser<'a, Ts>) -> CompletedMarker,
     operators: [SyntaxKind; N],
 ) -> CompletedMarker {
     infix_binary_op(p, lower, |p| {
@@ -277,7 +278,7 @@ fn infix_binary_op_simple<const N: usize>(
 // let x = a + b * c / d % x - y == e != f >= g.h * i[j[k]] <= l.m[n] / o.p.q[r] > s(t < u.v(w.x.y.z)) & a | b ^ c && d || e
 
 #[parse_fn]
-fn parse_precedence_1_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_1_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     let mut m = parse_expr_atom(p);
     if p.is_recovering() {
         return m;
@@ -431,7 +432,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_lambda_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_lambda_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     let m = p.ev.begin();
     p.expect(T!['{']);
     if p.is_recovering() {
@@ -492,7 +493,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_precedence_2_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_2_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     if p.at(T![+]) || p.at(T![-]) || p.at(T![!]) || p.at(T![*]) {
         let m = p.ev.begin();
         parse_prefix_unary_op(p);
@@ -515,47 +516,47 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_precedence_3_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_3_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_2_expr, [T![*], T![/], T![%]])
 }
 
 #[parse_fn]
-fn parse_precedence_4_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_4_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_3_expr, [T![+], T![-]])
 }
 
 #[parse_fn]
-fn parse_precedence_5_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_5_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_4_expr, [T![<=], T![>=], T![<], T![>]])
 }
 
 #[parse_fn]
-fn parse_precedence_6_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_6_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_5_expr, [T![==], T![!=]])
 }
 
 #[parse_fn]
-fn parse_precedence_7_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_7_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_6_expr, [T![&]])
 }
 
 #[parse_fn]
-fn parse_precedence_8_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_8_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_7_expr, [T![^]])
 }
 
 #[parse_fn]
-fn parse_precedence_9_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_9_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_8_expr, [T![|]])
 }
 
 #[parse_fn]
-fn parse_precedence_10_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_10_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_9_expr, [T![&&]])
 }
 
 #[parse_fn]
-fn parse_precedence_11_expr(p: &mut Parser) -> CompletedMarker {
+fn parse_precedence_11_expr<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     infix_binary_op_simple(p, parse_precedence_10_expr, [T![||]])
 }
 

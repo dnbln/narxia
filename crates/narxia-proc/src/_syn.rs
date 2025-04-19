@@ -435,7 +435,7 @@ fn expand_fn_decl(p: ParserSpecRule) -> syn::Result<TokenStream> {
     let vis = p.vis;
     Ok(quote! {
         #[parse_fn]
-        #vis fn #name(p: &mut Parser, #args) -> CompletedMarker {
+        #vis fn #name<'p, 'a, Ts: crate::token_source::TokenSource<'a>>(p: &'p mut Parser<'a, Ts>, #args) -> CompletedMarker {
             let m = p.ev.begin();
             #body
             #end_expr

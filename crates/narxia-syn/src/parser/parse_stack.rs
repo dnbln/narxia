@@ -38,7 +38,7 @@ impl Drop for ParseStackGuard {
 pub struct ParseStackItem {
     pub name: &'static str,
     pub can_recover: &'static [SyntaxKind],
-    pub text_pos: usize,
+    pub text_pos: u32,
 }
 
 struct ParseStackInternal {
@@ -96,7 +96,7 @@ impl ParseStack {
         &mut self,
         name: &'static str,
         can_recover: &'static [SyntaxKind],
-        text_pos: usize,
+        text_pos: u32,
     ) -> ParseStackGuard {
         let internal = self.internal.clone();
         let pos;

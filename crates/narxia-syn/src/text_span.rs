@@ -44,6 +44,7 @@ impl TextSpan {
     /// start <= end
     #[must_use]
     #[expect(unsafe_code)]
+    #[inline(always)]
     pub const unsafe fn new_unchecked(start: u32, end: u32) -> Self {
         Self { start, end }
     }

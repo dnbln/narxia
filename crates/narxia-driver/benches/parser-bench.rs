@@ -89,8 +89,8 @@ fn run_parser(
     narxia_syn::syntree::GreenTree,
     Vec<narxia_syn::parse_error::ParseError>,
 ) {
-    let mut ts = narxia_syn::token_source::text_ts::TextTokenSource::new(input);
-    let mut parser = narxia_syn::parser::Parser::new(&mut ts);
+    let ts = narxia_syn::token_source::text_ts::TextTokenSource::new(input);
+    let mut parser = narxia_syn::parser::Parser::new(ts);
     parser.parse();
     let (node, errors) = parser.finish_to_tree();
     (node, errors)

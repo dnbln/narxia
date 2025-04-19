@@ -5,7 +5,7 @@
 use std::ops::RangeInclusive;
 use std::str::CharIndices;
 
-use super::TokParserState;
+use super::{TokParserState, TokenRepr};
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 use crate::text_span::TextSpan;
@@ -24,11 +24,11 @@ pub struct TextTokenSource<'text> {
 #[expect(unsafe_code)]
 mod danger {
     use super::TextTokenSource;
-    use crate::token_source::Token;
+    use crate::token_source::TokenRepr;
 
     impl TextTokenSource<'_> {
         #[inline(always)]
-        pub fn next_token(&mut self) -> Option<Token> {
+        pub fn next_token(&mut self) -> Option<TokenRepr> {
             if self.pos >= self.text.len() {
                 return None;
             }
@@ -38,11 +38,11 @@ mod danger {
             let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
             self.pos += advanced;
             self.error = error;
-            Some(token)
+            Some(token.repr())
         }
 
         #[inline(always)]
-        pub fn ws_wc_skipped(&mut self) -> Option<Token> {
+        pub fn ws_wc_skipped(&mut self) -> Option<TokenRepr> {
             if self.pos >= self.text.len() {
                 return None;
             }
@@ -58,11 +58,11 @@ mod danger {
             let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
             self.pos += advanced;
             self.error = error;
-            Some(token)
+            Some(token.repr())
         }
 
         #[inline(always)]
-        pub fn ws_wcn_skipped(&mut self) -> Option<Token> {
+        pub fn ws_wcn_skipped(&mut self) -> Option<TokenRepr> {
             if self.pos >= self.text.len() {
                 return None;
             }
@@ -76,7 +76,7 @@ mod danger {
             let token = token.add_offset(unsafe { self.pos.try_into().unwrap_unchecked() });
             self.pos += advanced;
             self.error = error;
-            Some(token)
+            Some(token.repr())
         }
     }
 }
@@ -125,15 +125,15 @@ impl<'text> TextTokenSource<'text> {
 
 #[expect(unsafe_code)]
 impl<'text> TokenSource<'text> for TextTokenSource<'text> {
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self) -> Option<TokenRepr> {
         self.next_token()
     }
 
-    fn skip_ws_wc(&mut self) -> Option<Token> {
+    fn skip_ws_wc(&mut self) -> Option<TokenRepr> {
         self.ws_wc_skipped()
     }
 
-    fn skip_ws_wcn(&mut self) -> Option<Token> {
+    fn skip_ws_wcn(&mut self) -> Option<TokenRepr> {
         self.ws_wcn_skipped()
     }
 
@@ -150,8 +150,8 @@ impl<'text> TokenSource<'text> for TextTokenSource<'text> {
         unsafe { TextSpan::new_unchecked(l, l) }
     }
 
-    fn restore_pos(&mut self, pos: usize) {
-        self.pos = pos;
+    fn restore_pos(&mut self, pos: u32) {
+        self.pos = pos as usize;
     }
 
     fn set_parser_state(&mut self, state: TokParserState) {

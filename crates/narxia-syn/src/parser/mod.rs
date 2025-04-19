@@ -21,6 +21,7 @@
 // parser-test:hello-world
 // println("Hello, world!")
 
+#[cfg(debug_assertions)]
 use std::fmt;
 
 use narxia_proc::parse_fn;
@@ -35,16 +36,18 @@ use crate::parser::parse_event_handler::CompletedMarker;
 use crate::parser::parse_event_handler::ParseEventHandler;
 use crate::parser::parse_event_handler::ParseEventHandlerPos;
 use crate::parser::parse_event_handler::TreeBuilder;
+#[cfg(debug_assertions)]
 use crate::parser::parse_stack::ParseStack;
+#[cfg(debug_assertions)]
 use crate::parser::parse_stack::ParseStackGuard;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 use crate::syntree::GreenTree;
 use crate::token_source::buffered_ts::BufferedTokenSource;
-use crate::token_source::DynTsContainer;
 use crate::token_source::TokenSource;
 
 mod parse_event_handler;
+#[cfg(debug_assertions)]
 mod parse_stack;
 
 mod expr;
@@ -52,7 +55,7 @@ mod fun;
 mod stmt;
 
 struct ParserState {
-    ts_pos: usize,
+    ts_pos: u32,
     ev_pos: ParseEventHandlerPos,
 }
 
@@ -99,9 +102,10 @@ impl Default for ParserDbgStyling {
     }
 }
 
-pub struct Parser<'a> {
-    ts: BufferedTokenSource<'a, DynTsContainer<'a>>,
+pub struct Parser<'a, Ts: TokenSource<'a>> {
+    ts: BufferedTokenSource<'a, Ts>,
     ev: ParseEventHandler,
+    #[cfg(debug_assertions)]
     pstk: ParseStack,
     recovering: Option<ParserRecoveringInfo>,
 }
@@ -129,11 +133,12 @@ impl WsSkipConfig {
     }
 }
 
-impl<'a> Parser<'a> {
-    pub fn new(ts: &'a mut dyn TokenSource<'a>) -> Self {
+impl<'a, Ts: TokenSource<'a>> Parser<'a, Ts> {
+    pub fn new(ts: Ts) -> Self {
         Self {
-            ts: BufferedTokenSource::new(DynTsContainer(ts)),
+            ts: BufferedTokenSource::new(ts),
             ev: ParseEventHandler::new(),
+            #[cfg(debug_assertions)]
             pstk: ParseStack::new(),
             recovering: None,
         }
@@ -195,7 +200,7 @@ impl<'a> Parser<'a> {
         };
         self.ev.error(ParseError::new(
             info,
-            self.ts.current_token_span(),
+            self.ts.lookahead0_span().unwrap(),
             tkind,
             location,
         ));
@@ -212,11 +217,16 @@ impl<'a> Parser<'a> {
         });
     }
 
+    #[cfg(debug_assertions)]
     #[inline(always)]
     #[track_caller]
     fn guard(&mut self, name: &'static str, can_recover: &'static [SyntaxKind]) -> ParseStackGuard {
-        self.pstk.push(name, can_recover, self.ts.current_pos())
+        self.pstk.push(name, can_recover, self.ts.current_token_span_start())
     }
+
+    #[cfg(not(debug_assertions))]
+    #[inline(always)]
+    fn guard(&mut self, name: &'static str, _can_recover: &'static [SyntaxKind]) {}
 
     #[inline(always)]
     #[track_caller]
@@ -310,7 +320,7 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn state(&mut self) -> ParserState {
-        let ts_pos = self.ts.current_pos();
+        let ts_pos = self.ts.current_token_span_start();
         let ev_pos = self.ev.state();
         ParserState { ts_pos, ev_pos }
     }
@@ -381,11 +391,14 @@ impl<'a> Parser<'a> {
         tb.finish()
     }
 
+    #[cfg(debug_assertions)]
     #[track_caller]
     fn __private_dbg_log<W>(&mut self, w: &mut W, styling: ParserDbgStyling) -> fmt::Result
     where
         W: fmt::Write,
     {
+        use crate::token_source::Token;
+
         let region = |w: &mut W, name: &str| writeln!(w, "  {}:", name.style(styling.region_name));
 
         writeln!(
@@ -407,7 +420,7 @@ impl<'a> Parser<'a> {
                 w,
                 "    {}  {} {}",
                 format_args!("+{i}").style(styling.token_offset),
-                tok.dbg_fmt_colorized(styling),
+                Token::from_repr(tok).dbg_fmt_colorized(styling),
                 format_args!("{:?}", self.ts.get_token_text(&tok)).style(styling.token_text),
             )?;
             i += 1;
@@ -436,17 +449,17 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    #[inline(always)]
     #[track_caller]
     fn dbg(&mut self) {
-        #[cfg(not(debug_assertions))]
+        #[cfg(debug_assertions)]
         {
-            return;
+            let styling = ParserDbgStyling::default();
+            let _span = narxia_log::span!(narxia_log::Level::DEBUG, "Parser::dbg").entered();
+            let mut log = String::new();
+            self.__private_dbg_log(&mut log, styling).unwrap();
+            narxia_log::debug!("{log}");
         }
-        let styling = ParserDbgStyling::default();
-        let _span = narxia_log::span!(narxia_log::Level::DEBUG, "Parser::dbg").entered();
-        let mut log = String::new();
-        self.__private_dbg_log(&mut log, styling).unwrap();
-        narxia_log::debug!("{log}");
     }
 }
 
@@ -551,7 +564,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_attr_list(p: &mut Parser) -> CompletedMarker {
+fn parse_attr_list<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) -> CompletedMarker {
     let m = p.ev.begin();
     while p.at(T![#]) {
         parse_attr(p);
@@ -656,10 +669,10 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn repeat_until(
-    p: &mut Parser,
+fn repeat_until<'a, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     end: SyntaxKind,
-    mut parse: impl FnMut(&mut Parser) -> CompletedMarker,
+    mut parse: impl FnMut(&mut Parser<'a, Ts>) -> CompletedMarker,
 ) {
     while !p.at(end) {
         parse(p);
@@ -715,10 +728,10 @@ parse_fn_decl! {
         $!['}']
 }
 
-fn parse_list_rep<E: NotAttemptingRecovery>(
-    p: &mut Parser,
+fn parse_list_rep<'a, E: NotAttemptingRecovery, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     sep: SyntaxKind,
-    mut parse: impl FnMut(&mut Parser) -> Result<(), E>,
+    mut parse: impl FnMut(&mut Parser<'a, Ts>) -> Result<(), E>,
     recovery: AttemptRecoveryLevel,
 ) -> Result<(), E> {
     parse(p)?;
@@ -779,10 +792,10 @@ fn parse_list_rep<E: NotAttemptingRecovery>(
     Ok(())
 }
 
-fn parse_list_rep_simple<T>(
-    p: &mut Parser,
+fn parse_list_rep_simple<'a, T, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     sep: SyntaxKind,
-    mut parse: impl FnMut(&mut Parser) -> T,
+    mut parse: impl FnMut(&mut Parser<'a, Ts>) -> T,
     recovery: AttemptRecoveryLevel,
 ) -> Result<(), ()> {
     parse_list_rep(
@@ -796,10 +809,10 @@ fn parse_list_rep_simple<T>(
     )
 }
 
-fn parse_list_rep_simple2<T>(
-    p: &mut Parser,
+fn parse_list_rep_simple2<'a, T, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     sep: SyntaxKind,
-    parse: impl FnMut(&mut Parser) -> T,
+    parse: impl FnMut(&mut Parser<'a, Ts>) -> T,
     recovery: AttemptRecoveryLevel,
 ) {
     let _r = parse_list_rep_simple(p, sep, parse, recovery);
@@ -821,13 +834,13 @@ enum AttemptRecoveryLevel {
 
 #[inline(always)]
 #[track_caller]
-fn parse_list<E: NotAttemptingRecovery>(
-    p: &mut Parser,
+fn parse_list<'a, E: NotAttemptingRecovery, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     start: SyntaxKind,
-    mut parse_item: impl FnMut(&mut Parser) -> Result<(), E>,
-    mut handle_ws: impl FnMut(&mut Parser) -> Result<(), E>,
-    mut is_at_sep: impl FnMut(&mut Parser) -> bool,
-    mut handle_sep: impl FnMut(&mut Parser) -> Result<bool, E>,
+    mut parse_item: impl FnMut(&mut Parser<'a, Ts>) -> Result<(), E>,
+    mut handle_ws: impl FnMut(&mut Parser<'a, Ts>) -> Result<(), E>,
+    mut is_at_sep: impl FnMut(&mut Parser<'a, Ts>) -> bool,
+    mut handle_sep: impl FnMut(&mut Parser<'a, Ts>) -> Result<bool, E>,
     end: SyntaxKind,
     attempt_recovery: AttemptRecoveryLevel,
 ) -> Result<(), E> {
@@ -906,10 +919,10 @@ fn parse_list<E: NotAttemptingRecovery>(
 
 #[inline(always)]
 #[track_caller]
-fn parse_list_simple<T>(
-    p: &mut Parser,
+fn parse_list_simple<'a, T, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     start: SyntaxKind,
-    mut parse_item: impl FnMut(&mut Parser) -> T,
+    mut parse_item: impl FnMut(&mut Parser<'a, Ts>) -> T,
     sep: SyntaxKind,
     end: SyntaxKind,
     attempt_recovery: AttemptRecoveryLevel,
@@ -950,23 +963,25 @@ fn parse_list_simple<T>(
 }
 
 #[inline(always)]
-fn parse_list_simple2<T>(
-    p: &mut Parser,
+fn parse_list_simple2<'a, T, Ts: TokenSource<'a>, F>(
+    p: &mut Parser<'a, Ts>,
     start: SyntaxKind,
-    parse_item: impl FnMut(&mut Parser) -> T,
+    mut parse_item: F,
     sep: SyntaxKind,
     end: SyntaxKind,
     attempt_recovery: AttemptRecoveryLevel,
-) {
-    let _r = parse_list_simple(p, start, parse_item, sep, end, attempt_recovery);
+) where
+    for<'x> F: FnMut(&'x mut Parser<'a, Ts>) -> T,
+{
+    let _r = parse_list_simple(p, start, &mut parse_item, sep, end, attempt_recovery);
 }
 
 #[inline(always)]
-fn parse_list_simple3<T>(
-    p: &mut Parser,
+fn parse_list_simple3<'a, T, Ts: TokenSource<'a>>(
+    p: &mut Parser<'a, Ts>,
     kind: SyntaxKind,
     start: SyntaxKind,
-    parse_item: impl FnMut(&mut Parser) -> T,
+    parse_item: impl FnMut(&mut Parser<'a, Ts>) -> T,
     sep: SyntaxKind,
     end: SyntaxKind,
     attempt_recovery: AttemptRecoveryLevel,
@@ -1041,7 +1056,7 @@ parse_fn_decl! {
 }
 
 #[parse_fn]
-fn parse_block_insides(p: &mut Parser) {
+fn parse_block_insides<'a, Ts: TokenSource<'a>>(p: &mut Parser<'a, Ts>) {
     p.skip_ws_wcn();
     if !p.at(T!['}']) {
         loop {
