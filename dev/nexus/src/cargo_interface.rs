@@ -808,6 +808,7 @@ pub mod tests {
                     "never",
                     "--failure-output",
                     "never",
+                    "--no-input-handler",
                 ]);
             }
 
