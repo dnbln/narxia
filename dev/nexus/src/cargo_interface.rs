@@ -624,7 +624,6 @@ pub mod tests {
     use std::io;
     use std::process;
     use std::str;
-    use std::thread;
 
     use owo_colors::Style;
 
@@ -795,10 +794,11 @@ pub mod tests {
                 cmd.arg("--no-fail-fast");
             }
 
-            cmd.stdout(process::Stdio::piped());
+            cmd.stdin(process::Stdio::null())
+                .stdout(process::Stdio::piped());
 
             if self.capture_nextest_stderr {
-                cmd.stderr(process::Stdio::piped()).args([
+                cmd.stderr(process::Stdio::null()).args([
                     "--hide-progress-bar",
                     "--final-status-level",
                     "none",
@@ -817,29 +817,6 @@ pub mod tests {
             let start_time = Instant::now();
 
             let stdout = child.stdout.take().unwrap();
-
-            let stderr_join = if self.capture_nextest_stderr {
-                let stderr = child.stderr.take().unwrap();
-                Some(thread::spawn(move || {
-                    let mut stderr = stderr;
-                    loop {
-                        let num = stderr.read(&mut [0; 1024]);
-                        match num {
-                            Ok(0) => break,
-                            Ok(_) => {}
-                            Err(e) if e.kind() == io::ErrorKind::BrokenPipe => {
-                                break;
-                            }
-                            Err(e) => {
-                                eprintln!("Error reading stderr: {e}");
-                                break;
-                            }
-                        }
-                    }
-                }))
-            } else {
-                None
-            };
 
             struct TestResult {
                 suite: String,
@@ -957,10 +934,6 @@ pub mod tests {
                         }
                     },
                 }
-            }
-
-            if let Some(stderr_join) = stderr_join {
-                stderr_join.join().unwrap();
             }
 
             let out_stream = Stdout;
