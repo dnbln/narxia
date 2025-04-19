@@ -1,4 +1,4 @@
-// test nested-if-exprs at crates/narxia-ssa/src/lib.rs
+// test nested-if-exprs at crates/narxia-ssa-lower/src/lib.rs
 fn main() {
     if (1) {
         let s = "Hello world"
@@ -22,4 +22,5 @@ fn main() {
 
 fn println(s: str) {
     // ...
+    return
 }

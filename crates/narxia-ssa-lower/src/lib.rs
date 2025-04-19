@@ -374,6 +374,7 @@ impl<'tcx> LocalSsaBuilder<'tcx> {
                     //
                     // fn println(s: str) {
                     //     // ...
+                    //     return
                     // }
 
                     // ssa-test:nested-if-exprs
@@ -400,6 +401,7 @@ impl<'tcx> LocalSsaBuilder<'tcx> {
                     //
                     // fn println(s: str) {
                     //     // ...
+                    //     return
                     // }
                     let cond = self.build_expr(hir_map, hir_map.get_expr(if_expr.cond));
                     let begin_block = self.current_block_ref;

@@ -1,4 +1,4 @@
-// test if-expr at crates/narxia-ssa/src/lib.rs
+// test if-expr at crates/narxia-ssa-lower/src/lib.rs
 fn main() {
     if (1) {
         println("Hello world")
@@ -11,4 +11,5 @@ fn main() {
 
 fn println(s: str) {
     // ...
+    return
 }

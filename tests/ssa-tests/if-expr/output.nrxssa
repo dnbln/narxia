@@ -26,5 +26,6 @@ b@3:   # preds: b@0
 fn println: () -> t@0
 b@0:
   l@0 = param@0
+  l@1 = ret
 
 
