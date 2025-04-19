@@ -114,25 +114,6 @@ struct ParserRecoveringInfo {
     choked_syntax_kind: SyntaxKind,
 }
 
-bitflags::bitflags! {
-    #[derive(PartialEq, Eq)]
-    struct WsSkipConfig: u8 {
-        const W     = 0b001;
-        const C     = 0b010;
-        const N     = 0b100;
-        const WC    = 0b011;
-        const WN    = 0b101;
-        const CN    = 0b110;
-        const WCN   = 0b111;
-    }
-}
-
-impl WsSkipConfig {
-    const fn from_bits_truncated_macro_impl(b: u8) -> WsSkipConfig {
-        Self::from_bits_truncate(b)
-    }
-}
-
 impl<'a, Ts: TokenSource<'a>> Parser<'a, Ts> {
     pub fn new(ts: Ts) -> Self {
         Self {

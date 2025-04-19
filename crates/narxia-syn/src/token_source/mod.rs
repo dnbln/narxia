@@ -17,7 +17,7 @@ use crate::text_span::TextSpan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub(crate) struct TokenRepr {
+pub struct TokenRepr {
     /// upper 32 bits => span start
     /// bits 32..48 => span length
     /// bits 48..64 => SyntaxKind
@@ -26,7 +26,7 @@ pub(crate) struct TokenRepr {
 
 impl TokenRepr {
     #[inline(always)]
-    pub fn new(kind: SyntaxKind, span: TextSpan) -> Self {
+    pub(crate) fn new(kind: SyntaxKind, span: TextSpan) -> Self {
         #[expect(unsafe_code)]
         Self {
             repr: unsafe {
@@ -103,7 +103,7 @@ impl TokenRepr {
 
     #[inline(always)]
     #[expect(unsafe_code)]
-    pub unsafe fn compose(self, other: TokenRepr, kind: SyntaxKind) -> TokenRepr {
+    pub(crate) unsafe fn compose(self, other: TokenRepr, kind: SyntaxKind) -> TokenRepr {
         TokenRepr::new(kind, TextSpan::new(self.span().start, other.span().end))
     }
 }
