@@ -55,13 +55,13 @@ nextest-metadata = "0.12.1"
 clap = { version = "4.4.3", features = ["derive"] }
 criterion = { version = "0.5", features = ["html_reports"] }
 bitflags = "2"
-dashmap = "4.0.1"
+dashmap = "6.1.0"
 drop_bomb = "0.1.5"
 glob = "0.3.0"
 human-panic = "2.0.0"
 humantime = "2.1.0"
 libc = "0.2"
-libtest-mimic = "0.7.0"
+libtest-mimic = "0.8.1"
 llvm-sys = { version = "201.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
@@ -72,7 +72,7 @@ prodash = { version = "29.0.0", default-features = false, features = [
     "render-line-autoconfigure",
     "progress-tree",
 ] }
-reqwest = { version = "0.11.4", features = ["blocking"] }
+reqwest = { version = "0.12.15", features = ["blocking"] }
 rowan = "0.16.1"
 salsa = { path = "crates/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
@@ -80,11 +80,11 @@ serde_json = "1"
 similar = "2.7"
 smallvec = "1.10.0"
 tar = "0.4"
-thiserror = "1.0.48"
+thiserror = "2.0.12"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 xz = "0.1.0"
-zip = "0.5.11"
+zip = "2.6.1"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

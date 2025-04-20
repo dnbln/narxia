@@ -38,7 +38,7 @@ use prodash::tree::Item;
 use prodash::unit;
 use reqwest::blocking;
 use xz::read;
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
 pub mod bin_context;
@@ -1139,7 +1139,7 @@ impl BuildDistribCommand {
             &mut wr,
             Path::new(bins.compiler.file_name().unwrap()),
             bins.compiler,
-            FileOptions::default(),
+            SimpleFileOptions::default(),
             Some(&mut item.add_child("Compiler")),
         )?;
         wr.finish().into_diagnostic()?;
@@ -1151,7 +1151,7 @@ fn write_bin_file_to_zip<W: Write + Seek>(
     wr: &mut ZipWriter<W>,
     zip_path: impl AsRef<Path>,
     path: impl AsRef<Path>,
-    options: FileOptions,
+    options: SimpleFileOptions,
     mut item: Option<&mut Item>,
 ) -> NexusR<()> {
     wr.start_file(
