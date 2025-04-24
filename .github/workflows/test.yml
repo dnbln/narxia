@@ -29,10 +29,9 @@ jobs:
       - name: Install rust
         run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
       - name: Install cargo-nextest
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v3
         with:
           crate: cargo-nextest
-          args: --locked
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
       - name: Build nexus
@@ -43,8 +42,15 @@ jobs:
       - name: Build tests
         run: cargo nexus build-sys build --targets tests
       - name: Test
-        run: cargo nexus test --no-fail-fast
+        run: cargo nexus test --no-fail-fast --dump-nextest-stderr-to nextest.stderr.log
+        env:
+          NEXTEST_LOG: 'debug'
         timeout-minutes: 3
+      - name: Dump nextest log
+        run: |
+          echo "Dumping nextest log"
+          cat nextest.stderr.log
+        if: always()
       - name: Format check
         run: cargo nexus build-sys fmt --check
       - name: Lint

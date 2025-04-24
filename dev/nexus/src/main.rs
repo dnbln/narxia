@@ -73,6 +73,10 @@ enum App {
         #[cfg(debug_assertions)]
         capture_nextest: bool,
 
+        #[clap(long)]
+        #[cfg(debug_assertions)]
+        dump_nextest_stderr_to: Option<PathBuf>,
+
         /// Whether to fail fast.
         ///
         /// If this flag is used, the tests will stop running after the first failure.
@@ -160,6 +164,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             test_filter,
             #[cfg(debug_assertions)]
             capture_nextest,
+            #[cfg(debug_assertions)]
+            dump_nextest_stderr_to,
             count_tests,
             fail_fast,
             profile,
@@ -225,6 +231,13 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
 
             #[cfg(debug_assertions)]
             let run_tests = run_tests.capture_nextest_output(capture_nextest);
+
+            #[cfg(debug_assertions)]
+            let run_tests = if let Some(dump_nextest_stderr_to) = dump_nextest_stderr_to {
+                run_tests.dump_nextest_stderr_to(dump_nextest_stderr_to)
+            } else {
+                run_tests
+            };
 
             run_tests.run(Some(&mut item), cx.groups())?;
         }

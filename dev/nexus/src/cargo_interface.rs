@@ -621,6 +621,7 @@ impl RunCompilerCommand {
 
 pub mod tests {
     use core::fmt;
+    use std::fs::File;
     use std::io;
     use std::process;
     use std::str;
@@ -671,6 +672,7 @@ pub mod tests {
     pub struct RunTests {
         filter: Option<String>,
         capture_nextest_stderr: bool,
+        dump_nextest_stderr_to: Option<PathBuf>,
         fail_fast: bool,
         profile: String,
         parser_tests_mode: SnapshotsTestMode,
@@ -707,6 +709,7 @@ pub mod tests {
             Self {
                 filter: None,
                 capture_nextest_stderr: true,
+                dump_nextest_stderr_to: None,
                 fail_fast: true,
                 profile: "dev".to_string(),
                 parser_tests_mode: SnapshotsTestMode::default(),
@@ -762,6 +765,11 @@ pub mod tests {
             self
         }
 
+        pub fn dump_nextest_stderr_to(mut self, path: impl Into<PathBuf>) -> Self {
+            self.dump_nextest_stderr_to = Some(path.into());
+            self
+        }
+
         pub fn run(self, item: Option<&mut Item>, groups: Option<&NexusOutputGroups>) -> NexusR {
             let mut cmd = cargo_command();
             if self.miri {
@@ -798,7 +806,16 @@ pub mod tests {
                 .stdout(process::Stdio::piped());
 
             if self.capture_nextest_stderr {
-                cmd.stderr(process::Stdio::null()).args([
+                match &self.dump_nextest_stderr_to {
+                    Some(p) => {
+                        cmd.stderr(process::Stdio::from(File::create(p).into_diagnostic()?));
+                    }
+                    None => {
+                        cmd.stderr(process::Stdio::null());
+                    }
+                }
+
+                cmd.args([
                     "--hide-progress-bar",
                     "--final-status-level",
                     "none",
