@@ -63,23 +63,23 @@ impl fmt::Debug for Block {
                 if id != 0 {
                     write!(f, ", ")?;
                 }
-                write!(f, "{:?}", pred)?;
+                write!(f, "{pred:?}")?;
             }
         }
 
         writeln!(f)?;
 
         for var_phi in &self.var_phi {
-            writeln!(f, "  {:?}", var_phi)?;
+            writeln!(f, "  {var_phi:?}")?;
         }
         for phi in &self.phi {
-            writeln!(f, "  {:?}", phi)?;
+            writeln!(f, "  {phi:?}")?;
         }
         for instr in &self.instrs {
-            writeln!(f, "  {:?}", instr)?;
+            writeln!(f, "  {instr:?}")?;
         }
         if let Some(end) = &self.end {
-            writeln!(f, "  {:?}", end)?;
+            writeln!(f, "  {end:?}")?;
         }
         Ok(())
     }
@@ -111,7 +111,7 @@ impl fmt::Debug for Value {
                     } else if c == '\t' {
                         write!(f, "\\t")?;
                     } else {
-                        write!(f, "{}", c)?;
+                        write!(f, "{c}")?;
                     }
                 }
                 write!(f, "\"")
@@ -140,7 +140,7 @@ impl fmt::Debug for IValue {
             Self::Call(arg0) => arg0.fmt(f),
             Self::DoNothing => write!(f, "__"),
             Self::Param(p) => {
-                write!(f, "param@{}", p)
+                write!(f, "param@{p}")
             }
             Self::SConcat(arg0) => {
                 write!(f, "sconcat(")?;
@@ -148,15 +148,15 @@ impl fmt::Debug for IValue {
                     if id != 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{:?}", value)?;
+                    write!(f, "{value:?}")?;
                 }
                 write!(f, ")")
             }
             Self::Debug(arg0) => {
-                write!(f, "debug({:?})", arg0)
+                write!(f, "debug({arg0:?})")
             }
             Self::Display(arg0) => {
-                write!(f, "display({:?})", arg0)
+                write!(f, "display({arg0:?})")
             }
         }
     }
@@ -164,19 +164,7 @@ impl fmt::Debug for IValue {
 
 impl fmt::Debug for EndInstr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} = ", self.local_ref)?;
-        match &self.kind {
-            EndInstrKind::Branch(arg0) => {
-                write!(f, "br {:?}", arg0)
-            }
-            EndInstrKind::ConditionalBranch(arg0, arg1, arg2) => {
-                write!(f, "br {:?} {:?} {:?}", arg0, arg1, arg2)
-            }
-            EndInstrKind::Return(arg0) => {
-                write!(f, "ret {:?}", arg0)
-            }
-            EndInstrKind::RetVoid => write!(f, "ret"),
-        }
+        write!(f, "{:?} = {:?}", self.local_ref, self.kind)
     }
 }
 
@@ -184,13 +172,13 @@ impl fmt::Debug for EndInstrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Branch(arg0) => {
-                write!(f, "br {:?}", arg0)
+                write!(f, "br {arg0:?}")
             }
             Self::ConditionalBranch(arg0, arg1, arg2) => {
-                write!(f, "br {:?} {:?} {:?}", arg0, arg1, arg2)
+                write!(f, "br {arg0:?} {arg1:?} {arg2:?}")
             }
             Self::Return(arg0) => {
-                write!(f, "ret {:?}", arg0)
+                write!(f, "ret {arg0:?}")
             }
             Self::RetVoid => write!(f, "ret"),
         }
@@ -204,7 +192,7 @@ impl fmt::Debug for PhiInstr {
             if id != 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?} {:?}", block, value)?;
+            write!(f, "{block:?} {value:?}")?;
         }
         write!(f, ")")
     }
@@ -258,7 +246,7 @@ impl fmt::Debug for CallExpr {
             if id != 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?}", arg)?;
+            write!(f, "{arg:?}")?;
         }
         write!(f, ")")
     }
@@ -309,7 +297,7 @@ impl fmt::Debug for Function {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "fn {}: {}", self.name, self.ty)?;
         for block in &self.blocks {
-            writeln!(f, "{:?}", block)?;
+            writeln!(f, "{block:?}")?;
         }
         Ok(())
     }
@@ -328,7 +316,7 @@ impl fmt::Display for FunctionTy {
             if id != 0 {
                 write!(f, ", ")?;
             }
-            write!(f, "{:?}", arg)?;
+            write!(f, "{arg:?}")?;
         }
         write!(f, ") -> {:?}", self.ret)
     }

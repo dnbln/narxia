@@ -1,15 +1,15 @@
 use narxia_proc::parse_fn;
 use narxia_proc::parse_fn_decl;
 
+use super::AttemptRecoveryLevel;
+use super::CompletedMarker;
+use super::Parser;
 use super::expr;
 use super::parse_block;
 use super::parse_list_rep_simple2;
 use super::parse_list_simple2;
 use super::parse_pat;
 use super::parse_ty_ref;
-use super::AttemptRecoveryLevel;
-use super::CompletedMarker;
-use super::Parser;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 

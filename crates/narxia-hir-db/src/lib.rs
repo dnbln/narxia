@@ -30,7 +30,6 @@ pub fn lower_file<'db>(db: &'db dyn HirDb, file: narxia_syn_db::SynFile<'db>) ->
         },
         red.get_root(),
     );
-    let hir_file = HirFile::new(db, file, mod_id);
 
-    hir_file
+    HirFile::new(db, file, mod_id)
 }

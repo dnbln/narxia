@@ -43,8 +43,8 @@ use crate::parser::parse_stack::ParseStackGuard;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 use crate::syntree::GreenTree;
-use crate::token_source::buffered_ts::BufferedTokenSource;
 use crate::token_source::TokenSource;
+use crate::token_source::buffered_ts::BufferedTokenSource;
 
 mod parse_event_handler;
 #[cfg(debug_assertions)]

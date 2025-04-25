@@ -6,28 +6,28 @@ use std::io::Read;
 use std::mem;
 use std::path::PathBuf;
 use std::process;
-use std::sync::mpsc;
-use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
+use std::sync::mpsc;
+use std::sync::mpsc::TryRecvError;
 use std::thread;
 use std::thread::JoinHandle;
 use std::time;
 use std::time::Instant;
 
-use cargo_metadata::diagnostic;
 use cargo_metadata::TargetKind;
-use miette::bail;
+use cargo_metadata::diagnostic;
 use miette::IntoDiagnostic;
+use miette::bail;
 use owo_colors::OwoColorize;
 use owo_colors::Stream::*;
 use prodash::tree::Item;
 use prodash::unit;
 
-use crate::duration::NexusDuration;
 use crate::LLVMPrefixInfo;
 use crate::NexusR;
+use crate::duration::NexusDuration;
 
 #[derive(Debug, Clone)]
 pub enum PkgSpec {
@@ -292,11 +292,13 @@ impl BuildCmd {
                     if let Some(item) = &mut item {
                         let extra = match artifact.target.kind.as_slice() {
                             [TargetKind::Bin] => " (bin)",
-                            [TargetKind::Lib
-                            | TargetKind::CDyLib
-                            | TargetKind::DyLib
-                            | TargetKind::StaticLib
-                            | TargetKind::RLib] => "",
+                            [
+                                TargetKind::Lib
+                                | TargetKind::CDyLib
+                                | TargetKind::DyLib
+                                | TargetKind::StaticLib
+                                | TargetKind::RLib,
+                            ] => "",
                             [TargetKind::Test] => " (test)",
                             [TargetKind::Example] => " (example)",
                             [TargetKind::Bench] => " (bench)",
@@ -881,7 +883,7 @@ pub mod tests {
             for message in io::BufReader::new(stdout).lines() {
                 let message = message.into_diagnostic()?;
                 if self.debug_nextest_messages {
-                    println!("{}", message);
+                    println!("{message}");
                 }
                 let line: OutputLine = serde_json::from_str(&message).into_diagnostic()?;
 

@@ -1,12 +1,12 @@
 use core::ops;
 use std::mem;
 
+use hir::HirId;
+use hir::HirIdNewtype;
 use hir::hir_map;
 use hir::hir_map::HirMap;
 use hir::visitor as vis;
 use hir::visitor::HirVisitor;
-use hir::HirId;
-use hir::HirIdNewtype;
 use narxia_hir as hir;
 
 use crate::def_id::DefId;

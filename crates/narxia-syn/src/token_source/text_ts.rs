@@ -309,10 +309,10 @@ impl<'text> CharTokenParser<'text> {
                             self.error = Some(TokenError::BlockCommentNotClosed);
                             break (self.chars.offset(), SyntaxKind::ERROR);
                         };
-                        if c == '*' {
-                            if let Some((next, '/')) = self.chars.next() {
-                                break (next + 1, SyntaxKind::COMMENT);
-                            }
+                        if c == '*'
+                            && let Some((next, '/')) = self.chars.next()
+                        {
+                            break (next + 1, SyntaxKind::COMMENT);
                         }
                     },
                     _ => (start + 1, T![/]),
@@ -386,10 +386,10 @@ impl<'text> CharTokenParser<'text> {
                                     self.error = Some(TokenError::BlockCommentNotClosed);
                                     break 'main r1(SyntaxKind::ERROR, self.chars.offset());
                                 };
-                                if c == '*' {
-                                    if let Some((_next, '/')) = self.chars.next() {
-                                        break;
-                                    }
+                                if c == '*'
+                                    && let Some((_next, '/')) = self.chars.next()
+                                {
+                                    break;
                                 }
                             },
                             _ => break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, start),
@@ -425,10 +425,10 @@ impl<'text> CharTokenParser<'text> {
                                     self.error = Some(TokenError::BlockCommentNotClosed);
                                     break 'main r1(SyntaxKind::ERROR, self.chars.offset());
                                 };
-                                if c == '*' {
-                                    if let Some((_next, '/')) = self.chars.next() {
-                                        break;
-                                    }
+                                if c == '*'
+                                    && let Some((_next, '/')) = self.chars.next()
+                                {
+                                    break;
                                 }
                             },
                             _ => break 'main r(SyntaxKind::COMPOSED_TRIVIA, s, start),

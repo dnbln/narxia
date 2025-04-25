@@ -7,8 +7,8 @@ use llvm_api::Module;
 use llvm_api::StandardTypes;
 use llvm_api::TargetMachine;
 use llvm_api::Ty;
-use narxia_codegen::ir;
 use narxia_codegen::CodegenBackend;
+use narxia_codegen::ir;
 
 mod llvm_api;
 

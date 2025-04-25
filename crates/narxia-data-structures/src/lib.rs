@@ -1,10 +1,10 @@
 use std::borrow::Borrow;
-use std::collections::btree_map;
-use std::collections::hash_map;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::btree_map;
+use std::collections::hash_map;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;

@@ -871,7 +871,7 @@ fn interp_expr(ctx: &mut InterpContext, expr_id: ExprId, expr: &Expr) -> CFResul
                     }
                     _ => todo!(),
                 },
-                x => panic!("Expected function or lambda, got {:?}", x),
+                x => panic!("Expected function or lambda, got {x:?}"),
             }
         }
         ExprKind::IndexExpr(index) => {
@@ -921,24 +921,24 @@ fn interp_block(ctx: &mut InterpContext, block: &Block) -> CFResult {
 fn interp_debug_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
     match r {
         InterpValue::Num(n) => match n {
-            NumValue::I8(i) => format!("{:?}", i),
-            NumValue::I16(i) => format!("{:?}", i),
-            NumValue::I32(i) => format!("{:?}", i),
-            NumValue::I64(i) => format!("{:?}", i),
-            NumValue::I128(i) => format!("{:?}", i),
-            NumValue::U8(i) => format!("{:?}", i),
-            NumValue::U16(i) => format!("{:?}", i),
-            NumValue::U32(i) => format!("{:?}", i),
-            NumValue::U64(i) => format!("{:?}", i),
-            NumValue::U128(i) => format!("{:?}", i),
-            NumValue::F32(f) => format!("{:?}", f),
-            NumValue::F64(f) => format!("{:?}", f),
+            NumValue::I8(i) => format!("{i:?}"),
+            NumValue::I16(i) => format!("{i:?}"),
+            NumValue::I32(i) => format!("{i:?}"),
+            NumValue::I64(i) => format!("{i:?}"),
+            NumValue::I128(i) => format!("{i:?}"),
+            NumValue::U8(i) => format!("{i:?}"),
+            NumValue::U16(i) => format!("{i:?}"),
+            NumValue::U32(i) => format!("{i:?}"),
+            NumValue::U64(i) => format!("{i:?}"),
+            NumValue::U128(i) => format!("{i:?}"),
+            NumValue::F32(f) => format!("{f:?}"),
+            NumValue::F64(f) => format!("{f:?}"),
         },
-        InterpValue::Bool(b) => format!("{:?}", b),
-        InterpValue::Str(s) => format!("{:?}", s),
+        InterpValue::Bool(b) => format!("{b:?}"),
+        InterpValue::Str(s) => format!("{s:?}"),
         InterpValue::Fn(f) => {
             let fn_def = ctx.hir_map.get_fn(*f);
-            format!("{}", fn_def)
+            format!("{fn_def}")
         }
         InterpValue::Unit => "()".to_string(),
         InterpValue::Null => "null".to_string(),
@@ -957,7 +957,7 @@ fn interp_debug_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
 
         InterpValue::Lambda(lambda) => {
             let lambda_expr = ctx.hir_map.get_lambda_expr(*lambda);
-            format!("{}", lambda_expr)
+            format!("{lambda_expr}")
         }
         InterpValue::InternalFn(fn_id) => match *fn_id {
             InternalFunctionsDef::PRINT => "<fn:print>".to_string(),
@@ -970,24 +970,24 @@ fn interp_debug_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
 fn interp_display_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
     match r {
         InterpValue::Num(n) => match n {
-            NumValue::I8(i) => format!("{}", i),
-            NumValue::I16(i) => format!("{}", i),
-            NumValue::I32(i) => format!("{}", i),
-            NumValue::I64(i) => format!("{}", i),
-            NumValue::I128(i) => format!("{}", i),
-            NumValue::U8(i) => format!("{}", i),
-            NumValue::U16(i) => format!("{}", i),
-            NumValue::U32(i) => format!("{}", i),
-            NumValue::U64(i) => format!("{}", i),
-            NumValue::U128(i) => format!("{}", i),
-            NumValue::F32(f) => format!("{}", f),
-            NumValue::F64(f) => format!("{}", f),
+            NumValue::I8(i) => format!("{i}"),
+            NumValue::I16(i) => format!("{i}"),
+            NumValue::I32(i) => format!("{i}"),
+            NumValue::I64(i) => format!("{i}"),
+            NumValue::I128(i) => format!("{i}"),
+            NumValue::U8(i) => format!("{i}"),
+            NumValue::U16(i) => format!("{i}"),
+            NumValue::U32(i) => format!("{i}"),
+            NumValue::U64(i) => format!("{i}"),
+            NumValue::U128(i) => format!("{i}"),
+            NumValue::F32(f) => format!("{f}"),
+            NumValue::F64(f) => format!("{f}"),
         },
-        InterpValue::Bool(b) => format!("{}", b),
+        InterpValue::Bool(b) => format!("{b}"),
         InterpValue::Str(s) => s.to_string(),
         InterpValue::Fn(f) => {
             let fn_def = ctx.hir_map.get_fn(*f);
-            format!("{}", fn_def)
+            format!("{fn_def}")
         }
         InterpValue::Unit => "()".to_string(),
         InterpValue::Null => "null".to_string(),
@@ -1005,7 +1005,7 @@ fn interp_display_impl(ctx: &mut InterpContext, r: &InterpValue) -> String {
         }
         InterpValue::Lambda(lambda) => {
             let lambda_expr = ctx.hir_map.get_lambda_expr(*lambda);
-            format!("{}", lambda_expr)
+            format!("{lambda_expr}")
         }
         InterpValue::InternalFn(fn_id) => match *fn_id {
             InternalFunctionsDef::PRINT => "<fn:print>".to_string(),

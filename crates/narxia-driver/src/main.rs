@@ -5,10 +5,10 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use miette::IntoDiagnostic;
-use narxia_codegen::ir;
 use narxia_codegen::CodegenBackend;
-use narxia_driver::ctxt::DriverCtx;
+use narxia_codegen::ir;
 use narxia_driver::HirDbg;
+use narxia_driver::ctxt::DriverCtx;
 use narxia_hir::hir_map;
 use narxia_hir_typechk::sema;
 use narxia_log::info;
@@ -200,7 +200,7 @@ fn main() -> miette::Result<()> {
 
             let analysis_results = sema::analyze_program_structure(tcx, hir_mod);
 
-            println!("{:?}", analysis_results);
+            println!("{analysis_results:?}");
 
             for scope in analysis_results.program_structure.scopes() {
                 let parent = analysis_results.program_structure.parent(scope);
@@ -353,7 +353,7 @@ fn main() -> miette::Result<()> {
 
             let hir_map = ctx.db.get_global_ty_ctxt().make_ty_ctxt().hir_map();
             let module = narxia_ssa_lower::convert(tcx, &hir_map, hir_mod);
-            println!("{:#?}", module);
+            println!("{module:#?}");
 
             if validate {
                 let result = narxia_ssa_validator::validate(&module);

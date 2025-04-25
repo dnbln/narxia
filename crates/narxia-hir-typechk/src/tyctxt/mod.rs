@@ -5,11 +5,11 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 use narxia_data_structures::FxBTreeMap;
+use narxia_hir::HirId;
 use narxia_hir::hir_map::FileMapEntry;
 use narxia_hir::hir_map::HirElem;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirMapQ;
-use narxia_hir::HirId;
 use narxia_src_db::SrcFile;
 
 use crate::def_id::DefId;
@@ -152,9 +152,9 @@ impl GlobalTyCtxt {
         let rf = self.inner.name_resolution.read().unwrap();
         let mut s = String::new();
         for (id, def_id) in rf.name_map.iter() {
-            writeln!(&mut s, "Resolved: {:?} -> {:?}", id, def_id).unwrap();
+            writeln!(&mut s, "Resolved: {id:?} -> {def_id:?}").unwrap();
         }
-        narxia_log::info!("Name Resolutions:\n{}", s);
+        narxia_log::info!("Name Resolutions:\n{s}");
     }
 }
 

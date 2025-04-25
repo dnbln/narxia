@@ -24,8 +24,8 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use miette::bail;
 use miette::IntoDiagnostic;
+use miette::bail;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
 use narxia_dir_structures::dir_structure::DirStructure;
 use narxia_dir_structures::dir_structure::FileString;
@@ -38,8 +38,8 @@ use prodash::tree::Item;
 use prodash::unit;
 use reqwest::blocking;
 use xz::read;
-use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
+use zip::write::SimpleFileOptions;
 
 pub mod bin_context;
 pub mod cargo_interface;
@@ -757,7 +757,7 @@ impl LLVMManager {
                         item.set_max(Some(t));
 
                         out.push_str(&line[..p]);
-                        write!(&mut out, "[{}/{}] ", f, t).into_diagnostic()?;
+                        write!(&mut out, "[{f}/{t}] ").into_diagnostic()?;
                         out.push_str(&line[p + c + "$$".len()..]);
                     } else {
                         out.push_str(&line);

@@ -213,7 +213,7 @@ pub fn present_validation_errors(
 
     for (fn_ref, errors) in validation_errors {
         let f = m.functions.iter().find(|it| it.fn_id == *fn_ref).unwrap();
-        writeln!(buffer, "Errors in function:\n{:?}\n", f).unwrap();
+        writeln!(buffer, "Errors in function:\n{f:?}\n").unwrap();
 
         let lookup_block =
             |block_ref: BlockRef| f.blocks.iter().find(|it| it.id == block_ref).unwrap();
@@ -263,14 +263,14 @@ pub fn present_validation_errors(
         };
 
         for error in errors {
-            writeln!(buffer, "Error:\n{}\n", error).unwrap();
+            writeln!(buffer, "Error:\n{error}\n").unwrap();
 
             match error {
                 ValidationError::BlockDoesNotEnd(b) => {
                     writeln!(buffer, "Block:\n{:?}\n", lookup_block(*b)).unwrap();
                 }
                 ValidationError::UndeclaredLocalRef(undeclared, used_in, at) => {
-                    writeln!(buffer, "Undeclared local ref:\n{:?}\n", undeclared).unwrap();
+                    writeln!(buffer, "Undeclared local ref:\n{undeclared:?}\n").unwrap();
                     writeln!(buffer, "Used in block:\n{:?}\n", lookup_block(*used_in)).unwrap();
                     writeln!(buffer, "At:\n{:?}\n", lookup_instr(*at)).unwrap();
                 }
@@ -330,5 +330,5 @@ pub fn present_validation_errors(
         }
     }
 
-    narxia_log::error!("{}", buffer);
+    narxia_log::error!("{buffer}");
 }

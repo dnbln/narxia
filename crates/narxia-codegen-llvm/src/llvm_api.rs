@@ -7,6 +7,7 @@ use std::path::Path;
 use std::ptr;
 use std::slice;
 
+use llvm_sys::LLVMIntPredicate;
 use llvm_sys::analysis;
 use llvm_sys::bit_writer;
 use llvm_sys::core;
@@ -15,7 +16,6 @@ use llvm_sys::prelude::*;
 use llvm_sys::target;
 use llvm_sys::target_machine;
 use llvm_sys::transforms::pass_builder;
-use llvm_sys::LLVMIntPredicate;
 
 fn transparent_downcast_slice<T, U>(t: &[T]) -> &[U]
 where
@@ -176,11 +176,7 @@ impl Module {
             bit_writer::LLVMWriteBitcodeToFile(self.module, *filename)
         });
 
-        if r == 0 {
-            Ok(())
-        } else {
-            Err(())
-        }
+        if r == 0 { Ok(()) } else { Err(()) }
     }
 }
 

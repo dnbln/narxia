@@ -5,14 +5,15 @@ use std::marker;
 
 use owo_colors::OwoColorize;
 use owo_colors::Style;
-use tracing::field::Field;
-use tracing::field::Visit;
-use tracing::span::Attributes;
 use tracing::Event;
 use tracing::Id;
 use tracing::Level;
 use tracing::Metadata;
 use tracing::Subscriber;
+use tracing::field::Field;
+use tracing::field::Visit;
+use tracing::span::Attributes;
+use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::layer::SubscriberExt;
@@ -20,7 +21,6 @@ use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::registry::SpanRef;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::util::TryInitError;
-use tracing_subscriber::Layer;
 
 struct NarxiaLayerConfig {
     ignore_outside_logging: bool,

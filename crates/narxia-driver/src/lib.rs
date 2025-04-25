@@ -5,8 +5,8 @@ use std::fmt::Formatter;
 use std::io;
 use std::path::PathBuf;
 
-use hir::hir_map::HirElem;
 use hir::HirId;
+use hir::hir_map::HirElem;
 use narxia_hir as hir;
 use narxia_hir::hir_map::FileMapEntry;
 use narxia_src_db::FilePathInfo;
@@ -64,13 +64,14 @@ pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -
 }
 
 pub fn init_panic_hook() {
-    human_panic::setup_panic!(human_panic::Metadata::new(
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
-    )
-    .authors("Dinu Blanovschi <git@dnbln.dev>")
-    .homepage("https://dnbln.dev/narxia")
-    .support("- Open a support request via a GitHub issue to https://github.com/dnbln/narxia"));
+    human_panic::setup_panic!(
+        human_panic::Metadata::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+            .authors("Dinu Blanovschi <git@dnbln.dev>")
+            .homepage("https://dnbln.dev/narxia")
+            .support(
+                "- Open a support request via a GitHub issue to https://github.com/dnbln/narxia"
+            )
+    );
 }
 
 pub struct HirDebugImpl<'hir, 'ctxt, H> {
@@ -165,13 +166,13 @@ fn dbg_impl_code<H>(
 
 impl<H: fmt::Debug> fmt::Debug for HirDebugImpl<'_, '_, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        dbg_impl_code(self, f, |hir, f| write!(f, "{:?}", hir))
+        dbg_impl_code(self, f, |hir, f| write!(f, "{hir:?}"))
     }
 }
 
 impl<H: fmt::Display> fmt::Display for HirDebugImpl<'_, '_, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        dbg_impl_code(self, f, |hir, f| write!(f, "{}", hir))
+        dbg_impl_code(self, f, |hir, f| write!(f, "{hir}"))
     }
 }
 

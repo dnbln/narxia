@@ -7,11 +7,6 @@ use std::time;
 
 use clap::ArgAction;
 use clap::Parser;
-use nexus::bin_context::NexusContext;
-use nexus::cargo_interface;
-use nexus::cargo_interface::tests;
-use nexus::cargo_interface::SysTarget;
-use nexus::duration::NexusDuration;
 use nexus::BuildDistribCommand;
 use nexus::BuildDistribsBins;
 use nexus::BuildSysCmd;
@@ -23,6 +18,11 @@ use nexus::NexusR;
 use nexus::ProfileDeterminer;
 use nexus::RunCompilerBins;
 use nexus::Target;
+use nexus::bin_context::NexusContext;
+use nexus::cargo_interface;
+use nexus::cargo_interface::SysTarget;
+use nexus::cargo_interface::tests;
+use nexus::duration::NexusDuration;
 use prodash::render::line;
 use prodash::unit;
 

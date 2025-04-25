@@ -1,12 +1,12 @@
 use narxia_proc::parse_fn;
 use narxia_proc::parse_fn_decl;
 
+use super::CompletedMarker;
+use super::Parser;
 use super::expr;
 use super::parse_block;
 use super::parse_pat;
 use super::parse_ty_ref;
-use super::CompletedMarker;
-use super::Parser;
 use crate::syntax_kind::SyntaxKind;
 use crate::syntax_kind::T;
 use crate::token_source::TokenSource;

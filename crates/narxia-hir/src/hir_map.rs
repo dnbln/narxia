@@ -2,12 +2,12 @@ use std::fmt;
 
 use narxia_data_structures::FxBTreeMap;
 
+use crate::HirId;
+use crate::HirSpan;
 use crate::hir;
 use crate::hir::*;
 use crate::visitor;
 use crate::visitor::HirVisitor;
-use crate::HirId;
-use crate::HirSpan;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum HirElem {
@@ -84,31 +84,31 @@ pub trait HirTy<'a>: Sized + 'a {
 impl fmt::Display for HirElem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Mod(m) => write!(f, "{}", m),
-            Self::Item(i) => write!(f, "{}", i),
-            Self::PatIdent(p) => write!(f, "{}", p),
-            Self::Fn(fn_def) => write!(f, "{}", fn_def),
-            Self::FnParam(p) => write!(f, "{}", p),
-            Self::FnRetTy(r) => write!(f, "{}", r),
-            Self::Expr(e) => write!(f, "{}", e),
-            Self::ExprAtomIdent(e) => write!(f, "{}", e),
-            Self::ReturnExpr(e) => write!(f, "{}", e),
-            Self::BreakExpr(e) => write!(f, "{}", e),
-            Self::ContinueExpr(e) => write!(f, "{}", e),
-            Self::LoopExpr(e) => write!(f, "{}", e),
-            Self::Pat(p) => write!(f, "{}", p),
-            Self::Stmt(s) => write!(f, "{}", s),
-            Self::ForStmt(for_stmt) => write!(f, "{}", for_stmt),
-            Self::WhileStmt(w) => write!(f, "{}", w),
-            Self::UseStmt(u) => write!(f, "{}", u),
-            Self::UsePathSegment(u) => write!(f, "{}", u),
-            Self::Block(b) => write!(f, "{}", b),
-            Self::TyRef(t) => write!(f, "{}", t),
-            Self::TyGenericArg(t) => write!(f, "{}", t),
-            Self::AssignmentStmt(a) => write!(f, "{}", a),
-            Self::StrLiteral(s) => write!(f, "{}", s),
-            Self::StrLiteralDisplayFragment(s) => write!(f, "{}", s),
-            Self::StrLiteralDebugFragment(s) => write!(f, "{}", s),
+            Self::Mod(m) => write!(f, "{m}"),
+            Self::Item(i) => write!(f, "{i}"),
+            Self::PatIdent(p) => write!(f, "{p}"),
+            Self::Fn(fn_def) => write!(f, "{fn_def}"),
+            Self::FnParam(p) => write!(f, "{p}"),
+            Self::FnRetTy(r) => write!(f, "{r}"),
+            Self::Expr(e) => write!(f, "{e}"),
+            Self::ExprAtomIdent(e) => write!(f, "{e}"),
+            Self::ReturnExpr(e) => write!(f, "{e}"),
+            Self::BreakExpr(e) => write!(f, "{e}"),
+            Self::ContinueExpr(e) => write!(f, "{e}"),
+            Self::LoopExpr(e) => write!(f, "{e}"),
+            Self::Pat(p) => write!(f, "{p}"),
+            Self::Stmt(s) => write!(f, "{s}"),
+            Self::ForStmt(for_stmt) => write!(f, "{for_stmt}"),
+            Self::WhileStmt(w) => write!(f, "{w}"),
+            Self::UseStmt(u) => write!(f, "{u}"),
+            Self::UsePathSegment(u) => write!(f, "{u}"),
+            Self::Block(b) => write!(f, "{b}"),
+            Self::TyRef(t) => write!(f, "{t}"),
+            Self::TyGenericArg(t) => write!(f, "{t}"),
+            Self::AssignmentStmt(a) => write!(f, "{a}"),
+            Self::StrLiteral(s) => write!(f, "{s}"),
+            Self::StrLiteralDisplayFragment(s) => write!(f, "{s}"),
+            Self::StrLiteralDebugFragment(s) => write!(f, "{s}"),
             Self::__Allocated(_) => write!(f, "<Allocated>"),
         }
     }

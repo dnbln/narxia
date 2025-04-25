@@ -379,9 +379,9 @@ impl fmt::Display for ParseEvent {
             ParseEvent::Token { trepr } => {
                 write!(f, "Token({:?}, @{})", trepr.kind(), trepr.span())
             }
-            ParseEvent::Error(error) => write!(f, "Error({:?})", error),
-            ParseEvent::End { kind } => write!(f, "End({:?})", kind),
-            ParseEvent::Precede { idx } => write!(f, "Precede({})", idx),
+            ParseEvent::Error(error) => write!(f, "Error({error:?})"),
+            ParseEvent::End { kind } => write!(f, "End({kind:?})"),
+            ParseEvent::Precede { idx } => write!(f, "Precede({idx})"),
             ParseEvent::Tombstone => write!(f, "Tombstone"),
         }
     }

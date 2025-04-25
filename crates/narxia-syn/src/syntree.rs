@@ -391,7 +391,7 @@ pub trait TreeNode: Sized {
     /// ```
     #[expect(unsafe_code)]
     unsafe fn cast_from_node_raw(n: Node) -> Self; // Invariant: The following must hold before calling this.
-                                                   // Self::can_cast_from_syntax_kind(n.kind()) == true
+    // Self::can_cast_from_syntax_kind(n.kind()) == true
     fn can_cast_from_syntax_kind(kind: SyntaxKind) -> bool;
     fn get_syntax_kind(&self) -> SyntaxKind {
         self.get_node().kind()

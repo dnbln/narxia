@@ -6,7 +6,7 @@ resolver = "2"
 [workspace.package]
 version = "0.0.0"
 publish = false
-edition = "2021"
+edition = "2024"
 homepage = "https://dnbln.dev/narxia"
 repository = "https://github.com/dnbln/narxia"
 description = "A programming language for distributed systems."

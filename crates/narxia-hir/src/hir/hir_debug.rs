@@ -98,7 +98,7 @@ impl fmt::Debug for HirId {
         #[cfg(hir_id_deeptree)]
         match r {
             Some((elem,)) => {
-                write!(f, "{}", elem)?;
+                write!(f, "{elem}")?;
             }
             None => {
                 #[cfg(hir_id_span)]
@@ -654,7 +654,7 @@ fn display_ty(f: &mut fmt::Formatter, ty: &TyRef, hdc: HirDisplayContext) -> fmt
             }
         }
         TyRefKind::Primitive(primitive) => {
-            write!(f, "{}", primitive)?;
+            write!(f, "{primitive}")?;
         }
         TyRefKind::Fn(fn_ty) => {
             write!(f, "{}{}", "fn".keyword(), "(".punctuation())?;
@@ -1014,7 +1014,7 @@ fn display_expr_atom(
             display_loop_expr(f, loop_expr, hdc)?;
         }
         ExprAtomKind::Num(num) => {
-            write!(f, "{}", num)?;
+            write!(f, "{num}")?;
         }
         ExprAtomKind::Str(str_lit) => {
             display_str_literal(f, str_lit, hdc)?;

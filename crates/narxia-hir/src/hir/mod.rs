@@ -4,9 +4,9 @@
 
 use std::fmt;
 
+use crate::DUMMY_SP;
 use crate::HirId;
 use crate::HirSpan;
-use crate::DUMMY_SP;
 
 mod hir_debug;
 

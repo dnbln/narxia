@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use std::sync::Weak;
 
-use prodash::tree::root::Options;
 use prodash::tree::Item;
 use prodash::tree::Root as Tree;
+use prodash::tree::root::Options;
 
 use crate::LLVMManager;
 use crate::NexusOutputGroups;
