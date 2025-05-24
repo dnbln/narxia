@@ -36,8 +36,8 @@ export function ScrollyCoding(props: unknown) {
             <div className="w-[40vw] max-w-xl bg-zinc-900">
                 <div className="top-16 sticky overflow-auto">
                     <Selection
-                        from={steps.map((step, i) => (
-                            <Code codeblock={step.code} key={i}/>
+                        from={steps.map((step) => (
+                            <Code codeblock={step.code} key={0}/>
                         ))}
                     />
                 </div>
