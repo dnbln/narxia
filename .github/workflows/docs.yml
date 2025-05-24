@@ -1,8 +1,9 @@
 name: Build and Deploy Documentation
 
 on:
-  push:
-    branches: ["nightly"]
+  schedule:
+    - cron: '0 0 * * *'  # Every day at midnight UTC
+  workflow_dispatch:
 
 jobs:
   # Build job
