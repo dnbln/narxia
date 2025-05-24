@@ -1,5 +1,7 @@
 import { Footer, Layout, Navbar } from 'nextra-theme-docs'
-import { Banner, Head } from 'nextra/components'
+import {
+    // Banner,
+    Head } from 'nextra/components'
 import { getPageMap } from 'nextra/page-map'
 import 'nextra-theme-docs/style.css'
 import {ReactNode} from "react";
@@ -11,7 +13,7 @@ export const metadata = {
     // For more information on metadata API, see: https://nextjs.org/docs/app/building-your-application/optimizing/metadata
 }
 
-const banner = <Banner storageKey="some-key">Nextra 4.0 is released 🎉</Banner>
+// const banner = <Banner storageKey="some-key">Nextra 4.0 is released 🎉</Banner>
 const navbar = (
     <Navbar
         logo={<b className={'flex flex-row justify-center align-middle'} style={{alignItems: 'center'}}><img src={narxiaLogo.src} height='64px' width='64px' alt='narxia logo'/> The Narxia Programming Language</b>}

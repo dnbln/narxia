@@ -75,6 +75,9 @@ pub enum BuildSysCmd {
         #[clap(long)]
         check: bool,
     },
+
+    #[clap(name = "build-docs")]
+    BuildDocs,
 }
 
 impl BuildSysCmd {
@@ -127,6 +130,11 @@ impl BuildSysCmd {
             Self::Format { check } => {
                 let mut item = cx.new_child("Format");
                 cargo_interface::Format::new().check(check).run(&mut item)?;
+            }
+
+            Self::BuildDocs => {
+                let mut item = cx.new_child("Build docs");
+                build_docs(&mut item)?;
             }
         }
 
@@ -1284,4 +1292,33 @@ impl fmt::Display for LLVMLinkBehavior {
             Self::ForceDynamic => write!(f, "force-dynamic"),
         }
     }
+}
+
+fn build_docs(item: &mut Item) -> NexusR {
+    item.init(None, None);
+    let mut cmd = process::Command::new("npm");
+    cmd.arg("run")
+        .arg("build")
+        .current_dir(ws_root().join("doc/docs"))
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped());
+
+    let out = cmd.output().into_diagnostic()?;
+    if !out.status.success() {
+        item.fail("Failed to build docs");
+        io::stderr()
+            .write_all(&out.stderr)
+            .into_diagnostic()?;
+
+        io::stdout()
+            .write_all(&out.stdout)
+            .into_diagnostic()?;
+
+        bail!("Failed to build docs");
+    }
+
+    item.done("Built docs");
+
+    Ok(())
 }
