@@ -1,3 +1,3 @@
 <UnderConstruction/>
 
-The syntax tree (or syntree for short), is a tree structure representing the source code. This particular representation is backed by [`rowan`](https://crates.io/crates/rowan) trees. Given that `rowan` trees are untyped, the `narxia_syn::syntree` module defines a typed interface over the `rowan`  Nodes. This representation is quickly turned into [[hir|High-level Intermediate Representation]] during [[hir#HIR lowering|HIR lowering]].
+The syntax tree (or syntree for short), is a tree structure representing the source code. This particular representation is backed by [`rowan`](https://crates.io/crates/rowan) trees. Given that `rowan` trees are untyped, the `narxia_syn::syntree` module defines a typed interface over the `rowan`  Nodes. This representation is quickly turned into [High-level Intermediate Representation](hir.mdx) during [HIR lowering](hir.mdx#hir-lowering).

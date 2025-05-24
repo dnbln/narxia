@@ -1,17 +1,17 @@
 <UnderConstruction/>
 
-The High-level Intermediate Representation (or HIR for short) is one of the main source code representations used in the compiler. It is obtained by [[#HIR lowering|lowering]] the syntax trees ([[syntree|Syntree nodes]]) to specific HIR structures.
+The High-level Intermediate Representation (or HIR for short) is one of the main source code representations used in the compiler. It is obtained by [lowering](#hir-lowering) the syntax trees ([Syntree nodes](syntree.mdx)) to specific HIR structures.
 
-Most of the HIR structures do recursion by indirection through the [[#HirMap]]. In particular, what they store are `HirId` of the inner structures, and to access their data, a reference to the [[#HirMap]] is needed.
+Most of the HIR structures do recursion by indirection through the [HirMap](#hirmap). In particular, what they store are `HirId` of the inner structures, and to access their data, a reference to the [HirMap](#hirmap) is needed.
 
 
-# HirMap
+## HirMap
 
 The `narxia_hir::hir_map::HirMap` structure holds all the `Hir` structures. `HirId`s can be used to get references to the elements inside the `HirMap`, like so: `hir_map.get(hir_id)`.
 
 There are some specific `HirId` newtypes defined and used throughout the HIR, which have an added guarantee that when you try to get the elements from the `HirMap` using them, the result is certain to be of a given type. To do that, there are specific `hir_map.get_<type>(id)` functions defined on the `HirMap`.
 
-# Visitors
+## Visitors
 
 Visitors allow simple and compact ways to have access and do some computations on all nodes of a specific type in the HIR.
 
@@ -37,6 +37,6 @@ The `narxia_hir::visitor::HirVisitor` trait defines a HIR visitor. It has only 2
 >}
 
 
-# HIR lowering
+## HIR lowering
 
 HIR lowering happens shortly after a successful parse. It represents the process of taking a [[syntree|Syntree node]] and outputting a corresponding HIR node. It is all done in the `narxia_hir::lower` module.

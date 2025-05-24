@@ -3,3 +3,4 @@
 /.idea
 /out.ll
 .DS_Store
+/.direnv

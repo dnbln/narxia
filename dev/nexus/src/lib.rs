@@ -803,7 +803,7 @@ fn build_llvm(
     let version = LLVMVersion {
         major: 20,
         minor: 1,
-        patch: 2,
+        patch: 5,
         extra: None,
     };
     if llvm_manager.check_install(&version) {
