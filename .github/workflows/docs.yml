@@ -5,6 +5,13 @@ on:
     - cron: '0 0 * * *'  # Every day at midnight UTC
   workflow_dispatch:
 
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+
 jobs:
   # Build job
   build:

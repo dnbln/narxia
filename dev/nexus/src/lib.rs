@@ -1294,7 +1294,37 @@ impl fmt::Display for LLVMLinkBehavior {
     }
 }
 
+fn install_docs_dependencies(item: &mut Item) -> NexusR {
+    item.init(None, None);
+    let mut cmd = process::Command::new("npm");
+    cmd.arg("install")
+        .current_dir(ws_root().join("doc/docs"))
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped());
+
+    let out = cmd.output().into_diagnostic()?;
+    if !out.status.success() {
+        item.fail("Failed to install docs dependencies");
+        io::stderr()
+            .write_all(&out.stderr)
+            .into_diagnostic()?;
+
+        io::stdout()
+            .write_all(&out.stdout)
+            .into_diagnostic()?;
+
+        bail!("Failed to install docs dependencies");
+    }
+
+    item.done("Installed docs dependencies");
+
+    Ok(())
+}
+
 fn build_docs(item: &mut Item) -> NexusR {
+    install_docs_dependencies(&mut item.add_child("Install deps"))?;
+
     item.init(None, None);
     let mut cmd = process::Command::new("npm");
     cmd.arg("run")
