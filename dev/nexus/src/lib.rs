@@ -77,7 +77,10 @@ pub enum BuildSysCmd {
     },
 
     #[clap(name = "build-docs")]
-    BuildDocs,
+    BuildDocs {
+        #[clap(long, default_value = "nrx.dnbln.dev")]
+        cname: String,
+    },
 }
 
 impl BuildSysCmd {
@@ -132,9 +135,9 @@ impl BuildSysCmd {
                 cargo_interface::Format::new().check(check).run(&mut item)?;
             }
 
-            Self::BuildDocs => {
+            Self::BuildDocs { cname } => {
                 let mut item = cx.new_child("Build docs");
-                build_docs(&mut item)?;
+                build_docs(&mut item, &cname)?;
             }
         }
 
@@ -1294,11 +1297,15 @@ impl fmt::Display for LLVMLinkBehavior {
     }
 }
 
+fn docs_dir() -> PathBuf {
+    ws_root().join("doc/docs")
+}
+
 fn install_docs_dependencies(item: &mut Item) -> NexusR {
     item.init(None, None);
     let mut cmd = process::Command::new("npm");
     cmd.arg("install")
-        .current_dir(ws_root().join("doc/docs"))
+        .current_dir(docs_dir())
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped());
@@ -1306,13 +1313,9 @@ fn install_docs_dependencies(item: &mut Item) -> NexusR {
     let out = cmd.output().into_diagnostic()?;
     if !out.status.success() {
         item.fail("Failed to install docs dependencies");
-        io::stderr()
-            .write_all(&out.stderr)
-            .into_diagnostic()?;
+        io::stderr().write_all(&out.stderr).into_diagnostic()?;
 
-        io::stdout()
-            .write_all(&out.stdout)
-            .into_diagnostic()?;
+        io::stdout().write_all(&out.stdout).into_diagnostic()?;
 
         bail!("Failed to install docs dependencies");
     }
@@ -1322,14 +1325,14 @@ fn install_docs_dependencies(item: &mut Item) -> NexusR {
     Ok(())
 }
 
-fn build_docs(item: &mut Item) -> NexusR {
+fn build_docs(item: &mut Item, cname: &str) -> NexusR {
     install_docs_dependencies(&mut item.add_child("Install deps"))?;
 
     item.init(None, None);
     let mut cmd = process::Command::new("npm");
     cmd.arg("run")
         .arg("build")
-        .current_dir(ws_root().join("doc/docs"))
+        .current_dir(docs_dir())
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::piped())
         .stderr(process::Stdio::piped());
@@ -1337,16 +1340,14 @@ fn build_docs(item: &mut Item) -> NexusR {
     let out = cmd.output().into_diagnostic()?;
     if !out.status.success() {
         item.fail("Failed to build docs");
-        io::stderr()
-            .write_all(&out.stderr)
-            .into_diagnostic()?;
+        io::stderr().write_all(&out.stderr).into_diagnostic()?;
 
-        io::stdout()
-            .write_all(&out.stdout)
-            .into_diagnostic()?;
+        io::stdout().write_all(&out.stdout).into_diagnostic()?;
 
         bail!("Failed to build docs");
     }
+
+    std::fs::write(docs_dir().join("out/CNAME"), cname).into_diagnostic()?;
 
     item.done("Built docs");
 
