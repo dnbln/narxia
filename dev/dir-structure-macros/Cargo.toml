@@ -1,7 +1,7 @@
 [package]
 name = "dir-structure-macros"
 version = "0.1.5"
-edition = "2021"
+edition.workspace = true
 license = "MIT OR Apache-2.0"
 description = "dir-structure: proc-macros"
 repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure-macros"

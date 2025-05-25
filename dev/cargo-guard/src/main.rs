@@ -1,3 +1,5 @@
+use std::process;
+
 fn main() {
     eprintln!(
         r#"
@@ -10,5 +12,5 @@ custom cargo driver called nexus. Run
 "#
     );
 
-    std::process::exit(1);
+    process::exit(1);
 }
