@@ -20,13 +20,13 @@ It also supports specific lexer modes depending on where we are in the source co
 
 ### Text token source
 
-The text token source, provided in `narxia_syn::token_source::text_ts::TextTokenSource` takes in a `&str` and provides an implementation of the [[#Token source|token source trait]] on this `&str` text, parsing individual tokens.
+The text token source, provided in `narxia_syn::token_source::text_ts::TextTokenSource` takes in a `&str` and provides an implementation of the [token source trait](#token-source) on this `&str` text, parsing individual tokens.
 
 ## Parser
 
-The parser itself is a concrete type: the `narxia_syn::parser::Parser`. It takes an input [[#Token source|TokenSource]] and outputs events to a [[#Tree builder|TreeBuilder]].
+The parser itself is a concrete type: the `narxia_syn::parser::Parser`. It takes an input [`TokenSource`](#token-source) and outputs events to a [`TreeBuilder`](#tree-builder).
 
-Changing the parser typically involves adding some new parser functions, which can be done through the [[#parse_fn_decl]] proc macro.
+Changing the parser typically involves adding some new parser functions, which can be done through the [`parse_fn_decl`](#parse_fn_decl) proc macro.
 
 ### parse_fn_decl
 
@@ -48,32 +48,51 @@ parse-instruction ::= instr-call
 			| instr-expect-token
 			| instr-extra
 
-instr-call ::= "$" (rust function call expression) // call the given function
-instr-expect-token ::= "$!" "[" token "]" // expect, and consume the token in the token source
+// call the given function
+instr-call ::= "$" (rust function call expression)
+
+
+// expect, and consume the token in the token source
+instr-expect-token ::= "$!" "[" token "]"
 token ::= (any token, goes into the T![] macro)
 name ::= (rust-ident)
 instr-extra ::= "$/" instr-extra-extra
 
 instr-extra-extra ::=
-	"ws" ":" "wc" | // skip whitespace and comments, stop at newline
-	"ws" ":" "wcn" | // skip whitespace, comments, and newlines
-	"match" "{" match-arm* match-wildcard-arm? "}" | // match on the kind of token we have
-	"state" ":" name | // save the state into a variable caled name
-	"restore_state" ":" name | // restores the state from a variable called name
-	"if" if-condition "{" parse-instructions "}" // sequencially attempt to match the tokens, executing the first branch that matches
+	// skip whitespace and comments, stop at newline
+	"ws" ":" "wc" |
+	// skip whitespace, comments, and newlines
+	"ws" ":" "wcn" |
+	// match on the kind of token we have
+	"match" "{" match-arm* match-wildcard-arm? "}" |
+	// save the state into a variable caled name
+	"state" ":" name |
+	// restores the state from a variable called name
+	"restore_state" ":" name |
+	// sequencially attempt to match the tokens,
+	// executing the first branch that matches
+	"if" if-condition "{" parse-instructions "}"
 	("$/" "else" "if" if-condition "{" parse-instructions "}")*
 	("$/" "else" "{" parse-instructions "}")?
 
-match-arm ::= match-selector* match-action // if any of the selectors matches, run the action, otherwise attempt to match the next arm
-match-wildcard-arm ::= "_" "=>" {parse-instructions} // catch all. If not supplied, then an err_unexpected is generated
+// if any of the selectors matches, run the action,
+// otherwise attempt to match the next arm
+match-arm ::= match-selector* match-action
+// catch all. If not supplied, then an err_unexpected is generated
+match-wildcard-arm ::= "_" "=>" {parse-instructions}
 
 match-selector = "[" token "]"
-match-action = "!" // consume the token, and do nothing else
-		| "=>" { parse-instructions } // run the set of parse-instructions
+match-action =
+		// consume the token, and do nothing else
+		"!" |
+		// run the set of parse-instructions
+		"=>" { parse-instructions }
 
 if-condition ::=
-	"at" "[" token "]" // parser is at token kind T![token]
-	| "||" "[" (if-condition ",")* if-condition? "]" // any of the given conditions
+	// parser is at token kind T![token]
+	"at" "[" token "]" |
+	// any of the given conditions
+ 	"||" "[" (if-condition ",")* if-condition? "]"
 
 ```
 
@@ -83,7 +102,7 @@ Those cover the basics of the syntax. You can always take a look over the parser
 
 ## Parser events
 
-The parser writes individual parse events into an internal "buffer," and after its done parsing everything from the input [[#Token source|token source]], it has a `finish()` function that takes in a [[#Tree builder|narxia_syn::parser::parse_event_handler::TreeBuilder]], and it "flushes" the buffer by calling the functions of that `TreeBuilder`. It also provides a `finish_to_tree()` function that outputs a `(narxia_syn::syntree::GreenTree, Vec<narxia_syn::parse_error::ParseError>)`, which as the types might imply, is the parsed tree and the corresponding list of `ParseError`s that happened during parsing. 
+The parser writes individual parse events into an internal "buffer," and after its done parsing everything from the input [token source](#token-source), it has a `finish()` function that takes in a [`narxia_syn::parser::parse_event_handler::TreeBuilder`](#tree-builder), and it "flushes" the buffer by calling the functions of that `TreeBuilder`. It also provides a `finish_to_tree()` function that outputs a `(narxia_syn::syntree::GreenTree, Vec<narxia_syn::parse_error::ParseError>)`, which as the types might imply, is the parsed tree and the corresponding list of `ParseError`s that happened during parsing. 
 
 ## Tree builder
 
