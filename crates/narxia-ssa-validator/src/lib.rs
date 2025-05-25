@@ -125,22 +125,19 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
             local_ref,
             kind: EndInstrKind::Return(v) | EndInstrKind::ConditionalBranch(v, ..),
         }) = &block.end
+            && let Value::Local(l) = v
         {
-            if let Value::Local(l) = v {
-                if !lref_declarations.contains_key(l) {
-                    validation_errors.push(ValidationError::UndeclaredLocalRef(
-                        *l, block.id, *local_ref,
-                    ));
-                } else if lref_declarations[l] != block.id {
-                    validation_errors.push(
-                        ValidationError::LocalRefDeclaredInBlockButUsedInAnother(
-                            *l,
-                            lref_declarations[l],
-                            block.id,
-                            *local_ref,
-                        ),
-                    );
-                }
+            if !lref_declarations.contains_key(l) {
+                validation_errors.push(ValidationError::UndeclaredLocalRef(
+                    *l, block.id, *local_ref,
+                ));
+            } else if lref_declarations[l] != block.id {
+                validation_errors.push(ValidationError::LocalRefDeclaredInBlockButUsedInAnother(
+                    *l,
+                    lref_declarations[l],
+                    block.id,
+                    *local_ref,
+                ));
             }
         }
     }

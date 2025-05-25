@@ -24,6 +24,7 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
+use liblzma::read;
 use miette::IntoDiagnostic;
 use miette::bail;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
@@ -37,7 +38,6 @@ use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
 use reqwest::blocking;
-use xz::read;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -429,17 +429,17 @@ impl DownloadAndDecompressTarXz {
             return Ok(());
         }
 
-        if let Some(p) = self.download_to.as_ref() {
-            if p.exists() {
-                self.item.done("Already downloaded");
-                DecompressTarXz {
-                    item: self.item.add_child("Decompress"),
-                    tar_xz: p.clone(),
-                    destination_path: self.destination_path.clone(),
-                }
-                .run()?;
-                return Ok(());
+        if let Some(p) = self.download_to.as_ref()
+            && p.exists()
+        {
+            self.item.done("Already downloaded");
+            DecompressTarXz {
+                item: self.item.add_child("Decompress"),
+                tar_xz: p.clone(),
+                destination_path: self.destination_path.clone(),
             }
+            .run()?;
+            return Ok(());
         }
 
         let mut download_item = self.item.add_child("Download");
@@ -610,16 +610,16 @@ impl LLVMManager {
         let download_path = self.download_path(version);
         let src_path = self.src_path(version);
 
-        if let Some(src_parent) = src_path.parent() {
-            if !src_parent.exists() {
-                fs::create_dir_all(src_parent).into_diagnostic()?;
-            }
+        if let Some(src_parent) = src_path.parent()
+            && !src_parent.exists()
+        {
+            fs::create_dir_all(src_parent).into_diagnostic()?;
         }
 
-        if let Some(download_parent) = download_path.parent() {
-            if !download_parent.exists() {
-                fs::create_dir_all(download_parent).into_diagnostic()?;
-            }
+        if let Some(download_parent) = download_path.parent()
+            && !download_parent.exists()
+        {
+            fs::create_dir_all(download_parent).into_diagnostic()?;
         }
 
         let llvm_src_tar = format!(
@@ -1347,7 +1347,7 @@ fn build_docs(item: &mut Item, cname: &str) -> NexusR {
         bail!("Failed to build docs");
     }
 
-    std::fs::write(docs_dir().join("out/CNAME"), cname).into_diagnostic()?;
+    fs::write(docs_dir().join("out/CNAME"), cname).into_diagnostic()?;
 
     item.done("Built docs");
 

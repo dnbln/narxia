@@ -206,11 +206,11 @@ where
         let mut writer = io::BufWriter::with_capacity(4096, w);
 
         let print_extra = self.format_event_data(&mut writer, event)?;
-        if print_extra.0 {
-            if let Some(scope) = ctx.event_scope(event) {
-                for span in scope {
-                    self.format_span_line(&mut writer, span)?;
-                }
+        if print_extra.0
+            && let Some(scope) = ctx.event_scope(event)
+        {
+            for span in scope {
+                self.format_span_line(&mut writer, span)?;
             }
         }
 

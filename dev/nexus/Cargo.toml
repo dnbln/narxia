@@ -24,7 +24,7 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tar.workspace = true
-xz.workspace = true
+liblzma.workspace = true
 zip.workspace = true
 
 narxia-log.workspace = true
