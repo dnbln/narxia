@@ -144,7 +144,7 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
 }
 
 /// Checks that all phis in the function are valid wrt. their predecessor links.
-/// 
+///
 /// Examples of invalid phis:
 /// - Mulitple phi links to the same predecessor block.
 /// - Missing phi links to predecessor blocks.

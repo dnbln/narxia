@@ -5,12 +5,12 @@ export default function HomePage() {
     <main className="flex flex-1 flex-col justify-center text-center">
       <h1 className="mb-4 text-2xl font-bold">Hello World</h1>
       <p className="text-fd-muted-foreground">
-        You can open{' '}
+        You can open the{' '}
         <Link
-          href="/docs"
+          href="/docs/user/user-intro"
           className="text-fd-foreground font-semibold underline"
         >
-          /docs
+          User documentation
         </Link>{' '}
         and see the documentation.
       </p>

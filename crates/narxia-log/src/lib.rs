@@ -1,15 +1,15 @@
 pub use tracing::Level;
 pub use tracing::debug;
-pub use tracing::error;
-pub use tracing::info;
-pub use tracing::span;
-pub use tracing::trace_span;
 pub use tracing::debug_span;
-pub use tracing::info_span;
-pub use tracing::warn_span;
+pub use tracing::error;
 pub use tracing::error_span;
+pub use tracing::info;
+pub use tracing::info_span;
+pub use tracing::span;
 pub use tracing::trace;
+pub use tracing::trace_span;
 pub use tracing::warn;
+pub use tracing::warn_span;
 
 #[macro_export]
 macro_rules! d {

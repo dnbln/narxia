@@ -388,7 +388,7 @@ fn main() -> miette::Result<()> {
             let mut cmd = <NarxiaDriverCommand as clap::CommandFactory>::command();
             generate(shell, &mut cmd, env!("CARGO_BIN_NAME"), &mut io::stdout());
         }
-        NarxiaDriverCommand::ManGen {output} => {
+        NarxiaDriverCommand::ManGen { output } => {
             narxia_log::i!("ManGen command: {output:?}");
 
             let cmd = <NarxiaDriverCommand as clap::CommandFactory>::command();
