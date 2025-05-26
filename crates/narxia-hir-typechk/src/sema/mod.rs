@@ -377,8 +377,7 @@ pub fn resolve_work(
     mod_id: hir::ModId,
     analysis_results: &SemanticAnalysisResult,
 ) {
-    let span = narxia_log::span!(narxia_log::Level::INFO, "resolve_work");
-    let _enter = span.enter();
+    let span = narxia_log::einfo_span!("resolve_work");
     let hir_map = tcx.hir_map();
 
     let mut work_queue = ResolveWorkQueue {

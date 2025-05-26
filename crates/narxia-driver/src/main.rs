@@ -4,6 +4,9 @@ use std::io;
 use std::path::PathBuf;
 
 use clap::Parser;
+use clap_complete::Shell;
+use clap_complete::ValueHint;
+use clap_complete::generate;
 use miette::IntoDiagnostic;
 use narxia_codegen::CodegenBackend;
 use narxia_codegen::ir;
@@ -15,7 +18,7 @@ use narxia_log::info;
 
 /// Compiler for narxia.
 #[derive(Parser, Debug)]
-#[command(author, version)]
+#[command(name = "nrx", author, version)]
 enum NarxiaDriverCommand {
     /// Parse the given file.
     ///
@@ -35,35 +38,49 @@ enum NarxiaDriverCommand {
     Codegen(NarxiaDriverCodegenCommand),
     #[clap(name = "ssa")]
     Ssa(NarxiaDriverSsaCommand),
+
+    #[clap(name = "comp")]
+    Comp { shell: Shell },
+    #[clap(name = "man-gen")]
+    ManGen {
+        #[clap(value_hint = ValueHint::DirPath)]
+        output: PathBuf,
+    },
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverParseCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverDisplayHirCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverDisplayHirDebugCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverHiriCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverSemaAnalysisCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
 }
 
 #[derive(Parser, Debug)]
 pub struct NarxiaDriverSsaCommand {
+    #[clap(value_hint = ValueHint::FilePath)]
     file: PathBuf,
     #[clap(long)]
     validate: bool,
@@ -108,7 +125,7 @@ fn main() -> miette::Result<()> {
 
     let tcx = ctx.db.get_global_ty_ctxt().make_ty_ctxt();
 
-    let _span = narxia_log::span!(narxia_log::Level::INFO, "main").entered();
+    let _span = narxia_log::einfo_span!("main");
 
     let cmd = NarxiaDriverCommand::parse();
     match cmd {
@@ -364,6 +381,19 @@ fn main() -> miette::Result<()> {
 
                 narxia_ssa_validator::present_validation_errors(&module, &result);
             }
+        }
+        NarxiaDriverCommand::Comp { shell } => {
+            narxia_log::i!("Comp command: {shell:?}");
+
+            let mut cmd = <NarxiaDriverCommand as clap::CommandFactory>::command();
+            generate(shell, &mut cmd, env!("CARGO_BIN_NAME"), &mut io::stdout());
+        }
+        NarxiaDriverCommand::ManGen {output} => {
+            narxia_log::i!("ManGen command: {output:?}");
+
+            let cmd = <NarxiaDriverCommand as clap::CommandFactory>::command();
+
+            clap_mangen::generate_to(cmd, &output).into_diagnostic()?;
         }
     }
 

@@ -1,12 +1,10 @@
 use miette::bail;
 use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
-use narxia_log::Level;
 use narxia_test_runner::ssa_tests;
 
 fn trial(mut test: SsaTestSingleFolder) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
-    let _span = narxia_log::span!(Level::INFO, "ssa_tests_validate");
-    let _span_guard = _span.enter();
+    let span = narxia_log::einfo_span!("ssa_tests_validate");
     let ssa_mod = ssa_tests::ssa(&mut test, &ctx)?;
 
     let result = narxia_ssa_validator::validate(&ssa_mod);

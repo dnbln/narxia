@@ -1,0 +1,13 @@
+{
+  "title": "Developer Documentation",
+  "description": "Developer guide to Narxia",
+  "root": true,
+  "pages": [
+    "dev",
+    "--- Syntax ---",
+    "parsing",
+    "syntree",
+    "hir",
+    "call-graph-analysis"
+  ]
+}

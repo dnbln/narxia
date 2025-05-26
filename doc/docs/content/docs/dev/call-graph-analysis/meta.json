@@ -1,0 +1,9 @@
+{
+  "title": "Call Graph Analysis",
+  "description": "Guide to call graph analysis in Narxia",
+  "pages": [
+    "problem-statement",
+    "heuristics",
+    "computing-the-execution-plan"
+  ]
+}

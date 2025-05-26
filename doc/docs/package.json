@@ -1,35 +1,37 @@
 {
   "name": "docs",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
     "build": "next build",
+    "dev": "next dev --turbo",
     "start": "next start",
-    "lint": "next lint",
-    "postbuild": "pagefind --site .next/server/app --output-path out/_pagefind"
+    "postinstall": "fumadocs-mdx"
   },
   "dependencies": {
-    "codehike": "^1.0.5",
-    "next": "^15.3.1",
-    "nextra": "^4.3.0-alpha.22",
-    "nextra-theme-docs": "^4.3.0-alpha.22",
+    "codehike": "^1.0.7",
+    "fumadocs-core": "15.4.1",
+    "fumadocs-mdx": "11.6.6",
+    "fumadocs-ui": "15.4.1",
+    "katex": "^0.16.22",
+    "lucide-react": "^0.511.0",
+    "next": "15.3.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^3.24.3"
+    "rehype-katex": "^7.0.1",
+    "remark-math": "^6.0.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@svgr/webpack": "^8.1.0",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.1",
-    "pagefind": "^1.3.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "^4.1.7",
+    "@types/mdx": "^2.0.13",
+    "@types/node": "22.15.21",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "eslint": "^8",
+    "eslint-config-next": "15.3.2",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5.8.3"
   }
 }

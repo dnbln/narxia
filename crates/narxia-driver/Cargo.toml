@@ -14,6 +14,10 @@ keywords.workspace = true
 [lints]
 workspace = true
 
+[[bin]]
+name = "nrx"
+path = "src/main.rs"
+
 [features]
 default = []
 llvm-force-static = ["narxia-codegen-llvm/llvm-force-static"]
@@ -21,6 +25,8 @@ llvm-prefer-dynamic = ["narxia-codegen-llvm/llvm-prefer-dynamic"]
 llvm-force-dynamic = ["narxia-codegen-llvm/llvm-force-dynamic"]
 
 [dependencies]
+clap_complete.workspace = true
+clap_mangen.workspace = true
 clap.workspace = true
 owo-colors.workspace = true
 miette.workspace = true

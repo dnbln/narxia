@@ -143,6 +143,11 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
     }
 }
 
+/// Checks that all phis in the function are valid wrt. their predecessor links.
+/// 
+/// Examples of invalid phis:
+/// - Mulitple phi links to the same predecessor block.
+/// - Missing phi links to predecessor blocks.
 fn check_phi_links(f: &Function, validation_errors: &mut Vec<ValidationError>) {
     for block in &f.blocks {
         for phi_link in block.phi.iter().chain(block.var_phi.iter()) {
@@ -170,6 +175,7 @@ fn check_phi_links(f: &Function, validation_errors: &mut Vec<ValidationError>) {
     }
 }
 
+/// Checks that all blocks in the function end with an end instruction.
 fn check_blocks_end(f: &Function, validation_error: &mut Vec<ValidationError>) {
     for block in &f.blocks {
         if block.end.is_none() {
@@ -178,6 +184,8 @@ fn check_blocks_end(f: &Function, validation_error: &mut Vec<ValidationError>) {
     }
 }
 
+/// Validates a single function by checking that all blocks end, that phi links are valid,
+/// and that local references are correctly linked.
 fn validate_function(f: &Function, validation_errors: &mut Vec<ValidationError>) {
     check_blocks_end(f, validation_errors);
     check_phi_links(f, validation_errors);

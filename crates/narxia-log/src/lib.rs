@@ -3,6 +3,11 @@ pub use tracing::debug;
 pub use tracing::error;
 pub use tracing::info;
 pub use tracing::span;
+pub use tracing::trace_span;
+pub use tracing::debug_span;
+pub use tracing::info_span;
+pub use tracing::warn_span;
+pub use tracing::error_span;
 pub use tracing::trace;
 pub use tracing::warn;
 
@@ -38,5 +43,40 @@ macro_rules! t {
 macro_rules! w {
     ($($args:tt)*) => {
         $crate::warn!(short = true, $($args)*)
+    };
+}
+
+#[macro_export]
+macro_rules! etrace_span {
+    ($($args:tt)*) => {
+        $crate::trace_span!($($args)*).entered()
+    };
+}
+
+#[macro_export]
+macro_rules! edebug_span {
+    ($($args:tt)*) => {
+        $crate::debug_span!($($args)*).entered()
+    };
+}
+
+#[macro_export]
+macro_rules! einfo_span {
+    ($($args:tt)*) => {
+        $crate::info_span!($($args)*).entered()
+    };
+}
+
+#[macro_export]
+macro_rules! ewarn_span {
+    ($($args:tt)*) => {
+        $crate::warn_span!($($args)*).entered()
+    };
+}
+
+#[macro_export]
+macro_rules! eerror_span {
+    ($($args:tt)*) => {
+        $crate::error_span!($($args)*).entered()
     };
 }

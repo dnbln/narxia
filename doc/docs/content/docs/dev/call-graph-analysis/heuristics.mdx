@@ -1,0 +1,24 @@
+---
+title: Heuristics
+---
+
+<UnderConstruction/>
+
+It is computationally unfeasible to try to find the global minimum, so we are going to be using a few heuristics here and there:
+
+## Heuristic 1:  Source-supplied function distribution rules
+<a name="distribution_local" ></a>
+### `#distribution_local`
+Certain functions can be manually annotated as `#distribution_local`. For example, very small and simple functions, basic utilities, and lots of functions that you would typically find in standard libraries of programming languages not intended for distributed computing. Consider for example Rust's `Option::map`. It makes no sense to try to put it on another node. What should happen instead in such cases is that it gets duplicated over all the nodes it is referenced in. This is what the `#distribution_local` attribute does. It tells the compiler that wherever this function is referenced, it should make a clone of it and put it on the same node as the function that is calling it.
+
+### `#distribution_loadbalanced`
+Other functions, namely those that are too heavy for a single node to carry out, can be distributed across multiple nodes, which are then put behind a load balancer. Depending on how many calls the function gets, it could use either a global load balancer, or a load balancer node dedicated specifically for this function.
+
+### The `NPin` trait
+Types implementing the `NPin` trait are types which are not allowed to cross a node boundary, and as such, all processing of values containing those types have to happen on a single node, from creation until destruction. The N in `NPin` stands for node.
+
+Examples of types include that deal with external libraries, file handles or network sockets on the specific node. The compiler treats all functions that have an `NPin` type in their signature as if they were flagged with [`#distribution_local`](#distribution_local).
+
+### The `GPin` trait
+Stands for Global Pin, and this trait has a stronger requirement than [The `NPin` trait](#the-npin-trait). Namely, it requires that the values of a certain type are all processed on a single node. That is different from the `NPin` trait, which allows multiple nodes to use the values of this type, so long as they do not cross a node boundary. In `GPin`'s case, all functions that deal with values of this type have to be partitioned to a **single** node.
+

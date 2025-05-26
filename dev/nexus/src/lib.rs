@@ -845,7 +845,7 @@ fn build_compiler(
 
     let output = cargo_interface::build()
         .packages(pkg_spec!("narxia-driver"))
-        .build_targets([BuildTarget::Bin("narxia-driver".to_owned())])
+        .build_targets([BuildTarget::Bin("nrx".to_owned())])
         .profile(profile.cargo_name())
         .sys_target(sys.clone())
         .env(llvm_k, llvm_v)
