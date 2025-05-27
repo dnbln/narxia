@@ -43,15 +43,8 @@ jobs:
       - name: Build tests
         run: cargo nexus build-sys build --targets tests
       - name: Test
-        run: cargo nexus test --no-fail-fast --dump-nextest-stderr-to nextest.stderr.log
-        env:
-          NEXTEST_LOG: 'debug'
+        run: cargo nexus test --no-fail-fast
         timeout-minutes: 3
-      - name: Dump nextest log
-        run: |
-          echo "Dumping nextest log"
-          cat nextest.stderr.log
-        if: always()
       - name: Format check
         run: cargo nexus build-sys fmt --check
       - name: Lint
