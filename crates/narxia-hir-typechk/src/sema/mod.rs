@@ -418,7 +418,7 @@ pub fn resolve_work(
         let current_length = work_queue.len();
 
         if current_length == prev_length {
-            panic!("Unresolvable state: {:?}", work_queue);
+            panic!("Unresolvable state: {work_queue:?}");
         }
 
         prev_length = current_length;
@@ -645,11 +645,7 @@ fn let_stmt_candidate_fit(hir_map: &HirMap, ident_hir_id: HirId, let_stmt_id: hi
     true
 }
 
-fn ancestors_contains(
-    s: HirId,
-    hir_map: &HirMap,
-    other: HirId,
-) -> bool {
+fn ancestors_contains(s: HirId, hir_map: &HirMap, other: HirId) -> bool {
     let mut current = s;
     while !current.is_orphan_parent() {
         if current == other {
