@@ -233,6 +233,7 @@ hir_visitor_hir_ids! {
     visit_stmt_id(hir::StmtId) -> get_stmt,
     visit_block_id(hir::BlockId) -> get_block,
     visit_fn_id(hir::FnId) -> get_fn,
+    visit_fn_param_id(hir::FnParamId) -> get_fn_param,
     visit_mod_id(hir::ModId) -> get_mod,
     visit_ty_ref_id(hir::TyRefId) -> get_ty_ref,
     visit_use_stmt_id(hir::UseStmtId) -> get_use_stmt,

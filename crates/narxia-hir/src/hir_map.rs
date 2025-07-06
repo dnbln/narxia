@@ -47,7 +47,7 @@ impl HirElem {
             HirElem::Item(item) => item.hir_id.hir_id(),
             HirElem::PatIdent(pat_ident) => pat_ident.hir_id.hir_id(),
             HirElem::Fn(fn_def) => fn_def.hir_id.hir_id(),
-            HirElem::FnParam(fn_param) => todo!(),
+            HirElem::FnParam(fn_param) => fn_param.hir_id.hir_id(),
             HirElem::FnRetTy(fn_ret_ty) => todo!(),
             HirElem::Expr(expr) => expr.hir_id.hir_id(),
             HirElem::ExprAtomIdent(expr_atom_ident) => expr_atom_ident.hir_id.hir_id(),
@@ -201,6 +201,13 @@ impl HirMap {
         match self.get(at.0) {
             HirElem::Fn(f) => f,
             x => panic!("Expected FnDef, found {x:?}"),
+        }
+    }
+
+    pub fn get_fn_param(&self, at: FnParamId) -> &FnParam {
+        match self.get(at.0) {
+            HirElem::FnParam(p) => p,
+            x => panic!("Expected FnParam, found {x:?}"),
         }
     }
 

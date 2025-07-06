@@ -9,7 +9,6 @@ pub mod parser_tests {
     use narxia_dir_structures::parser_tests::parser_tests_dir;
     use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
     use narxia_driver::DriverCtx;
-    use narxia_hir::hir_map;
     use narxia_hir_db::HirFile;
 
     pub(crate) fn do_lower_to_hir(
@@ -22,22 +21,7 @@ pub mod parser_tests {
         if !errors.is_empty() {
             bail!("Errors: {errors:?}");
         }
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(Some(file_map_entry));
-        let hir = narxia_hir_db::lower_file(&ctx.db, syn_file);
-        ctx.db
-            .get_global_ty_ctxt()
-            .hir_map_mut_ref()
-            .set_current_file(None);
-
-        let mod_id = hir.mod_def(&ctx.db);
-
-        hir_map::hir_map_update_parents_in_mod(
-            &mut ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
-            mod_id,
-        );
+        let hir = ctx.lower_file(file_map_entry, syn_file);
 
         Ok(hir)
     }
@@ -59,6 +43,56 @@ pub mod parser_tests {
 
     pub fn collect_parser_tests() -> miette::Result<ParserTestsFolder> {
         ParserTestsFolder::read(parser_tests_dir()).into_diagnostic()
+    }
+}
+
+pub mod name_resolution_tests {
+    use dir_structure::DirStructureItem;
+    use miette::IntoDiagnostic;
+    use narxia_data_structures::FxBTreeMap;
+    use narxia_dir_structures::name_resolution_tests::name_resolution_tests_dir;
+    use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
+    use narxia_driver::DriverCtx;
+    use narxia_hir::HirId;
+    use narxia_hir_typechk::def_id::DefId;
+    use narxia_hir_typechk::sema;
+    use narxia_hir_typechk::sema::SemanticAnalysisResult;
+
+    use crate::parser_tests::do_lower_to_hir;
+
+    dir_structure::dir_children_wrapper!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
+
+    pub fn name_resolution(
+        folder: &mut NameResolutionTestSingleFolder,
+        ctx: &DriverCtx,
+    ) -> miette::Result<(SemanticAnalysisResult, FxBTreeMap<HirId, DefId>)> {
+        let input = folder
+            .input
+            .perform_and_store_read()
+            .into_diagnostic()?
+            .clone();
+        let src_file = narxia_driver::load_file(ctx, folder.input_file_path(), &input.0);
+        let hir = do_lower_to_hir(src_file, ctx)?;
+
+        let mod_id = hir.mod_def(&ctx.db);
+
+        let tcx = ctx.db.get_global_ty_ctxt().make_ty_ctxt();
+        let hir_map = tcx.hir_map();
+
+        let analysis_results = sema::analyze_program_structure(tcx, mod_id);
+        sema::resolve_work(tcx, mod_id, &analysis_results);
+
+        Ok((
+            analysis_results,
+            ctx.db
+                .get_global_ty_ctxt()
+                .make_ty_ctxt()
+                .__get_name_resolutions(),
+        ))
+    }
+
+    pub fn collect_name_resolution_tests() -> miette::Result<NameResolutionTestsFolder> {
+        NameResolutionTestsFolder::read(name_resolution_tests_dir()).into_diagnostic()
     }
 }
 
@@ -141,6 +175,50 @@ macro_rules! test_main_parser_tests_foreach {
         }
 
         $crate::parser_test_trials!(__collect_trials, __trial);
+
+        fn main() -> miette::Result<()> {
+            let args = libtest_mimic::Arguments::from_args();
+            let trials = __collect_trials()?;
+            libtest_mimic::run(&args, trials).exit();
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! for_each_name_resolution_test {
+    (|$name:ident| { $($do:tt)* }) => {
+        for $name in $crate::name_resolution_tests::collect_name_resolution_tests()? {
+            $($do)*
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! name_resolution_tests_trials {
+    ($collector_fn:ident, $fn_to_call:expr) => {
+        fn $collector_fn() -> miette::Result<Vec<libtest_mimic::Trial>> {
+            let mut trials = Vec::new();
+
+            $crate::for_each_name_resolution_test! {
+                |test| {
+                    let name = test.file_name().clone().into_string().unwrap();
+                    let folder = test.value().clone();
+                    trials.push(libtest_mimic::Trial::test(name, move || $fn_to_call(folder)));
+                }
+            }
+
+            Ok(trials)
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! test_main_name_resolution_tests_foreach {
+    (|$name:ident| { $($do:tt)* }) => {
+        fn __trial($name: $crate::narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
+            {$($do)*}.map_err(libtest_mimic::Failed::from)
+        }
+        $crate::name_resolution_tests_trials!(__collect_trials, __trial);
 
         fn main() -> miette::Result<()> {
             let args = libtest_mimic::Arguments::from_args();

@@ -150,9 +150,15 @@ impl GlobalTyCtxt {
     fn dump_resolutions(&self) {
         use std::fmt::Write;
         let rf = self.inner.name_resolution.read().unwrap();
+        let defmap = self.inner.def_map.read().unwrap();
         let mut s = String::new();
         for (id, def_id) in rf.name_map.iter() {
-            writeln!(&mut s, "Resolved: {id:?} -> {def_id:?}").unwrap();
+            writeln!(
+                &mut s,
+                "Resolved: {id:?} -> {def_id:?} @ {:?}",
+                defmap.lookup_def_id(*def_id)
+            )
+            .unwrap();
         }
         narxia_log::info!("Name Resolutions:\n{s}");
     }
@@ -194,6 +200,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn dump_resolutions(self) {
         self.global_ctxt.dump_resolutions();
+    }
+
+    pub fn __get_name_resolutions(self) -> FxBTreeMap<HirId, DefId> {
+        self.global_ctxt
+            .inner
+            .name_resolution
+            .read()
+            .unwrap()
+            .name_map
+            .clone()
     }
 }
 

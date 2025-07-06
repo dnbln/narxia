@@ -323,9 +323,11 @@ pub struct GenericParamTyBounds {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnParamList {
     pub lparen: LParen,
-    pub params: Vec<FnParam>,
+    pub params: Vec<FnParamId>,
     pub rparen: RParen,
 }
+
+hir_id_newtype!(FnParamId, FnParam);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FnParam {
@@ -334,6 +336,7 @@ pub struct FnParam {
     pub colon: Colon,
     pub ty: TyRefId,
     pub default: Option<(Eq, ExprId)>,
+    pub hir_id: FnParamId,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

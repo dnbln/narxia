@@ -12,6 +12,7 @@ dir-structure.workspace = true
 miette.workspace = true
 similar.workspace = true
 
+narxia-data-structures.workspace = true
 narxia-dir-structures.workspace = true
 narxia-driver.workspace = true
 narxia-hir.workspace = true
@@ -59,6 +60,11 @@ harness = false
 [[test]]
 name = "no_allocated_and_unused_hirids_nxtimq"
 path = "tests/no_allocated_and_unused_hirids.rs"
+harness = false
+
+[[test]]
+name = "name_resolution_tests_nxtimq"
+path = "tests/name_resolution_tests.rs"
 harness = false
 
 [[test]]

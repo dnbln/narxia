@@ -46,6 +46,42 @@ pub mod parser_tests {
     }
 }
 
+pub mod name_resolution_tests {
+    use std::path::PathBuf;
+
+    use dir_structure::DeferredReadOrOwn;
+    use dir_structure::DirStructure;
+    use dir_structure::FileString;
+
+    use crate::ws_root;
+
+    pub const INPUT_FILE_NAME: &str = "input.nrx";
+    pub const OUTPUT_FILE_NAME: &str = "output.txt";
+
+    pub fn name_resolution_tests_dir() -> PathBuf {
+        ws_root().join("tests/name-resolution-tests")
+    }
+
+    #[derive(DirStructure, Clone)]
+    pub struct NameResolutionTestSingleFolder {
+        #[dir_structure(path = "input.nrx")]
+        pub input: DeferredReadOrOwn<FileString>,
+        #[dir_structure(path = "output.txt")]
+        pub output: Option<DeferredReadOrOwn<FileString>>,
+        pub self_path: PathBuf,
+    }
+
+    impl NameResolutionTestSingleFolder {
+        pub fn input_file_path(&self) -> PathBuf {
+            self.self_path.join(INPUT_FILE_NAME)
+        }
+
+        pub fn output_file_path(&self) -> PathBuf {
+            self.self_path.join(OUTPUT_FILE_NAME)
+        }
+    }
+}
+
 pub mod ssa_tests {
     use std::path::PathBuf;
 

@@ -1,0 +1,5 @@
+// test resolve-to-let-stmt-shadowing at crates/narxia-hir-typechk/src/sema/mod.rs
+let s = 1
+let s = 2
+println(s)
+fn println(s: str) {return}

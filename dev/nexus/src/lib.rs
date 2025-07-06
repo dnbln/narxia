@@ -30,6 +30,8 @@ use miette::bail;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
 use narxia_dir_structures::dir_structure::DirStructure;
 use narxia_dir_structures::dir_structure::FileString;
+use narxia_dir_structures::name_resolution_tests;
+use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
 use narxia_dir_structures::parser_tests;
 use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_dir_structures::ssa_tests;
@@ -58,6 +60,12 @@ pub enum BuildSysCmd {
     #[clap(alias = "cpt")]
     #[clap(alias = "ct-p")]
     CollectParserTests,
+
+    /// Collect name resolution tests.
+    #[clap(name = "collect-name-resolution-tests")]
+    #[clap(alias = "ct-nr")]
+    CollectNameResolutionTests,
+
     /// Collect SSA tests.
     #[clap(name = "collect-ssa-tests")]
     #[clap(alias = "ct-ssa")]
@@ -97,6 +105,14 @@ impl BuildSysCmd {
                 collect_tests_from_source::<ParserTestSingleFolder>(
                     "crates/narxia-syn/src/**/*.rs",
                     "// parser-test:",
+                    &mut item,
+                )?;
+            }
+            Self::CollectNameResolutionTests => {
+                let mut item = cx.new_child("collect name resolution tests");
+                collect_tests_from_source::<NameResolutionTestSingleFolder>(
+                    "crates/narxia-hir-typechk/src/**/*.rs",
+                    "// name-resolution-test:",
                     &mut item,
                 )?;
             }
@@ -160,6 +176,20 @@ impl GenericTestDirType for ParserTestSingleFolder {
             input: DeferredReadOrOwn::Own(FileString(code)),
             output: None,
             self_path: parser_tests::parser_tests_dir().join(name),
+        }
+    }
+}
+
+impl GenericTestDirType for NameResolutionTestSingleFolder {
+    fn path_to_write_to(&self) -> &Path {
+        &self.self_path
+    }
+
+    fn from_name_and_code(name: &str, code: String) -> Self {
+        Self {
+            input: DeferredReadOrOwn::Own(FileString(code)),
+            output: None,
+            self_path: name_resolution_tests::name_resolution_tests_dir().join(name),
         }
     }
 }

@@ -67,7 +67,7 @@ pub fn init_panic_hook() {
     human_panic::setup_panic!(
         human_panic::Metadata::new(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
             .authors("Dinu Blanovschi <git@dnbln.dev>")
-            .homepage("https://dnbln.dev/narxia")
+            .homepage("https://nrx.dnbln.dev/")
             .support(
                 "- Open a support request via a GitHub issue to https://github.com/dnbln/narxia"
             )

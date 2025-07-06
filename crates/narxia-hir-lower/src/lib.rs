@@ -525,7 +525,8 @@ fn lower_fn_def_params(
     }
 }
 
-fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnParam) -> FnParam {
+fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnParam) -> FnParamId {
+    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_param.span());
     let pat = lower_pat(hir_lower_ctxt, &fn_param.get_fn_param_name().get_pat());
     let colon = Colon::from_token(&fn_param.get_colon().unwrap());
     let ty = lower_ty_ref(
@@ -538,13 +539,17 @@ fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnP
             lower_expr_node(hir_lower_ctxt, &e.get_expr_node().unwrap()),
         )
     });
-    FnParam {
-        pat,
-        colon,
-        ty,
-        default,
-        param_span: HirSpan::of_node(fn_param),
-    }
+    hir_lower_ctxt.push_ref_at_allocation(
+        hir_id,
+        HirElem::FnParam(FnParam {
+            pat,
+            colon,
+            ty,
+            default,
+            param_span: HirSpan::of_node(fn_param),
+            hir_id,
+        }),
+    )
 }
 
 fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId {

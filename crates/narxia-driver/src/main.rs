@@ -12,7 +12,6 @@ use narxia_codegen::CodegenBackend;
 use narxia_codegen::ir;
 use narxia_driver::HirDbg;
 use narxia_driver::ctxt::DriverCtx;
-use narxia_hir::hir_map;
 use narxia_hir_typechk::sema;
 use narxia_log::info;
 
@@ -150,15 +149,7 @@ fn main() -> miette::Result<()> {
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
+            let hir = ctx.lower_file(file_map_entry, tree);
 
             let hir_mod = hir.mod_def(&ctx.db);
             let hir_map = tcx.hir_map();
@@ -175,15 +166,7 @@ fn main() -> miette::Result<()> {
             ctx.trace_file(file);
 
             let tree = narxia_driver::parse_file_and_assert_no_errors(&ctx, file);
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
+            let hir = ctx.lower_file(file_map_entry, tree);
 
             println!("{:?}", hir.mod_def(&ctx.db).hir_dbg(&ctx));
         }
@@ -201,17 +184,8 @@ fn main() -> miette::Result<()> {
 
             narxia_log::i!("Parsed file");
 
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            let hir = ctx.lower_file(file_map_entry, tree);
             narxia_log::i!("Lowered file");
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
 
@@ -239,6 +213,8 @@ fn main() -> miette::Result<()> {
             }
 
             sema::resolve_work(tcx, hir_mod, &analysis_results);
+
+            tcx.dump_resolutions();
         }
 
         NarxiaDriverCommand::Hiri(hiri_cmd) => {
@@ -256,17 +232,8 @@ fn main() -> miette::Result<()> {
 
             narxia_log::i!("Parsed file");
 
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            let hir = ctx.lower_file(file_map_entry, tree);
             narxia_log::i!("Lowered file");
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
 
@@ -292,17 +259,8 @@ fn main() -> miette::Result<()> {
 
             narxia_log::i!("Parsed file");
 
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            let hir = ctx.lower_file(file_map_entry, tree);
             narxia_log::i!("Lowered file");
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
 
             let mut cg_tyctxt = narxia_codegen::TyCtxt::new();
 
@@ -340,24 +298,10 @@ fn main() -> miette::Result<()> {
 
             narxia_log::i!("Parsed file");
 
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(Some(file_map_entry));
-
-            let hir = narxia_hir_db::lower_file(&ctx.db, tree);
+            let hir = ctx.lower_file(file_map_entry, tree);
             narxia_log::i!("Lowered file");
-            ctx.db
-                .get_global_ty_ctxt()
-                .hir_map_mut_ref()
-                .set_current_file(None);
 
             let hir_mod = hir.mod_def(&ctx.db);
-
-            hir_map::hir_map_update_parents_in_mod(
-                &mut ctx.db.get_global_ty_ctxt().hir_map_mut_ref(),
-                hir_mod,
-            );
 
             info!("Hir map updated");
 

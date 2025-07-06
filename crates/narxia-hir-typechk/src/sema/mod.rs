@@ -377,7 +377,7 @@ pub fn resolve_work(
     mod_id: hir::ModId,
     analysis_results: &SemanticAnalysisResult,
 ) {
-    let span = narxia_log::einfo_span!("resolve_work");
+    let _span = narxia_log::einfo_span!("resolve_work");
     let hir_map = tcx.hir_map();
 
     let mut work_queue = ResolveWorkQueue {
@@ -418,7 +418,7 @@ pub fn resolve_work(
         let current_length = work_queue.len();
 
         if current_length == prev_length {
-            panic!("Unresolvable state");
+            panic!("Unresolvable state: {:?}", work_queue);
         }
 
         prev_length = current_length;
@@ -439,7 +439,29 @@ fn attempt_to_resolve(
             return Ok(());
         }
         hir_map::HirElem::ExprAtomIdent(ident) => {
-            return attempt_to_resolve_expr_atom_ident(tcx, ident, hir_map, analysis_results);
+            let mut candidates = Vec::new();
+            attempt_to_resolve_expr_atom_ident(
+                tcx,
+                ident,
+                hir_map,
+                analysis_results,
+                &mut candidates,
+            );
+            if candidates.is_empty() {
+                return Err(());
+            }
+
+            if candidates.len() > 1 {
+                narxia_log::warn!(
+                    "Multiple candidates for {}: {:?}",
+                    ident.ident.text,
+                    candidates
+                );
+            }
+
+            let def_id = candidates[0];
+            tcx.resolved_name(ident.hir_id.hir_id(), def_id);
+            return Ok(());
         }
         hir_map::HirElem::PatIdent(pat_ident) => {
             return Ok(());
@@ -485,11 +507,16 @@ fn attempt_to_resolve_expr_atom_ident(
     ident: &hir::ExprAtomIdent,
     hir_map: &HirMap,
     analysis_results: &SemanticAnalysisResult,
-) -> Result<(), ()> {
-    let mut current_scope = analysis_results
+    candidates: &mut Vec<DefId>,
+) {
+    let mut current_scope = if let Some(s) = analysis_results
         .program_structure
         .parent_scope_of_hir_node(hir_map, ident.hir_id.hir_id())
-        .ok_or(())?;
+    {
+        s
+    } else {
+        return;
+    };
     loop {
         narxia_log::info!("{:?}", current_scope);
         for name in &analysis_results.scope_names[current_scope.0].names {
@@ -501,13 +528,66 @@ fn attempt_to_resolve_expr_atom_ident(
                         let parent = hir_map.get_parent(pat_ident.hir_id.hir_id());
                         match hir_map.parent_of_type::<hir_map::PatIdentParent>(pat_ident.hir_id) {
                             hir_map::PatIdentParent::LetStmt(stmt_id, let_stmt) => {
+                                // name-resolution-test:resolve-to-let-stmt
+                                // let s = 1
+                                // println(s)
+                                // fn println(s: str) {return}
+
+                                // name-resolution-test:resolve-to-let-stmt-shadowing
+                                // let s = 1
+                                // let s = 2
+                                // println(s)
+                                // fn println(s: str) {return}
+
+                                // name-resolution-test:resolve-to-let-stmt-shadowing-2
+                                // let s = 1
+                                // {
+                                //     let s = 2
+                                //     println(s)
+                                // }
+                                // fn println(s: str) {return}
+
+                                // name-resolution-test:resolve-to-let-stmt-shadowing-3
+                                // let s = 1
+                                // {
+                                //     let s = 2
+                                //     {
+                                //         let s = 3
+                                //         println(s)
+                                //     }
+                                //     println(s)
+                                // }
+                                // println(s)
+                                // fn println(s: str) {return}
+
                                 narxia_log::info!("let_stmt: {:?}", let_stmt);
-                                tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
-                                return Ok(());
+
+                                if !let_stmt_candidate_fit(hir_map, ident.hir_id.hir_id(), stmt_id)
+                                {
+                                    continue;
+                                }
+                                candidates.push(name.def_id);
                             }
                             hir_map::PatIdentParent::FnParam(fn_param) => {
-                                tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
-                                return Ok(());
+                                // name-resolution-test:resolve-to-fn-param
+                                // fn foo(s: str) {return s}
+
+                                // name-resolution-test:resolve-to-fn-param-shadowing
+                                // fn foo(s: str) {
+                                //     let s = 1
+                                //     return s
+                                // }
+
+                                // name-resolution-test:resolve-to-fn-param-shadowing-2
+                                // fn foo(s: str) {
+                                //     {
+                                //         let s = 1
+                                //         return s
+                                //     }
+                                //     return s
+                                // }
+
+                                candidates.push(name.def_id);
                             }
                             _ => {
                                 todo!()
@@ -515,8 +595,7 @@ fn attempt_to_resolve_expr_atom_ident(
                         }
                     }
                     hir_map::HirElem::Fn(fn_def) => {
-                        tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
-                        return Ok(());
+                        candidates.push(name.def_id);
                     }
                     hir_map::HirElem::FnParam(fn_param) => todo!(),
                     hir_map::HirElem::FnRetTy(fn_ret_ty) => todo!(),
@@ -531,8 +610,7 @@ fn attempt_to_resolve_expr_atom_ident(
                     hir_map::HirElem::ForStmt(for_stmt) => todo!(),
                     hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
                     hir_map::HirElem::UseStmt(use_stmt) => {
-                        tcx.resolved_name(ident.hir_id.hir_id(), name.def_id);
-                        return Ok(());
+                        candidates.push(name.def_id);
                     }
                     hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
                     hir_map::HirElem::Block(block) => todo!(),
@@ -550,9 +628,34 @@ fn attempt_to_resolve_expr_atom_ident(
                 }
             }
         }
-        current_scope = analysis_results
-            .program_structure
-            .parent(current_scope)
-            .ok_or(())?;
+        current_scope = if let Some(s) = analysis_results.program_structure.parent(current_scope) {
+            s
+        } else {
+            break;
+        };
     }
+}
+
+fn let_stmt_candidate_fit(hir_map: &HirMap, ident_hir_id: HirId, let_stmt_id: hir::StmtId) -> bool {
+    if ancestors_contains(ident_hir_id, hir_map, let_stmt_id.hir_id()) {
+        // The ident is in the scope of the let statement, so it cannot be resolved to it.
+        return false;
+    }
+
+    true
+}
+
+fn ancestors_contains(
+    s: HirId,
+    hir_map: &HirMap,
+    other: HirId,
+) -> bool {
+    let mut current = s;
+    while !current.is_orphan_parent() {
+        if current == other {
+            return true;
+        }
+        current = hir_map.get_parent(current);
+    }
+    false
 }

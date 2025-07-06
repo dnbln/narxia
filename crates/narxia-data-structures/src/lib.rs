@@ -122,6 +122,15 @@ impl<K: Ord, V> FxBTreeMap<K, V> {
     }
 }
 
+impl<K: Ord, V> IntoIterator for FxBTreeMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = btree_map::IntoIter<K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
 impl<K: Ord, KA: AsRef<K>, V> Index<KA> for FxBTreeMap<K, V> {
     type Output = V;
 

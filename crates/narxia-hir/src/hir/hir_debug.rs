@@ -451,7 +451,7 @@ pub fn display_fn_def(
 
         for param in &params.params {
             write!(f, "{:indent$}", "", indent = hdc.depth + 4)?;
-            display_param(f, param, hdc.make_child())?;
+            display_param_id(f, *param, hdc.make_child())?;
             writeln!(f, "{}", ",".punctuation())?;
         }
 
@@ -470,6 +470,16 @@ pub fn display_fn_def(
     }
 
     display_block_id(f, fn_def.body, hdc)?;
+
+    Ok(())
+}
+
+pub fn display_param_id(
+    f: &mut fmt::Formatter,
+    param_id: FnParamId,
+    hdc: HirDisplayContext,
+) -> fmt::Result {
+    write!(f, "{}", param_id.0)?;
 
     Ok(())
 }

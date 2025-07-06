@@ -662,11 +662,8 @@ impl<'tcx> LocalSsaBuilder<'tcx> {
         self.push_new_block();
 
         if let Some(params) = &f.params {
-            params
-                .params
-                .iter()
-                .enumerate()
-                .for_each(|(id, p)| match &p.pat.kind {
+            params.params.iter().enumerate().for_each(|(id, p)| {
+                match &hir_map.get_fn_param(*p).pat.kind {
                     hir::PatKind::Ident(ident) => {
                         let new_place_ref = self.push_place_ref();
                         let param_v = self.push_to_current_block(IValue::Param(id));
@@ -674,7 +671,8 @@ impl<'tcx> LocalSsaBuilder<'tcx> {
                     }
                     hir::PatKind::Tuple(pats) => todo!(),
                     hir::PatKind::Wildcard(ident) => todo!(),
-                });
+                }
+            });
         }
 
         let body = hir_map.get_block(f.body);
