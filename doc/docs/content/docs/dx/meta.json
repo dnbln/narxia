@@ -1,0 +1,8 @@
+{
+  "title": "DX crates documentation",
+  "description": "Documentation for Narxia's DX crates",
+  "root": true,
+  "pages": [
+    "dir-structure"
+  ]
+}

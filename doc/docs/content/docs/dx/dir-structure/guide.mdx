@@ -1,0 +1,425 @@
+---
+title: Guide to dir-structure
+full: true
+---
+
+This guide is inteded to provide a comprehensive overview of the `dir-structure` crate,
+which simplifies the representation and manipulation of directory structures in Rust.
+It covers basic usage, advanced features, and practical examples to help you get started quickly.
+
+It is mostly adapted from the [introductory blog post][blog post]. The blog post discusses it in
+more detail, while this guide focuses on the practical aspects of using the crate.
+
+[blog post]: https://dnbln.dev/blog/dir-structure
+
+<ScrollyCoding>
+
+## !!steps Basics
+
+The `dir-structure` crate provides an easy way to define and manipulate file system directories in a structured way.
+In this guide, we will explore all the features of the `dir-structure` crate.
+
+On the right, you can see a quick example of how to use it, in order to read a directory structure, defined in Rust.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+
+let dir = Dir::read(path)?;
+```
+
+## !!steps Writing is also possible
+
+You can easily write an instance back to the file system.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps But what about more complex data types, not just `String`s?
+
+dir-structure allows you to use more complex data types, such as `Vec<u8>` (for binary files),
+any type that implements `FromStr` and `Display`, or even custom types that implement `DirStructureItem`.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.bin")]
+    binary: Vec<u8>,
+    #[dir_structure(
+        path = "number.txt",
+        with_newtype = FmtWrapper<u32>,
+    )]
+    number: u32,
+}
+
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps Or even serde types?
+
+Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
+
+This is an example using JSON, but TOML, YAML, and RON are also supported.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
+use serde::{Serialize, Deserialize};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.bin")]
+    binary: Vec<u8>,
+    #[dir_structure(
+        path = "number.txt",
+        with_newtype = FmtWrapper<u32>,
+    )]
+    number: u32,
+    #[dir_structure(
+        path = "f.json",
+        with_newtype = Json<Obj>,
+    )]
+    f: Obj,
+}
+
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Obj {
+    name: String,
+    age: u32,
+}
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps Let's go back to the basics
+
+We have a couple of other features to show, so let's go back to the example in the beginning.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps But what if we had more complex structures?
+
+You can easily nest them.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdir")]
+    subdir: SubDir,
+}
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps Or yet even more complex structures?
+
+Or even more complex structures, with file-names not known at compile time.
+
+```rust ! usage.rs
+use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir>,
+}
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps If we need to filter the subdirectories?
+
+We can pass a filter to the `DirChildren` type. In the example, we filter only directories with the `.d` extension.
+
+```rust ! usage.rs
+use std::path::Path;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+struct Filt;
+
+impl Filter for Filt {
+    fn make_filter() -> Self {
+        Self
+    }
+
+    fn allows(&self, path: &Path) -> bool {
+        path.extension().map_or(false, |ext| ext == "d")
+    }
+}
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+
+```
+
+## !!steps Or for extension-only filters?
+
+Extension-only filters are very common, so the library provides a convenient macro to create them.
+The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
+
+```rust ! usage.rs
+use dir_structure::ext_filter;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+ext_filter!(Filt, "d");
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+let dir = Dir::read(path)?;
+dir.write(path)?;
+```
+
+## !!steps Or even large directories?
+
+When dealing with large directories, you can use deferred (lazy) reading.
+
+```rust ! usage.rs
+use dir_structure::ext_filter;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredRead};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+ext_filter!(Filt, "d");
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: DeferredRead<String>,
+    #[dir_structure(path = "output.txt")]
+    output: DeferredRead<String>,
+}
+
+let dir = Dir::read(path)?;
+
+// Read the input files lazily
+dir.subdirs.iter().try_for_each(|subdir| {
+    let input = subdir.input.perform_read()?;
+    process_input(input);
+    Ok(())
+})?;
+
+dir.write(path)?;
+```
+
+## !!steps And if we want to cache the read values?
+
+The library exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+
+```rust ! usage.rs
+use dir_structure::ext_filter;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+ext_filter!(Filt, "d");
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: DeferredReadOrOwn<String>,
+    #[dir_structure(path = "output.txt")]
+    output: DeferredReadOrOwn<String>,
+}
+
+let dir = Dir::read(path)?;
+
+// Read the input files lazily
+dir.subdirs.iter().try_for_each(|subdir| {
+    let input = subdir.input.perform_and_store_read()?;
+    process_input(input);
+    // This will return the cached value
+    let input2 = subdir.input.perform_and_store_read()?;
+    assert_eq!(input, input2);
+    Ok(())
+})?;
+
+dir.write(path)?;
+```
+
+## !!steps Versioning values
+
+The library also provides a way to version the files, so you can keep track of changes you made to
+the directory structure, and only write the files that have changed.
+
+This happens through the `Versioned` wrapper.
+
+```rust ! usage.rs
+use dir_structure::ext_filter;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn, Versioned};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+ext_filter!(Filt, "d");
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: DeferredReadOrOwn<Versioned<String>>,
+    #[dir_structure(path = "output.txt")]
+    output: DeferredReadOrOwn<Versioned<String>>,
+}
+
+let dir = Dir::read(path)?;
+
+// Read the input files lazily
+dir.subdirs.iter().try_for_each(|subdir| {
+    let input = subdir.input.perform_and_store_read()?;
+    process_input(input);
+    // This will return the cached value
+    let input2 = subdir.input.perform_and_store_read()?;
+    assert_eq!(input, input2);
+    Ok(())
+})?;
+
+// This will not write anything to disk, since nothing has changed
+dir.write(path)?;
+```
+
+## !!steps Writing changed values
+
+
+We've created a `Versioned` wrapper around a `String` value, but we are never modifying it.
+If we want to write the changed values, we need to modify the `Versioned` values first.
+
+There are 2 ways to do this:
+1. By using its `DerefMut` implementation, which allows you to modify the inner value directly.
+2. By using the `edit_eq_check` method, which allows you to modify the value and check if it has changed, with the type's `Eq` implementation.
+
+```rust ! usage.rs
+use dir_structure::ext_filter;
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn, Versioned};
+
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "subdirs")]
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+ext_filter!(Filt, "d");
+
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: DeferredReadOrOwn<Versioned<String>>,
+    #[dir_structure(path = "output.txt")]
+    output: DeferredReadOrOwn<Versioned<String>>,
+}
+
+let dir = Dir::read(path)?;
+
+// Read the input files lazily
+dir.subdirs.iter().try_for_each(|subdir| {
+    let input = subdir.input.perform_and_store_read()?;
+    // Modify the value directly
+    **input = "New content".to_owned();
+    // Or use the edit_eq_check method
+    subdir.input.edit_eq_check(|v| {
+        *v = "New content".to_owned();
+    });
+    Ok(())
+})?;
+
+// This will write the changed values to disk
+dir.write(path)?;
+```
+
+</ScrollyCoding>

@@ -362,6 +362,25 @@ impl Filter for NoFilter {
     }
 }
 
+#[macro_export]
+macro_rules! ext_filter {
+    ($vis:vis $name:ident, $Ext:literal) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        $vis struct $name;
+
+        impl $crate::Filter for $name {
+            fn make_filter() -> Self {
+                Self
+            }
+
+            fn allows(&self, path: &::std::path::Path) -> bool {
+                path.extension()
+                    .map_or(false, |s| s == $Ext)
+            }
+        }
+    };
+}
+
 impl<T> Default for DirChildren<T>
 where
     T: DirStructureItem,
@@ -554,6 +573,35 @@ where
         self.children.get(index)
     }
 
+    /// Gets a mutable reference to the child at the specified index.
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_mut(0), None);
+    /// assert_eq!(d.get_mut(1), None);
+    /// assert_eq!(d.get_mut(100), None);
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_mut(0), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get_mut(1), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get_mut(2), None);
+    /// assert_eq!(d.get_mut(100), None);
+    /// ```
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirChild<T>> {
+        self.children.get_mut(index)
+    }
+
     /// Gets the child with the specified "file" name (last segment of path).
     ///
     /// # Examples
@@ -640,6 +688,50 @@ where
     /// ```
     pub fn iter(&self) -> DirChildrenIter<'_, T> {
         DirChildrenIter(self.children.iter())
+    }
+
+    /// Returns a mutable iterator over the children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// let mut i = d.iter_mut();
+    /// assert_eq!(i.next(), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(i.next(), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    ///
+    /// Modifying the children is also possible:
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// d.iter_mut().for_each(|child| *child.value_mut() = "modified".to_owned());
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "modified".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "modified".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T> {
+        DirChildrenIterMut(self.children.iter_mut())
     }
 }
 
@@ -864,6 +956,8 @@ where
 
 /// A [`DirChildren`] iterator. It iterates over the children of a
 /// [`DirChildren`] structure.
+///
+/// See [`DirChildren::iter`] for more information.
 pub struct DirChildrenIter<'a, T: DirStructureItem>(std::slice::Iter<'a, DirChild<T>>);
 
 impl<'a, T> Iterator for DirChildrenIter<'a, T>
@@ -891,6 +985,46 @@ where
 }
 
 impl<T> DoubleEndedIterator for DirChildrenIter<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+}
+
+/// A mutable iterator over the children of a [`DirChildren`] structure.
+/// This allows you to mutate the children of the
+/// [`DirChildren`] structure while iterating over them.
+///
+/// See [`DirChildren::iter_mut`] for more information.
+pub struct DirChildrenIterMut<'a, T: DirStructureItem>(std::slice::IterMut<'a, DirChild<T>>);
+
+impl<'a, T> Iterator for DirChildrenIterMut<'a, T>
+where
+    T: DirStructureItem,
+{
+    type Item = &'a mut DirChild<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for DirChildrenIterMut<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<T> DoubleEndedIterator for DirChildrenIterMut<'_, T>
 where
     T: DirStructureItem,
 {
@@ -1178,7 +1312,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 T: serde::Serialize + 'a,
             {
                 fn write_to(&self, path: &Path) -> crate::Result<()> {
-                    let mut f = crate::StreamingFileWriter::new(path)?;
+                    let mut f = crate::sfw::StreamingFileWriter::new(path)?;
                     $to_str_ty(self.0).to_writer(&mut f)
                         .map_err(|e| match e {
                             ToWriterError::Io(e) => crate::Error::Io(path.to_path_buf(), e),
@@ -1737,7 +1871,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn perform_and_store_read(&mut self) -> Result<&T> {
+    pub fn perform_and_store_read(&mut self) -> Result<&mut T> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
             DeferredReadOrOwn::Deferred(d) => {
@@ -1973,6 +2107,44 @@ impl<T: DirStructureItem> Versioned<T> {
             self.version += 1;
         }
     }
+
+    /// Resets the version to the default value, making the value clean.
+    /// This is useful if you want to mark the value as not changed,
+    /// without actually changing it.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it allows you to reset the version to 0,
+    /// which means that the value will be considered clean, and any unsaved changes
+    /// will be lost. Trying to save a clean value (e.g. after calling this function) will *not* write it to disk!
+    ///
+    /// Use with caution!
+    /// 
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{DirStructureItem, VersionedString};
+    /// std::fs::write("path", "value").unwrap();
+    ///
+    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    /// assert!(v.is_clean());
+    /// v.edit_eq_check(|s| *s = "new value".to_owned());
+    /// assert!(v.is_dirty());
+    /// unsafe { v.reset(); }
+    /// assert!(v.is_clean());
+    ///
+    /// // if you try to write it now, it won't write anything,
+    /// v.write("path").unwrap();
+    /// 
+    /// assert_eq!(std::fs::read_to_string("path").unwrap(), "value");
+    /// # std::fs::remove_file("path").unwrap();
+    /// ```
+    pub unsafe fn reset(&mut self) {
+        // This is unsafe because it allows us to reset the version to 0,
+        // which means that the value will be considered clean.
+        // Use with caution!
+        self.version = Self::DEFAULT_VERSION;
+    }
 }
 
 impl<T: DirStructureItem> ReadFrom for Versioned<T> {
@@ -2084,35 +2256,38 @@ mod utils {
     }
 }
 
-struct StreamingFileWriter {
-    f: File,
-}
-
-impl StreamingFileWriter {
-    fn new(path: &Path) -> Result<Self> {
-        utils::create_parent_dir(path)?;
-        let f = File::create(path).wrap_io_error_with(path)?;
-        Ok(Self { f })
-    }
-}
-
-impl std::io::Write for StreamingFileWriter {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.f.write(buf)
+#[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
+mod sfw {
+    struct StreamingFileWriter {
+        f: File,
     }
 
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.f.flush()
+    impl StreamingFileWriter {
+        fn new(path: &Path) -> Result<Self> {
+            utils::create_parent_dir(path)?;
+            let f = File::create(path).wrap_io_error_with(path)?;
+            Ok(Self { f })
+        }
     }
-}
 
-impl std::fmt::Write for StreamingFileWriter {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        use std::io::Write;
+    impl std::io::Write for StreamingFileWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.f.write(buf)
+        }
 
-        self.f
-            .write_all(s.as_bytes())
-            .map_err(|_| std::fmt::Error)?;
-        Ok(())
+        fn flush(&mut self) -> std::io::Result<()> {
+            self.f.flush()
+        }
+    }
+
+    impl std::fmt::Write for StreamingFileWriter {
+        fn write_str(&mut self, s: &str) -> std::fmt::Result {
+            use std::io::Write;
+
+            self.f
+                .write_all(s.as_bytes())
+                .map_err(|_| std::fmt::Error)?;
+            Ok(())
+        }
     }
 }
