@@ -2258,12 +2258,14 @@ mod utils {
 
 #[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
 mod sfw {
-    struct StreamingFileWriter {
+    use super::*;
+
+    pub struct StreamingFileWriter {
         f: File,
     }
 
     impl StreamingFileWriter {
-        fn new(path: &Path) -> Result<Self> {
+        pub fn new(path: &Path) -> Result<Self> {
             utils::create_parent_dir(path)?;
             let f = File::create(path).wrap_io_error_with(path)?;
             Ok(Self { f })
