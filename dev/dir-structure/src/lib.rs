@@ -574,9 +574,9 @@ where
     }
 
     /// Gets a mutable reference to the child at the specified index.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
     /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
@@ -2119,7 +2119,7 @@ impl<T: DirStructureItem> Versioned<T> {
     /// will be lost. Trying to save a clean value (e.g. after calling this function) will *not* write it to disk!
     ///
     /// Use with caution!
-    /// 
+    ///
     /// # Examples
     ///
     /// ```
@@ -2135,7 +2135,7 @@ impl<T: DirStructureItem> Versioned<T> {
     ///
     /// // if you try to write it now, it won't write anything,
     /// v.write("path").unwrap();
-    /// 
+    ///
     /// assert_eq!(std::fs::read_to_string("path").unwrap(), "value");
     /// # std::fs::remove_file("path").unwrap();
     /// ```
