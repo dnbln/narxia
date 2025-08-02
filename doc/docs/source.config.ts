@@ -7,6 +7,7 @@ import {
 import { remarkCodeHike, recmaCodeHike, CodeHikeConfig } from "codehike/mdx"
 import rehypeKatex from 'rehype-katex'
 import remarkMath from 'remark-math'
+import { rehypeToc, remarkHeading } from 'fumadocs-core/mdx-plugins';
 
 // You can customise Zod schemas for frontmatter and `meta.json` here
 // see https://fumadocs.vercel.app/docs/mdx/collections#define-docs
@@ -32,8 +33,8 @@ export default defineConfig({
   lastModifiedTime: 'git',
   mdxOptions: {
     // MDX options
-    remarkPlugins: [remarkMath, [remarkCodeHike, chConfig]],
-    rehypePlugins: (v) => [rehypeKatex, ...v],
+    remarkPlugins: [remarkMath, [remarkCodeHike, chConfig], remarkHeading],
+    rehypePlugins: (v) => [rehypeKatex, rehypeToc, ...v],
     recmaPlugins: [[recmaCodeHike, chConfig]],
   },
 });

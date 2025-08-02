@@ -26,7 +26,8 @@ export default async function Page(props: {
                   full={page.data.full}
                   breadcrumb={{enabled: true}}
                   lastUpdate={page.data.lastModified}
-                  tableOfContent={{enabled: true, style: 'clerk', single: false}}
+                  tableOfContent={{style: 'clerk', single: false}}
+                  tableOfContentPopover={{style: 'clerk'}}
         >
             <DocsTitle>{page.data.title}</DocsTitle>
             <DocsDescription>{page.data.description}</DocsDescription>

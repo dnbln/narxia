@@ -6,7 +6,7 @@
     "build": "next build",
     "dev": "next dev --turbo",
     "start": "next start",
-    "postinstall": "fumadocs-mdx"
+    "postinstall": "patch-package && fumadocs-mdx"
   },
   "dependencies": {
     "codehike": "^1.0.7",
@@ -15,7 +15,9 @@
     "fumadocs-ui": "15.4.1",
     "katex": "^0.16.22",
     "lucide-react": "^0.511.0",
+    "mermaid": "^11.9.0",
     "next": "15.3.2",
+    "patch-package": "^8.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "rehype-katex": "^7.0.1",

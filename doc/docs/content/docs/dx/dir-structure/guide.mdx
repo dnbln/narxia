@@ -1,5 +1,5 @@
 ---
-title: Guide to dir-structure
+title: Quick intro guide to dir-structure
 full: true
 ---
 
@@ -7,19 +7,30 @@ This guide is inteded to provide a comprehensive overview of the `dir-structure`
 which simplifies the representation and manipulation of directory structures in Rust.
 It covers basic usage, advanced features, and practical examples to help you get started quickly.
 
-It is mostly adapted from the [introductory blog post][blog post]. The blog post discusses it in
+Each step shows an example directory structure that the code will expect to read or write.
+
+This guide is mostly adapted from the [introductory blog post][blog post]. The blog post discusses it in
 more detail, while this guide focuses on the practical aspects of using the crate.
 
 [blog post]: https://dnbln.dev/blog/dir-structure
 
 <ScrollyCoding>
-
+  
 ## !!steps Basics
 
 The `dir-structure` crate provides an easy way to define and manipulate file system directories in a structured way.
 In this guide, we will explore all the features of the `dir-structure` crate.
 
 On the right, you can see a quick example of how to use it, in order to read a directory structure, defined in Rust.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    input.txt
+    output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem};
@@ -39,6 +50,15 @@ let dir = Dir::read(path)?;
 ## !!steps Writing is also possible
 
 You can easily write an instance back to the file system.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    input.txt
+    output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem};
@@ -60,6 +80,15 @@ dir.write(path)?;
 
 dir-structure allows you to use more complex data types, such as `Vec<u8>` (for binary files),
 any type that implements `FromStr` and `Display`, or even custom types that implement `DirStructureItem`.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    input.bin
+    number.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
@@ -85,6 +114,16 @@ dir.write(path)?;
 Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
 
 This is an example using JSON, but TOML, YAML, and RON are also supported.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    input.bin
+    number.txt
+    f.json
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
@@ -121,6 +160,15 @@ dir.write(path)?;
 
 We have a couple of other features to show, so let's go back to the example in the beginning.
 
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    input.txt
+    output.txt
+`}
+ />
+
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem};
 
@@ -139,6 +187,17 @@ dir.write(path)?;
 ## !!steps But what if we had more complex structures?
 
 You can easily nest them.
+
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdir
+        input.txt
+        output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem};
@@ -166,6 +225,23 @@ dir.write(path)?;
 
 Or even more complex structures, with file-names not known at compile time.
 
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1
+            input.txt
+            output.txt
+        subdir2
+            input.txt
+            output.txt
+        other_random_subdir
+            input.txt
+            output.txt
+`}
+ />
+
 ```rust ! usage.rs
 use dir_structure::{DirStructure, DirStructureItem, DirChildren};
 
@@ -191,6 +267,25 @@ dir.write(path)?;
 ## !!steps If we need to filter the subdirectories?
 
 We can pass a filter to the `DirChildren` type. In the example, we filter only directories with the `.d` extension.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />
 
 ```rust ! usage.rs
 use std::path::Path;
@@ -232,6 +327,25 @@ dir.write(path)?;
 Extension-only filters are very common, so the library provides a convenient macro to create them.
 The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
 
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />
+
 ```rust ! usage.rs
 use dir_structure::ext_filter;
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
@@ -259,6 +373,20 @@ dir.write(path)?;
 ## !!steps Or even large directories?
 
 When dealing with large directories, you can use deferred (lazy) reading.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::ext_filter;
@@ -295,6 +423,20 @@ dir.write(path)?;
 ## !!steps And if we want to cache the read values?
 
 The library exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::ext_filter;
@@ -337,6 +479,20 @@ The library also provides a way to version the files, so you can keep track of c
 the directory structure, and only write the files that have changed.
 
 This happens through the `Versioned` wrapper.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::ext_filter;
@@ -383,6 +539,20 @@ If we want to write the changed values, we need to modify the `Versioned` values
 There are 2 ways to do this:
 1. By using its `DerefMut` implementation, which allows you to modify the inner value directly.
 2. By using the `edit_eq_check` method, which allows you to modify the value and check if it has changed, with the type's `Eq` implementation.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+`}
+ />
 
 ```rust ! usage.rs
 use dir_structure::ext_filter;
