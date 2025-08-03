@@ -33,8 +33,11 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
 use dir_structure::{DirStructure, DirStructureItem};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.txt")]
@@ -43,7 +46,7 @@ struct Dir {
     output: String,
 }
 
-
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 ```
 
@@ -61,8 +64,11 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
 use dir_structure::{DirStructure, DirStructureItem};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.txt")]
@@ -71,15 +77,17 @@ struct Dir {
     output: String,
 }
 
-
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
+// !mark
 dir.write(path)?;
 ```
 
-## !!steps But what about more complex data types, not just `String`s?
+## !!steps But what about more complex data types, not just Strings?
 
-dir-structure allows you to use more complex data types, such as `Vec<u8>` (for binary files),
-any type that implements `FromStr` and `Display`, or even custom types that implement `DirStructureItem`.
+`dir-structure` allows you to use more complex data types, such as `Vec<u8>` (for binary files),
+any type that implements `FromStr` and `Display`, or even custom types that implement `ReadFrom` and `WriteTo`.
 
 <Mermaid
   chart={`
@@ -91,21 +99,28 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/FmtWrapper/] FmtWrapper
 use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.bin")]
     binary: Vec<u8>,
     #[dir_structure(
         path = "number.txt",
+        // !mark
+        // !tooltip[/FmtWrapper/] FmtWrapper
         with_newtype = FmtWrapper<u32>,
     )]
     number: u32,
 }
 
-
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -126,33 +141,43 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/FmtWrapper/] FmtWrapper
+// !tooltip[/Json/] Json
 use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
 use serde::{Serialize, Deserialize};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.bin")]
     binary: Vec<u8>,
     #[dir_structure(
         path = "number.txt",
+        // !tooltip[/FmtWrapper/] FmtWrapper
         with_newtype = FmtWrapper<u32>,
     )]
     number: u32,
     #[dir_structure(
         path = "f.json",
+        // !mark
+        // !tooltip[/Json/] Json
         with_newtype = Json<Obj>,
     )]
     f: Obj,
 }
 
-
+// !mark(1:5)
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Obj {
     name: String,
     age: u32,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -170,8 +195,11 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
 use dir_structure::{DirStructure, DirStructureItem};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.txt")]
@@ -180,7 +208,9 @@ struct Dir {
     output: String,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -200,14 +230,19 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
 use dir_structure::{DirStructure, DirStructureItem};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
+    // !mark(1:2)
     #[dir_structure(path = "subdir")]
     subdir: SubDir,
 }
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
@@ -216,8 +251,9 @@ struct SubDir {
     output: String,
 }
 
-
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -243,14 +279,21 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
 use dir_structure::{DirStructure, DirStructureItem, DirChildren};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
+    // !mark(1:2)
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir>,
 }
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
@@ -259,8 +302,9 @@ struct SubDir {
     output: String,
 }
 
-
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -289,16 +333,25 @@ mindmap
 
 ```rust ! usage.rs
 use std::path::Path;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
+    // !mark(1:2)
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !mark(1:11)
 struct Filt;
 
+// !tooltip[/Filter/] Filter
 impl Filter for Filt {
     fn make_filter() -> Self {
         Self
@@ -309,6 +362,7 @@ impl Filter for Filt {
     }
 }
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
@@ -317,7 +371,9 @@ struct SubDir {
     output: String,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 
 ```
@@ -347,17 +403,27 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !mark
+// !tooltip[/ext_filter/] ext_filter
 ext_filter!(Filt, "d");
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
@@ -366,7 +432,9 @@ struct SubDir {
     output: String,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -389,34 +457,53 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+// !tooltip[/DeferredRead/] DeferredRead
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredRead};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !tooltip[/ext_filter/] ext_filter
 ext_filter!(Filt, "d");
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
+    // !tooltip[/DeferredRead/] DeferredRead
+    // !mark
     input: DeferredRead<String>,
     #[dir_structure(path = "output.txt")]
+    // !tooltip[/DeferredRead/] DeferredRead
+    // !mark
     output: DeferredRead<String>,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
+// !tooltip[/iter/] DirChildren::iter-R
 dir.subdirs.iter().try_for_each(|subdir| {
+    // !tooltip[/perform_read/] DeferredRead::perform_read-R
+    // !mark
     let input = subdir.input.perform_read()?;
     process_input(input);
     Ok(())
 })?;
 
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -439,37 +526,58 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+// !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !tooltip[/ext_filter/] ext_filter
 ext_filter!(Filt, "d");
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !mark
     input: DeferredReadOrOwn<String>,
     #[dir_structure(path = "output.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !mark
     output: DeferredReadOrOwn<String>,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
+// !tooltip[/iter_mut/] DirChildren::iter_mut-R
 dir.subdirs.iter_mut().try_for_each(|subdir| {
+    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
+    // !mark
     let input = subdir.input.perform_and_store_read()?;
     process_input(input);
     // This will return the cached value
+    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
+    // !mark
     let input2 = subdir.input.perform_and_store_read()?;
     assert_eq!(input, input2);
     Ok(())
 })?;
 
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -495,38 +603,60 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+// !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+// !tooltip[/Versioned/] Versioned
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn, Versioned};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !tooltip[/ext_filter/] ext_filter
 ext_filter!(Filt, "d");
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
+    // !mark
     input: DeferredReadOrOwn<Versioned<String>>,
     #[dir_structure(path = "output.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
+    // !mark
     output: DeferredReadOrOwn<Versioned<String>>,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
+// !tooltip[/iter_mut/] DirChildren::iter_mut-R
 dir.subdirs.iter_mut().try_for_each(|subdir| {
+    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
     let input = subdir.input.perform_and_store_read()?;
     process_input(input);
     // This will return the cached value
+    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
     let input2 = subdir.input.perform_and_store_read()?;
     assert_eq!(input, input2);
     Ok(())
 })?;
 
 // This will not write anything to disk, since nothing has changed
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
 
@@ -555,33 +685,54 @@ mindmap
  />
 
 ```rust ! usage.rs
+// !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+// !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+// !tooltip[/Versioned/] Versioned
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter, DeferredReadOrOwn, Versioned};
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
     subdirs: DirChildren<SubDir, Filt>,
 }
 
+// !tooltip[/ext_filter/] ext_filter
 ext_filter!(Filt, "d");
 
+// !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct SubDir {
     #[dir_structure(path = "input.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
     input: DeferredReadOrOwn<Versioned<String>>,
     #[dir_structure(path = "output.txt")]
+    // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
     output: DeferredReadOrOwn<Versioned<String>>,
 }
 
+// !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
+// !tooltip[/iter_mut/] DirChildren::iter_mut-R
 dir.subdirs.iter_mut().try_for_each(|subdir| {
+    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
     let input = subdir.input.perform_and_store_read()?;
     // Modify the value directly
+    // !mark
     **input = "New content".to_owned();
     // Or use the edit_eq_check method
+    // !mark(1:3)
+    // !tooltip[/edit_eq_check/] Versioned::edit_eq_check-R
     subdir.input.edit_eq_check(|v| {
         *v = "New content".to_owned();
     });
@@ -589,7 +740,707 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 })?;
 
 // This will write the changed values to disk
+// !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 ```
+
+## !!doctooltips DirStructureItem
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub trait DirStructureItem
+where
+    Self: ReadFrom + WriteTo,
+```
+
+---
+
+Is not dyn-compatible due to having a method `write` that is not dispatchable due to having a const or type generic parameter
+
+---
+
+Helper trait, implemented for all types that have a [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html)
+and [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation.
+</DocTooltip>
+
+## !!doctooltips DirStructure
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub trait DirStructure
+where
+    Self: DirStructureItem,
+```
+
+---
+
+Is not dyn-compatible due to having a dyn-incompatible supertrait `DirStructureItem`
+
+---
+
+The main trait. This is implemented for
+all directory structures by the derive macro.
+
+This trait doesn't have any methods, just a supertype:
+[`DirStructureItem`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.DirStructureItem.html).
+</DocTooltip>
+
+## !!doctooltips DirStructureItem::read#
+
+<DocTooltip>
+
+```rust
+dir_structure::DirStructureItem
+```
+
+```rust
+pub trait DirStructureItem
+pub fn read(path: impl AsRef<Path>) -> Result<Self>
+where
+    Self: Sized,
+    // Bounds from trait:
+    Self: ReadFrom + WriteTo,
+```
+
+---
+
+Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html) implementation to read the structure from
+disk, from the specified path.
+</DocTooltip>
+
+## !!doctooltips DirStructureItem::write#
+
+<DocTooltip>
+
+```rust
+dir_structure::DirStructureItem
+```
+
+```rust
+pub trait DirStructureItem
+pub fn write(&self, path: impl AsRef<Path>) -> Result<()>
+where
+    // Bounds from trait:
+    Self: ReadFrom + WriteTo,
+```
+
+---
+
+Uses the [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation to write the structure
+to disk at the specified path.
+</DocTooltip>
+
+## !!doctooltips FmtWrapper
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub struct FmtWrapper<T>(pub T)
+```
+
+---
+
+type param may need Drop
+
+---
+
+A wrapper around a type which will use the [`Display`](https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html) and [`FromStr`](https://doc.rust-lang.org/nightly/core/str/traits/trait.FromStr.html) implementations
+for serialization / deserialization.
+
+For example: u8, i8, i16, u16, all integer types... bool etc.
+
+# Examples
+
+```rust
+use std::path::Path;
+use dir_structure::DirStructureItem;
+
+use dir_structure::FmtWrapper;
+
+#[derive(dir_structure::DirStructure, PartialEq, Debug)]
+struct Dir {
+   #[dir_structure(path = "f.txt", with_newtype = FmtWrapper<u8>)]
+   f: u8,
+   #[dir_structure(path = "b.txt", with_newtype = FmtWrapper<bool>)]
+   b: bool,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let d = Path::new("dir");
+    std::fs::create_dir_all(&d)?;
+    std::fs::write(d.join("f.txt"), "42")?;
+    std::fs::write(d.join("b.txt"), "true")?;
+    let mut dir = Dir::read(&d)?;
+    assert_eq!(dir.f, 42);
+    assert_eq!(dir.b, true);
+    dir.f = 100;
+    dir.b = false;
+    dir.write(&d)?;
+    assert_eq!(std::fs::read_to_string(d.join("f.txt"))?, "100");
+    assert_eq!(std::fs::read_to_string(d.join("b.txt"))?, "false");
+    Ok(())
+}
+```
+</DocTooltip>
+
+## !!doctooltips Json
+
+<DocTooltip>
+
+```rust
+dir_structure::json
+```
+
+```rust
+pub struct Json<T>(pub T)
+where
+    T: 'static + serde::Serialize + for<'d> serde::Deserialize<'d>,
+```
+
+---
+
+type param may need Drop
+
+---
+
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde/1.0.219/serde/de/trait.Deserialize.html),
+thus allowing us to parse and serialize it from / to json when we read / write a
+directory structure.
+
+---
+
+```rust
+dir_structure::json
+```
+
+```rust
+pub struct Json<T>(pub T)
+where
+    T: 'static + serde::Serialize + for<'d> serde::Deserialize<'d>,
+```
+
+---
+
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde/1.0.219/serde/de/trait.Deserialize.html),
+thus allowing us to parse and serialize it from / to json when we read / write a
+directory structure.
+</DocTooltip>
+
+## !!doctooltips DirChildren
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub struct DirChildren<T, F = NoFilter>
+where
+    F: Filter,
+    T: DirStructureItem,
+{
+    pub self_path: PathBuf,
+    pub children: Vec<DirChild<T>>,
+    filter: PhantomData<F>,
+}
+```
+
+---
+
+size = 48 (0x30), align = 0x8, needs Drop
+
+---
+
+A directory structure where we don't know the names of the folders at compile-time,
+and as such we cannot use the derive macro.
+
+Instead we know that all the entries in the directory are folders,
+and that they all have the same structure inside (defined by the `T` type parameter),
+or they are all files (which can be read with [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DirChildren.html)\<[`String`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html)\> for example).
+
+In either case, [`ReadFrom::read_from`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html#tymethod.read_from) must be able to read all the entries in
+the directory.
+
+The [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation will directly write the children to the directory it
+is passed, with no regards to the path stored in `self_path`.
+</DocTooltip>
+
+## !!doctooltips Filter
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub trait Filter
+```
+
+---
+
+Is not dyn-compatible due to having a method `make_filter` that is not dispatchable due to missing a receiver
+
+---
+
+A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DirChildren.html) structure.
+
+This is used to filter out children that we don't want to
+read into the structure. For example, if we have a directory
+with a lot of files, we can use this to only read the
+files we want, for example, that have just a certain extension.
+
+# Examples
+
+For example, for a [`Filter`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.Filter.html) that only allows `.txt` files:
+
+```rust
+use std::path::Path;
+use std::path::PathBuf;
+
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+
+pub struct TextFileFilter;
+
+impl Filter for TextFileFilter {
+    fn make_filter() -> Self {
+       Self
+    }
+
+    fn allows(&self, path: &Path) -> bool {
+        path.extension()
+            .and_then(|s| s.to_str())
+            .map_or(false, |s| s == "txt")
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let path = PathBuf::from("dir");
+    #[derive(DirStructure)]
+    struct Dir {
+       #[dir_structure(path = self)]
+       text_files: DirChildren<String, TextFileFilter>,
+    }
+
+
+    std::fs::write(path.join("file1.txt"), "file1")?;
+    std::fs::write(path.join("file2.txt"), "file2")?;
+    std::fs::write(path.join("file3.bin"), "aaa")?;
+
+    let dir = Dir::read(&path)?;
+    assert_eq!(dir.text_files.len(), 2);
+    assert_eq!(dir.text_files.get_value_by_name("file1.txt"), Some(&String::from("file1")));
+    assert_eq!(dir.text_files.get_value_by_name("file2.txt"), Some(&String::from("file2")));
+    assert_eq!(dir.text_files.get_value_by_name("file3.bin"), None);
+
+
+    Ok(())
+}
+```
+</DocTooltip>
+
+## !!doctooltips ext_filter
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+macro_rules! ext_filter
+```
+</DocTooltip>
+
+## !!doctooltips DeferredRead
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub struct DeferredRead<T>(pub PathBuf, PhantomData<T>)
+where
+    T: ReadFrom,
+```
+
+---
+
+size = 24 (0x18), align = 0x8, needs Drop
+
+---
+
+A wrapper that defers the reading of a file until it is actually needed.
+
+The only thing you can do with a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html) is to call [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html#method.perform_read),
+which will read the file and return the value.
+
+See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html#method.perform_read) method for more details.
+</DocTooltip>
+
+## !!doctooltips DirChildren::iter-R
+`DirChildren<T, F>::iter#`
+
+<DocTooltip>
+
+```rust
+dir_structure::DirChildren
+```
+
+```rust
+impl<T, F> DirChildren<T, F>
+pub fn iter(&self) -> DirChildrenIter<'_, T>
+where
+    // Bounds from impl:
+    T: DirStructureItem,
+    F: Filter,
+```
+
+---
+
+Returns an iterator over the children.
+
+# Examples
+
+```rust
+use std::path::{Path, PathBuf};
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+
+let d = DirChildren::<String, dir_structure::NoFilter>::new();
+let mut i = d.iter();
+assert_eq!(i.next(), None);
+
+let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    PathBuf::new(),
+    vec![
+        DirChild::new("file1.txt", "file1".to_owned()),
+        DirChild::new("file2.txt", "file2".to_owned()),
+    ],
+);
+let mut i = d.iter();
+assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+assert_eq!(i.next(), None);
+```
+</DocTooltip>
+
+## !!doctooltips DirChildren::iter_mut-R
+`DirChildren<T, F>::iter_mut#`
+
+<DocTooltip>
+
+```rust
+dir_structure::DirChildren
+```
+
+```rust
+impl<T, F> DirChildren<T, F>
+pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T>
+where
+    // Bounds from impl:
+    T: DirStructureItem,
+    F: Filter,
+```
+
+---
+
+Returns a mutable iterator over the children.
+
+# Examples
+
+```rust
+use std::path::{Path, PathBuf};
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+
+let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    PathBuf::new(),
+    vec![
+        DirChild::new("file1.txt", "file1".to_owned()),
+        DirChild::new("file2.txt", "file2".to_owned()),
+    ],
+);
+let mut i = d.iter_mut();
+assert_eq!(i.next(), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+assert_eq!(i.next(), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+assert_eq!(i.next(), None);
+```
+
+Modifying the children is also possible:
+
+```rust
+use std::path::{Path, PathBuf};
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+
+let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    PathBuf::new(),
+    vec![
+        DirChild::new("file1.txt", "file1".to_owned()),
+        DirChild::new("file2.txt", "file2".to_owned()),
+    ],
+);
+d.iter_mut().for_each(|child| *child.value_mut() = "modified".to_owned());
+let mut i = d.iter();
+assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "modified".to_owned())));
+assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "modified".to_owned())));
+assert_eq!(i.next(), None);
+```
+</DocTooltip>
+
+## !!doctooltips DeferredRead::perform_read-R
+`DeferredRead<T>::perform_read#`
+
+<DocTooltip>
+
+```rust
+dir_structure::DeferredRead
+```
+
+```rust
+impl<T> DeferredRead<T>
+pub fn perform_read(&self) -> Result<T>
+where
+    // Bounds from impl:
+    T: ReadFrom,
+```
+
+---
+
+Performs the read and returns the value.
+
+If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html) was created, then the
+new value will be read from disk and returned.
+
+For a cached version see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html).
+
+# Examples
+
+```rust
+use std::path::Path;
+use dir_structure::DirStructureItem;
+use dir_structure::DeferredRead;
+
+#[derive(dir_structure::DirStructure)]
+struct Dir {
+    #[dir_structure(path = "f.txt")]
+    f: DeferredRead<String>,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let d = Path::new("dir");
+
+    std::fs::create_dir_all(&d)?;
+    std::fs::write(d.join("f.txt"), "Hello, world!")?;
+
+    let dir = Dir::read(&d)?;
+    assert_eq!(dir.f.perform_read()?, "Hello, world!");
+
+    std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+    assert_eq!(dir.f.perform_read()?, "Goodbye, world!");
+
+    Ok(())
+}
+```
+</DocTooltip>
+
+## !!doctooltips DeferredReadOrOwn
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub enum DeferredReadOrOwn<T>
+where
+    T: ReadFrom,
+{
+    Own( /* … */ ),
+    Deferred( /* … */ ),
+}
+```
+
+---
+
+needs Drop
+
+---
+
+A wrapper that defers the reading of a file until it is actually needed,
+but can also store the value.
+
+It allows us to read the value from disk, and then store it in memory,
+and if we ever need it again, we can just return the stored value.
+
+This type exposes 2 functions: [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get) and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read).
+
+The table below summarizes the differences between the two functions:
+
+|State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
+|-----|------------------------|-------------------------------------------|
+|New, not cached|Reads the value, does not cache|Reads the value, and caches it|
+|Cached|Returns the cached value|Returns the cached value|
+
+As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&T>`.
+
+If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get),
+that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html), and that should be preferred instead.
+</DocTooltip>
+
+## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
+`DeferredReadOrOwn<T>::perform_and_store_read#`
+
+<DocTooltip>
+
+```rust
+dir_structure::DeferredReadOrOwn
+```
+
+```rust
+impl<T> DeferredReadOrOwn<T>
+pub fn perform_and_store_read(&mut self) -> Result<&mut T>
+where
+    // Bounds from impl:
+    T: ReadFrom,
+```
+
+---
+
+Performs the read and stores the value. If the value is already read, it will
+just return a reference to it.
+
+See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html) for more details.
+
+# Examples
+
+```rust
+use std::path::Path;
+use dir_structure::DirStructureItem;
+use dir_structure::DeferredRead;
+use dir_structure::DeferredReadOrOwn;
+use dir_structure::ReadFrom;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let d = Path::new("dir");
+    std::fs::create_dir_all(&d)?;
+    let mut deferred = DeferredReadOrOwn::<String>::Deferred(
+        DeferredRead::read_from(&d.join("f.txt")).unwrap()
+    );
+    assert!(deferred.perform_and_store_read().is_err());
+    std::fs::write(d.join("f.txt"), "Hello, world!")?;
+    assert_eq!(deferred.perform_and_store_read()?, "Hello, world!");
+    std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+    assert_eq!(deferred.perform_and_store_read()?, "Hello, world!");
+    Ok(())
+}
+```
+</DocTooltip>
+
+## !!doctooltips Versioned
+
+<DocTooltip>
+
+```rust
+dir_structure
+```
+
+```rust
+pub struct Versioned<T>
+where
+    T: DirStructureItem,
+{
+    value: T,
+    version: usize,
+    path: PathBuf,
+}
+```
+
+---
+
+needs Drop
+
+---
+
+A versioned value. This is a wrapper around a value that will keep track of
+how many times it has been changed. This is useful to not write the value
+to disk if it hasn't changed.
+
+You can get a reference to the value via its [`Deref`](https://doc.rust-lang.org/nightly/core/ops/deref/trait.Deref.html) implementation, and
+you can get a mutable reference to the value via its [`DerefMut`](https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html) implementation.
+
+The version is incremented every time [`DerefMut::deref_mut`](https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html#tymethod.deref_mut) is called.
+
+Alternatively, for [`Eq`](https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html) types, you can use the [`Versioned::edit_eq_check`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.Versioned.html#method.edit_eq_check)
+method to edit the value, and it will increment the version if the value has changed.
+
+# Example
+
+```rust
+use dir_structure::VersionedString;
+
+let mut v = VersionedString::new("value".to_owned(), "path");
+assert!(v.is_clean());
+assert!(!v.is_dirty());
+
+*v = "new value".to_owned();
+assert!(v.is_dirty());
+```
+</DocTooltip>
+
+## !!doctooltips Versioned::edit_eq_check-R
+`Versioned<T>::edit_eq_check#`
+
+<DocTooltip>
+
+```rust
+dir_structure::Versioned
+```
+
+```rust
+impl<T> Versioned<T>
+pub fn edit_eq_check(&mut self, f: impl FnOnce(&mut T))
+where
+    T: Eq + Clone,
+    // Bounds from impl:
+    T: DirStructureItem,
+```
+
+---
+
+Edits the value using the provided closure, and increments the version
+if the value has changed.
+
+# Example
+
+```rust
+use dir_structure::VersionedString;
+
+let mut v = VersionedString::new("value".to_owned(), "path");
+
+v.edit_eq_check(|s| *s = "value".to_owned());
+assert!(v.is_clean());
+v.edit_eq_check(|s| *s = "new value".to_owned());
+assert!(v.is_dirty());
+```
+</DocTooltip>
 
 </ScrollyCoding>

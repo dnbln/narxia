@@ -11,13 +11,21 @@ import { HighlightedCode, Pre } from "codehike/code"
 
 import { tokenTransitions } from "./annotations/token-transitions"
 import { wordWrap } from "./annotations/word-wrap"
+import { mark } from "./annotations/mark"
+import { tooltip } from "./annotations/tooltip"
+import { ReactNode } from "react"
 
 const Schema = Block.extend({
     steps: z.array(Block.extend({ code: HighlightedCodeBlock })),
+    tooltips: z.array(Block).optional(),
+    doctooltips: z.array(Block).optional(),
 })
 
 export function ScrollyCoding(props: unknown) {
-    const { steps } = parseProps(props, Schema)
+    const { steps, tooltips, doctooltips } = parseProps(props, Schema)
+    const compiledTooltips = (tooltips ?? []).concat(doctooltips ?? [])
+    console.log("ScrollyCoding props", steps, tooltips, doctooltips)
+
     return (
         <SelectionProvider className="flex gap-4">
             <div className="flex-1 mt-32 mb-[90vh] ml-2 prose prose-invert">
@@ -37,7 +45,7 @@ export function ScrollyCoding(props: unknown) {
                 <div className="top-16 sticky overflow-auto">
                     <Selection
                         from={steps.map((step) => (
-                            <Code codeblock={step.code} key={0}/>
+                            <Code codeblock={step.code} tooltips={compiledTooltips} key={0} />
                         ))}
                     />
                 </div>
@@ -46,12 +54,27 @@ export function ScrollyCoding(props: unknown) {
     )
 }
 
-function Code({ codeblock }: { codeblock: HighlightedCode }) {
+function Code({ codeblock, tooltips }: { codeblock: HighlightedCode, tooltips: { title?: string, children?: ReactNode }[] | undefined }) {
+    codeblock.annotations = codeblock.annotations.map((a) => {
+        console.log("Query", a.query)
+        console.log("Titles", tooltips?.map((t) => t.title))
+        const tooltip = tooltips?.find((t) => t.title === a.query)
+        if (!tooltip) return a
+        return {
+            ...a,
+            data: { ...a.data, children: tooltip.children },
+
+        }
+    })
+
     return (
         <Pre
             code={codeblock}
-            handlers={[tokenTransitions,
-                wordWrap
+            handlers={[
+                tokenTransitions,
+                wordWrap,
+                mark,
+                tooltip,
             ]}
             className="min-h-[40rem] p-3"
         />

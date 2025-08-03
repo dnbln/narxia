@@ -1,3 +1,6 @@
 {
-    "sarif-viewer.connectToGithubCodeScanning": "off"
+    "rust-analyzer.workspace.symbol.search.scope": "workspace",
+    "rust-analyzer.workspace.symbol.search.kind": "all_symbols",
+    "rust-analyzer.workspace.symbol.search.limit": 1024,
+    "rust-analyzer.workspace.symbol.search.excludeImports": false,
 }

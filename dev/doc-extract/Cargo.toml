@@ -1,0 +1,20 @@
+[package]
+name = "doc-extract"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[dependencies]
+lsp-types = { version = "0.97" }
+lsp_client = { git = "https://github.com/codestoryai/lsp_client", rev = "40605429f9b70157a1c30303b658b3f6476f7600" }
+tokio.workspace = true
+url = "2"
+serde_json.workspace = true
+
+[lints]
+workspace = true

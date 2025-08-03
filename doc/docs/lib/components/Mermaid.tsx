@@ -28,8 +28,6 @@ export function Mermaid({ chart }: { chart: string }) {
           theme: resolvedTheme === 'dark' ? 'dark' : 'default',
         });
 
-        console.log(chart);
-
         const { svg, bindFunctions } = await mermaid.render(
           id,
           chart.replaceAll('\\n', '\n'),

@@ -1,0 +1,19 @@
+[package]
+name = "doc-patchup"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+private = true
+
+[dependencies]
+doc-extract.workspace = true
+tokio.workspace = true
+glob.workspace = true
+
+[lints]
+workspace = true

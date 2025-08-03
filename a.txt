@@ -1,0 +1,1 @@
+{"doc":"\n```rust\ndir_structure::ReadFrom\n```\n\n```rust\npub trait ReadFrom\npub fn read_from(path: &Path) -> Result<Self>\nwhere\n    Self: Sized,\n```\n\n---\n\nReads the structure from the specified path, which\ncan be either a file or a directory.","name":"ReadFrom::read_from#"}

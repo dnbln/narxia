@@ -46,6 +46,7 @@ narxia-ssa-validator = { path = "crates/narxia-ssa-validator" }
 narxia-syn = { path = "crates/narxia-syn" }
 narxia-syn-db = { path = "crates/narxia-syn-db" }
 
+doc-extract = { path = "dev/doc-extract" }
 dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.5" }
 dir-structure = { path = "dev/dir-structure", version = "0.1.5" }
 
@@ -85,6 +86,7 @@ tar = "0.4"
 thiserror = "2.0.12"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tokio = { version = "1", features = ["full"] }
 liblzma = "0.4.0"
 zip = "4"
 
