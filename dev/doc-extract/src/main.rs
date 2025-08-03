@@ -1,11 +1,13 @@
+use std::env;
+
 use doc_extract::Session;
 use serde_json::json;
 
 #[tokio::main]
 async fn main() {
-    let args = std::env::args().skip(1);
+    let args = env::args().skip(1);
 
-    let working_directory = std::env::current_dir().expect("Unable to get current directory");
+    let working_directory = env::current_dir().expect("Unable to get current directory");
     let session = Session::new(working_directory).await;
 
     for target_name in args {

@@ -1,6 +1,8 @@
 use std::path::Path;
+use std::process;
 use std::process::Stdio;
 use std::str::FromStr;
+use std::time::Duration;
 
 use client::start_language_server;
 use lsp_client::lsp::client;
@@ -28,13 +30,14 @@ use tokio::process::Child;
 use tokio::process::ChildStdin;
 use tokio::process::Command;
 use tokio::sync::oneshot;
+use tokio::time;
 
 pub struct Markdown {
     pub contents: String,
 }
 
 pub struct Session {
-    #[allow(unused)]
+    #[expect(unused)]
     child: Child,
     lang_server: client::LanguageServerRef<ChildStdin>,
 }
@@ -116,13 +119,13 @@ impl Session {
                 )
                 .await;
             let Some(WorkspaceSymbolResponse::Flat(symbols)) = rx.await.unwrap().unwrap() else {
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                time::sleep(Duration::from_secs(1)).await;
                 continue;
             };
 
             if symbols.is_empty() {
                 // eprintln!("No symbols found");
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                time::sleep(Duration::from_secs(1)).await;
                 continue;
             }
 
@@ -132,38 +135,40 @@ impl Session {
                 .collect::<Vec<_>>();
 
             if symbset.is_empty() {
-                eprintln!("No symbol found with name: {}", term_name);
+                eprintln!("No symbol found with name: {term_name}");
                 eprintln!("Available symbols:");
                 for symbol in &symbols {
                     eprintln!(" - {} @ {:?}", symbol.name, symbol.location);
                 }
-                std::process::exit(1);
+                process::exit(1);
             };
 
-            let symb = symbset
-                .iter()
-                .find(|s| s.container_name.as_deref() == root_name)
-                .cloned()
-                .unwrap_or_else(|| {
-                    eprintln!(
-                        "No symbol found with name: {} in container: {:?}",
-                        term_name, root_name
-                    );
-                    eprintln!("Available symbols:");
-                    for symbol in &symbset {
+            let symb =
+                symbset
+                    .iter()
+                    .find(|s| s.container_name.as_deref() == root_name)
+                    .cloned()
+                    .ok_or_else(|| {
                         eprintln!(
-                            " - {} @ {:?} {}",
-                            symbol.name,
-                            symbol.location,
-                            if let Some(c) = &symbol.container_name {
-                                format!("(in container {})", c)
-                            } else {
-                                String::new()
-                            }
+                            "No symbol found with name: {term_name} in container: {root_name:?}",
                         );
-                    }
-                    std::process::exit(1);
-                });
+                        eprintln!("Available symbols:");
+                        for symbol in &symbset {
+                            eprintln!(
+                                " - {} @ {:?} {}",
+                                symbol.name,
+                                symbol.location,
+                                if let Some(c) = &symbol.container_name {
+                                    format!("(in container {c})")
+                                } else {
+                                    String::new()
+                                }
+                            );
+                        }
+                        format!(
+                            "No symbol found with name: {term_name} in container: {root_name:?}"
+                        )
+                    })?;
 
             // eprintln!(
             //     "Found symbol: {} @ {:?}:{:?}",
@@ -201,7 +206,7 @@ impl Session {
             ..
         }) = hover
         else {
-            panic!("Expected hover contents to be Markdown, got: {:?}", hover);
+            panic!("Expected hover contents to be Markdown, got: {hover:?}");
         };
 
         Ok(Markdown { contents })
@@ -280,13 +285,10 @@ impl DoSendRequest for client::LanguageServerRef<ChildStdin> {
 }
 
 fn prepare_command() -> Child {
-    let child = Command::new("rust-analyzer")
+    Command::new("rust-analyzer")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("Failed to start rust-analyzer process");
-    // let process_id = child.id();
-    // eprintln!("LSP started with process ID: {:?}", process_id);
-    child
+        .expect("Failed to start rust-analyzer process")
 }

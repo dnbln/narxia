@@ -1,4 +1,5 @@
 use std::fmt::Write as _;
+use std::fs;
 use std::path::Path;
 
 use doc_extract::Session;
@@ -18,7 +19,7 @@ async fn main() {
         .expect("Failed to read glob pattern")
         .filter_map(Result::ok)
     {
-        let before = std::fs::read_to_string(&p).unwrap();
+        let before = fs::read_to_string(&p).unwrap();
         let mut after = String::new();
         let mut previous_r = false;
         let mut in_doc_tooltip = false;
@@ -79,9 +80,9 @@ async fn main() {
 
         if after != before {
             let new_path = p.with_extension("before.mdx");
-            std::fs::rename(&p, &new_path).expect("Failed to rename before file");
+            fs::rename(&p, &new_path).expect("Failed to rename before file");
             println!("Updating {}", p.display());
-            std::fs::write(&p, after).expect("Failed to write updated file");
+            fs::write(&p, after).expect("Failed to write updated file");
         } else {
             println!("No changes for {}", p.display());
         }
