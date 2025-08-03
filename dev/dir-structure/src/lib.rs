@@ -1776,13 +1776,13 @@ where
 ///
 /// The table below summarizes the differences between the two functions:
 ///
-/// | State             | [`DeferredReadOrOwn::get`]               | [`DeferredReadOrOwn::perform_and_store_read`] |
-/// |-------------------|------------------------------------------|-----------------------------------------------|
-/// | New, not cached   | Reads the value, does not cache          | Reads the value, and caches it                |
-/// | Cached            | Returns the cached value                 | Returns the cached value                      |
+/// | State             | [`DeferredReadOrOwn::get`]               | [`DeferredReadOrOwn::perform_and_store_read`]     |
+/// |-------------------|------------------------------------------|---------------------------------------------------|
+/// | New, not cached   | Reads the value, does not cache          | Reads the value, and caches it, returns reference |
+/// | Cached            | Clones the cached value                  | Returns a reference to the cached value           |
 ///
 /// As such, [`DeferredReadOrOwn::get`] has the signature of `fn(&self) -> Result<T>` and
-/// [`DeferredReadOrOwn::perform_and_store_read`] has the signature of `fn(&mut self) -> Result<&T>`.
+/// [`DeferredReadOrOwn::perform_and_store_read`] has the signature of `fn(&mut self) -> Result<&mut T>`.
 ///
 /// If you never call [`DeferredReadOrOwn::perform_and_store_read`], and only ever call [`DeferredReadOrOwn::get`],
 /// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.

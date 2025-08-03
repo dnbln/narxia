@@ -3,7 +3,7 @@ title: Quick intro guide to dir-structure
 full: true
 ---
 
-This guide is inteded to provide a comprehensive overview of the `dir-structure` crate,
+This guide is intended to provide a comprehensive overview of the `dir-structure` crate,
 which simplifies the representation and manipulation of directory structures in Rust.
 It covers basic usage, advanced features, and practical examples to help you get started quickly.
 
@@ -1296,11 +1296,11 @@ The table below summarizes the differences between the two functions:
 
 |State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
 |-----|------------------------|-------------------------------------------|
-|New, not cached|Reads the value, does not cache|Reads the value, and caches it|
-|Cached|Returns the cached value|Returns the cached value|
+|New, not cached|Reads the value, does not cache|Reads the value, and caches it, returns reference|
+|Cached|Clones the cached value|Returns a reference to the cached value|
 
 As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
-[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&T>`.
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&mut T>`.
 
 If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get),
 that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html), and that should be preferred instead.

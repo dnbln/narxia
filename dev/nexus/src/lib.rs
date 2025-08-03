@@ -89,6 +89,12 @@ pub enum BuildSysCmd {
         #[clap(long, default_value = "nrx.dnbln.dev")]
         cname: String,
     },
+
+    #[clap(name = "doc-patchup-rustdocs")]
+    DocPatchupRustdocs {
+        #[clap(long)]
+        check: bool,
+    },
 }
 
 impl BuildSysCmd {
@@ -154,6 +160,11 @@ impl BuildSysCmd {
             Self::BuildDocs { cname } => {
                 let mut item = cx.new_child("Build docs");
                 build_docs(&mut item, &cname)?;
+            }
+
+            Self::DocPatchupRustdocs { check } => {
+                let mut item = cx.new_child("Doc patchup");
+                doc_patchup(check, &mut item)?;
             }
         }
 
@@ -1380,6 +1391,34 @@ fn build_docs(item: &mut Item, cname: &str) -> NexusR {
     fs::write(docs_dir().join("out/CNAME"), cname).into_diagnostic()?;
 
     item.done("Built docs");
+
+    Ok(())
+}
+
+fn doc_patchup(check: bool, item: &mut Item) -> NexusR {
+    item.init(None, None);
+
+    let mut cmd = process::Command::new("cargo");
+    cmd.arg("run").arg("-p").arg("doc-patchup");
+    if check {
+        cmd.arg("--").arg("--check");
+    }
+    let cmd = cmd
+        .current_dir(ws_root())
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::piped())
+        .stderr(process::Stdio::piped())
+        .output()
+        .into_diagnostic()?;
+
+    if !cmd.status.success() {
+        item.fail("Failed to patch up docs");
+        io::stderr().write_all(&cmd.stderr).into_diagnostic()?;
+        io::stdout().write_all(&cmd.stdout).into_diagnostic()?;
+        bail!("Failed to patch up docs");
+    }
+
+    item.done("Patched up docs with rustdocs");
 
     Ok(())
 }

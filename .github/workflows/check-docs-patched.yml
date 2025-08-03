@@ -1,0 +1,27 @@
+name: Build and Deploy Documentation
+
+on:
+  push:
+    branches: ["trunk"]
+  pull_request:
+    branches: ["trunk"]
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+
+jobs:
+  # Build job
+  build:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout code
+          uses: actions/checkout@v4
+        - name: Install rust
+          run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
+        - name: Build nexus
+          run: cargo build -p nexus
+        - name: Check if documentation is patched
+          run: cargo nexus build-sys doc-patchup-rustdocs --check
