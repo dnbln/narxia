@@ -1,10 +1,7 @@
-name: Build and Deploy Documentation
+name: Check Documentation Patched
 
 on:
-  push:
-    branches: ["trunk"]
-  pull_request:
-    branches: ["trunk"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,8 +17,9 @@ jobs:
         - name: Checkout code
           uses: actions/checkout@v4
         - name: Install rust
-          run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
+          run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy rust-analyzer
         - name: Build nexus
           run: cargo build -p nexus
         - name: Check if documentation is patched
           run: cargo nexus build-sys doc-patchup-rustdocs --check
+          timeout-minutes: 10
