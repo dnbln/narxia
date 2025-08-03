@@ -461,7 +461,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
-dir.subdirs.iter().try_for_each(|subdir| {
+dir.subdirs.iter_mut().try_for_each(|subdir| {
     let input = subdir.input.perform_and_store_read()?;
     process_input(input);
     // This will return the cached value
@@ -517,7 +517,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
-dir.subdirs.iter().try_for_each(|subdir| {
+dir.subdirs.iter_mut().try_for_each(|subdir| {
     let input = subdir.input.perform_and_store_read()?;
     process_input(input);
     // This will return the cached value
@@ -577,7 +577,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 
 // Read the input files lazily
-dir.subdirs.iter().try_for_each(|subdir| {
+dir.subdirs.iter_mut().try_for_each(|subdir| {
     let input = subdir.input.perform_and_store_read()?;
     // Modify the value directly
     **input = "New content".to_owned();
