@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process;
 use std::process::Stdio;
 use std::str::FromStr;
 use std::time::Duration;
@@ -140,8 +139,10 @@ impl Session {
                 for symbol in &symbols {
                     eprintln!(" - {} @ {:?}", symbol.name, symbol.location);
                 }
-                process::exit(1);
-            };
+                return Err(format!(
+                    "No symbol found with name: {term_name} in container: {root_name:?}"
+                ));
+            }
 
             let symb =
                 symbset
