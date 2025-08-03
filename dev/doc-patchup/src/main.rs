@@ -87,7 +87,7 @@ async fn main() {
                 continue;
             } else {
                 eprintln!("Changes detected in {}", p.display());
-                eprintln!("Run `cargo nexus doc-patchup-rustdocs` to update the file.");
+                eprintln!("Run `cargo nexus build-sys doc-patchup-rustdocs` to update the file.");
                 process::exit(1);
             }
         } else if after != before {
