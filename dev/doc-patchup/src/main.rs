@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
@@ -7,7 +8,7 @@ use doc_extract::Session;
 
 #[tokio::main]
 async fn main() {
-    let check_mode = std::env::args().skip(1).any(|arg| arg == "--check");
+    let check_mode = env::args().skip(1).any(|arg| arg == "--check");
     let root_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
@@ -89,15 +90,13 @@ async fn main() {
                 eprintln!("Run `cargo nexus doc-patchup-rustdocs` to update the file.");
                 process::exit(1);
             }
+        } else if after != before {
+            let new_path = p.with_extension("before.mdx");
+            fs::rename(&p, &new_path).expect("Failed to rename before file");
+            println!("Updating {}", p.display());
+            fs::write(&p, after).expect("Failed to write updated file");
         } else {
-            if after != before {
-                let new_path = p.with_extension("before.mdx");
-                fs::rename(&p, &new_path).expect("Failed to rename before file");
-                println!("Updating {}", p.display());
-                fs::write(&p, after).expect("Failed to write updated file");
-            } else {
-                println!("No changes for {}", p.display());
-            }
+            println!("No changes for {}", p.display());
         }
     }
 
