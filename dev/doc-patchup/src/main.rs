@@ -24,8 +24,11 @@ async fn main() {
     {
         let before = fs::read_to_string(&p).unwrap();
         let mut after = String::new();
+        let mut all_code_for_doctests = String::new();
         let mut previous_r = false;
         let mut in_doc_tooltip = false;
+        let mut write_doctests = false;
+        let mut in_code_block = false;
 
         for line in before.lines() {
             if let Some(l) = line.strip_prefix("## !!doctooltips ") {
@@ -44,7 +47,7 @@ async fn main() {
                 writeln!(&mut after, "{line}").unwrap();
                 writeln!(&mut after).unwrap();
                 writeln!(&mut after, "<DocTooltip>").unwrap();
-                writeln!(&mut after, "{}", docs.contents).unwrap();
+                writeln!(&mut after, "{}", patch_rust_lines(docs.contents)).unwrap();
                 writeln!(&mut after, "</DocTooltip>").unwrap();
             } else if previous_r {
                 let l = line
@@ -62,7 +65,7 @@ async fn main() {
                 writeln!(&mut after, "{line}").unwrap();
                 writeln!(&mut after).unwrap();
                 writeln!(&mut after, "<DocTooltip>").unwrap();
-                writeln!(&mut after, "{}", docs.contents).unwrap();
+                writeln!(&mut after, "{}", patch_rust_lines(docs.contents)).unwrap();
                 writeln!(&mut after, "</DocTooltip>").unwrap();
 
                 previous_r = false;
@@ -78,6 +81,50 @@ async fn main() {
                 continue;
             } else {
                 writeln!(&mut after, "{line}").unwrap();
+                if line == "```rust" {
+                    writeln!(&mut all_code_for_doctests, "```rust").unwrap();
+                    in_code_block = true;
+                } else if line.starts_with("```rust !") {
+                    in_code_block = true;
+                    let tag = if line.ends_with("no_run") {
+                        write_doctests = true;
+                        "no_run"
+                    } else if line.ends_with("ignore") {
+                        write_doctests = true;
+                        "ignore"
+                    } else if line.ends_with("should_panic") {
+                        write_doctests = true;
+                        "should_panic"
+                    } else if line.ends_with("compile_fail") {
+                        write_doctests = true;
+                        "compile_fail"
+                    } else {
+                        writeln!(&mut all_code_for_doctests, "```rust").unwrap();
+                        continue;
+                    };
+
+                    writeln!(&mut all_code_for_doctests, "```rust,{tag}").unwrap();
+                } else if line == "```" {
+                    in_code_block = !in_code_block;
+                    writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                } else {
+                    if in_code_block {
+                        if let Some(path) = line.strip_prefix("// !path ") {
+                            write_doctests = true;
+                            writeln!(&mut all_code_for_doctests, "let path = {path};").unwrap();
+                        } else if let Some(tail) = line.strip_prefix("// !tail ") {
+                            write_doctests = true;
+                            writeln!(&mut all_code_for_doctests, "Ok::<_, {tail}>(())").unwrap();
+                        } else if let Some(hidden) = line.strip_prefix("// !hidden ") {
+                            write_doctests = true;
+                            writeln!(&mut all_code_for_doctests, "{hidden}").unwrap();
+                        } else {
+                            writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                        }
+                    } else {
+                        writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                    }
+                }
             }
         }
 
@@ -98,7 +145,30 @@ async fn main() {
         } else {
             println!("No changes for {}", p.display());
         }
+
+        if write_doctests {
+            let name = p.file_name().unwrap().to_str().unwrap();
+            let new_name = format!(".{name}.doctests");
+            fs::write(p.with_file_name(new_name), all_code_for_doctests)
+                .expect("Failed to write doctests file");
+        }
     }
 
     session.shutdown().await;
+}
+
+fn patch_rust_lines(contents: String) -> String {
+    contents
+        .lines()
+        .map(|line| {
+            if line.starts_with("```rust") {
+                "```rust ,ignore".to_string()
+            } else if line.starts_with("```") {
+                "```".to_string()
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }

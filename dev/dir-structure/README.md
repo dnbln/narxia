@@ -7,7 +7,7 @@ creating and manipulating them.
 
 A quick example:
 
-```rust
+```rust ,no_run
 #[derive(dir_structure::DirStructure)]
 struct Dir {
     #[dir_structure(path = "input.txt")]

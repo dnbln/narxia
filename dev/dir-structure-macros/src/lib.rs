@@ -227,6 +227,7 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         impl #impl_generics ::dir_structure::DirStructure for #name #ty_generics #where_clause {}
     };
 
+    #[cfg(feature = "async")]
     expanded.extend(quote! {
         impl #impl_generics ::dir_structure::ReadFromAsync for #name #ty_generics #where_clause {
             type Future = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<Self>> + ::std::marker::Send + 'static>>;

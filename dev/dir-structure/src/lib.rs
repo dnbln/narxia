@@ -3,6 +3,8 @@
 //! This library provides a macro for defining directory structures, and a
 //! trait for reading and writing those structures to / from disk.
 //!
+//! [An intro guide.](https://nrx.dnbln.dev/docs/dx/dir-structure/guide)
+//!
 //! # Example
 //!
 //! ## Writing a structure to disk
@@ -93,8 +95,17 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+#[cfg(doctest)]
+mod __doc_check {
+    #[doc = include_str!("../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests")]
+    struct Guide;
+
+    #[doc = include_str!("../README.md")]
+    struct Readme;
+}
+
 // TODO: other async runtimes
-#[cfg(all(feature = "async", all(not(feature = "tokio"))))]
+#[cfg(all(feature = "async", not(any(feature = "tokio"))))]
 compile_error!(
     "The `async` feature requires the `tokio` feature to be enabled. \
      Please enable the `tokio` feature in your Cargo.toml."
@@ -199,6 +210,44 @@ pub trait DirStructureItem: ReadFrom + WriteTo {
 
 // Blanket impl.
 impl<T> DirStructureItem for T where T: ReadFrom + WriteTo {}
+
+/// Trait for types / structures that can be
+/// read from disk, either from a file or a directory.
+///
+/// This is the asynchronous counterpart of [`DirStructureItem`].
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub trait DirStructureItemAsync: ReadFromAsync + WriteToAsync {
+    /// Uses the [`ReadFromAsync`] implementation to read the structure from
+    /// disk, from the specified path.
+    fn read_async(path: impl Into<PathBuf>) -> <Self as ReadFromAsync>::Future
+    where
+        Self: Sized,
+    {
+        Self::read_from_async(path.into())
+    }
+
+    /// Uses the [`WriteToAsync`] implementation to write the structure
+    /// to disk at the specified path.
+    fn write_async<'a>(&'a self, path: impl Into<PathBuf>) -> <Self as WriteToAsync>::Future<'a> {
+        self.write_to_async(path.into())
+    }
+
+    /// Uses the [`WriteToAsyncOwned`] implementation to write the structure
+    /// to disk at the specified path.
+    fn write_owned_async(
+        self,
+        path: impl Into<PathBuf>,
+    ) -> <Self as WriteToAsyncOwned<'static>>::Future
+    where
+        Self: for<'a> WriteToAsyncOwned<'a> + Sized,
+    {
+        self.write_to_async_owned(path.into())
+    }
+}
+
+// Blanket impl.
+impl<T> DirStructureItemAsync for T where T: ReadFromAsync + WriteToAsync {}
 
 /// Trait for types / structures that can be
 /// read from disk, either from a file or a directory.
@@ -3211,7 +3260,7 @@ where
 /// *v = "new value".to_owned();
 /// assert!(v.is_dirty());
 /// ```
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Versioned<T> {
     value: T,
     version: usize,
@@ -3451,6 +3500,72 @@ where
 
         VersionedWriteFuture::Writing {
             inner: self.value.write_to_async(path),
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = VersionedWriteOwnedFutureProj)]
+pub enum VersionedWriteOwnedFuture<'a, T>
+where
+    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    Poisson,
+    NotTouched,
+    Writing {
+        inner: <T as WriteToAsyncOwned<'a>>::Future,
+    },
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for VersionedWriteOwnedFuture<'a, T>
+where
+    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poisson);
+        match this {
+            VersionedWriteOwnedFutureProj::NotTouched => Poll::Ready(Ok(())),
+            VersionedWriteOwnedFutureProj::Writing { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(res) => Poll::Ready(res),
+                    Poll::Pending => {
+                        self.project_replace(Self::Writing { inner });
+                        Poll::Pending
+                    }
+                }
+            }
+            VersionedWriteOwnedFutureProj::Poisson => {
+                panic!(
+                    "VersionedWriteOwnedFuture is in an invalid state. This is a bug in the code."
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsyncOwned<'a> for Versioned<T>
+where
+    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Future = VersionedWriteOwnedFuture<'a, T>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        if self.path == path && self.is_clean() {
+            return VersionedWriteOwnedFuture::NotTouched;
+        }
+
+        VersionedWriteOwnedFuture::Writing {
+            inner: self.value.write_to_async_owned(path),
         }
     }
 }
