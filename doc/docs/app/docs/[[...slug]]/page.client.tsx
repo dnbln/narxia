@@ -13,7 +13,7 @@ export function LLMCopyButton({ slug }: { slug: string[] }) {
     const [checked, onClick] = useCopyButton(async () => {
         setLoading(true);
 
-        const url = `/llms.mdx/${slug.join('/')}`;
+        const url = `/llms.mdx/${slug.join('/')}.mdx`;
         try {
             const cached = cache.get(url);
 

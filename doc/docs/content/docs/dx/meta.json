@@ -3,6 +3,7 @@
   "description": "Documentation for Narxia's DX crates",
   "root": true,
   "pages": [
-    "dir-structure"
+    "dir-structure",
+    "doc-extract"
   ]
 }

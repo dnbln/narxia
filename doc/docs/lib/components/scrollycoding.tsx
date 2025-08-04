@@ -24,7 +24,7 @@ const Schema = Block.extend({
 export function ScrollyCoding(props: unknown) {
     const { steps, tooltips, doctooltips } = parseProps(props, Schema)
     const compiledTooltips = (tooltips ?? []).concat(doctooltips ?? [])
-    console.log("ScrollyCoding props", steps, tooltips, doctooltips)
+    // console.log("ScrollyCoding props", steps, tooltips, doctooltips)
 
     return (
         <SelectionProvider className="flex gap-4">
@@ -56,8 +56,8 @@ export function ScrollyCoding(props: unknown) {
 
 function Code({ codeblock, tooltips }: { codeblock: HighlightedCode, tooltips: { title?: string, children?: ReactNode }[] | undefined }) {
     codeblock.annotations = codeblock.annotations.map((a) => {
-        console.log("Query", a.query)
-        console.log("Titles", tooltips?.map((t) => t.title))
+        // console.log("Query", a.query)
+        // console.log("Titles", tooltips?.map((t) => t.title))
         const tooltip = tooltips?.find((t) => t.title === a.query)
         if (!tooltip) return a
         return {

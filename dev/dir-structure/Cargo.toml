@@ -13,17 +13,21 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["json"]
+default = ["json", "async", "tokio"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
 ron = ["dep:serde", "dep:ron"]
+async = ["dep:pin-project"]
+tokio = ["dep:tokio", "async"]
 
 [dependencies]
 dir-structure-macros.workspace = true
 thiserror.workspace = true
+pin-project = {workspace = true, optional = true}
 ron = { version = "0.8", optional = true }
 serde = { version = "1.0", optional = true, features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 serde_yaml = { version = "0.9", optional = true }
 toml = { version = "0.8", optional = true }
+tokio = { version = "1", optional = true, default-features = false, features = ["fs"] }

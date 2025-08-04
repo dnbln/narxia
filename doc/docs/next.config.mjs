@@ -1,4 +1,4 @@
-import {createMDX} from 'fumadocs-mdx/next';
+import { createMDX } from 'fumadocs-mdx/next';
 
 const withMDX = createMDX();
 
@@ -14,13 +14,22 @@ const config = {
         },
     },
     output: "export",
-    // trailingSlash: true,
+    trailingSlash: true,
     // webpack(config) {
     //     config.module.rules.push({
     //         test: /\.svg$/i,
     //         use: ['@svgr/webpack'],
     //     });
     //     return config;
+    // },
+
+    // async rewrites() {
+    //     return [
+    //         {
+    //             source: '/docs/:path*.mdx',
+    //             destination: '/llms.mdx/:path*',
+    //         },
+    //     ];
     // },
 
     webpack(config) {

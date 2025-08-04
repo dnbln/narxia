@@ -69,6 +69,7 @@ llvm-sys = { version = "201.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"
+pin-project = "1"
 prodash = { version = "29.0.0", default-features = false, features = [
     "render-line",
     "render-line-crossterm",

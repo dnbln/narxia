@@ -93,16 +93,28 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+// TODO: other async runtimes
+#[cfg(all(feature = "async", all(not(feature = "tokio"))))]
+compile_error!(
+    "The `async` feature requires the `tokio` feature to be enabled. \
+     Please enable the `tokio` feature in your Cargo.toml."
+);
+
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
+use std::future;
+use std::future::Ready;
 use std::marker;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
+use std::pin::Pin;
 use std::str::FromStr;
+use std::task::Context;
+use std::task::Poll;
 
 /// The error type for this library.
 #[derive(Debug, thiserror::Error)]
@@ -169,12 +181,26 @@ impl<T> DirStructureItem for T where T: ReadFrom + WriteTo {}
 
 /// Trait for types / structures that can be
 /// read from disk, either from a file or a directory.
-pub trait ReadFrom {
+pub trait ReadFrom: Sized {
     /// Reads the structure from the specified path, which
     /// can be either a file or a directory.
-    fn read_from(path: &Path) -> Result<Self>
+    fn read_from(path: &Path) -> Result<Self>;
+}
+
+/// Trait for types / structures that can be
+/// read from disk asynchronously.
+///
+/// `async` version of [`ReadFrom`].
+#[cfg(feature = "async")]
+pub trait ReadFromAsync: Sized {
+    /// The future type returned by the async read function.
+    type Future: Future<Output = Result<Self>> + Send + 'static
     where
-        Self: Sized;
+        Self: 'static;
+
+    /// Asynchronously reads the structure from the specified path,
+    /// which can be either a file or a directory.
+    fn read_from_async(path: PathBuf) -> Self::Future;
 }
 
 /// Trait for types / structures that can be
@@ -768,6 +794,151 @@ where
     }
 }
 
+#[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
+pub enum DirChildrenReadAsyncFuture<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Send + Unpin,
+{
+    Poison,
+    Init(
+        Pin<Box<dyn Future<Output = std::io::Result<tokio::fs::ReadDir>> + Send>>,
+        F,
+        Vec<DirChild<T>>,
+        PathBuf,
+    ),
+    Begin(Pin<Box<tokio::fs::ReadDir>>, F, Vec<DirChild<T>>, PathBuf),
+    ReadAsync(
+        Pin<Box<tokio::fs::ReadDir>>,
+        F,
+        Vec<DirChild<T>>,
+        PathBuf,
+        T::Future,
+        OsString,
+    ),
+}
+
+impl<T, F> Future for DirChildrenReadAsyncFuture<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+{
+    type Output = Result<DirChildren<T, F>>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+
+        match this {
+            DirChildrenReadAsyncFutureProjOwn::Init(mut entries, filter, children, path) => {
+                match entries.as_mut().poll(cx) {
+                    Poll::Ready(Ok(entries)) => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                            Box::pin(entries),
+                            filter,
+                            children,
+                            path,
+                        ));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Pending => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Init(
+                            entries, filter, children, path,
+                        ));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenReadAsyncFutureProjOwn::Begin(mut entries, filter, children, path) => {
+                match entries.poll_next_entry(cx) {
+                    Poll::Ready(Ok(Some(entry))) => {
+                        if !filter.allows(&entry.path()) {
+                            return Poll::Ready(Ok(DirChildren {
+                                self_path: path.clone(),
+                                children,
+                                filter: marker::PhantomData,
+                            }));
+                        }
+
+                        let value_future = T::read_from_async(entry.path());
+                        self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
+                            entries,
+                            filter,
+                            children,
+                            path,
+                            value_future,
+                            entry.file_name(),
+                        ));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Ok(None)) => Poll::Ready(Ok(DirChildren {
+                        self_path: path.clone(),
+                        children,
+                        filter: marker::PhantomData,
+                    })),
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Pending => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                            entries, filter, children, path,
+                        ));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenReadAsyncFutureProjOwn::ReadAsync(
+                entries,
+                filter,
+                mut children,
+                path,
+                mut value_fut,
+                file_name,
+            ) => match Pin::<&mut T::Future>::new(&mut value_fut).poll(cx) {
+                Poll::Ready(Ok(value)) => {
+                    children.push(DirChild { file_name, value });
+                    self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                        entries, filter, children, path,
+                    ));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                Poll::Pending => {
+                    self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
+                        entries,
+                        filter,
+                        children,
+                        path,
+                        value_fut,
+                        file_name.clone(),
+                    ));
+                    Poll::Pending
+                }
+            },
+            DirChildrenReadAsyncFutureProjOwn::Poison => {
+                panic!("DirChildrenReadAsyncFuture is poisoned, this should never happen");
+            }
+        }
+    }
+}
+
+impl<T, F> ReadFromAsync for DirChildren<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+{
+    type Future = DirChildrenReadAsyncFuture<T, F>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        let f = Box::pin(tokio::fs::read_dir(path.clone()));
+        DirChildrenReadAsyncFuture::Init(f, F::make_filter(), Vec::new(), path)
+    }
+}
+
 impl<T, F> WriteTo for DirChildren<T, F>
 where
     T: DirStructureItem,
@@ -1081,6 +1252,7 @@ macro_rules! dir_children_wrapper {
 }
 
 pub use dir_structure_macros::DirStructure;
+use pin_project::pin_project;
 
 macro_rules! data_format_impl {
     (
@@ -1186,11 +1358,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             use std::fmt;
             use std::fmt::Formatter;
             use std::path::Path;
+            use std::path::PathBuf;
             use std::str::FromStr;
+
+            use std::pin::Pin;
 
             use crate::FromRefForWriter;
             use crate::NewtypeToInner;
             use crate::ReadFrom;
+            use crate::ReadFromAsync;
             use crate::WriteTo;
 
             $(#[$main_ty_attrs])*
@@ -1267,6 +1443,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .parse::<$main_ty<T>>()
                         .map_err(|e| crate::Error::Parse(path.to_path_buf(), e.into()))?;
                     Ok(v)
+                }
+            }
+
+            impl<T> ReadFromAsync for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                type Future = Pin<Box<dyn Future<Output = crate::Result<Self>> + Send>>;
+
+                fn read_from_async(path: PathBuf) -> Self::Future {
+                    Box::pin(async move {
+                        let contents = crate::FileString::read_from_async(path.clone()).await?.0;
+                        let v = contents
+                            .parse::<$main_ty<T>>()
+                            .map_err(|e| crate::Error::Parse(path, e.into()))?;
+                        Ok(v)
+                    })
                 }
             }
 
@@ -1477,6 +1670,24 @@ where
     }
 }
 
+impl<T> ReadFromAsync for FmtWrapper<T>
+where
+    T: FromStr + Send + 'static,
+    T::Err: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            let contents = FileString::read_from_async(path.clone()).await?.0;
+            match contents.parse::<T>() {
+                Ok(v) => Ok(Self(v)),
+                Err(e) => Err(Error::Parse(path, e.into())),
+            }
+        })
+    }
+}
+
 impl<T> WriteTo for FmtWrapper<T>
 where
     T: Display,
@@ -1532,6 +1743,18 @@ impl ReadFrom for FileBytes {
         Self: Sized,
     {
         std::fs::read(path).wrap_io_error_with(path).map(Self)
+    }
+}
+
+#[cfg(feature = "tokio")]
+impl ReadFromAsync for FileBytes {
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            let bytes = tokio::fs::read(&path).await.wrap_io_error(|| path)?;
+            Ok(Self::new(bytes))
+        })
     }
 }
 
@@ -1623,6 +1846,21 @@ impl ReadFrom for FileString {
     }
 }
 
+#[cfg(feature = "tokio")]
+impl ReadFromAsync for FileString {
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            Ok(Self(
+                tokio::fs::read_to_string(&path)
+                    .await
+                    .wrap_io_error_with(&path)?,
+            ))
+        })
+    }
+}
+
 impl WriteTo for FileString {
     fn write_to(&self, path: &Path) -> Result<()> {
         Self::from_ref_for_writer(&self.0).write_to(path)
@@ -1663,6 +1901,59 @@ where
     }
 }
 
+#[pin_project(project = EnumProj)]
+pub enum OptionReadFromAsyncFuture<T>
+where
+    T: ReadFromAsync + 'static,
+{
+    HasContents {
+        #[pin]
+        inner: T::Future,
+    },
+    NoContents,
+}
+
+impl<T> Future for OptionReadFromAsyncFuture<T>
+where
+    T: ReadFromAsync + 'static,
+{
+    type Output = Result<Option<T>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        match this {
+            EnumProj::HasContents { inner } => match inner.poll(cx) {
+                Poll::Ready(v) => Poll::Ready(v.map(Some)),
+                Poll::Pending => Poll::Pending,
+            },
+            EnumProj::NoContents => {
+                // If there are no contents, we return None
+                Poll::Ready(Ok(None))
+            }
+        }
+    }
+}
+
+impl<T> ReadFromAsync for Option<T>
+where
+    T: ReadFromAsync + 'static,
+{
+    type Future
+        = OptionReadFromAsyncFuture<T>
+    where
+        Self: 'static;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        if path.exists() {
+            OptionReadFromAsyncFuture::HasContents {
+                inner: T::read_from_async(path),
+            }
+        } else {
+            OptionReadFromAsyncFuture::NoContents
+        }
+    }
+}
+
 impl<T> WriteTo for Option<T>
 where
     T: WriteTo,
@@ -1683,9 +1974,7 @@ where
 ///
 /// See the [`DeferredRead::perform_read`] method for more details.
 #[derive(Debug, Clone, Hash)]
-pub struct DeferredRead<T>(pub PathBuf, marker::PhantomData<T>)
-where
-    T: ReadFrom;
+pub struct DeferredRead<T>(pub PathBuf, marker::PhantomData<T>);
 
 impl<T> ReadFrom for DeferredRead<T>
 where
@@ -1696,6 +1985,17 @@ where
         Self: Sized,
     {
         Ok(Self(path.to_path_buf(), marker::PhantomData))
+    }
+}
+
+impl<T> ReadFromAsync for DeferredRead<T>
+where
+    T: Send + 'static,
+{
+    type Future = future::Ready<Result<Self>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        future::ready(Ok(Self(path, marker::PhantomData)))
     }
 }
 
@@ -1744,6 +2044,23 @@ where
     }
 }
 
+impl<T> DeferredRead<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    /// Performs the read asynchronously and returns the value.
+    ///
+    /// If the value changed on disk since the [`DeferredRead`] was created, then the
+    /// new value will be read from disk and returned.
+    ///
+    /// For a cached version see [`DeferredReadOrOwn`].
+    ///
+    /// Asynchronous version of [`DeferredRead::perform_read`].
+    pub async fn perform_read_async(&self) -> Result<T> {
+        T::read_from_async(self.0.clone()).await
+    }
+}
+
 impl<T> WriteTo for DeferredRead<T>
 where
     T: ReadFrom + WriteTo,
@@ -1787,10 +2104,7 @@ where
 /// If you never call [`DeferredReadOrOwn::perform_and_store_read`], and only ever call [`DeferredReadOrOwn::get`],
 /// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.
 #[derive(Debug, Clone, Hash)]
-pub enum DeferredReadOrOwn<T>
-where
-    T: ReadFrom,
-{
+pub enum DeferredReadOrOwn<T> {
     Own(T),
     Deferred(DeferredRead<T>),
 }
@@ -1898,6 +2212,46 @@ where
     }
 }
 
+impl<T> DeferredReadOrOwn<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    pub async fn get_async(&self) -> Result<T>
+    where
+        T: Clone,
+    {
+        match self {
+            DeferredReadOrOwn::Own(own) => Ok(own.clone()),
+            DeferredReadOrOwn::Deferred(d) => d.perform_read_async().await,
+        }
+    }
+
+    pub async fn perform_and_store_read_async(&mut self) -> Result<&mut T> {
+        match self {
+            DeferredReadOrOwn::Own(own) => Ok(own),
+            DeferredReadOrOwn::Deferred(d) => {
+                let value = d.perform_read_async().await?;
+                *self = DeferredReadOrOwn::Own(value);
+                let DeferredReadOrOwn::Own(own) = self else {
+                    unreachable!()
+                };
+                Ok(own)
+            }
+        }
+    }
+}
+
+impl<T> ReadFromAsync for DeferredReadOrOwn<T>
+where
+    T: ReadFrom + Send + 'static,
+{
+    type Future = Ready<Result<Self>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        future::ready(DeferredRead::read_from(&path).map(Self::Deferred))
+    }
+}
+
 impl<T> WriteTo for DeferredReadOrOwn<T>
 where
     T: ReadFrom + WriteTo,
@@ -1944,17 +2298,52 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub struct CleanDir<T: DirStructureItem>(pub T);
+pub struct CleanDir<T>(pub T);
 
 impl<T> ReadFrom for CleanDir<T>
 where
-    T: DirStructureItem,
+    T: ReadFrom,
 {
     fn read_from(path: &Path) -> Result<Self>
     where
         Self: Sized,
     {
         Ok(Self(T::read_from(path)?))
+    }
+}
+
+#[pin_project]
+pub struct CleanDirReadFuture<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    #[pin]
+    inner: T::Future,
+}
+
+impl<T> Future for CleanDirReadFuture<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    type Output = Result<CleanDir<T>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        match this.inner.poll(cx) {
+            Poll::Ready(v) => Poll::Ready(v.map(CleanDir)),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl<T> ReadFromAsync for CleanDir<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        Box::pin(async move { T::read_from_async(path).await.map(Self) })
     }
 }
 
@@ -2032,13 +2421,13 @@ where
 /// assert!(v.is_dirty());
 /// ```
 #[derive(Debug, Clone, Hash)]
-pub struct Versioned<T: DirStructureItem> {
+pub struct Versioned<T> {
     value: T,
     version: usize,
     path: PathBuf,
 }
 
-impl<T: DirStructureItem> Versioned<T> {
+impl<T> Versioned<T> {
     const DEFAULT_VERSION: usize = 0;
 
     /// Creates a new [`Versioned`] with the specified value.
@@ -2147,7 +2536,7 @@ impl<T: DirStructureItem> Versioned<T> {
     }
 }
 
-impl<T: DirStructureItem> ReadFrom for Versioned<T> {
+impl<T: ReadFrom> ReadFrom for Versioned<T> {
     fn read_from(path: &Path) -> Result<Self>
     where
         Self: Sized,
@@ -2156,7 +2545,43 @@ impl<T: DirStructureItem> ReadFrom for Versioned<T> {
     }
 }
 
-impl<T: DirStructureItem> WriteTo for Versioned<T> {
+#[pin_project]
+pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
+    #[pin]
+    inner: T::Future,
+    path: PathBuf,
+}
+
+impl<T> Future for VersionedReadFuture<T>
+where
+    T: ReadFromAsync + Send + 'static,
+{
+    type Output = Result<Versioned<T>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let projection = self.project();
+        let res = <T::Future as Future>::poll(projection.inner, cx);
+        match res {
+            Poll::Ready(res) => {
+                Poll::Ready(res.map(|value| Versioned::new(value, projection.path.to_path_buf())))
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl<T: ReadFromAsync + Send + 'static> ReadFromAsync for Versioned<T> {
+    type Future = VersionedReadFuture<T>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        VersionedReadFuture {
+            inner: T::read_from_async(path.clone()),
+            path,
+        }
+    }
+}
+
+impl<T: WriteTo> WriteTo for Versioned<T> {
     fn write_to(&self, path: &Path) -> Result<()> {
         if self.path == path && self.is_clean() {
             return Ok(());
@@ -2166,7 +2591,7 @@ impl<T: DirStructureItem> WriteTo for Versioned<T> {
     }
 }
 
-impl<T: DirStructureItem> Deref for Versioned<T> {
+impl<T> Deref for Versioned<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -2174,7 +2599,7 @@ impl<T: DirStructureItem> Deref for Versioned<T> {
     }
 }
 
-impl<T: DirStructureItem> DerefMut for Versioned<T> {
+impl<T> DerefMut for Versioned<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // We will assume that the value has changed, if `deref_mut` was called.
         // So we increment the version.
@@ -2198,6 +2623,30 @@ impl ReadFrom for String {
     }
 }
 
+#[pin_project]
+pub struct StringReadFuture(#[pin] <FileString as ReadFromAsync>::Future);
+
+impl Future for StringReadFuture {
+    type Output = Result<String>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let projection = self.project();
+        let res = <FileString as ReadFromAsync>::Future::poll(projection.0, cx);
+        match res {
+            Poll::Ready(res) => Poll::Ready(res.map(|inner| inner.0)),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl ReadFromAsync for String {
+    type Future = StringReadFuture;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        StringReadFuture(FileString::read_from_async(path))
+    }
+}
+
 impl WriteTo for String {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileString::from_ref_for_writer(self).write_to(path)
@@ -2210,6 +2659,30 @@ impl ReadFrom for Vec<u8> {
         Self: Sized,
     {
         FileBytes::read_from(path).map(|v| v.0)
+    }
+}
+
+#[pin_project]
+pub struct VecReadFuture(#[pin] <FileBytes as ReadFromAsync>::Future);
+
+impl Future for VecReadFuture {
+    type Output = Result<Vec<u8>>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let projection = self.project();
+        let res = <FileBytes as ReadFromAsync>::Future::poll(projection.0, cx);
+        match res {
+            Poll::Ready(res) => Poll::Ready(res.map(|inner| inner.0)),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+impl ReadFromAsync for Vec<u8> {
+    type Future = VecReadFuture;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        VecReadFuture(FileBytes::read_from_async(path))
     }
 }
 
