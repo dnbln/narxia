@@ -104,17 +104,25 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::fs::File;
+#[cfg(feature = "async")]
 use std::future;
+#[cfg(feature = "async")]
 use std::future::Ready;
 use std::marker;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
+#[cfg(feature = "async")]
 use std::pin::Pin;
 use std::str::FromStr;
+#[cfg(feature = "async")]
 use std::task::Context;
+#[cfg(feature = "async")]
 use std::task::Poll;
+pub use dir_structure_macros::DirStructure;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
 
 /// The error type for this library.
 #[derive(Debug, thiserror::Error)]
@@ -794,6 +802,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
 pub enum DirChildrenReadAsyncFuture<T, F>
 where
@@ -819,6 +828,7 @@ where
     ),
 }
 
+#[cfg(feature = "async")]
 impl<T, F> Future for DirChildrenReadAsyncFuture<T, F>
 where
     T: DirStructureItem + ReadFromAsync + Send + 'static,
@@ -925,6 +935,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T, F> ReadFromAsync for DirChildren<T, F>
 where
     T: DirStructureItem + ReadFromAsync + Send + 'static,
@@ -1251,9 +1262,6 @@ macro_rules! dir_children_wrapper {
     };
 }
 
-pub use dir_structure_macros::DirStructure;
-use pin_project::pin_project;
-
 macro_rules! data_format_impl {
     (
         $(#[$mod_attr:meta])*
@@ -1279,93 +1287,96 @@ macro_rules! data_format_impl {
         $(#[$mod_attr])*
         pub mod $mod_name {
             #![doc = concat!(r##"
-With the `"##, stringify!($mod_name), r##"` feature, this module provides the [`"##, stringify!($main_ty), r##"`] type,
+With the `"##, stringify!($mod_name), r##"` feature, this module provides the [`"##, stringify!($main_ty), r##"`] type.
 
 This allows us to read and parse `"##, stringify!($mod_name), r##"` files to some `serde::Deserialize` type,
-and write them back to disk.
-
-# Examples
-
-## Reading a "##, stringify!($mod_name), r##" file
-
-```
-use std::path::Path;
-
-use dir_structure::DirStructureItem;
-use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";
-
-#[derive(dir_structure::DirStructure)]
-struct Dir {
-    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]
-    f: Obj,
-}
-
-#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-struct Obj {
-    name: String,
-    age: u32,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let d = Path::new("dir");
-    std::fs::create_dir_all(&d)?;
-    std::fs::write(d.join("f"##, $extension, r##""), "##, $text, r##")?;
-    let dir = Dir::read(&d)?;
-    assert_eq!(dir.f, Obj { name: "John".to_owned(), age: 30 });
-    # std::fs::remove_dir_all(&d)?;
-    Ok(())
-}
-```
-
-## Writing a "##, stringify!($mod_name), r##" file
-
-```
-use std::path::Path;
-
-use dir_structure::DirStructureItem;
-use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";
-
-#[derive(dir_structure::DirStructure)]
-struct Dir {
-    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]
-    f: Obj,
-}
-
-#[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-struct Obj {
-    name: String,
-    age: u32,
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let d = Path::new("dir");
-    let dir = Dir {
-        f: Obj {
-            name: "John".to_owned(),
-            age: 30,
-        },
-    };
-    dir.write(&d)?;
-    assert_eq!(std::fs::read_to_string(d.join("f"##, $extension, r##""))?,
-        "##, $text, r##"
-    );
-    # std::fs::remove_dir_all(&d)?;
-    Ok(())
-}
-```
-"##)]
+and write them back to disk."##
+            )]
+            //!
+            //! # Examples
+            //!
+            #![doc = concat!(r##"## Reading a "##, stringify!($mod_name), r##" file"##)]
+            //!
+            //! ```
+            //! use std::path::Path;
+            //!
+            //! use dir_structure::DirStructureItem;
+            #![doc = concat!(r##"use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";"##)]
+            //!
+            //! #[derive(dir_structure::DirStructure)]
+            //! struct Dir {
+            #![doc = concat!(r##"    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]"##)]
+            //!     f: Obj,
+            //! }
+            //!
+            //! #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+            //! struct Obj {
+            //!     name: String,
+            //!     age: u32,
+            //! }
+            //!
+            //! fn main() -> Result<(), Box<dyn std::error::Error>> {
+            //!     let d = Path::new("dir");
+            //!     std::fs::create_dir_all(&d)?;
+            #![doc = concat!(r##"    std::fs::write(d.join("f"##, $extension, r##""), "##, $text, r##")?;"##)]
+            //!     let dir = Dir::read(&d)?;
+            //!     assert_eq!(dir.f, Obj { name: "John".to_owned(), age: 30 });
+            //!     # std::fs::remove_dir_all(&d)?;
+            //!     Ok(())
+            //! }
+            //! ```
+            //!
+            #![doc = concat!(r##"## Writing a "##, stringify!($mod_name), r##" file"##)]
+            //!
+            //! ```
+            //! use std::path::Path;
+            //!
+            //! use dir_structure::DirStructureItem;
+            #![doc = concat!(r##"use dir_structure::"##, stringify!($mod_name), "::", stringify!($main_ty), r##";"##)]
+            //!
+            //! #[derive(dir_structure::DirStructure)]
+            //! struct Dir {
+            #![doc = concat!(r##"    #[dir_structure(path = "f"##, $extension, r##"", with_newtype = "##, stringify!($main_ty), r##"<Obj>)]"##)]
+            //!     f: Obj,
+            //! }
+            //!
+            //! #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+            //! struct Obj {
+            //!     name: String,
+            //!     age: u32,
+            //! }
+            //!
+            //! fn main() -> Result<(), Box<dyn std::error::Error>> {
+            //!     let d = Path::new("dir");
+            //!     let dir = Dir {
+            //!         f: Obj {
+            //!             name: "John".to_owned(),
+            //!             age: 30,
+            //!         },
+            //!     };
+            //!     dir.write(&d)?;
+            #![doc = concat!(r##"    assert_eq!(std::fs::read_to_string(d.join("f"##, $extension, r##""))?,"##)]
+            #![doc = concat!(r##"        "##, $text)]
+            //!     );
+            //!     # std::fs::remove_dir_all(&d)?;
+            //!     Ok(())
+            //! }
+            //! ```
 
             use std::fmt;
             use std::fmt::Formatter;
             use std::path::Path;
+            #[cfg(feature = "async")]
             use std::path::PathBuf;
             use std::str::FromStr;
 
+            #[cfg(feature = "async")]
             use std::pin::Pin;
 
             use crate::FromRefForWriter;
             use crate::NewtypeToInner;
             use crate::ReadFrom;
+            #[cfg(feature = "async")]
             use crate::ReadFromAsync;
             use crate::WriteTo;
 
@@ -1420,7 +1431,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
                     let s = self.to_str().map_err(|_| fmt::Error)?;
-                    write!(f, "{}", s)
+                    write!(f, "{s}")
                 }
             }
 
@@ -1446,6 +1457,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
+            #[cfg(feature = "async")]
             impl<T> ReadFromAsync for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
@@ -1670,6 +1682,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ReadFromAsync for FmtWrapper<T>
 where
     T: FromStr + Send + 'static,
@@ -1901,6 +1914,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project(project = EnumProj)]
 pub enum OptionReadFromAsyncFuture<T>
 where
@@ -1913,6 +1927,7 @@ where
     NoContents,
 }
 
+#[cfg(feature = "async")]
 impl<T> Future for OptionReadFromAsyncFuture<T>
 where
     T: ReadFromAsync + 'static,
@@ -1934,6 +1949,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ReadFromAsync for Option<T>
 where
     T: ReadFromAsync + 'static,
@@ -1988,6 +2004,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ReadFromAsync for DeferredRead<T>
 where
     T: Send + 'static,
@@ -2044,6 +2061,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> DeferredRead<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2212,6 +2230,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> DeferredReadOrOwn<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2241,6 +2260,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ReadFromAsync for DeferredReadOrOwn<T>
 where
     T: ReadFrom + Send + 'static,
@@ -2312,6 +2332,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project]
 pub struct CleanDirReadFuture<T>
 where
@@ -2321,6 +2342,7 @@ where
     inner: T::Future,
 }
 
+#[cfg(feature = "async")]
 impl<T> Future for CleanDirReadFuture<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2336,6 +2358,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T> ReadFromAsync for CleanDir<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2545,6 +2568,7 @@ impl<T: ReadFrom> ReadFrom for Versioned<T> {
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project]
 pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
     #[pin]
@@ -2552,6 +2576,7 @@ pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
     path: PathBuf,
 }
 
+#[cfg(feature = "async")]
 impl<T> Future for VersionedReadFuture<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2570,6 +2595,7 @@ where
     }
 }
 
+#[cfg(feature = "async")]
 impl<T: ReadFromAsync + Send + 'static> ReadFromAsync for Versioned<T> {
     type Future = VersionedReadFuture<T>;
 
@@ -2623,9 +2649,11 @@ impl ReadFrom for String {
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project]
 pub struct StringReadFuture(#[pin] <FileString as ReadFromAsync>::Future);
 
+#[cfg(feature = "async")]
 impl Future for StringReadFuture {
     type Output = Result<String>;
 
@@ -2639,6 +2667,7 @@ impl Future for StringReadFuture {
     }
 }
 
+#[cfg(feature = "async")]
 impl ReadFromAsync for String {
     type Future = StringReadFuture;
 
@@ -2662,9 +2691,11 @@ impl ReadFrom for Vec<u8> {
     }
 }
 
+#[cfg(feature = "async")]
 #[pin_project]
 pub struct VecReadFuture(#[pin] <FileBytes as ReadFromAsync>::Future);
 
+#[cfg(feature = "async")]
 impl Future for VecReadFuture {
     type Output = Result<Vec<u8>>;
 
@@ -2678,6 +2709,7 @@ impl Future for VecReadFuture {
     }
 }
 
+#[cfg(feature = "async")]
 impl ReadFromAsync for Vec<u8> {
     type Future = VecReadFuture;
 

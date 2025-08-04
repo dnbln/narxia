@@ -8,7 +8,6 @@ repository.workspace = true
 description.workspace = true
 keywords.workspace = true
 license.workspace = true
-private = true
 
 [dependencies]
 doc-extract.workspace = true
