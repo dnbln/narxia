@@ -18,7 +18,9 @@ pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenS
 
 struct DirStructureForField {
     read_code: TokenStream,
+    async_read_code: TokenStream,
     write_code: TokenStream,
+    async_write_code: TokenStream,
 }
 
 fn expand_dir_structure_for_field(
@@ -91,6 +93,7 @@ fn expand_dir_structure_for_field(
     };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
     let read_code = if self_path {
+        // self_path field, just use the path directly
         quote! {
             #field_ty::from(#path_param_name)
         }
@@ -112,7 +115,31 @@ fn expand_dir_structure_for_field(
         }}
     };
 
+    let async_read_code = if self_path {
+        // self_path field, just use the path directly
+        quote! {
+            #field_ty::from(#path_param_name)
+        }
+    } else {
+        let value_name = format_ident!("__value");
+        let end_expr = match &with_newtype {
+            Some(nt) => quote! {
+                <#nt as ::dir_structure::NewtypeToInner>::into_inner(#value_name)
+            },
+            None => quote! {
+                #value_name
+            },
+        };
+
+        quote! {{
+            let __translated_path = #actual_path_expr;
+            let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFromAsync>::read_from_async(__translated_path).await?;
+            #end_expr
+        }}
+    };
+
     let write_code = if self_path {
+        // self_path does not need to write anything
         quote! {}
     } else {
         let writer = match &with_newtype {
@@ -127,11 +154,33 @@ fn expand_dir_structure_for_field(
         }
     };
 
+    let async_write_code = if self_path {
+        // self_path does not need to write anything
+        quote! {}
+    } else {
+        match &with_newtype {
+            Some(nt) => {
+                quote! {
+                    let __translated_path = #actual_path_expr;
+                    <<#nt as ::dir_structure::FromRefForWriterAsync<'_>>::Wr as ::dir_structure::WriteToAsyncOwned<'_>>::write_to_async_owned(<#nt as ::dir_structure::FromRefForWriterAsync<'_>>::from_ref_for_writer_async(&self.#field_name), __translated_path).await?;
+                }
+            }
+            None => quote! {
+                let __translated_path = #actual_path_expr;
+                <#actual_field_ty_perform as ::dir_structure::WriteToAsync>::write_to_async(&self.#field_name, __translated_path).await?;
+            },
+        }
+    };
+
     Ok(DirStructureForField {
         read_code: quote! {
             #field_name: #read_code
         },
+        async_read_code: quote! {
+            #field_name: #async_read_code
+        },
         write_code,
+        async_write_code,
     })
 }
 
@@ -141,20 +190,26 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let (impl_generics, ty_generics, where_clause) = st.generics.split_for_impl();
 
     let mut field_read_impls = Vec::new();
+    let mut field_async_read_impls = Vec::new();
     let mut field_write_impls = Vec::new();
+    let mut field_async_write_impls = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
             read_code,
+            async_read_code,
             write_code,
+            async_write_code,
         } = expand_dir_structure_for_field(&path_param_name, field)?;
         field_read_impls.push(read_code);
+        field_async_read_impls.push(async_read_code);
         field_write_impls.push(write_code);
+        field_async_write_impls.push(async_write_code);
     }
 
-    let expanded = quote! {
+    let mut expanded = quote! {
         impl #impl_generics ::dir_structure::ReadFrom for #name #ty_generics #where_clause {
-            fn read_from(#path_param_name: &std::path::Path) -> ::dir_structure::Result<Self>
+            fn read_from(#path_param_name: &::std::path::Path) -> ::dir_structure::Result<Self>
             where
                 Self: Sized,
             {
@@ -164,13 +219,42 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
             }
         }
         impl #impl_generics ::dir_structure::WriteTo for #name #ty_generics #where_clause {
-            fn write_to(&self, #path_param_name: &std::path::Path) -> ::dir_structure::Result<()> {
+            fn write_to(&self, #path_param_name: &::std::path::Path) -> ::dir_structure::Result<()> {
                 #(#field_write_impls)*
                 Ok(())
             }
         }
         impl #impl_generics ::dir_structure::DirStructure for #name #ty_generics #where_clause {}
     };
+
+    expanded.extend(quote! {
+        impl #impl_generics ::dir_structure::ReadFromAsync for #name #ty_generics #where_clause {
+            type Future = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<Self>> + ::std::marker::Send + 'static>>;
+
+            fn read_from_async(#path_param_name: ::std::path::PathBuf) -> Self::Future
+            where
+                Self: Sized,
+            {
+                Box::pin(async move {
+                    Ok(Self {
+                        #(#field_async_read_impls,)*
+                    })
+                })
+            }
+        }
+        impl #impl_generics ::dir_structure::WriteToAsync for #name #ty_generics #where_clause {
+            type Future<'a> = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<()>> + ::std::marker::Send + 'a>>
+            where
+                Self: 'a;
+
+            fn write_to_async(&self, #path_param_name: ::std::path::PathBuf) -> Self::Future<'_> {
+                Box::pin(async move {
+                    #(#field_async_write_impls)*
+                    Ok(())
+                })
+            }
+        }
+    });
 
     Ok(expanded)
 }

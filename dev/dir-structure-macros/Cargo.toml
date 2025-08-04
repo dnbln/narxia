@@ -11,6 +11,9 @@ repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure-macro
 [lib]
 proc-macro = true
 
+[features]
+async = []
+
 [dependencies]
 syn = { version = "2", features = ["full"] }
 quote = "1"

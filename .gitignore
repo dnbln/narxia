@@ -7,3 +7,4 @@
 /.fleet
 
 *.before.mdx
+rustc-ice-*.txt

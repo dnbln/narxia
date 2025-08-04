@@ -120,9 +120,22 @@ use std::str::FromStr;
 use std::task::Context;
 #[cfg(feature = "async")]
 use std::task::Poll;
+
 pub use dir_structure_macros::DirStructure;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
+
+pub mod prelude {
+    pub use super::DirStructure;
+    pub use super::ReadFrom;
+    #[cfg(feature = "async")]
+    pub use super::ReadFromAsync;
+    pub use super::WriteTo;
+    #[cfg(feature = "async")]
+    pub use super::WriteToAsync;
+    #[cfg(feature = "async")]
+    pub use super::WriteToAsyncOwned;
+}
 
 /// The error type for this library.
 #[derive(Debug, thiserror::Error)]
@@ -200,6 +213,7 @@ pub trait ReadFrom: Sized {
 ///
 /// `async` version of [`ReadFrom`].
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadFromAsync: Sized {
     /// The future type returned by the async read function.
     type Future: Future<Output = Result<Self>> + Send + 'static
@@ -224,6 +238,28 @@ pub trait WriteTo {
     fn write_to(&self, path: &Path) -> Result<()>;
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub trait WriteToAsync {
+    /// The future type returned by the async write function.
+    type Future<'a>: Future<Output = Result<()>> + Send + 'a
+    where
+        Self: 'a;
+
+    /// Asynchronously writes the structure to the specified path.
+    fn write_to_async<'a>(&'a self, path: PathBuf) -> Self::Future<'a>;
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub trait WriteToAsyncOwned<'a>: Sized {
+    /// The future type returned by the async write function.
+    type Future: Future<Output = Result<()>> + Send + 'a;
+
+    /// Asynchronously writes the structure to the specified path.
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future;
+}
+
 /// Trait to use when using the `with_newtype` attribute.
 ///
 /// This is used to convert a reference to a normal type
@@ -243,6 +279,19 @@ pub trait FromRefForWriter<'a> {
     /// Casts the reference to the inner type to a [`WriteTo`]
     /// reference type.
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr;
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub trait FromRefForWriterAsync<'a> {
+    /// The inner type to cast.
+    type Inner: ?Sized;
+    /// The reference type to cast to.
+    type Wr: WriteToAsyncOwned<'a>;
+
+    /// Casts the reference to the inner type to a [`WriteToAsync`]
+    /// reference type.
+    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr;
 }
 
 /// Trait to use when using the `with_newtype` attribute.
@@ -271,10 +320,7 @@ pub trait NewtypeToInner {
 /// The [`WriteTo`] implementation will directly write the children to the directory it
 /// is passed, with no regards to the path stored in `self_path`.
 #[derive(Debug, PartialEq, Eq)]
-pub struct DirChildren<T, F: Filter = NoFilter>
-where
-    T: DirStructureItem,
-{
+pub struct DirChildren<T, F: Filter = NoFilter> {
     /// The path to the root directory.
     ///
     /// This path doesn't influence writing in any way, it is only to
@@ -426,7 +472,6 @@ where
 
 impl<T, F> DirChildren<T, F>
 where
-    T: DirStructureItem,
     F: Filter,
 {
     /// Creates an empty [`DirChildren`], with no children.
@@ -803,6 +848,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
 pub enum DirChildrenReadAsyncFuture<T, F>
 where
@@ -829,6 +875,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T, F> Future for DirChildrenReadAsyncFuture<T, F>
 where
     T: DirStructureItem + ReadFromAsync + Send + 'static,
@@ -936,6 +983,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T, F> ReadFromAsync for DirChildren<T, F>
 where
     T: DirStructureItem + ReadFromAsync + Send + 'static,
@@ -965,22 +1013,94 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
+pub enum DirChildrenWriteAsyncFuture<'a, T: WriteToAsync + 'a>
+where
+    T::Future<'a>: Unpin,
+{
+    Poison,
+    Begin(DirChildrenIter<'a, T>, PathBuf),
+    Write(DirChildrenIter<'a, T>, PathBuf, T::Future<'a>),
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for DirChildrenWriteAsyncFuture<'a, T>
+where
+    T: WriteToAsync + 'a,
+    T::Future<'a>: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+
+        match this {
+            DirChildrenWriteAsyncFutureProjOwn::Begin(mut iter, path) => {
+                if let Some(child) = iter.next() {
+                    let child_path = path.join(&child.file_name);
+                    let fut = child.value.write_to_async(child_path);
+                    self.project_replace(Self::Write(iter, path, fut));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(Ok(()))
+                }
+            }
+            DirChildrenWriteAsyncFutureProjOwn::Write(mut iter, path, mut fut) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(())) => {
+                        if let Some(child) = iter.next() {
+                            let child_path = path.join(&child.file_name);
+                            let new_fut = child.value.write_to_async(child_path);
+                            self.project_replace(Self::Write(iter, path, new_fut));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        } else {
+                            Poll::Ready(Ok(()))
+                        }
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::Write(iter, path, fut));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenWriteAsyncFutureProjOwn::Poison => {
+                panic!("DirChildrenWriteAsyncFuture is poisoned, this should never happen");
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T, F> WriteToAsync for DirChildren<T, F>
+where
+    T: DirStructureItem + WriteToAsync + Send + Sync + 'static,
+    F: Filter + Send + 'static,
+    for<'a> T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+{
+    type Future<'a> = DirChildrenWriteAsyncFuture<'a, T>;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        DirChildrenWriteAsyncFuture::Begin(self.iter(), path)
+    }
+}
+
 /// A single child of a [`DirChildren`] structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DirChild<T>
-where
-    T: DirStructureItem,
-{
+pub struct DirChild<T> {
     /// The file name of the child.
     file_name: OsString,
     /// The parsed value of the child.
     value: T,
 }
 
-impl<T> DirChild<T>
-where
-    T: DirStructureItem,
-{
+impl<T> DirChild<T> {
     /// Creates a new [`DirChild`] with the specified file name and value.
     ///
     /// # Examples
@@ -1114,7 +1234,6 @@ where
     pub fn map_value<U, F>(self, f: F) -> DirChild<U>
     where
         F: FnOnce(T) -> U,
-        U: DirStructureItem,
     {
         let value = f(self.value);
         DirChild {
@@ -1124,10 +1243,7 @@ where
     }
 }
 
-impl<T> IntoIterator for DirChildren<T>
-where
-    T: DirStructureItem,
-{
+impl<T> IntoIterator for DirChildren<T> {
     type Item = DirChild<T>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -1140,12 +1256,9 @@ where
 /// [`DirChildren`] structure.
 ///
 /// See [`DirChildren::iter`] for more information.
-pub struct DirChildrenIter<'a, T: DirStructureItem>(std::slice::Iter<'a, DirChild<T>>);
+pub struct DirChildrenIter<'a, T>(std::slice::Iter<'a, DirChild<T>>);
 
-impl<'a, T> Iterator for DirChildrenIter<'a, T>
-where
-    T: DirStructureItem,
-{
+impl<'a, T> Iterator for DirChildrenIter<'a, T> {
     type Item = &'a DirChild<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1180,7 +1293,7 @@ where
 /// [`DirChildren`] structure while iterating over them.
 ///
 /// See [`DirChildren::iter_mut`] for more information.
-pub struct DirChildrenIterMut<'a, T: DirStructureItem>(std::slice::IterMut<'a, DirChild<T>>);
+pub struct DirChildrenIterMut<'a, T>(std::slice::IterMut<'a, DirChild<T>>);
 
 impl<'a, T> Iterator for DirChildrenIterMut<'a, T>
 where
@@ -1374,11 +1487,19 @@ and write them back to disk."##
             use std::pin::Pin;
 
             use crate::FromRefForWriter;
+            #[cfg(feature = "async")]
+            use crate::FromRefForWriterAsync;
             use crate::NewtypeToInner;
             use crate::ReadFrom;
             #[cfg(feature = "async")]
             use crate::ReadFromAsync;
             use crate::WriteTo;
+            #[cfg(feature = "async")]
+            use crate::WriteToAsync;
+            #[cfg(feature = "async")]
+            use crate::WriteToAsyncOwned;
+            #[cfg(feature = "async")]
+            use crate::FileString;
 
             $(#[$main_ty_attrs])*
             #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
@@ -1458,6 +1579,7 @@ and write them back to disk."##
             }
 
             #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
             impl<T> ReadFromAsync for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
@@ -1507,6 +1629,18 @@ and write them back to disk."##
                 }
             }
 
+            impl<'a, T> FromRefForWriterAsync<'a> for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
+            {
+                type Inner = T;
+                type Wr = $writer_ty<'a, T>;
+
+                fn from_ref_for_writer_async(value: &'a <Self as FromRefForWriterAsync<'a>>::Inner) -> Self::Wr {
+                    $writer_ty(value)
+                }
+            }
+
             $(#[$writer_ty_attrs])*
             pub struct $writer_ty<'a, T>(&'a T)
             where
@@ -1525,6 +1659,36 @@ and write them back to disk."##
                         })?;
 
                     Ok(())
+                }
+            }
+
+            impl<'a, T> WriteToAsync for $writer_ty<'a, T>
+            where
+                T: serde::Serialize + Send + Sync + 'a,
+            {
+                type Future<'b> = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'b>> where Self: 'b;
+
+                fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+                    Box::pin(async move {
+                        let s = $to_str_ty(self.0).to_str()
+                            .map_err(|e| crate::Error::Serde(path.clone(), e.into()))?;
+                        FileString::new(s).write_to_async_owned(path).await
+                    })
+                }
+            }
+
+            impl<'a, T> WriteToAsyncOwned<'a> for $writer_ty<'a, T>
+            where
+                T: serde::Serialize + Send + Sync + 'a,
+            {
+                type Future = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'a>>;
+
+                fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+                    Box::pin(async move {
+                        let s = $to_str_ty(self.0).to_str()
+                            .map_err(|e| crate::Error::Serde(path.clone(), e.into()))?;
+                        FileString::new(s).write_to_async_owned(path).await
+                    })
                 }
             }
         }
@@ -1683,6 +1847,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> ReadFromAsync for FmtWrapper<T>
 where
     T: FromStr + Send + 'static,
@@ -1710,6 +1875,19 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for FmtWrapper<T>
+where
+    T: Display + Send + Sync + 'static,
+{
+    type Future<'a> = <FmtWrapperRefWr<'a, T> as WriteToAsyncOwned<'a>>::Future;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path)
+    }
+}
+
 impl<'a, T> FromRefForWriter<'a> for FmtWrapper<T>
 where
     T: Display + 'a,
@@ -1718,6 +1896,20 @@ where
     type Wr = FmtWrapperRefWr<'a, T>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+        FmtWrapperRefWr(value)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> FromRefForWriterAsync<'a> for FmtWrapper<T>
+where
+    T: Display + Send + 'a,
+{
+    type Inner = T;
+    type Wr = FmtWrapperRefWr<'a, T>;
+
+    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FmtWrapperRefWr(value)
     }
 }
@@ -1736,6 +1928,37 @@ where
         let mut f = File::create(path).wrap_io_error_with(path)?;
         write!(f, "{}", self.0).wrap_io_error_with(path)?;
         Ok(())
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsync for FmtWrapperRefWr<'a, T>
+where
+    T: Display + Send + 'a,
+{
+    type Future<'f>
+        = <FileString as WriteToAsync>::Future<'f>
+    where
+        Self: 'f;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        let s = self.0.to_string();
+        FileString::new(s).write_to_async_owned(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsyncOwned<'a> for FmtWrapperRefWr<'a, T>
+where
+    T: Display + Send + 'a,
+{
+    type Future = <FileString as WriteToAsyncOwned<'a>>::Future;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        let s = self.0.to_string();
+        FileString::new(s).write_to_async_owned(path)
     }
 }
 
@@ -1806,6 +2029,17 @@ impl<'a> FromRefForWriter<'a> for FileBytes {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> FromRefForWriterAsync<'a> for FileBytes {
+    type Inner = [u8];
+    type Wr = FileBytesRefWr<'a>;
+
+    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
+        FileBytesRefWr(value)
+    }
+}
+
 /// The [`WriteTo`] wrapper around a reference to a `[u8]`.
 pub struct FileBytesRefWr<'a>(&'a [u8]);
 
@@ -1814,6 +2048,41 @@ impl WriteTo for FileBytesRefWr<'_> {
         utils::create_parent_dir(path)?;
         std::fs::write(path, self.0).wrap_io_error_with(path)?;
         Ok(())
+    }
+}
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+impl WriteToAsync for FileBytesRefWr<'_> {
+    type Future<'a>
+        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        Box::pin(async move {
+            utils::create_parent_dir(&path)?;
+            tokio::fs::write(&path, self.0)
+                .await
+                .wrap_io_error_with(&path)?;
+            Ok(())
+        })
+    }
+}
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+impl<'a> WriteToAsyncOwned<'a> for FileBytesRefWr<'a> {
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            utils::create_parent_dir(&path)?;
+            tokio::fs::write(&path, self.0)
+                .await
+                .wrap_io_error_with(&path)?;
+            Ok(())
+        })
     }
 }
 
@@ -1860,6 +2129,7 @@ impl ReadFrom for FileString {
 }
 
 #[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
 impl ReadFromAsync for FileString {
     type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
 
@@ -1880,11 +2150,51 @@ impl WriteTo for FileString {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for FileString {
+    type Future<'a>
+        = <FileStrWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path)
+    }
+}
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+impl<'a> WriteToAsyncOwned<'a> for FileString {
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'static>>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            utils::create_parent_dir(&path)?;
+            tokio::fs::write(&path, self.0)
+                .await
+                .wrap_io_error_with(&path)?;
+            Ok(())
+        })
+    }
+}
+
 impl<'a> FromRefForWriter<'a> for FileString {
     type Inner = str;
     type Wr = FileStrWr<'a>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+        FileStrWr(value)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> FromRefForWriterAsync<'a> for FileString {
+    type Inner = str;
+    type Wr = FileStrWr<'a>;
+
+    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FileStrWr(value)
     }
 }
@@ -1895,6 +2205,29 @@ pub struct FileStrWr<'a>(&'a str);
 impl WriteTo for FileStrWr<'_> {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileBytes::from_ref_for_writer(self.0.as_bytes()).write_to(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for FileStrWr<'_> {
+    type Future<'a>
+        = <FileBytesRefWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async_owned(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> WriteToAsyncOwned<'a> for FileStrWr<'a> {
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async_owned(path)
     }
 }
 
@@ -1915,6 +2248,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = EnumProj)]
 pub enum OptionReadFromAsyncFuture<T>
 where
@@ -1928,6 +2262,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> Future for OptionReadFromAsyncFuture<T>
 where
     T: ReadFromAsync + 'static,
@@ -1950,6 +2285,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> ReadFromAsync for Option<T>
 where
     T: ReadFromAsync + 'static,
@@ -1983,6 +2319,112 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project = OptionWriteToAsyncFutureProj)]
+pub enum OptionWriteToAsyncFuture<'a, T>
+where
+    T: WriteToAsync + 'static,
+{
+    HasContents {
+        #[pin]
+        inner: <T as WriteToAsync>::Future<'a>,
+    },
+    NoContents,
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for OptionWriteToAsyncFuture<'a, T>
+where
+    T: WriteToAsync + 'static,
+{
+    type Output = Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        match this {
+            OptionWriteToAsyncFutureProj::HasContents { inner } => inner.poll(cx),
+            OptionWriteToAsyncFutureProj::NoContents => Poll::Ready(Ok(())),
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for Option<T>
+where
+    T: WriteToAsync + Send + 'static,
+{
+    type Future<'a>
+        = OptionWriteToAsyncFuture<'a, T>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        if let Some(v) = self {
+            OptionWriteToAsyncFuture::HasContents {
+                inner: v.write_to_async(path),
+            }
+        } else {
+            OptionWriteToAsyncFuture::NoContents
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project = OptionWriteToAsyncOwnedFutureProj)]
+pub enum OptionWriteToAsyncOwnedFuture<'a, T>
+where
+    T: WriteToAsyncOwned<'a> + 'static,
+{
+    HasContents {
+        #[pin]
+        inner: <T as WriteToAsyncOwned<'a>>::Future,
+    },
+    NoContents,
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for OptionWriteToAsyncOwnedFuture<'a, T>
+where
+    T: WriteToAsyncOwned<'a> + 'static,
+{
+    type Output = Result<()>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+        match this {
+            OptionWriteToAsyncOwnedFutureProj::HasContents { inner } => inner.poll(cx),
+            OptionWriteToAsyncOwnedFutureProj::NoContents => Poll::Ready(Ok(())),
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsyncOwned<'a> for Option<T>
+where
+    T: WriteToAsyncOwned<'a> + Send + 'static,
+{
+    type Future
+        = OptionWriteToAsyncOwnedFuture<'a, T>
+    where
+        Self: 'a;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        if let Some(v) = self {
+            OptionWriteToAsyncOwnedFuture::HasContents {
+                inner: v.write_to_async_owned(path),
+            }
+        } else {
+            OptionWriteToAsyncOwnedFuture::NoContents
+        }
+    }
+}
+
 /// A wrapper that defers the reading of a file until it is actually needed.
 ///
 /// The only thing you can do with a [`DeferredRead`] is to call [`DeferredRead::perform_read`],
@@ -2005,6 +2447,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> ReadFromAsync for DeferredRead<T>
 where
     T: Send + 'static,
@@ -2062,6 +2505,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> DeferredRead<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2097,6 +2541,136 @@ where
 
         let r = self.perform_read()?;
         r.write_to(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DeferredReadWriteFutureProj)]
+pub enum DeferredReadWriteFuture<'a, T>
+where
+    T: ReadFromAsync + WriteToAsyncOwned<'a> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    Poisson,
+    SamePath,
+    Reading {
+        inner: <T as ReadFromAsync>::Future,
+        path: PathBuf,
+    },
+    Writing {
+        inner: <T as WriteToAsyncOwned<'a>>::Future,
+    },
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for DeferredReadWriteFuture<'a, T>
+where
+    T: ReadFromAsync + WriteToAsyncOwned<'a> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poisson);
+        match this {
+            DeferredReadWriteFutureProj::SamePath => Poll::Ready(Ok(())),
+            DeferredReadWriteFutureProj::Reading { mut inner, path } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(Ok(v)) => {
+                        self.project_replace(Self::Writing {
+                            inner: v.write_to_async_owned(path),
+                        });
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::Reading { inner, path });
+                        Poll::Pending
+                    }
+                }
+            }
+            DeferredReadWriteFutureProj::Writing { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::Writing { inner });
+                        Poll::Pending
+                    }
+                }
+            }
+            DeferredReadWriteFutureProj::Poisson => {
+                panic!(
+                    "DeferredReadWriteFuture is in an invalid state. This is a bug in the code."
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for DeferredRead<T>
+where
+    T: ReadFromAsync + for<'a> WriteToAsyncOwned<'a> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    for<'a> <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Future<'a>
+        = DeferredReadWriteFuture<'a, T>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        if path == self.0 {
+            // Optimization: We were asked to write to the same path
+            // we are supposed to read from. We can just ignore it, since
+            // the file / directory should already be in the given state.
+
+            // If `T` has trivial `ReadFromAsync` / `WriteToAsync` implementations,
+            // this should not be a problem, but if it is, a custom `DeferredRead`
+            // implementation should be written for it.
+            return DeferredReadWriteFuture::SamePath;
+        }
+
+        DeferredReadWriteFuture::Reading {
+            inner: T::read_from_async(self.0.clone()),
+            path,
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsyncOwned<'a> for DeferredRead<T>
+where
+    T: ReadFromAsync + for<'b> WriteToAsyncOwned<'b> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    for<'b> <T as WriteToAsyncOwned<'b>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Future = DeferredReadWriteFuture<'a, T>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        if path == self.0 {
+            // Optimization: We were asked to write to the same path
+            // we are supposed to read from. We can just ignore it, since
+            // the file / directory should already be in the given state.
+
+            // If `T` has trivial `ReadFromAsync` / `WriteToAsync` implementations,
+            // this should not be a problem, but if it is, a custom `DeferredRead`
+            // implementation should be written for it.
+            return DeferredReadWriteFuture::SamePath;
+        }
+
+        DeferredReadWriteFuture::Reading {
+            inner: T::read_from_async(self.0),
+            path,
+        }
     }
 }
 
@@ -2231,6 +2805,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> DeferredReadOrOwn<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2261,6 +2836,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> ReadFromAsync for DeferredReadOrOwn<T>
 where
     T: ReadFrom + Send + 'static,
@@ -2280,6 +2856,118 @@ where
         match self {
             DeferredReadOrOwn::Own(own) => own.write_to(path),
             DeferredReadOrOwn::Deferred(d) => d.write_to(path),
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DeferredReadOrOwnWriteFutureProj)]
+pub enum DeferredReadOrOwnWriteFuture<'a, T>
+where
+    T: ReadFromAsync + WriteToAsync + for<'b> WriteToAsyncOwned<'b> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    for<'b> <T as WriteToAsyncOwned<'b>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    Poisson,
+    Own {
+        inner: <T as WriteToAsync>::Future<'a>,
+    },
+    OwnOwned {
+        inner: <T as WriteToAsyncOwned<'a>>::Future,
+    },
+    Deferred {
+        inner: <DeferredRead<T> as WriteToAsync>::Future<'a>,
+    },
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for DeferredReadOrOwnWriteFuture<'a, T>
+where
+    T: ReadFromAsync + WriteToAsync + for<'b> WriteToAsyncOwned<'b> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    for<'b> <T as WriteToAsyncOwned<'b>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poisson);
+        match this {
+            DeferredReadOrOwnWriteFutureProj::Own { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(v) => Poll::Ready(v),
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            DeferredReadOrOwnWriteFutureProj::OwnOwned { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(v) => Poll::Ready(v),
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            DeferredReadOrOwnWriteFutureProj::Deferred { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(v) => Poll::Ready(v),
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            DeferredReadOrOwnWriteFutureProj::Poisson => {
+                panic!(
+                    "DeferredReadOrOwnWriteFuture is in an invalid state. This is a bug in the code."
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for DeferredReadOrOwn<T>
+where
+    T: ReadFromAsync + WriteToAsync + for<'a> WriteToAsyncOwned<'a> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    for<'a> <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    for<'a> <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Future<'a>
+        = DeferredReadOrOwnWriteFuture<'a, T>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        match self {
+            DeferredReadOrOwn::Own(own) => DeferredReadOrOwnWriteFuture::Own {
+                inner: own.write_to_async(path),
+            },
+            DeferredReadOrOwn::Deferred(d) => DeferredReadOrOwnWriteFuture::Deferred {
+                inner: d.write_to_async(path),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> WriteToAsyncOwned<'a> for DeferredReadOrOwn<T>
+where
+    T: ReadFromAsync + WriteToAsync + for<'b> WriteToAsyncOwned<'b> + Send + 'static,
+    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
+    for<'b> <T as WriteToAsync>::Future<'b>: Future<Output = Result<()>> + Unpin,
+    for<'b> <T as WriteToAsyncOwned<'b>>::Future: Future<Output = Result<()>> + Unpin,
+{
+    type Future = DeferredReadOrOwnWriteFuture<'a, T>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        match self {
+            DeferredReadOrOwn::Own(own) => DeferredReadOrOwnWriteFuture::OwnOwned {
+                inner: own.write_to_async_owned(path),
+            },
+            DeferredReadOrOwn::Deferred(d) => DeferredReadOrOwnWriteFuture::Deferred {
+                inner: d.write_to_async_owned(path),
+            },
         }
     }
 }
@@ -2333,6 +3021,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
 pub struct CleanDirReadFuture<T>
 where
@@ -2343,6 +3032,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> Future for CleanDirReadFuture<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2359,6 +3049,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> ReadFromAsync for CleanDir<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2379,6 +3070,22 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for CleanDir<T>
+where
+    T: WriteToAsync + Send + Sync + 'static,
+{
+    type Future<'a>
+        = <CleanDirRefWr<'a, T> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path)
+    }
+}
+
 impl<'a, T> FromRefForWriter<'a> for CleanDir<T>
 where
     T: DirStructureItem + 'a,
@@ -2387,6 +3094,20 @@ where
     type Wr = CleanDirRefWr<'a, T>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
+        CleanDirRefWr(value)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> FromRefForWriterAsync<'a> for CleanDir<T>
+where
+    T: WriteToAsync + Send + Sync + 'static,
+{
+    type Inner = T;
+    type Wr = CleanDirRefWr<'a, T>;
+
+    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         CleanDirRefWr(value)
     }
 }
@@ -2403,11 +3124,11 @@ where
 }
 
 /// [`WriteTo`] impl for [`CleanDir`]
-pub struct CleanDirRefWr<'a, T: ?Sized + DirStructureItem>(&'a T);
+pub struct CleanDirRefWr<'a, T: ?Sized>(&'a T);
 
 impl<T> WriteTo for CleanDirRefWr<'_, T>
 where
-    T: ?Sized + DirStructureItem,
+    T: ?Sized + WriteTo,
 {
     fn write_to(&self, path: &Path) -> Result<()> {
         if path.exists() {
@@ -2416,6 +3137,53 @@ where
             utils::create_parent_dir(path)?;
         }
         self.0.write_to(path)
+    }
+}
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+impl<T> WriteToAsync for CleanDirRefWr<'_, T>
+where
+    T: ?Sized + WriteToAsync + Send + Sync + 'static,
+{
+    type Future<'a>
+        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        Box::pin(async move {
+            if path.exists() {
+                tokio::fs::remove_dir_all(&path)
+                    .await
+                    .wrap_io_error_with(&path)?;
+            } else {
+                utils::create_parent_dir(&path)?;
+            }
+            self.0.write_to_async(path).await
+        })
+    }
+}
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+impl<'a, T> WriteToAsyncOwned<'a> for CleanDirRefWr<'a, T>
+where
+    T: ?Sized + WriteToAsync + Send + Sync + 'static,
+{
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        Box::pin(async move {
+            if path.exists() {
+                tokio::fs::remove_dir_all(&path)
+                    .await
+                    .wrap_io_error_with(&path)?;
+            } else {
+                utils::create_parent_dir(&path)?;
+            }
+            self.0.write_to_async(path).await
+        })
     }
 }
 
@@ -2569,6 +3337,7 @@ impl<T: ReadFrom> ReadFrom for Versioned<T> {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
 pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
     #[pin]
@@ -2577,6 +3346,7 @@ pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T> Future for VersionedReadFuture<T>
 where
     T: ReadFromAsync + Send + 'static,
@@ -2596,6 +3366,7 @@ where
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T: ReadFromAsync + Send + 'static> ReadFromAsync for Versioned<T> {
     type Future = VersionedReadFuture<T>;
 
@@ -2614,6 +3385,73 @@ impl<T: WriteTo> WriteTo for Versioned<T> {
         }
 
         self.value.write_to(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = VersionedWriteFutureProj)]
+pub enum VersionedWriteFuture<'a, T>
+where
+    T: WriteToAsync + Send + Sync + 'static,
+    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+{
+    Poisson,
+    NotTouched,
+    Writing {
+        inner: <T as WriteToAsync>::Future<'a>,
+    },
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for VersionedWriteFuture<'a, T>
+where
+    T: WriteToAsync + Send + Sync + 'static,
+    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poisson);
+        match this {
+            VersionedWriteFutureProj::NotTouched => Poll::Ready(Ok(())),
+            VersionedWriteFutureProj::Writing { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(res) => Poll::Ready(res),
+                    Poll::Pending => {
+                        self.project_replace(Self::Writing { inner });
+                        Poll::Pending
+                    }
+                }
+            }
+            VersionedWriteFutureProj::Poisson => {
+                panic!("VersionedWriteFuture is in an invalid state. This is a bug in the code.");
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T> WriteToAsync for Versioned<T>
+where
+    T: WriteToAsync + Send + Sync + 'static,
+    for<'a> <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+{
+    type Future<'a>
+        = VersionedWriteFuture<'a, T>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        if self.path == path && self.is_clean() {
+            return VersionedWriteFuture::NotTouched;
+        }
+
+        VersionedWriteFuture::Writing {
+            inner: self.value.write_to_async(path),
+        }
     }
 }
 
@@ -2650,10 +3488,12 @@ impl ReadFrom for String {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
 pub struct StringReadFuture(#[pin] <FileString as ReadFromAsync>::Future);
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl Future for StringReadFuture {
     type Output = Result<String>;
 
@@ -2668,6 +3508,7 @@ impl Future for StringReadFuture {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl ReadFromAsync for String {
     type Future = StringReadFuture;
 
@@ -2682,6 +3523,29 @@ impl WriteTo for String {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for String {
+    type Future<'a>
+        = <FileStrWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileString::from_ref_for_writer_async(self).write_to_async_owned(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> WriteToAsyncOwned<'a> for String {
+    type Future = <FileString as WriteToAsyncOwned<'a>>::Future;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        FileString::new(self).write_to_async_owned(path)
+    }
+}
+
 impl ReadFrom for Vec<u8> {
     fn read_from(path: &Path) -> Result<Self>
     where
@@ -2692,10 +3556,12 @@ impl ReadFrom for Vec<u8> {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
 pub struct VecReadFuture(#[pin] <FileBytes as ReadFromAsync>::Future);
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl Future for VecReadFuture {
     type Output = Result<Vec<u8>>;
 
@@ -2710,6 +3576,7 @@ impl Future for VecReadFuture {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl ReadFromAsync for Vec<u8> {
     type Future = VecReadFuture;
 
@@ -2724,9 +3591,35 @@ impl WriteTo for Vec<u8> {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for Vec<u8> {
+    type Future<'a>
+        = <FileBytesRefWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileBytes::from_ref_for_writer_async(self).write_to_async_owned(path)
+    }
+}
+
 impl WriteTo for str {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileStrWr(self).write_to(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for str {
+    type Future<'a>
+        = <FileStrWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileStrWr(self).write_to_async_owned(path)
     }
 }
 
@@ -2736,15 +3629,64 @@ impl WriteTo for &str {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for &str {
+    type Future<'a>
+        = <FileStrWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileStrWr(self).write_to_async_owned(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> WriteToAsyncOwned<'a> for &'a str {
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+
+    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+        FileStrWr(self).write_to_async_owned(path)
+    }
+}
+
 impl WriteTo for [u8] {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileBytesRefWr(self).write_to(path)
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for [u8] {
+    type Future<'a>
+        = <FileBytesRefWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileBytesRefWr(self).write_to_async_owned(path)
+    }
+}
+
 impl WriteTo for &[u8] {
     fn write_to(&self, path: &Path) -> Result<()> {
         FileBytesRefWr(self).write_to(path)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for &[u8] {
+    type Future<'a>
+        = <FileBytesRefWr<'a> as WriteToAsync>::Future<'a>
+    where
+        Self: 'a;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        FileBytesRefWr(self).write_to_async_owned(path)
     }
 }
 

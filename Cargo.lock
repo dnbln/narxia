@@ -478,6 +478,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "crash"
+version = "0.0.0"
+dependencies = [
+ "pin-project",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
