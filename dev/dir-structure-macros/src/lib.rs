@@ -412,7 +412,6 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 #[cfg(feature = "resolve-path")]
 mod resolve_path;
 
-
 #[cfg(feature = "resolve-path")]
 #[proc_macro]
 pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
