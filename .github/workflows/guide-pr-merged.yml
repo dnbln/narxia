@@ -15,6 +15,7 @@ permissions:
 
 jobs:
   if_merged:
+    name: Merge original PR
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'update-guides/')
     runs-on: ubuntu-latest
     steps:
@@ -42,4 +43,7 @@ jobs:
         git branch
         git reset --hard ${{ steps.branch-names.outputs.head }} --
         git push origin ${{ steps.branch-names.outputs.base }} --force
+        git push origin --delete ${{ github.event.pull_request.head.ref }}
+        git push origin --delete ${{ steps.branch-names.outputs.head }} || true
+
   
