@@ -1,20 +1,4 @@
----
-title: Quick intro guide to dir-structure
-full: true
----
 
-This guide is intended to provide a comprehensive overview of the `dir-structure` crate,
-which simplifies the representation and manipulation of directory structures in Rust.
-It covers basic usage, advanced features, and practical examples to help you get started quickly.
-
-Each step shows an example directory structure that the code will expect to read or write.
-
-This guide is mostly adapted from the [introductory blog post][blog post]. The blog post discusses it in
-more detail, while this guide focuses on the practical aspects of using the crate.
-
-[blog post]: https://dnbln.dev/blog/dir-structure
-
-<ScrollyCoding>
 
 
  ## !!steps Basics
@@ -141,7 +125,7 @@ dir.write(path)?;
 
 Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
 
-This is an example using JSON, but TOML, YAML, and RON are also supported.
+This is an example using JSON, but TOML, YAML, and RON are also supported, behind the respective features.
 
 <Mermaid
   chart={`
@@ -408,6 +392,7 @@ dir.write(path)?;
  ## !!steps Or even large directories?
 
 When dealing with large directories, you can use deferred (lazy) reading.
+This can be achieved with `DeferredRead`.
 
 <Mermaid
   chart={`
@@ -479,7 +464,7 @@ dir.write(path)?;
 ```
  ## !!steps And if we want to cache the read values?
 
-The library exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+The library also exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
 
 <Mermaid
   chart={`
@@ -1395,5 +1380,4 @@ assert!(v.is_dirty());
 </DocTooltip>
 
 </ScrollyCoding>
-
 
