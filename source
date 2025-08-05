@@ -26,12 +26,10 @@ struct SubDir {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    // !mark
     input: DeferredReadOrOwn<Versioned<String>>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    // !mark
     output: DeferredReadOrOwn<Versioned<String>>,
 }
 
@@ -43,17 +41,20 @@ let mut dir = Dir::read(path)?;
 // !tooltip[/iter_mut/] DirChildren::iter_mut-R
 dir.subdirs.iter_mut().try_for_each(|subdir| {
     // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
-    let input = subdir.value_mut().input.perform_and_store_read()?.clone();
-    process_input(&*input);
-// !hidden     fn process_input(input: &str) {}
-    // This will return the cached value
-    // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
-    let input2 = subdir.value_mut().input.perform_and_store_read()?;
-    assert_eq!(input, *input2);
+    let input = subdir.value_mut().input.perform_and_store_read()?;
+    // Modify the value directly
+    // !mark
+    **input = "New content".to_owned();
+    // Or use the edit_eq_check method
+    // !mark(1:3)
+    // !tooltip[/edit_eq_check/] Versioned::edit_eq_check-R
+    input.edit_eq_check(|v| {
+        *v = "New content".to_owned();
+    });
     Ok(())
 })?;
 
-// This will not write anything to disk, since nothing has changed
+// This will write the changed values to disk
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 // !tail dir_structure::Error
