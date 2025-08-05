@@ -40,5 +40,6 @@ jobs:
         cd guide
         git switch ${{ steps.branch-names.outputs.base }}
         git reset --hard ${{ steps.branch-names.outputs.head }} --
+        git branch
         git push origin ${{ steps.branch-names.outputs.base }} --force
   
