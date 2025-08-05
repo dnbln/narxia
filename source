@@ -3,7 +3,9 @@
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+// !tooltip[/Json/] Json
+use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
+use serde::{Serialize, Deserialize};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -12,11 +14,24 @@ struct Dir {
     binary: Vec<u8>,
     #[dir_structure(
         path = "number.txt",
-        // !mark
         // !tooltip[/FmtWrapper/] FmtWrapper
         with_newtype = FmtWrapper<u32>,
     )]
     number: u32,
+    #[dir_structure(
+        path = "f.json",
+        // !mark
+        // !tooltip[/Json/] Json
+        with_newtype = Json<Obj>,
+    )]
+    f: Obj,
+}
+
+// !mark(1:5)
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+struct Obj {
+    name: String,
+    age: u32,
 }
 
 // !hidden let path = "dir";
