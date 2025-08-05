@@ -16,6 +16,9 @@ struct Dir {
 // !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
+// !mark
+dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
