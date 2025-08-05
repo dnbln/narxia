@@ -13,13 +13,14 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["json"]
+default = ["json", "resolve-path"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
 ron = ["dep:serde", "dep:ron"]
 async = ["dep:pin-project", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
+resolve-path = ["dir-structure-macros/resolve-path"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

@@ -94,6 +94,7 @@
 //! ```
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(feature = "resolve-path", feature(adt_const_params))]
 
 #[cfg(doctest)]
 mod __doc_check {
@@ -366,6 +367,62 @@ pub trait NewtypeToInner {
     /// Converts the newtype to its inner type.
     fn into_inner(self) -> Self::Inner;
 }
+
+const HAS_FIELD_MAX_LEN: usize = 16;
+
+/// A trait to declare that a type has a field with a specific name,
+/// and the type of the field is [`HasField::Inner`].
+///
+/// This is used to resolve paths with [`resolve_path`].
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+pub trait HasField<const NAME: [char; HAS_FIELD_MAX_LEN]> {
+    type Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf;
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+pub trait DynamicHasField {
+    type Inner;
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
+}
+
+/// A macro to resolve a path to a specific field in a directory structure.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::PathBuf;
+/// use dir_structure::{DirStructure, resolve_path};
+///
+/// #[derive(DirStructure)]
+/// struct MyStruct {
+///     #[dir_structure(path = "my_field.txt")]
+///     my_field: String,
+///     #[dir_structure(path = "my_field2.d")]
+///     my_field2: MyStruct2,
+/// }
+///
+/// #[derive(DirStructure)]
+/// struct MyStruct2 {
+///     #[dir_structure(path = "my_field3.txt")]
+///     my_field3: String,
+/// }
+///
+/// assert_eq!(
+///     resolve_path!(<"/path/to/dir" @ MyStruct>.my_field),
+///     PathBuf::from("/path/to/dir/my_field.txt")
+/// );
+/// assert_eq!(
+///     resolve_path!(<"/path/to/dir" @ MyStruct>.my_field2.my_field3),
+///     PathBuf::from("/path/to/dir/my_field2.d/my_field3.txt")
+/// );
+/// ```
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+pub use dir_structure_macros::resolve_path;
 
 /// A directory structure where we don't know the names of the folders at compile-time,
 /// and as such we cannot use the derive macro.
@@ -1148,6 +1205,20 @@ where
 
     fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
         DirChildrenWriteAsyncFuture::Begin(self.iter(), path)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T, F> DynamicHasField for DirChildren<T, F>
+where
+    F: Filter,
+{
+    type Inner = T;
+
+    fn resolve_path(mut p: PathBuf, name: &str) -> PathBuf {
+        p.push(name);
+        p
     }
 }
 
@@ -2504,6 +2575,32 @@ where
     }
 }
 
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for Option<T>
+where
+    T: HasField<NAME>,
+{
+    type Inner = <T as HasField<NAME>>::Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf {
+        T::resolve_path(p)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T> DynamicHasField for Option<T>
+where
+    T: DynamicHasField,
+{
+    type Inner = <T as DynamicHasField>::Inner;
+
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+        T::resolve_path(p, name)
+    }
+}
+
 /// A wrapper that defers the reading of a file until it is actually needed.
 ///
 /// The only thing you can do with a [`DeferredRead`] is to call [`DeferredRead::perform_read`],
@@ -2750,6 +2847,28 @@ where
             inner: T::read_from_async(self.0),
             path,
         }
+    }
+}
+
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for DeferredRead<T>
+where
+    T: HasField<NAME>,
+{
+    type Inner = <T as HasField<NAME>>::Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf {
+        T::resolve_path(p)
+    }
+}
+
+impl<T> DynamicHasField for DeferredRead<T>
+where
+    T: DynamicHasField,
+{
+    type Inner = <T as DynamicHasField>::Inner;
+
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+        T::resolve_path(p, name)
     }
 }
 
@@ -3051,6 +3170,32 @@ where
     }
 }
 
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for DeferredReadOrOwn<T>
+where
+    T: HasField<NAME>,
+{
+    type Inner = <T as HasField<NAME>>::Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf {
+        T::resolve_path(p)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T> DynamicHasField for DeferredReadOrOwn<T>
+where
+    T: DynamicHasField,
+{
+    type Inner = <T as DynamicHasField>::Inner;
+
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+        T::resolve_path(p, name)
+    }
+}
+
 /// A newtype that will clean the directory it is written to, before writing
 /// the value.
 ///
@@ -3199,6 +3344,32 @@ where
 
     fn into_inner(self) -> Self::Inner {
         self.0
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for CleanDir<T>
+where
+    T: HasField<NAME>,
+{
+    type Inner = <T as HasField<NAME>>::Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf {
+        T::resolve_path(p)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T> DynamicHasField for CleanDir<T>
+where
+    T: DynamicHasField,
+{
+    type Inner = <T as DynamicHasField>::Inner;
+
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+        T::resolve_path(p, name)
     }
 }
 
@@ -3597,6 +3768,32 @@ where
         VersionedWriteOwnedFuture::Writing {
             inner: self.value.write_to_async_owned(path),
         }
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for Versioned<T>
+where
+    T: HasField<NAME>,
+{
+    type Inner = <T as HasField<NAME>>::Inner;
+
+    fn resolve_path(p: PathBuf) -> PathBuf {
+        T::resolve_path(p)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T> DynamicHasField for Versioned<T>
+where
+    T: DynamicHasField,
+{
+    type Inner = <T as DynamicHasField>::Inner;
+
+    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+        T::resolve_path(p, name)
     }
 }
 

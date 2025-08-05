@@ -13,6 +13,7 @@ proc-macro = true
 
 [features]
 async = []
+resolve-path = []
 
 [dependencies]
 syn = { version = "2", features = ["full"] }

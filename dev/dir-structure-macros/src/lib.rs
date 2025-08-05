@@ -3,11 +3,11 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use syn::Field;
+use syn::ImplGenerics;
 use syn::ItemStruct;
 use syn::Token;
 use syn::Type;
 use syn::parse_quote;
-use syn::punctuated::Punctuated;
 
 #[proc_macro_derive(DirStructure, attributes(dir_structure))]
 pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -27,9 +27,17 @@ struct DirStructureForField {
     async_write_bound: Option<syn::WherePredicate>,
     async_write_owned_code: TokenStream,
     async_write_owned_bound: Option<syn::WherePredicate>,
+    #[cfg(feature = "resolve-path")]
+    has_field_impl: TokenStream,
 }
 
 fn expand_dir_structure_for_field(
+    (impl_generics, ty_name, ty_generics, where_clause): (
+        &ImplGenerics,
+        &Ident,
+        &syn::TypeGenerics,
+        Option<&syn::WhereClause>,
+    ),
     path_param_name: &Ident,
     field: &Field,
 ) -> syn::Result<DirStructureForField> {
@@ -89,12 +97,18 @@ fn expand_dir_structure_for_field(
         })?;
     }
 
-    let actual_path_expr = match path {
-        PathData::Path(p) => quote! {#path_param_name.join(#p)},
-        PathData::SelfPath => quote! { #path_param_name },
+    let (actual_path_expr, path_pusher_for_has_field) = match path {
+        PathData::Path(p) => (
+            quote! {#path_param_name.join(#p)},
+            quote! { #path_param_name.push(#p); },
+        ),
+        PathData::SelfPath => (quote! { #path_param_name }, quote! {}),
         PathData::None => {
             let name = field_name.to_string();
-            quote! {#path_param_name.join(#name)}
+            (
+                quote! {#path_param_name.join(#name)},
+                quote! { #path_param_name.push(#name); },
+            )
         }
     };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
@@ -188,6 +202,39 @@ fn expand_dir_structure_for_field(
         }
     };
 
+    #[cfg(feature = "resolve-path")]
+    let has_field_impl = {
+        use crate::resolve_path::MAX_LEN;
+
+        let field_name_str = field_name.to_string();
+        if field_name_str.len() > MAX_LEN {
+            return Err(syn::Error::new_spanned(
+                field_name,
+                format!(
+                    "Field name for DirStructure must be at most {} characters long",
+                    MAX_LEN
+                ),
+            ));
+        }
+        let field_name_array: [char; MAX_LEN] = field_name_str
+            .chars()
+            .chain(std::iter::repeat('\0'))
+            .take(MAX_LEN)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        quote! {
+            impl #impl_generics ::dir_structure::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
+                type Inner = #field_ty;
+
+                fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
+                    #path_pusher_for_has_field
+                    #path_param_name
+                }
+            }
+        }
+    };
     Ok(DirStructureForField {
         read_code: quote! {
             #field_name: #read_code
@@ -219,6 +266,8 @@ fn expand_dir_structure_for_field(
                 for<'___trivial_bound> #actual_field_ty_perform: ::dir_structure::WriteToAsyncOwned<'_>
             })
         },
+        #[cfg(feature = "resolve-path")]
+        has_field_impl,
     })
 }
 
@@ -235,6 +284,8 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let mut field_async_write_bounds = Vec::new();
     let mut field_async_write_owned_impls = Vec::new();
     let mut field_async_write_owned_bounds = Vec::new();
+    #[cfg(feature = "resolve-path")]
+    let mut has_field_impls = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
@@ -246,7 +297,13 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
             async_write_bound,
             async_write_owned_code,
             async_write_owned_bound,
-        } = expand_dir_structure_for_field(&path_param_name, field)?;
+            #[cfg(feature = "resolve-path")]
+            has_field_impl,
+        } = expand_dir_structure_for_field(
+            (&impl_generics, name, &ty_generics, where_clause),
+            &path_param_name,
+            field,
+        )?;
         field_read_impls.push(read_code);
         field_async_read_impls.push(async_read_code);
         field_async_read_bounds.extend(async_read_bound);
@@ -255,8 +312,14 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         field_async_write_bounds.extend(async_write_bound);
         field_async_write_owned_impls.push(async_write_owned_code);
         field_async_write_owned_bounds.push(async_write_owned_bound);
+        #[cfg(feature = "resolve-path")]
+        has_field_impls.push(has_field_impl);
     }
 
+    #[cfg_attr(
+        all(not(feature = "async"), not(feature = "resolve-path")),
+        expect(unused_mut)
+    )]
     let mut expanded = quote! {
         impl #impl_generics ::dir_structure::ReadFrom for #name #ty_generics #where_clause {
             fn read_from(#path_param_name: &::std::path::Path) -> ::dir_structure::Result<Self>
@@ -279,6 +342,29 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     #[cfg(feature = "async")]
     {
+        use syn::punctuated::Punctuated;
+
+        fn merge_where_clause(
+            where_clause: Option<syn::WhereClause>,
+            additional_bounds: Vec<syn::WherePredicate>,
+        ) -> Option<syn::WhereClause> {
+            if let Some(mut where_clause) = where_clause {
+                where_clause.predicates.extend(additional_bounds);
+                Some(where_clause)
+            } else {
+                let mut where_clause = syn::WhereClause {
+                    where_token: <Token![where]>::default(),
+                    predicates: Punctuated::new(),
+                };
+                where_clause.predicates.extend(additional_bounds);
+                if where_clause.predicates.is_empty() {
+                    None
+                } else {
+                    Some(where_clause)
+                }
+            }
+        }
+
         let where_clause_read_from_async =
             merge_where_clause(where_clause.cloned(), field_async_read_bounds);
         let where_clause_write_to_async =
@@ -313,26 +399,22 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         });
     }
 
+    #[cfg(feature = "resolve-path")]
+    {
+        for has_field_impl in has_field_impls {
+            expanded.extend(has_field_impl);
+        }
+    }
+
     Ok(expanded)
 }
 
-fn merge_where_clause(
-    where_clause: Option<syn::WhereClause>,
-    additional_bounds: Vec<syn::WherePredicate>,
-) -> Option<syn::WhereClause> {
-    if let Some(mut where_clause) = where_clause {
-        where_clause.predicates.extend(additional_bounds);
-        Some(where_clause)
-    } else {
-        let mut where_clause = syn::WhereClause {
-            where_token: <Token![where]>::default(),
-            predicates: Punctuated::new(),
-        };
-        where_clause.predicates.extend(additional_bounds);
-        if where_clause.predicates.is_empty() {
-            None
-        } else {
-            Some(where_clause)
-        }
-    }
+#[cfg(feature = "resolve-path")]
+mod resolve_path;
+
+
+#[cfg(feature = "resolve-path")]
+#[proc_macro]
+pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    resolve_path::resolve_path(input)
 }

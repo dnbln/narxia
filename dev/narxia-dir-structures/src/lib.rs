@@ -55,9 +55,6 @@ pub mod name_resolution_tests {
 
     use crate::ws_root;
 
-    pub const INPUT_FILE_NAME: &str = "input.nrx";
-    pub const OUTPUT_FILE_NAME: &str = "output.txt";
-
     pub fn name_resolution_tests_dir() -> PathBuf {
         ws_root().join("tests/name-resolution-tests")
     }
@@ -73,11 +70,11 @@ pub mod name_resolution_tests {
 
     impl NameResolutionTestSingleFolder {
         pub fn input_file_path(&self) -> PathBuf {
-            self.self_path.join(INPUT_FILE_NAME)
+            dir_structure::resolve_path!(<(self.self_path.clone()) @ NameResolutionTestSingleFolder>.input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            self.self_path.join(OUTPUT_FILE_NAME)
+            dir_structure::resolve_path!(<(self.self_path.clone()) @ NameResolutionTestSingleFolder>.output)
         }
     }
 }
