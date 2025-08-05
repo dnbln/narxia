@@ -72,13 +72,13 @@ function Code({ codeblock, tooltips }: { codeblock: HighlightedCode, tooltips: {
         <Pre
             code={codeblock}
             handlers={[
+                collapse,
+                collapseTrigger,
+                collapseContent,
                 tokenTransitions,
                 wordWrap,
                 mark,
                 tooltip,
-                collapse,
-                collapseTrigger,
-                collapseContent,
             ]}
             className="min-h-[40rem] p-3"
         />

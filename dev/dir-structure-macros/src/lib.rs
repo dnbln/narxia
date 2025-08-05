@@ -6,6 +6,8 @@ use syn::Field;
 use syn::ItemStruct;
 use syn::Token;
 use syn::Type;
+use syn::parse_quote;
+use syn::punctuated::Punctuated;
 
 #[proc_macro_derive(DirStructure, attributes(dir_structure))]
 pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -19,8 +21,12 @@ pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenS
 struct DirStructureForField {
     read_code: TokenStream,
     async_read_code: TokenStream,
+    async_read_bound: Option<syn::WherePredicate>,
     write_code: TokenStream,
     async_write_code: TokenStream,
+    async_write_bound: Option<syn::WherePredicate>,
+    async_write_owned_code: TokenStream,
+    async_write_owned_bound: Option<syn::WherePredicate>,
 }
 
 fn expand_dir_structure_for_field(
@@ -172,6 +178,16 @@ fn expand_dir_structure_for_field(
         }
     };
 
+    let async_write_owned_code = if self_path {
+        // self_path does not need to write anything
+        quote! {}
+    } else {
+        quote! {
+            let __translated_path = #actual_path_expr;
+            ::dir_structure::WriteToAsyncOwned<'_>::write_to_async_owned(self.#field_name, __translated_path).await?;
+        }
+    };
+
     Ok(DirStructureForField {
         read_code: quote! {
             #field_name: #read_code
@@ -179,8 +195,30 @@ fn expand_dir_structure_for_field(
         async_read_code: quote! {
             #field_name: #async_read_code
         },
+        async_read_bound: if self_path {
+            None
+        } else {
+            Some(parse_quote! {
+                for<'___trivial_bound> #actual_field_ty_perform: ::dir_structure::ReadFromAsync
+            })
+        },
         write_code,
         async_write_code,
+        async_write_bound: if self_path {
+            None
+        } else {
+            Some(parse_quote! {
+                for<'___trivial_bound> #actual_field_ty_perform: ::dir_structure::WriteToAsync
+            })
+        },
+        async_write_owned_code,
+        async_write_owned_bound: if self_path {
+            None
+        } else {
+            Some(parse_quote! {
+                for<'___trivial_bound> #actual_field_ty_perform: ::dir_structure::WriteToAsyncOwned<'_>
+            })
+        },
     })
 }
 
@@ -191,20 +229,32 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     let mut field_read_impls = Vec::new();
     let mut field_async_read_impls = Vec::new();
+    let mut field_async_read_bounds = Vec::new();
     let mut field_write_impls = Vec::new();
     let mut field_async_write_impls = Vec::new();
+    let mut field_async_write_bounds = Vec::new();
+    let mut field_async_write_owned_impls = Vec::new();
+    let mut field_async_write_owned_bounds = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
             read_code,
             async_read_code,
+            async_read_bound,
             write_code,
             async_write_code,
+            async_write_bound,
+            async_write_owned_code,
+            async_write_owned_bound,
         } = expand_dir_structure_for_field(&path_param_name, field)?;
         field_read_impls.push(read_code);
         field_async_read_impls.push(async_read_code);
+        field_async_read_bounds.extend(async_read_bound);
         field_write_impls.push(write_code);
         field_async_write_impls.push(async_write_code);
+        field_async_write_bounds.extend(async_write_bound);
+        field_async_write_owned_impls.push(async_write_owned_code);
+        field_async_write_owned_bounds.push(async_write_owned_bound);
     }
 
     let mut expanded = quote! {
@@ -228,34 +278,61 @@ fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     };
 
     #[cfg(feature = "async")]
-    expanded.extend(quote! {
-        impl #impl_generics ::dir_structure::ReadFromAsync for #name #ty_generics #where_clause {
-            type Future = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<Self>> + ::std::marker::Send + 'static>>;
+    {
+        let where_clause_read_from_async =
+            merge_where_clause(where_clause.cloned(), field_async_read_bounds);
+        let where_clause_write_to_async =
+            merge_where_clause(where_clause.cloned(), field_async_write_bounds);
+        expanded.extend(quote! {
+            impl #impl_generics ::dir_structure::ReadFromAsync for #name #ty_generics #where_clause_read_from_async {
+                type Future = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<Self>> + ::std::marker::Send + 'static>>;
 
-            fn read_from_async(#path_param_name: ::std::path::PathBuf) -> Self::Future
-            where
-                Self: Sized,
-            {
-                Box::pin(async move {
-                    Ok(Self {
-                        #(#field_async_read_impls,)*
+                fn read_from_async(#path_param_name: ::std::path::PathBuf) -> Self::Future
+                where
+                    Self: Sized,
+                {
+                    Box::pin(async move {
+                        Ok(Self {
+                            #(#field_async_read_impls,)*
+                        })
                     })
-                })
+                }
             }
-        }
-        impl #impl_generics ::dir_structure::WriteToAsync for #name #ty_generics #where_clause {
-            type Future<'a> = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<()>> + ::std::marker::Send + 'a>>
-            where
-                Self: 'a;
+            impl #impl_generics ::dir_structure::WriteToAsync for #name #ty_generics #where_clause_write_to_async {
+                type Future<'a> = ::std::pin::Pin<::std::boxed::Box<dyn ::std::future::Future<Output = ::dir_structure::Result<()>> + ::std::marker::Send + 'a>>
+                where
+                    Self: 'a;
 
-            fn write_to_async(&self, #path_param_name: ::std::path::PathBuf) -> Self::Future<'_> {
-                Box::pin(async move {
-                    #(#field_async_write_impls)*
-                    Ok(())
-                })
+                fn write_to_async(&self, #path_param_name: ::std::path::PathBuf) -> Self::Future<'_> {
+                    Box::pin(async move {
+                        #(#field_async_write_impls)*
+                        Ok(())
+                    })
+                }
             }
-        }
-    });
+        });
+    }
 
     Ok(expanded)
+}
+
+fn merge_where_clause(
+    where_clause: Option<syn::WhereClause>,
+    additional_bounds: Vec<syn::WherePredicate>,
+) -> Option<syn::WhereClause> {
+    if let Some(mut where_clause) = where_clause {
+        where_clause.predicates.extend(additional_bounds);
+        Some(where_clause)
+    } else {
+        let mut where_clause = syn::WhereClause {
+            where_token: <Token![where]>::default(),
+            predicates: Punctuated::new(),
+        };
+        where_clause.predicates.extend(additional_bounds);
+        if where_clause.predicates.is_empty() {
+            None
+        } else {
+            Some(where_clause)
+        }
+    }
 }

@@ -1664,6 +1664,17 @@ and write them back to disk."##
                 }
             }
 
+            impl<T> WriteToAsync for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
+            {
+                type Future<'a> = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'a>> where Self: 'a;
+
+                fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+                    Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path)
+                }
+            }
+
             impl<T> NewtypeToInner for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
