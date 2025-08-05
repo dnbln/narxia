@@ -33,7 +33,7 @@ jobs:
     - name: Checkout guide branch
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        ref: ${{ steps.branch-names.outputs.head }}
         path: guide
     - name: Update guide
       run: |
