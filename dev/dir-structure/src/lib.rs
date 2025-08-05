@@ -100,6 +100,9 @@ mod __doc_check {
     #[doc = include_str!("../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests")]
     struct Guide;
 
+    #[doc = include_str!("../../../doc/docs/content/docs/dx/dir-structure/.custom-impl.mdx.doctests")]
+    struct PlumbingGuide;
+
     #[doc = include_str!("../README.md")]
     struct Readme;
 }
@@ -162,7 +165,13 @@ pub enum Error {
     Serde(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
 }
 
-trait WrapIoError: Sized {
+mod sealed {
+    pub trait Sealed {}
+
+    impl<T> Sealed for std::io::Result<T> {}
+}
+
+pub trait WrapIoError: Sized + sealed::Sealed {
     type Output;
 
     fn wrap_io_error(self, get_path: impl FnOnce() -> PathBuf) -> Result<Self::Output>;

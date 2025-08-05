@@ -2,6 +2,6 @@
   "title": "dir-structure",
   "description": "Documentation for dir-structure",
   "pages": [
-    "guide"
+    "guide", "custom-impl"
   ]
 }

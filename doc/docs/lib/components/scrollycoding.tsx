@@ -14,6 +14,7 @@ import { wordWrap } from "./annotations/word-wrap"
 import { mark } from "./annotations/mark"
 import { tooltip } from "./annotations/tooltip"
 import { ReactNode } from "react"
+import { collapse, collapseTrigger, collapseContent } from "./annotations/collapsible"
 
 const Schema = Block.extend({
     steps: z.array(Block.extend({ code: HighlightedCodeBlock })),
@@ -75,6 +76,9 @@ function Code({ codeblock, tooltips }: { codeblock: HighlightedCode, tooltips: {
                 wordWrap,
                 mark,
                 tooltip,
+                collapse,
+                collapseTrigger,
+                collapseContent,
             ]}
             className="min-h-[40rem] p-3"
         />
