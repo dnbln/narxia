@@ -40,6 +40,6 @@ jobs:
       run: |
         cd guide
         git fetch origin ${{ steps.branch-names.outputs.head }}
-        git reset --hard ${{ steps.branch-names.outputs.head }}
+        git reset --hard ${{ steps.branch-names.outputs.head }} --
         git push origin ${{ steps.branch-names.outputs.base }} --force
   
