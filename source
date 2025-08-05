@@ -6,7 +6,8 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn};
+// !tooltip[/Versioned/] Versioned
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -24,12 +25,14 @@ ext_filter!(Filt, "d");
 struct SubDir {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
     // !mark
-    input: DeferredReadOrOwn<String>,
+    input: DeferredReadOrOwn<Versioned<String>>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
+    // !tooltip[/Versioned/] Versioned
     // !mark
-    output: DeferredReadOrOwn<String>,
+    output: DeferredReadOrOwn<Versioned<String>>,
 }
 
 // !hidden let path = "dir";
@@ -40,18 +43,17 @@ let mut dir = Dir::read(path)?;
 // !tooltip[/iter_mut/] DirChildren::iter_mut-R
 dir.subdirs.iter_mut().try_for_each(|subdir| {
     // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
-    // !mark
     let input = subdir.value_mut().input.perform_and_store_read()?.clone();
     process_input(&*input);
 // !hidden     fn process_input(input: &str) {}
     // This will return the cached value
     // !tooltip[/perform_and_store_read/] DeferredReadOrOwn::perform_and_store_read-R
-    // !mark
     let input2 = subdir.value_mut().input.perform_and_store_read()?;
     assert_eq!(input, *input2);
     Ok(())
 })?;
 
+// This will not write anything to disk, since nothing has changed
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
 // !tail dir_structure::Error
