@@ -18,6 +18,10 @@ jobs:
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'update-guides/')
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout core repo
+      uses: actions/checkout@v4
+      with:
+        ref: trunk
     - name: Get PR number
       run: echo "PR_NUMBER=$(echo ${{ github.head_ref }} | awk -F/ '{print $NF}')" >> $GITHUB_ENV
     - name: Get branch names
@@ -30,8 +34,10 @@ jobs:
       with:
         ref: ${{ steps.branch-names.outputs.base }}
         fetch-depth: 0
+        path: guide
     - name: Update guide
       run: |
+        cd guide
         git reset --hard ${{ steps.branch-names.outputs.head }}
         git push origin ${{ steps.branch-names.outputs.base }} --force
   
