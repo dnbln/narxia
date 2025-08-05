@@ -33,13 +33,12 @@ jobs:
     - name: Checkout guide branch
       uses: actions/checkout@v4
       with:
-        ref: ${{ steps.branch-names.outputs.base }}
         fetch-depth: 0
         path: guide
     - name: Update guide
       run: |
         cd guide
-        git branch
+        git switch ${{ steps.branch-names.outputs.base }}
         git reset --hard ${{ steps.branch-names.outputs.head }} --
         git push origin ${{ steps.branch-names.outputs.base }} --force
   
