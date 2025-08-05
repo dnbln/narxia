@@ -73,7 +73,7 @@ impl GlobalTyCtxt {
         }
     }
 
-    pub fn make_ty_ctxt(&self) -> TyCtxt {
+    pub fn make_ty_ctxt(&self) -> TyCtxt<'_> {
         TyCtxt::new(self)
     }
 
@@ -98,7 +98,7 @@ impl GlobalTyCtxt {
         rf.lookup_hir_id_def(hir_id)
     }
 
-    pub fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<HirMap> {
+    pub fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<'_, HirMap> {
         self.inner.hir_map.write().unwrap()
     }
 

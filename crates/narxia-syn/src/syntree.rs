@@ -320,7 +320,7 @@ impl Debug for CustomTreePresenter<'_> {
     }
 }
 
-fn as_ref(e: &SyntaxElement) -> SyntaxElementRef {
+fn as_ref(e: &SyntaxElement) -> SyntaxElementRef<'_> {
     match e {
         SyntaxElement::Node(n) => SyntaxElementRef::Node(n),
         SyntaxElement::Token(t) => SyntaxElementRef::Token(t),

@@ -14,7 +14,7 @@ pub mod parser_tests {
     pub(crate) fn do_lower_to_hir(
         src_file: narxia_src_db::SrcFile,
         ctx: &DriverCtx,
-    ) -> miette::Result<HirFile> {
+    ) -> miette::Result<HirFile<'_>> {
         let file_map_entry = ctx.db.get_global_ty_ctxt().add_file_map_entry(src_file);
         ctx.trace_file(src_file);
         let (syn_file, errors) = narxia_driver::parse_file_with_diagnostics(ctx, src_file);

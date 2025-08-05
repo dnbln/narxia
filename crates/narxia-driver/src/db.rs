@@ -56,7 +56,7 @@ impl narxia_src_db::SrcDb for Database {
 
 #[salsa::db]
 impl narxia_hir_db::HirDb for Database {
-    fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<hir_map::HirMap> {
+    fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<'_, hir_map::HirMap> {
         self.global_ty_ctxt.hir_map_mut_ref()
     }
 }

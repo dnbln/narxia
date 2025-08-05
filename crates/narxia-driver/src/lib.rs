@@ -40,7 +40,7 @@ pub fn read_file(ctx: &DriverCtx, file: PathBuf) -> io::Result<SrcFile> {
     narxia_src_db::load_from_disk(&ctx.db, FilePathInfo::new_from_short(file))
 }
 
-pub fn parse_file(ctx: &DriverCtx, file: SrcFile) -> SynFile {
+pub fn parse_file(ctx: &DriverCtx, file: SrcFile) -> SynFile<'_> {
     parse_file_with_diagnostics(ctx, file).0
 }
 
@@ -48,17 +48,17 @@ pub fn load_file(ctx: &DriverCtx, p: PathBuf, contents: &str) -> SrcFile {
     narxia_src_db::load_from_memory(&ctx.db, FilePathInfo::new_from_short(p), contents)
 }
 
-pub fn parse_file_with_diagnostics(ctx: &DriverCtx, file: SrcFile) -> (SynFile, Vec<ParseError>) {
+pub fn parse_file_with_diagnostics(ctx: &DriverCtx, file: SrcFile) -> (SynFile<'_>, Vec<ParseError>) {
     let syn_file = narxia_syn_db::parse_file(&ctx.db, file);
     let errors = narxia_syn_db::ParsingErrors::get(&ctx.db, file);
     (syn_file, errors.unwrap_or_default())
 }
 
-pub fn parse_file_and_assert_no_errors(ctx: &DriverCtx, file: SrcFile) -> SynFile {
+pub fn parse_file_and_assert_no_errors(ctx: &DriverCtx, file: SrcFile) -> SynFile<'_> {
     narxia_syn_db::parse_file_and_assert_no_errors(&ctx.db, file)
 }
 
-pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -> SynFile {
+pub fn parse_file_at_path_and_assert_no_errors(ctx: &DriverCtx, path: PathBuf) -> SynFile<'_> {
     let file = read_file(ctx, path).unwrap();
     parse_file_and_assert_no_errors(ctx, file)
 }

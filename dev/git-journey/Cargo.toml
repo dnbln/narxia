@@ -1,0 +1,17 @@
+[package]
+name = "git-journey"
+version = "0.1.0"
+publish = true
+edition.workspace = true
+homepage = "https://nrx.dnbln.dev/docs/dx/git-journey/"
+repository = "https://github.com/dnbln/narxia/tree/trunk/dev/git-journey"
+description = "A tool to create tutorials with git histories."
+keywords = ["git", "tutorial", "markdown"]
+license.workspace = true
+
+[dependencies]
+git2 = { version = "0.20" }
+clap = { version = "4", features = ["derive"] }
+
+[lints]
+workspace = true

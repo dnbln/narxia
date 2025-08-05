@@ -31,6 +31,7 @@
             ninja
             nodejs
             mandoc
+            openssl
           ];
 
           shellHook = ''

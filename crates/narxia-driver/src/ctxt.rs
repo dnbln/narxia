@@ -29,7 +29,7 @@ impl DriverCtx {
         cx
     }
 
-    pub fn display_file(&self, file: SrcFile) -> crate::DisplayFile {
+    pub fn display_file(&self, file: SrcFile) -> crate::DisplayFile<'_> {
         crate::DisplayFile(&self.db, file)
     }
 

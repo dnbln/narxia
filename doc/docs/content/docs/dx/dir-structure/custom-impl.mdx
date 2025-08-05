@@ -13,11 +13,12 @@ read and write the modification time of files.
 
 <ScrollyCoding>
 
-## !!steps Begin
+ ## !!steps Begin
 
 Let's start by defining the wrapper type first.
 
 ```rust ! code.rs no_run
+// !lints
 use std::time::SystemTime;
 
 // !collapse(1:4)
@@ -28,11 +29,12 @@ struct FsMtime<T> {
 }
 ```
 
-## !!steps ReadFrom
+ ## !!steps ReadFrom
 
 Now, we need to implement the `ReadFrom` trait for our wrapper type.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -52,11 +54,12 @@ impl<T: ReadFrom> ReadFrom for FsMtime<T> {
 }
 ```
 
-## !!steps Metadata
+ ## !!steps Metadata
 
 Let's grab the metadata of the file and read the modification time.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -79,11 +82,12 @@ impl<T: ReadFrom> ReadFrom for FsMtime<T> {
 }
 ```
 
-## !!steps ReadFrom Value
+ ## !!steps ReadFrom Value
 
 Now, we need to read the inner value from the path.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -107,11 +111,12 @@ impl<T: ReadFrom> ReadFrom for FsMtime<T> {
 }
 ```
 
-## !!steps Return
+ ## !!steps Return
 
 Finally, we return the wrapper type with the modification time and the inner value.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -136,11 +141,12 @@ impl<T: ReadFrom> ReadFrom for FsMtime<T> {
 }
 ```
 
-## !!steps WriteTo
+ ## !!steps WriteTo
 
 Now, we need to implement the `WriteTo` trait for our wrapper type.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -172,11 +178,12 @@ impl<T: WriteTo> WriteTo for FsMtime<T> {
 }
 ```
 
-## !!steps Write the value
+ ## !!steps Write the value
 
 We first need to write the inner value to the path.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -210,9 +217,10 @@ impl<T: WriteTo> WriteTo for FsMtime<T> {
 ```
 
 
-## !!steps Write the mtime
+ ## !!steps Write the mtime
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 
@@ -248,13 +256,14 @@ impl<T: WriteTo> WriteTo for FsMtime<T> {
 }
 ```
 
-## !!steps End
+ ## !!steps End
 
 And that's it! We have implemented a new wrapper type that allows us to read
 and write the modification time of files. Let's see how to use this wrapper
 in practice.
 
 ```rust ! code.rs no_run
+// !lints
 use std::path::Path;
 use std::time::SystemTime;
 

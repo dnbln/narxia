@@ -431,7 +431,7 @@ impl BuildCmdBuildingProgress {
         &self,
         name: String,
         start: Instant,
-    ) -> NexusR<ItemWrapperFinishGuard> {
+    ) -> NexusR<ItemWrapperFinishGuard<'_>> {
         ItemWrapper::start(self.item.lock().unwrap(), name, start)
     }
 }

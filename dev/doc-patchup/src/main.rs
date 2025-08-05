@@ -31,7 +31,7 @@ async fn main() {
         let mut in_code_block = false;
 
         for line in before.lines() {
-            if let Some(l) = line.strip_prefix("## !!doctooltips ") {
+            if let Some(l) = line.strip_prefix(" ## !!doctooltips ") {
                 // Process the line
                 let l = l.trim();
                 if l.ends_with("-R") {
@@ -114,6 +114,16 @@ async fn main() {
                     } else if let Some(hidden) = line.strip_prefix("// !hidden ") {
                         write_doctests = true;
                         writeln!(&mut all_code_for_doctests, "{hidden}").unwrap();
+                    } else if line == "// !lints" {
+                        writeln!(
+                            &mut all_code_for_doctests,
+                            "{}",
+                            r#"
+#![deny(unused_imports)]
+"#
+                            .trim_start()
+                        )
+                        .unwrap();
                     } else {
                         writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
                     }
@@ -161,7 +171,11 @@ fn patch_rust_lines(contents: String) -> String {
             } else if line.starts_with("```") {
                 "```".to_string()
             } else {
-                line.to_string()
+                if line.starts_with("#") {
+                    format!(" {line}")
+                } else {
+                    line.to_string()
+                }
             }
         })
         .collect::<Vec<_>>()

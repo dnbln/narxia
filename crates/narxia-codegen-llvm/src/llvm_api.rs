@@ -378,7 +378,7 @@ impl Builder {
         Self { builder }
     }
 
-    pub fn build_block(&self, block: BRef) -> BlockBuilder {
+    pub fn build_block(&self, block: BRef) -> BlockBuilder<'_> {
         BlockBuilder::build_block(self, block)
     }
 

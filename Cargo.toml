@@ -95,6 +95,8 @@ zip = "4"
 unsafe_code = "deny"
 unused_imports = "deny"
 unused_unsafe = "deny"
+mismatched_lifetime_syntaxes = "deny"
+
 
 [workspace.lints.clippy]
 absolute_paths = "deny"

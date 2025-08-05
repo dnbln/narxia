@@ -63,7 +63,7 @@ impl ParseEventHandler {
         count: usize,
         add_absolute_positions: bool,
         styling: ParserDbgStyling,
-    ) -> RecentEventPresenter {
+    ) -> RecentEventPresenter<'_> {
         RecentEventPresenter {
             internal: self,
             offset,

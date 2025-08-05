@@ -6,7 +6,7 @@ use narxia_hir_lower as lower;
 
 #[salsa::db]
 pub trait HirDb: salsa::Database + narxia_syn_db::SynDb {
-    fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<HirMap>;
+    fn hir_map_mut_ref(&self) -> sync::RwLockWriteGuard<'_, HirMap>;
 }
 
 #[salsa::tracked]
