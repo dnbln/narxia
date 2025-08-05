@@ -2,14 +2,16 @@
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+// !tooltip[/DirChildren/] DirChildren
+use dir_structure::{DirStructure, DirStructureItem, DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
 struct Dir {
     // !mark(1:2)
-    #[dir_structure(path = "subdir")]
-    subdir: SubDir,
+    #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
+    subdirs: DirChildren<SubDir>,
 }
 
 // !tooltip[/DirStructure/] DirStructure
