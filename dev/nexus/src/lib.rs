@@ -24,7 +24,9 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
+use git_journey::git2::Repository;
 use liblzma::read;
+use miette::Context;
 use miette::IntoDiagnostic;
 use miette::bail;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
@@ -95,6 +97,9 @@ pub enum BuildSysCmd {
         #[clap(long)]
         check: bool,
     },
+
+    #[clap(name = "patch-guide")]
+    PatchGuide { guide: PathBuf, output: PathBuf },
 }
 
 impl BuildSysCmd {
@@ -166,10 +171,33 @@ impl BuildSysCmd {
                 let mut item = cx.new_child("Doc patchup");
                 doc_patchup(check, &mut item)?;
             }
+
+            Self::PatchGuide { guide, output } => {
+                let mut item = cx.new_child("Patch guide");
+                patch_guide(&guide, &output, &mut item)?;
+            }
         }
 
         Ok(())
     }
+}
+
+fn patch_guide(guide: &Path, output: &Path, item: &mut Item) -> NexusR {
+    item.init(None, None);
+
+    let repo = Repository::open(guide)
+        .into_diagnostic()
+        .wrap_err("Failed to open git repository")?;
+    let docs = git_journey::collect(&repo)
+        .into_diagnostic()
+        .wrap_err("Failed to collect git journey docs")?;
+    let r = git_journey::render(&docs);
+
+    std::fs::write(output, r)
+        .into_diagnostic()
+        .wrap_err("Failed to write patched guide")?;
+
+    Ok(())
 }
 
 trait GenericTestDirType: DirStructure {

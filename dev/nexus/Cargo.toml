@@ -27,6 +27,7 @@ tar.workspace = true
 liblzma.workspace = true
 zip.workspace = true
 
+git-journey.workspace = true
 narxia-log.workspace = true
 narxia-log-impl.workspace = true
 narxia-dir-structures.workspace = true

@@ -17,7 +17,7 @@ jobs:
         - name: Checkout code
           uses: actions/checkout@v4
         - name: Install rust
-          run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy rust-analyzer
+          run: rustup install nightly && rustup default nightly && rustup component add rust-analyzer
         - name: Build nexus
           run: cargo build -p nexus
         - name: Check if documentation is patched

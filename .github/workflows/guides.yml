@@ -1,0 +1,57 @@
+name: Guides (Pull request)
+
+on:
+  pull_request:
+    branches: ["guides/**"]
+
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+
+permissions:
+  pull-requests: write
+
+jobs:
+  # Build job
+  build:
+    # Specify runner + build & upload the static files as an artifact
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout core repo
+          uses: actions/checkout@v4
+          with:
+            ref: trunk
+        - name: Checkout guide branch
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+            ref: ${{ github.head_ref }}
+            path: guide
+        - name: Install rust
+          run: rustup install nightly && rustup default nightly && rustup component add rust-analyzer
+        - name: Install dependencies
+          run: sudo apt update && sudo apt install openssl openssl-dev
+        - name: Build nexus
+          run: cargo build -p nexus
+        - name: Head ref
+          run: |
+            echo "Head ref is: '${{ github.base_ref }}'"
+        - name: Set guide name
+          run: echo "GUIDE_NAME=$(echo ${{ github.base_ref }} | sed -e '0,/guides\// s/guides\///')" >> $GITHUB_ENV
+        - name: Build guide
+          run: cargo nexus build-sys patch-guide guide doc/docs/content/docs/${{ env.GUIDE_NAME }}.mdx
+        - name: Patch guides
+          run: cargo nexus build-sys doc-patchup-rustdocs
+        - name: Submit PR
+          run: |
+            git add doc/docs/content/docs/${{ env.GUIDE_NAME }}.mdx
+            git switch -c "update-guides/${{ env.GUIDE_NAME }}/${{ github.event.number }}"
+            git commit -m "chore(doc): Update guide ${{ env.GUIDE_NAME }} [#${{ github.event.number }}]"
+            gh pr create \
+              --title "Update guide: ${{ env.GUIDE_NAME }}" \
+              --body "This PR updates the ${{ env.GUIDE_NAME }} guide.\nFrom PR #${{ github.event.number }}" \
+              --base trunk \
+              --repo ${{ github.repository }}
