@@ -141,7 +141,7 @@ dir.write(path)?;
 
 Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
 
-This is an example using JSON, but TOML, YAML, and RON are also supported.
+This is an example using JSON, but TOML, YAML, and RON are also supported, behind the respective features.
 
 <Mermaid
   chart={`
@@ -408,6 +408,7 @@ dir.write(path)?;
  ## !!steps Or even large directories?
 
 When dealing with large directories, you can use deferred (lazy) reading.
+This can be achieved with `DeferredRead`.
 
 <Mermaid
   chart={`
@@ -479,7 +480,7 @@ dir.write(path)?;
 ```
  ## !!steps And if we want to cache the read values?
 
-The library exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+The library also exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
 
 <Mermaid
   chart={`
@@ -1395,5 +1396,4 @@ assert!(v.is_dirty());
 </DocTooltip>
 
 </ScrollyCoding>
-
 
