@@ -1,0 +1,37 @@
+name: Guide PR Merged
+on:
+  pull_request:
+    types: [closed]
+    branches: ["trunk"]
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+
+permissions:
+  contents: write
+
+jobs:
+  if_merged:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'update-guides/')
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get PR number
+      run: echo "PR_NUMBER=$(echo ${{ github.head_ref }} | awk -F/ '{print $NF}')" >> $GITHUB_ENV
+    - name: Get branch names
+      uses: ./.github/actions/branches-by-pr
+      id: branch-names
+      with:
+        pr-number: ${{ env.PR_NUMBER }}
+    - name: Checkout guide branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.branch-names.outputs.base }}
+        fetch-depth: 0
+    - name: Update guide
+      run: |
+        git reset --hard ${{ steps.branch-names.outputs.head }}
+        git push origin ${{ steps.branch-names.outputs.base }} --force
+  

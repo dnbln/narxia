@@ -25,11 +25,9 @@ jobs:
         run: |
           echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
       - name: Install dependencies
-        run: sudo apt update && sudo apt install clang ninja-build
+        run: sudo apt update && sudo apt install clang ninja-build openssl libssl-dev
       - name: Install rust
         run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
-      - name: Install dependencies
-        run: sudo apt update && sudo apt install openssl libssl-dev
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v3
         with:

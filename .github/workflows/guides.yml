@@ -53,8 +53,11 @@ jobs:
             git add doc/docs/content/docs/${{ env.GUIDE_NAME }}.mdx
             git switch -c "update-guides/${{ env.GUIDE_NAME }}/${{ github.event.number }}"
             git commit -m "chore(doc): Update guide ${{ env.GUIDE_NAME }} [#${{ github.event.number }}]"
+            git push origin "update-guides/${{ env.GUIDE_NAME }}/${{ github.event.number }}" --force
             gh pr create \
               --title "Update guide: ${{ env.GUIDE_NAME }}" \
               --body "This PR updates the ${{ env.GUIDE_NAME }} guide.\nFrom PR #${{ github.event.number }}" \
               --base trunk \
               --repo ${{ github.repository }}
+          env:
+            GH_TOKEN: ${{ github.token }}
