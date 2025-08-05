@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::path::PathBuf;
+#[cfg(feature = "async")]
 use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
@@ -8,10 +9,12 @@ use dir_structure::DirChild;
 use dir_structure::DirChildren;
 use dir_structure::DirStructureItem;
 use dir_structure::ReadFrom;
+#[cfg(feature = "async")]
 use dir_structure::ReadFromAsync;
 use dir_structure::Versioned;
 use dir_structure::VersionedString;
 use dir_structure::WriteTo;
+#[cfg(feature = "async")]
 use dir_structure::WriteToAsync;
 
 fn test_dir(name: &str) -> PathBuf {
@@ -507,6 +510,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
+    #[cfg(feature = "async")]
     impl<T> ReadFromAsync for WriteCounter<T>
     where
         T: ReadFromAsync + Send + Sync + 'static,
@@ -523,6 +527,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
+    #[cfg(feature = "async")]
     impl<T> WriteToAsync for WriteCounter<T>
     where
         T: WriteToAsync + Send + Sync + 'static,

@@ -255,6 +255,8 @@ pub trait DirStructureItemAsync: ReadFromAsync + WriteToAsync {
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 // Blanket impl.
 impl<T> DirStructureItemAsync for T where T: ReadFromAsync + WriteToAsync {}
 
@@ -1664,6 +1666,8 @@ and write them back to disk."##
                 }
             }
 
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
             impl<T> WriteToAsync for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
@@ -1698,6 +1702,8 @@ and write them back to disk."##
                 }
             }
 
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
             impl<'a, T> FromRefForWriterAsync<'a> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
@@ -1731,6 +1737,8 @@ and write them back to disk."##
                 }
             }
 
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
             impl<'a, T> WriteToAsync for $writer_ty<'a, T>
             where
                 T: serde::Serialize + Send + Sync + 'a,
@@ -1746,6 +1754,8 @@ and write them back to disk."##
                 }
             }
 
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
             impl<'a, T> WriteToAsyncOwned<'a> for $writer_ty<'a, T>
             where
                 T: serde::Serialize + Send + Sync + 'a,
