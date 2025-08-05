@@ -45,6 +45,8 @@ jobs:
       - name: Test
         run: cargo nexus test --no-fail-fast
         timeout-minutes: 3
+      - name: Test rustdoc
+        run: cargo nexus doctest --no-fail-fast
       - name: Format check
         run: cargo nexus build-sys fmt --check
       - name: Lint

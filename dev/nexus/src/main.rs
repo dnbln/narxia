@@ -2,11 +2,14 @@ use core::fmt;
 use std::env;
 use std::io;
 use std::path::PathBuf;
+use std::process;
 use std::thread;
 use std::time;
 
 use clap::ArgAction;
 use clap::Parser;
+use miette::IntoDiagnostic;
+use miette::bail;
 use nexus::BuildDistribCommand;
 use nexus::BuildDistribsBins;
 use nexus::BuildSysCmd;
@@ -104,6 +107,20 @@ enum App {
         /// Whether to run the tests with Miri.
         #[clap(long)]
         miri: bool,
+    },
+    #[clap(name = "doctest")]
+    DocTest {
+        /// Whether to fail fast.
+        ///
+        /// If this flag is used, the tests will stop running after the first failure.
+        #[clap(long = "no-fail-fast", default_value_t = true, action = ArgAction::SetFalse)]
+        fail_fast: bool,
+
+        #[clap(flatten)]
+        profile: ProfileDeterminer,
+
+        #[clap(long)]
+        llvm_link_behavior: Option<LLVMLinkBehavior>,
     },
     /// Runs the narxia compiler driver.
     ///
@@ -240,6 +257,58 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
             };
 
             run_tests.run(Some(&mut item), cx.groups())?;
+        }
+        App::DocTest {
+            fail_fast,
+            profile,
+            llvm_link_behavior,
+        } => {
+            let profile = profile.get_profile();
+            let llvm_link_behavior =
+                llvm_link_behavior.unwrap_or_else(|| profile.default_llvm_link_behavior());
+            let mut item = cx.new_child("DocTest");
+            item.init(None, None);
+
+            let bins = {
+                let mut item = item.add_child("Building");
+                item.init(None, None);
+
+                let bp = cargo_interface::BuildCmdBuildingProgress::new(
+                    item.add_child("Building progress"),
+                    time::Instant::now(),
+                );
+
+                nexus::BuildI {
+                    targets: vec![Target::Compiler],
+                    profile,
+                    sys: SysTarget::Host,
+                    llvm_link_behavior,
+                }
+                .run(&cx.llvm_manager, &mut item, Some(bp))?
+            };
+
+            let (llvm_k, llvm_v) = bins.llvm.unwrap().to_env();
+
+            let mut cmd = process::Command::new("cargo");
+            cmd.arg("test")
+                .arg("--workspace")
+                .arg("--profile")
+                .arg(profile.cargo_name())
+                .arg("--doc");
+            if !fail_fast {
+                cmd.arg("--no-fail-fast");
+            }
+
+            let s = cmd
+                .arg("--")
+                .arg("--test-threads")
+                .arg("1")
+                .env(llvm_k, llvm_v)
+                .status()
+                .into_diagnostic()?;
+            if !s.success() {
+                bail!("DocTest command failed with status: {}", s);
+            }
         }
         App::Run {
             llvm_link_behavior,
