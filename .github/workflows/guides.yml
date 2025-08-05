@@ -13,6 +13,7 @@ env:
 
 permissions:
   pull-requests: write
+  contents: write
 
 jobs:
   # Build job
@@ -33,7 +34,7 @@ jobs:
         - name: Install rust
           run: rustup install nightly && rustup default nightly && rustup component add rust-analyzer
         - name: Install dependencies
-          run: sudo apt update && sudo apt install openssl openssl-dev
+          run: sudo apt update && sudo apt install openssl libssl-dev
         - name: Build nexus
           run: cargo build -p nexus
         - name: Head ref
@@ -47,6 +48,8 @@ jobs:
           run: cargo nexus build-sys doc-patchup-rustdocs
         - name: Submit PR
           run: |
+            git config --local user.name "Dinu Blanovschi"
+            git config --local user.email "git@dnbln.dev"
             git add doc/docs/content/docs/${{ env.GUIDE_NAME }}.mdx
             git switch -c "update-guides/${{ env.GUIDE_NAME }}/${{ github.event.number }}"
             git commit -m "chore(doc): Update guide ${{ env.GUIDE_NAME }} [#${{ github.event.number }}]"
