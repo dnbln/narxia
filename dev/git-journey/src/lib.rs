@@ -45,7 +45,7 @@ pub fn collect(repo: &Repository) -> Result<Vec<(git2::Oid, Extract)>, git2::Err
         let source = tree
             .get_name("source")
             .ok_or_else(|| git2::Error::from_str("Failed to get source file"))?;
-        let obj = source.to_object(&repo)?;
+        let obj = source.to_object(repo)?;
         let blob = obj
             .into_blob()
             .map_err(|_| git2::Error::from_str("Expected blob object"))?;
@@ -94,7 +94,7 @@ pub fn collect(repo: &Repository) -> Result<Vec<(git2::Oid, Extract)>, git2::Err
     Ok(docs)
 }
 
-pub fn render(docs: &Vec<(git2::Oid, Extract)>) -> String {
+pub fn render(docs: &[(git2::Oid, Extract)]) -> String {
     let mut output = String::new();
     for (_commit, doc) in docs.iter().rev() {
         match doc {

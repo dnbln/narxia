@@ -193,7 +193,7 @@ fn patch_guide(guide: &Path, output: &Path, item: &mut Item) -> NexusR {
         .wrap_err("Failed to collect git journey docs")?;
     let r = git_journey::render(&docs);
 
-    std::fs::write(output, r)
+    fs::write(output, r)
         .into_diagnostic()
         .wrap_err("Failed to write patched guide")?;
 
