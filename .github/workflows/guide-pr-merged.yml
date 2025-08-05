@@ -39,7 +39,7 @@ jobs:
       run: |
         cd guide
         git switch ${{ steps.branch-names.outputs.base }}
-        git reset --hard ${{ steps.branch-names.outputs.head }} --
         git branch
+        git reset --hard ${{ steps.branch-names.outputs.head }} --
         git push origin ${{ steps.branch-names.outputs.base }} --force
   
