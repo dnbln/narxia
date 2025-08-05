@@ -108,10 +108,7 @@ async fn main() {
                     in_code_block = !in_code_block;
                     writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
                 } else if in_code_block {
-                    if let Some(path) = line.strip_prefix("// !path ") {
-                        write_doctests = true;
-                        writeln!(&mut all_code_for_doctests, "let path = {path};").unwrap();
-                    } else if let Some(tail) = line.strip_prefix("// !tail ") {
+                    if let Some(tail) = line.strip_prefix("// !tail ") {
                         write_doctests = true;
                         writeln!(&mut all_code_for_doctests, "Ok::<_, {tail}>(())").unwrap();
                     } else if let Some(hidden) = line.strip_prefix("// !hidden ") {

@@ -46,7 +46,7 @@ struct Dir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tail dir_structure::Error
@@ -80,7 +80,7 @@ struct Dir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -124,7 +124,7 @@ struct Dir {
     number: u32,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -184,7 +184,7 @@ struct Obj {
     age: u32,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -220,7 +220,7 @@ struct Dir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -266,7 +266,7 @@ struct SubDir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -320,7 +320,7 @@ struct SubDir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -392,7 +392,7 @@ struct SubDir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -455,7 +455,7 @@ struct SubDir {
     output: String,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
@@ -516,7 +516,7 @@ struct SubDir {
     output: DeferredRead<String>,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
 
@@ -589,7 +589,7 @@ struct SubDir {
     output: DeferredReadOrOwn<String>,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let mut dir = Dir::read(path)?;
 
@@ -673,7 +673,7 @@ struct SubDir {
     output: DeferredReadOrOwn<Versioned<String>>,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let mut dir = Dir::read(path)?;
 
@@ -757,7 +757,7 @@ struct SubDir {
     output: DeferredReadOrOwn<Versioned<String>>,
 }
 
-// !path "dir"
+// !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let mut dir = Dir::read(path)?;
 
