@@ -43,7 +43,7 @@ const icon = (
 export const collapseTrigger: AnnotationHandler = {
   name: "CollapseTrigger",
   onlyIfAnnotated: true,
-  AnnotatedLine: ({ annotation, ...props }) => (
+  AnnotatedLine: ({ ...props }) => (
     <CollapsibleTrigger className="group contents">
       <InnerLine merge={props} data={{ icon }} />
     </CollapsibleTrigger>
