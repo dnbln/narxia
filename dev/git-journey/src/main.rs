@@ -1,4 +1,5 @@
-use std::{fmt::Write as _, path::PathBuf};
+use std::fmt::Write as _;
+use std::path::PathBuf;
 
 use clap::Parser;
 
@@ -66,10 +67,7 @@ fn main() {
 
                 if message.starts_with("git-journey-begin:\n") {
                     let content = message["git-journey-begin:\n".len()..].to_string();
-                    docs.push((
-                        commit.id(),
-                        Extract::Begin { content },
-                    ));
+                    docs.push((commit.id(), Extract::Begin { content }));
                     break;
                 }
 
@@ -78,13 +76,17 @@ fn main() {
                     let end = message_lowercase[pos + "git-journey-pre:\n".len()..]
                         .find("git-journey-post:")
                         .unwrap_or(message_lowercase.len() - pos - "git-journey-pre:\n".len());
-                    message[pos + "git-journey-pre:\n".len()..pos + "git-journey-pre:\n".len() + end].to_string()
+                    message
+                        [pos + "git-journey-pre:\n".len()..pos + "git-journey-pre:\n".len() + end]
+                        .to_string()
                 });
                 let post = message_lowercase.find("git-journey-post:\n").map(|pos| {
                     let end = message_lowercase[pos + "git-journey-post:\n".len()..]
                         .find('\n')
                         .unwrap_or(message_lowercase.len() - pos - "git-journey-post:\n".len());
-                    message[pos + "git-journey-post:\n".len()..pos + "git-journey-post:\n".len() + end].to_string()
+                    message
+                        [pos + "git-journey-post:\n".len()..pos + "git-journey-post:\n".len() + end]
+                        .to_string()
                 });
                 docs.push((
                     commit.id(),
@@ -107,7 +109,7 @@ fn main() {
                 match doc {
                     Extract::Begin { content } => {
                         writeln!(&mut out, "{content}").unwrap();
-                    },
+                    }
                     Extract::Step { pre, post, file } => {
                         if let Some(pre) = pre {
                             writeln!(&mut out, "{pre}").unwrap();
@@ -116,10 +118,10 @@ fn main() {
                         if let Some(post) = post {
                             writeln!(&mut out, "{post}").unwrap();
                         }
-                    },
+                    }
                     Extract::End { content } => {
                         writeln!(&mut out, "{content}").unwrap();
-                    },
+                    }
                 }
             }
 

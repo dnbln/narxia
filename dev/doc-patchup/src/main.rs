@@ -170,12 +170,10 @@ fn patch_rust_lines(contents: String) -> String {
                 "```rust ,ignore".to_string()
             } else if line.starts_with("```") {
                 "```".to_string()
+            } else if line.starts_with("#") {
+                format!(" {line}")
             } else {
-                if line.starts_with("#") {
-                    format!(" {line}")
-                } else {
-                    line.to_string()
-                }
+                line.to_string()
             }
         })
         .collect::<Vec<_>>()
