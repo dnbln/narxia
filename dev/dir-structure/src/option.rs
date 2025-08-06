@@ -103,7 +103,10 @@ where
             OptionReadFromAsyncFutureOwnProj::HasContents { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(v) => Poll::Ready(v.map(Some)),
-                    Poll::Pending => Poll::Pending,
+                    Poll::Pending => {
+                        self.project_replace(Self::HasContents { inner });
+                        Poll::Pending
+                    }
                 }
             }
             OptionReadFromAsyncFutureOwnProj::NoContents => {
