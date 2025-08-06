@@ -7,6 +7,7 @@ use syn::punctuated::Punctuated;
 
 // resolve_path!(<path_expr @ T>.a."b".c.d);
 
+// sync this with HAS_FIELD_MAX_LEN in dir-structure/src/lib.rs
 pub const MAX_LEN: usize = 16;
 
 struct ResolvePathInput {

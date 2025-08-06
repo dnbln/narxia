@@ -368,7 +368,8 @@ pub trait NewtypeToInner {
     fn into_inner(self) -> Self::Inner;
 }
 
-const HAS_FIELD_MAX_LEN: usize = 16;
+// sync this with MAX_LEN in dir-structure-macros/src/resolve_path.rs
+pub const HAS_FIELD_MAX_LEN: usize = 16;
 
 /// A trait to declare that a type has a field with a specific name,
 /// and the type of the field is [`HasField::Inner`].
