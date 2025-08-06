@@ -70,11 +70,11 @@ pub mod name_resolution_tests {
 
     impl NameResolutionTestSingleFolder {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!(<(self.self_path.clone()) @ NameResolutionTestSingleFolder>.input)
+            dir_structure::resolve_path!([NameResolutionTestSingleFolder @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!(<(self.self_path.clone()) @ NameResolutionTestSingleFolder>.output)
+            dir_structure::resolve_path!([NameResolutionTestSingleFolder @ self.self_path.clone()].output)
         }
     }
 }
@@ -87,9 +87,6 @@ pub mod ssa_tests {
     use dir_structure::FileString;
 
     use crate::ws_root;
-
-    pub const INPUT_FILE_NAME: &str = "input.nrx";
-    pub const OUTPUT_FILE_NAME: &str = "output.nrxssa";
 
     pub fn ssa_tests_dir() -> PathBuf {
         ws_root().join("tests/ssa-tests")
@@ -106,11 +103,11 @@ pub mod ssa_tests {
 
     impl SsaTestSingleFolder {
         pub fn input_file_path(&self) -> PathBuf {
-            self.self_path.join(INPUT_FILE_NAME)
+            dir_structure::resolve_path!([SsaTestSingleFolder @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            self.self_path.join(OUTPUT_FILE_NAME)
+            dir_structure::resolve_path!([SsaTestSingleFolder @ self.self_path.clone()].output)
         }
     }
 }

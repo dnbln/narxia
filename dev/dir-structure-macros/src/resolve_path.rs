@@ -1,13 +1,16 @@
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Token;
+use syn::bracketed;
 use syn::parse::Parse;
+use syn::parse::discouraged::Speculative;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 
-// resolve_path!(<path_expr @ T>.a."b".c.d);
+// resolve_path!([T @ path_expr].a."b".c.d);
+// or
+// resolve_path!(["path/to/dir" as T].a."b".c.d);
 
-// sync this with HAS_FIELD_MAX_LEN in dir-structure/src/lib.rs
 pub const MAX_LEN: usize = 16;
 
 struct ResolvePathInput {
@@ -23,11 +26,45 @@ struct ResolvePathInput {
 #[expect(unused)]
 impl Parse for ResolvePathInput {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let lt: Token![<] = input.parse()?;
-        let path: syn::Expr = input.parse()?;
-        let at: Token![@] = input.parse()?;
-        let ty: syn::Type = input.parse()?;
-        let rt: Token![>] = input.parse()?;
+        let content;
+        bracketed!(content in input);
+        let fork = content.fork();
+
+        let (path, ty) = match fork.parse::<syn::Expr>() {
+            Ok(expr) => match fork.is_empty() {
+                true => match expr {
+                    syn::Expr::Cast(expr_cast) => {
+                        let expr = *expr_cast.expr;
+                        let ty = *expr_cast.ty;
+                        content.advance_to(&fork);
+                        (expr, ty)
+                    }
+                    e => {
+                        return Err(syn::Error::new_spanned(
+                            e,
+                            format!("expected expression to be `value as type`"),
+                        ));
+                    }
+                },
+                false => {
+                    if !fork.peek(Token![@]) {
+                        eprintln!("expr is {}", quote! {#expr});
+                        return Err(fork.error("expected 'as' or '@'"));
+                    }
+                    // reinterpret the expression as a type
+                    let ty = content.parse::<syn::Type>()?;
+                    content.parse::<Token![@]>()?;
+                    let expr = content.parse::<syn::Expr>()?;
+                    (expr, ty)
+                }
+            },
+            Err(_) => {
+                let ty = content.parse::<syn::Type>()?;
+                content.parse::<Token![@]>()?;
+                let expr = content.parse::<syn::Expr>()?;
+                (expr, ty)
+            }
+        };
         let dot: Token![.] = input.parse()?;
         let segments =
             Punctuated::<ResolveSingleSegment, Token![.]>::parse_separated_nonempty(input)?;

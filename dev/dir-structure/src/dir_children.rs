@@ -1,0 +1,1111 @@
+use std::ffi::OsStr;
+use std::ffi::OsString;
+use std::marker;
+use std::path::Path;
+use std::path::PathBuf;
+#[cfg(feature = "async")]
+use std::pin::Pin;
+#[cfg(feature = "async")]
+use std::task::Context;
+#[cfg(feature = "async")]
+use std::task::Poll;
+
+#[cfg(feature = "async")]
+use pin_project::pin_project;
+
+use crate::WrapIoError;
+use crate::error::Result;
+#[cfg(feature = "async")]
+use crate::traits::asy::ReadFromAsync;
+#[cfg(feature = "async")]
+use crate::traits::asy::WriteToAsync;
+#[cfg(feature = "resolve-path")]
+use crate::traits::resolve::DynamicHasField;
+use crate::traits::sync::DirStructureItem;
+use crate::traits::sync::ReadFrom;
+use crate::traits::sync::WriteTo;
+
+/// A directory structure where we don't know the names of the folders at compile-time,
+/// and as such we cannot use the derive macro.
+///
+/// Instead we know that all the entries in the directory are folders,
+/// and that they all have the same structure inside (defined by the `T` type parameter),
+/// or they are all files (which can be read with [`DirChildren`]<[`String`]> for example).
+///
+/// In either case, [`ReadFrom::read_from`] must be able to read all the entries in
+/// the directory.
+///
+/// The [`WriteTo`] implementation will directly write the children to the directory it
+/// is passed, with no regards to the path stored in `self_path`.
+#[derive(Debug, PartialEq, Eq)]
+pub struct DirChildren<T, F: Filter = NoFilter> {
+    /// The path to the root directory.
+    ///
+    /// This path doesn't influence writing in any way, it is only to
+    /// point out the directory after it has been read and parsed.
+    pub self_path: PathBuf,
+    /// The children of the root directory.
+    pub children: Vec<DirChild<T>>,
+
+    filter: marker::PhantomData<F>,
+}
+
+impl<T, F> Clone for DirChildren<T, F>
+where
+    T: DirStructureItem + Clone,
+    F: Filter,
+{
+    fn clone(&self) -> Self {
+        Self {
+            self_path: self.self_path.clone(),
+            children: self.children.clone(),
+            filter: marker::PhantomData,
+        }
+    }
+}
+
+/// A filter for the children of a [`DirChildren`] structure.
+///
+/// This is used to filter out children that we don't want to
+/// read into the structure. For example, if we have a directory
+/// with a lot of files, we can use this to only read the
+/// files we want, for example, that have just a certain extension.
+///
+/// # Examples
+///
+/// For example, for a [`Filter`] that only allows `.txt` files:
+///
+/// ```rust
+/// use std::path::Path;
+/// use std::path::PathBuf;
+///
+/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+///
+/// pub struct TextFileFilter;
+///
+/// impl Filter for TextFileFilter {
+///     fn make_filter() -> Self {
+///        Self
+///     }
+///
+///     fn allows(&self, path: &Path) -> bool {
+///         path.extension()
+///             .and_then(|s| s.to_str())
+///             .map_or(false, |s| s == "txt")
+///     }
+/// }
+///
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let path = PathBuf::from("dir");
+///     #[derive(DirStructure)]
+///     struct Dir {
+///        #[dir_structure(path = self)]
+///        text_files: DirChildren<String, TextFileFilter>,
+///     }
+///
+///     # std::fs::create_dir_all(&path)?;
+///
+///     std::fs::write(path.join("file1.txt"), "file1")?;
+///     std::fs::write(path.join("file2.txt"), "file2")?;
+///     std::fs::write(path.join("file3.bin"), "aaa")?;
+///
+///     let dir = Dir::read(&path)?;
+///     assert_eq!(dir.text_files.len(), 2);
+///     assert_eq!(dir.text_files.get_value_by_name("file1.txt"), Some(&String::from("file1")));
+///     assert_eq!(dir.text_files.get_value_by_name("file2.txt"), Some(&String::from("file2")));
+///     assert_eq!(dir.text_files.get_value_by_name("file3.bin"), None);
+///
+///     # std::fs::remove_dir_all(&path)?;
+///
+///     Ok(())
+/// }
+/// ```
+pub trait Filter {
+    /// Creates an instance of this filter.
+    fn make_filter() -> Self;
+    /// Checks if the path is allowed by this filter.
+    fn allows(&self, path: &Path) -> bool;
+}
+
+/// A [`Filter`] that allows all paths.
+///
+/// ```rust
+/// # use std::path::Path;
+/// # use dir_structure::{Filter, NoFilter};
+/// #
+/// let filter = NoFilter::make_filter();
+/// assert!(filter.allows(Path::new("foo.txt")));
+/// assert!(filter.allows(Path::new("foo/bar.txt")));
+/// assert!(filter.allows(Path::new("foo/bar/baz.txt")));
+/// assert!(filter.allows(Path::new("foo/bar/baz")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/.")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../..")));
+/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../../..")));
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NoFilter;
+
+impl Filter for NoFilter {
+    fn make_filter() -> Self {
+        Self
+    }
+
+    fn allows(&self, _path: &Path) -> bool {
+        let _ = _path;
+        true
+    }
+}
+
+#[macro_export]
+macro_rules! ext_filter {
+    ($vis:vis $name:ident, $Ext:literal) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        $vis struct $name;
+
+        impl $crate::Filter for $name {
+            fn make_filter() -> Self {
+                Self
+            }
+
+            fn allows(&self, path: &::std::path::Path) -> bool {
+                path.extension()
+                    .map_or(false, |s| s == $Ext)
+            }
+        }
+    };
+}
+
+impl<T> Default for DirChildren<T>
+where
+    T: DirStructureItem,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T, F> DirChildren<T, F>
+where
+    F: Filter,
+{
+    /// Creates an empty [`DirChildren`], with no children.
+    pub fn new() -> Self {
+        Self {
+            self_path: PathBuf::new(),
+            children: Vec::new(),
+            filter: marker::PhantomData,
+        }
+    }
+
+    /// Creates a [`DirChildren`] with the given path and children.
+    pub fn with_children_from_iter(
+        self_path: impl Into<PathBuf>,
+        children: impl IntoIterator<Item = DirChild<T>>,
+    ) -> Self {
+        Self {
+            self_path: self_path.into(),
+            children: children.into_iter().collect(),
+            filter: marker::PhantomData,
+        }
+    }
+
+    /// Maps the children of this [`DirChildren`] to a new type.
+    ///
+    /// This is useful for converting the children to a different type,
+    /// for example, if you want to convert the children to a different
+    /// type of [`DirStructureItem`].
+    ///
+    /// This is a convenience method that allows you to use the
+    /// `map` method on the children of this [`DirChildren`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use std::path::PathBuf;
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild, ReadFrom, WriteTo};
+    ///
+    /// #[derive(Debug, PartialEq, Eq)]
+    /// struct NewType(String);
+    ///
+    /// impl ReadFrom for NewType {
+    ///     fn read_from(path: &Path) -> dir_structure::Result<Self> {
+    ///         String::read_from(path).map(Self)
+    ///     }
+    /// }
+    ///
+    /// impl WriteTo for NewType {
+    ///     fn write_to(&self, path: &Path) -> dir_structure::Result<()> {
+    ///         self.0.write_to(path)
+    ///     }
+    /// }
+    ///
+    /// let d = PathBuf::from("dir");
+    /// let dir = DirChildren::<_, dir_structure::NoFilter>::with_children_from_iter(
+    ///     d.clone(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///         DirChild::new("file3.txt", "file3".to_owned()),
+    ///     ],
+    /// );
+    /// let dir = dir.map(|child| child.map_value(NewType));
+    /// assert_eq!(
+    ///     dir,
+    ///     DirChildren::with_children_from_iter(
+    ///         d.clone(),
+    ///         vec![
+    ///             DirChild::new("file1.txt", NewType("file1".to_owned())),
+    ///             DirChild::new("file2.txt", NewType("file2".to_owned())),
+    ///             DirChild::new("file3.txt", NewType("file3".to_owned())),
+    ///         ],
+    ///     )
+    /// );
+    /// ```
+    pub fn map<U, MapF>(self, f: MapF) -> DirChildren<U, F>
+    where
+        MapF: FnMut(DirChild<T>) -> DirChild<U>,
+        U: DirStructureItem,
+    {
+        let children = self.children.into_iter().map(f).collect();
+        DirChildren {
+            self_path: self.self_path,
+            children,
+            filter: marker::PhantomData,
+        }
+    }
+
+    /// Maps the filter type. The children remain unchanged.
+    ///
+    /// This is useful if you are trying to pass a DirChildren<T, F1> to
+    /// a function requiring a DirChildren<T, F2>, where F1 and F2 are two
+    /// distinct types implementing [`Filter`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::Path;
+    /// use dir_structure::{Filter, DirChildren};
+    ///
+    /// struct NewFilter;
+    ///
+    /// impl Filter for NewFilter {
+    ///     fn make_filter() -> Self {
+    ///         Self
+    ///     }
+    ///
+    ///     fn allows(&self, _path: &Path) -> bool {
+    ///         true
+    ///     }
+    /// }
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// let d2: DirChildren<String, NewFilter> = d.map_filter::<NewFilter>();
+    /// ```
+    pub fn map_filter<NewF: Filter>(self) -> DirChildren<T, NewF>
+    where
+        NewF: Filter,
+    {
+        DirChildren {
+            self_path: self.self_path,
+            children: self.children,
+            filter: marker::PhantomData,
+        }
+    }
+
+    /// Returns the number of children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.len(), 0);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.len(), 2);
+    /// ```
+    pub fn len(&self) -> usize {
+        self.children.len()
+    }
+
+    /// Gets the child at the specified index.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get(0), None);
+    /// assert_eq!(d.get(1), None);
+    /// assert_eq!(d.get(100), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get(0), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get(1), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get(2), None);
+    /// assert_eq!(d.get(100), None);
+    /// ```
+    pub fn get(&self, index: usize) -> Option<&DirChild<T>> {
+        self.children.get(index)
+    }
+
+    /// Gets a mutable reference to the child at the specified index.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_mut(0), None);
+    /// assert_eq!(d.get_mut(1), None);
+    /// assert_eq!(d.get_mut(100), None);
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_mut(0), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get_mut(1), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get_mut(2), None);
+    /// assert_eq!(d.get_mut(100), None);
+    /// ```
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirChild<T>> {
+        self.children.get_mut(index)
+    }
+
+    /// Gets the child with the specified "file" name (last segment of path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_name(""), None);
+    /// assert_eq!(d.get_name("any_name"), None);
+    /// assert_eq!(d.get_name("aaaa"), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_name("file1.txt"), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get_name("file2.txt"), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get_name("any_name"), None);
+    /// assert_eq!(d.get_name("aaaa"), None);
+    /// ```
+    pub fn get_name(&self, name: impl AsRef<OsStr>) -> Option<&DirChild<T>> {
+        self.children
+            .iter()
+            .find(|child| child.file_name == name.as_ref())
+    }
+
+    /// Gets the value of the child with the specified "file" name (last segment of path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_value_by_name(""), None);
+    /// assert_eq!(d.get_value_by_name("any_name"), None);
+    /// assert_eq!(d.get_value_by_name("aaaa"), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_value_by_name("file1.txt"), Some(&"file1".to_owned()));
+    /// assert_eq!(d.get_value_by_name("file2.txt"), Some(&"file2".to_owned()));
+    /// assert_eq!(d.get_value_by_name("any_name"), None);
+    /// assert_eq!(d.get_value_by_name("aaaa"), None);
+    /// ```
+    pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
+        self.get_name(name).map(|child| &child.value)
+    }
+
+    /// Returns an iterator over the children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), None);
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn iter(&self) -> DirChildrenIter<'_, T> {
+        DirChildrenIter(self.children.iter())
+    }
+
+    /// Returns a mutable iterator over the children.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// let mut i = d.iter_mut();
+    /// assert_eq!(i.next(), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(i.next(), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    ///
+    /// Modifying the children is also possible:
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// d.iter_mut().for_each(|child| *child.value_mut() = "modified".to_owned());
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "modified".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "modified".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T> {
+        DirChildrenIterMut(self.children.iter_mut())
+    }
+}
+
+impl<T, F> ReadFrom for DirChildren<T, F>
+where
+    T: DirStructureItem,
+    F: Filter,
+{
+    fn read_from(path: &Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let filter = F::make_filter();
+
+        let mut children = Vec::new();
+        for child in path.read_dir().wrap_io_error_with(path)? {
+            let child = child.wrap_io_error_with(path)?;
+            let child_path = child.path();
+
+            if !filter.allows(&child_path) {
+                continue;
+            }
+
+            let value = T::read_from(&child_path)?;
+            let file_name = child.file_name();
+            children.push(DirChild { file_name, value });
+        }
+
+        Ok(DirChildren {
+            self_path: path.to_path_buf(),
+            children,
+            filter: marker::PhantomData,
+        })
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
+pub enum DirChildrenReadAsyncFuture<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Send + Unpin,
+{
+    Poison,
+    Init(
+        Pin<Box<dyn Future<Output = std::io::Result<tokio::fs::ReadDir>> + Send>>,
+        F,
+        Vec<DirChild<T>>,
+        PathBuf,
+    ),
+    Begin(Pin<Box<tokio::fs::ReadDir>>, F, Vec<DirChild<T>>, PathBuf),
+    ReadAsync(
+        Pin<Box<tokio::fs::ReadDir>>,
+        F,
+        Vec<DirChild<T>>,
+        PathBuf,
+        T::Future,
+        OsString,
+    ),
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T, F> Future for DirChildrenReadAsyncFuture<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+{
+    type Output = Result<DirChildren<T, F>>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+
+        match this {
+            DirChildrenReadAsyncFutureProjOwn::Init(mut entries, filter, children, path) => {
+                match entries.as_mut().poll(cx) {
+                    Poll::Ready(Ok(entries)) => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                            Box::pin(entries),
+                            filter,
+                            children,
+                            path,
+                        ));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Pending => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Init(
+                            entries, filter, children, path,
+                        ));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenReadAsyncFutureProjOwn::Begin(mut entries, filter, children, path) => {
+                use std::task::Poll;
+
+                match entries.poll_next_entry(cx) {
+                    Poll::Ready(Ok(Some(entry))) => {
+                        if !filter.allows(&entry.path()) {
+                            return Poll::Ready(Ok(DirChildren {
+                                self_path: path.clone(),
+                                children,
+                                filter: marker::PhantomData,
+                            }));
+                        }
+
+                        let value_future = T::read_from_async(entry.path());
+                        self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
+                            entries,
+                            filter,
+                            children,
+                            path,
+                            value_future,
+                            entry.file_name(),
+                        ));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Ok(None)) => Poll::Ready(Ok(DirChildren {
+                        self_path: path.clone(),
+                        children,
+                        filter: marker::PhantomData,
+                    })),
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Pending => {
+                        self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                            entries, filter, children, path,
+                        ));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenReadAsyncFutureProjOwn::ReadAsync(
+                entries,
+                filter,
+                mut children,
+                path,
+                mut value_fut,
+                file_name,
+            ) => match Pin::<&mut T::Future>::new(&mut value_fut).poll(cx) {
+                Poll::Ready(Ok(value)) => {
+                    children.push(DirChild { file_name, value });
+                    self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                        entries, filter, children, path,
+                    ));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                Poll::Pending => {
+                    self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
+                        entries,
+                        filter,
+                        children,
+                        path,
+                        value_fut,
+                        file_name.clone(),
+                    ));
+                    Poll::Pending
+                }
+            },
+            DirChildrenReadAsyncFutureProjOwn::Poison => {
+                panic!("DirChildrenReadAsyncFuture is poisoned, this should never happen");
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T, F> ReadFromAsync for DirChildren<T, F>
+where
+    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    F: Filter + Send + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+{
+    type Future = DirChildrenReadAsyncFuture<T, F>;
+
+    fn read_from_async(path: PathBuf) -> Self::Future {
+        let f = Box::pin(tokio::fs::read_dir(path.clone()));
+        DirChildrenReadAsyncFuture::Init(f, F::make_filter(), Vec::new(), path)
+    }
+}
+
+impl<T, F> WriteTo for DirChildren<T, F>
+where
+    T: DirStructureItem,
+    F: Filter,
+{
+    fn write_to(&self, path: &Path) -> Result<()> {
+        for child in &self.children {
+            let child_path = path.join(&child.file_name);
+            child.value.write_to(&child_path)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
+pub enum DirChildrenWriteAsyncFuture<'a, T: WriteToAsync + 'a>
+where
+    T::Future<'a>: Unpin,
+{
+    Poison,
+    Begin(DirChildrenIter<'a, T>, PathBuf),
+    Write(DirChildrenIter<'a, T>, PathBuf, T::Future<'a>),
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T> Future for DirChildrenWriteAsyncFuture<'a, T>
+where
+    T: WriteToAsync + 'a,
+    T::Future<'a>: Future<Output = Result<()>> + Unpin,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+
+        match this {
+            DirChildrenWriteAsyncFutureProjOwn::Begin(mut iter, path) => {
+                if let Some(child) = iter.next() {
+                    let child_path = path.join(&child.file_name);
+                    let fut = child.value.write_to_async(child_path);
+                    self.project_replace(Self::Write(iter, path, fut));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(Ok(()))
+                }
+            }
+            DirChildrenWriteAsyncFutureProjOwn::Write(mut iter, path, mut fut) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(())) => {
+                        if let Some(child) = iter.next() {
+                            let child_path = path.join(&child.file_name);
+                            let new_fut = child.value.write_to_async(child_path);
+                            self.project_replace(Self::Write(iter, path, new_fut));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        } else {
+                            Poll::Ready(Ok(()))
+                        }
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::Write(iter, path, fut));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenWriteAsyncFutureProjOwn::Poison => {
+                panic!("DirChildrenWriteAsyncFuture is poisoned, this should never happen");
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T, F> WriteToAsync for DirChildren<T, F>
+where
+    T: DirStructureItem + WriteToAsync + Send + Sync + 'static,
+    F: Filter + Send + 'static,
+    for<'a> T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+{
+    type Future<'a> = DirChildrenWriteAsyncFuture<'a, T>;
+
+    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        DirChildrenWriteAsyncFuture::Begin(self.iter(), path)
+    }
+}
+
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+impl<T, F> DynamicHasField for DirChildren<T, F>
+where
+    F: Filter,
+{
+    type Inner = T;
+
+    fn resolve_path(mut p: PathBuf, name: &str) -> PathBuf {
+        p.push(name);
+        p
+    }
+}
+
+/// A single child of a [`DirChildren`] structure.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DirChild<T> {
+    /// The file name of the child.
+    file_name: OsString,
+    /// The parsed value of the child.
+    value: T,
+}
+
+impl<T> DirChild<T> {
+    /// Creates a new [`DirChild`] with the specified file name and value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
+    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+        Self {
+            file_name: file_name.into(),
+            value,
+        }
+    }
+
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// ```
+    pub fn file_name(&self) -> &OsString {
+        &self.file_name
+    }
+
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    ///
+    /// Mutable reference version of [`Self::file_name`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// *d.file_name_mut() = OsString::from("new_file.txt");
+    /// assert_eq!(d.file_name(), &OsString::from("new_file.txt"));
+    /// ```
+    pub fn file_name_mut(&mut self) -> &mut OsString {
+        &mut self.file_name
+    }
+
+    /// Gets the value of the child.
+    ///
+    /// This is the parsed value of the file / directory.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
+    pub fn value(&self) -> &T {
+        &self.value
+    }
+
+    /// Gets the value of the child.
+    ///
+    /// This is the parsed value of the file / directory.
+    ///
+    /// Mutable reference version of [`Self::value`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// *d.value_mut() = "new_file".to_owned();
+    /// assert_eq!(d.value(), &"new_file".to_owned());
+    /// ```
+    pub fn value_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+
+    /// Maps the file name of this [`DirChild`] to a new value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.map_file_name(|s| s.to_str().unwrap().to_uppercase()), DirChild::new("FILE.TXT", "file".to_owned()));
+    /// ```
+    pub fn map_file_name<F, O>(self, f: F) -> Self
+    where
+        F: FnOnce(OsString) -> O,
+        O: Into<OsString>,
+    {
+        let file_name = f(self.file_name).into();
+        DirChild {
+            file_name,
+            value: self.value,
+        }
+    }
+
+    /// Maps the value of this [`DirChild`] to a new type.
+    ///
+    /// This is useful for converting the value to a different type,
+    /// for example, if you want to convert the value to a different
+    /// type of [`DirStructureItem`].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::DirChild;
+    /// use dir_structure::FileString;
+    ///
+    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt", FileString("file".to_owned())));
+    /// ```
+    pub fn map_value<U, F>(self, f: F) -> DirChild<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let value = f(self.value);
+        DirChild {
+            file_name: self.file_name,
+            value,
+        }
+    }
+}
+
+impl<T> IntoIterator for DirChildren<T> {
+    type Item = DirChild<T>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.children.into_iter()
+    }
+}
+
+/// A [`DirChildren`] iterator. It iterates over the children of a
+/// [`DirChildren`] structure.
+///
+/// See [`DirChildren::iter`] for more information.
+pub struct DirChildrenIter<'a, T>(std::slice::Iter<'a, DirChild<T>>);
+
+impl<'a, T> Iterator for DirChildrenIter<'a, T> {
+    type Item = &'a DirChild<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for DirChildrenIter<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<T> DoubleEndedIterator for DirChildrenIter<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+}
+
+/// A mutable iterator over the children of a [`DirChildren`] structure.
+/// This allows you to mutate the children of the
+/// [`DirChildren`] structure while iterating over them.
+///
+/// See [`DirChildren::iter_mut`] for more information.
+pub struct DirChildrenIterMut<'a, T>(std::slice::IterMut<'a, DirChild<T>>);
+
+impl<'a, T> Iterator for DirChildrenIterMut<'a, T>
+where
+    T: DirStructureItem,
+{
+    type Item = &'a mut DirChild<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for DirChildrenIterMut<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<T> DoubleEndedIterator for DirChildrenIterMut<'_, T>
+where
+    T: DirStructureItem,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+}
+
+/// A simple macro that generates a [`DirChildren`] newtype, together with
+/// a few impls to make it easy to use.
+#[macro_export]
+macro_rules! dir_children_wrapper {
+    ($vis:vis $name:ident $ty:ty) => {
+        $vis struct $name(pub $crate::DirChildren<$ty>);
+
+        impl $crate::ReadFrom for $name {
+            fn read_from(path: &::std::path::Path) -> $crate::Result<Self>
+            where
+                Self: Sized,
+            {
+                Ok(Self(<$crate::DirChildren<$ty>>::read_from(path)?))
+            }
+        }
+
+        impl $crate::WriteTo for $name {
+            fn write_to(&self, path: &::std::path::Path) -> $crate::Result<()> {
+                self.0.write_to(path)
+            }
+        }
+
+        impl std::ops::Deref for $name {
+            type Target = $crate::DirChildren<$ty>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
+        impl std::iter::IntoIterator for $name {
+            type Item = $crate::DirChild<$ty>;
+            type IntoIter = std::vec::IntoIter<Self::Item>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                self.0.into_iter()
+            }
+        }
+    };
+}
