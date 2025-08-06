@@ -418,7 +418,6 @@ pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     resolve_path::resolve_path(input)
 }
 
-
 #[proc_macro]
 pub fn __resolve_max_len(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // This macro is used to get the maximum length of a field name for the `HasField` trait.
