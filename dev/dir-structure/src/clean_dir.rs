@@ -234,12 +234,15 @@ where
 
     fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
         Box::pin(async move {
-            if path.exists() {
+            if tokio::fs::try_exists(&path)
+                .await
+                .wrap_io_error_with(&path)?
+            {
                 tokio::fs::remove_dir_all(&path)
                     .await
                     .wrap_io_error_with(&path)?;
             } else {
-                utils::create_parent_dir(&path)?;
+                utils::create_parent_dir_async(&path).await?;
             }
             self.0.write_to_async(path).await
         })
@@ -256,12 +259,15 @@ where
 
     fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
         Box::pin(async move {
-            if path.exists() {
+            if tokio::fs::try_exists(&path)
+                .await
+                .wrap_io_error_with(&path)?
+            {
                 tokio::fs::remove_dir_all(&path)
                     .await
                     .wrap_io_error_with(&path)?;
             } else {
-                utils::create_parent_dir(&path)?;
+                utils::create_parent_dir_async(&path).await?;
             }
             self.0.write_to_async(path).await
         })

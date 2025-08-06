@@ -45,13 +45,18 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[pin_project(project = OptionReadFromAsyncFutureProj)]
+#[pin_project(project_replace = OptionReadFromAsyncFutureOwnProj)]
 pub enum OptionReadFromAsyncFuture<T>
 where
     T: ReadFromAsync + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin,
 {
+    Poison,
+    Check {
+        path: PathBuf,
+        check_fut: Pin<Box<dyn Future<Output = std::io::Result<bool>> + Send>>,
+    },
     HasContents {
-        #[pin]
         inner: T::Future,
     },
     NoContents,
@@ -62,21 +67,51 @@ where
 impl<T> Future for OptionReadFromAsyncFuture<T>
 where
     T: ReadFromAsync + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin,
 {
     type Output = Result<Option<T>>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         use std::task::Poll;
 
-        let this = self.project();
+        let this = self.as_mut().project_replace(Self::Poison);
         match this {
-            OptionReadFromAsyncFutureProj::HasContents { inner } => match inner.poll(cx) {
-                Poll::Ready(v) => Poll::Ready(v.map(Some)),
-                Poll::Pending => Poll::Pending,
-            },
-            OptionReadFromAsyncFutureProj::NoContents => {
+            OptionReadFromAsyncFutureOwnProj::Check {
+                path,
+                mut check_fut,
+            } => {
+                match check_fut.as_mut().poll(cx) {
+                    Poll::Ready(Ok(true)) => {
+                        self.project_replace(Self::HasContents {
+                            inner: T::read_from_async(path),
+                        });
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Ok(false)) => {
+                        // If the path does not exist, we return None
+                        Poll::Ready(Ok(None))
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(crate::Error::Io(path, e))),
+                    Poll::Pending => {
+                        // If the check is still pending, we return Pending
+                        self.project_replace(Self::Check { path, check_fut });
+                        Poll::Pending
+                    }
+                }
+            }
+            OptionReadFromAsyncFutureOwnProj::HasContents { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(v) => Poll::Ready(v.map(Some)),
+                    Poll::Pending => Poll::Pending,
+                }
+            }
+            OptionReadFromAsyncFutureOwnProj::NoContents => {
                 // If there are no contents, we return None
                 Poll::Ready(Ok(None))
+            }
+            OptionReadFromAsyncFutureOwnProj::Poison => {
+                panic!("OptionReadFromAsyncFuture was polled after it was replaced with Poison");
             }
         }
     }
@@ -87,6 +122,7 @@ where
 impl<T> ReadFromAsync for Option<T>
 where
     T: ReadFromAsync + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin,
 {
     type Future
         = OptionReadFromAsyncFuture<T>
@@ -94,12 +130,9 @@ where
         Self: 'static;
 
     fn read_from_async(path: PathBuf) -> Self::Future {
-        if path.exists() {
-            OptionReadFromAsyncFuture::HasContents {
-                inner: T::read_from_async(path),
-            }
-        } else {
-            OptionReadFromAsyncFuture::NoContents
+        OptionReadFromAsyncFuture::Check {
+            check_fut: Box::pin(tokio::fs::try_exists(path.clone())),
+            path,
         }
     }
 }

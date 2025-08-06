@@ -126,7 +126,7 @@ impl WriteToAsync for FileBytesRefWr<'_> {
 
     fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
         Box::pin(async move {
-            utils::create_parent_dir(&path)?;
+            utils::create_parent_dir_async(&path).await?;
             tokio::fs::write(&path, self.0)
                 .await
                 .wrap_io_error_with(&path)?;
@@ -142,7 +142,7 @@ impl<'a> WriteToAsyncOwned<'a> for FileBytesRefWr<'a> {
 
     fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
         Box::pin(async move {
-            utils::create_parent_dir(&path)?;
+            utils::create_parent_dir_async(&path).await?;
             tokio::fs::write(&path, self.0)
                 .await
                 .wrap_io_error_with(&path)?;
@@ -235,7 +235,7 @@ impl<'a> WriteToAsyncOwned<'a> for FileString {
 
     fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
         Box::pin(async move {
-            utils::create_parent_dir(&path)?;
+            utils::create_parent_dir_async(&path).await?;
             tokio::fs::write(&path, self.0)
                 .await
                 .wrap_io_error_with(&path)?;
