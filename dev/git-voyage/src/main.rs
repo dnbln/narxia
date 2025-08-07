@@ -25,6 +25,7 @@ enum App {
         #[clap(short = 'e', long = "template-ext", default_value = ".mdx")]
         template_extension: String,
     },
+    /// Adds a new step to the guide.
     Add {
         /// The directory that will contain the guide.
         dir: PathBuf,
