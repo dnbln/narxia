@@ -2,12 +2,19 @@ pub extern crate dir_structure;
 
 use std::path::Path;
 
+use dir_structure::DirStructure;
+
 pub fn ws_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
         .unwrap()
+}
+
+#[derive(DirStructure, Clone)]
+pub struct Workspace {
+    guides: dir_structure::DirChildren<()>,
 }
 
 pub mod parser_tests {

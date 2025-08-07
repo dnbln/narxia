@@ -16,8 +16,7 @@ more detail, while this guide focuses on the practical aspects of using the crat
 
 <ScrollyCoding>
 
-
- ## !!steps Basics
+## !!steps Basics
 
 The `dir-structure` crate provides an easy way to define and manipulate file system directories in a structured way.
 In this guide, we will explore all the features of the `dir-structure` crate.
@@ -56,8 +55,7 @@ Ok::<_, dir_structure::Error>(())
 
 ```
 
-
- ## !!steps Writing is also possible
+## !!steps Writing is also possible
 
 You can easily write an instance back to the file system.
 
@@ -96,7 +94,7 @@ Ok::<_, dir_structure::Error>(())
 
 ```
 
- ## !!steps But what about more complex data types, not just Strings?
+## !!steps But what about more complex data types, not just Strings?
 
 `dir-structure` allows you to use more complex data types, such as `Vec<u8>` (for binary files),
 any type that implements `FromStr` and `Display`, or even custom types that implement `ReadFrom` and `WriteTo`.
@@ -140,11 +138,12 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Or even serde types?
+
+## !!steps Or even serde types?
 
 Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
 
-This is an example using JSON, but TOML, YAML, and RON are also supported.
+This is an example using JSON, but TOML, YAML, and RON are also supported, behind the respective features.
 
 <Mermaid
   chart={`
@@ -155,6 +154,7 @@ mindmap
     f.json
 `}
  />
+
 
 ```rust,no_run
 #![deny(unused_imports)]
@@ -201,7 +201,8 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Let's go back to the basics
+
+## !!steps Let's go back to the basics
 
 We have a couple of other features to show, so let's go back to the example in the beginning.
 
@@ -213,6 +214,7 @@ mindmap
     output.txt
 `}
  />
+
 
 ```rust,no_run
 #![deny(unused_imports)]
@@ -238,7 +240,8 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps But what if we had more complex structures?
+
+## !!steps But what if we had more complex structures?
 
 You can easily nest them.
 
@@ -284,7 +287,8 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Or yet even more complex structures?
+
+## !!steps Or yet even more complex structures?
 
 Or even more complex structures, with file-names not known at compile time.
 
@@ -339,7 +343,80 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Or for extension-only filters?
+
+## !!steps If we need to filter the subdirectories?
+
+We can pass a filter to the `DirChildren` type. In the example, we filter only directories with the `.d` extension.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />
+
+```rust,no_run
+use std::path::Path;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+
+// !tooltip[/DirStructure/] DirStructure
+#[derive(DirStructure)]
+struct Dir {
+    // !mark(1:2)
+    #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+// !mark(1:11)
+struct Filt;
+
+// !tooltip[/Filter/] Filter
+impl Filter for Filt {
+    fn make_filter() -> Self {
+        Self
+    }
+
+    fn allows(&self, path: &Path) -> bool {
+        path.extension().map_or(false, |ext| ext == "d")
+    }
+}
+
+// !tooltip[/DirStructure/] DirStructure
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+let path = "dir";
+// !tooltip[/read/] DirStructureItem::read#
+let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
+dir.write(path)?;
+Ok::<_, dir_structure::Error>(())
+
+```
+
+## !!steps Or for extension-only filters?
 
 Extension-only filters are very common, so the library provides a convenient macro to create them.
 The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
@@ -413,9 +490,11 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Or even large directories?
+
+## !!steps Or even large directories?
 
 When dealing with large directories, you can use deferred (lazy) reading.
+This can be achieved with `DeferredRead`.
 
 <Mermaid
   chart={`
@@ -486,9 +565,10 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps And if we want to cache the read values?
 
-The library exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+## !!steps And if we want to cache the read values?
+
+The library also exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
 
 <Mermaid
   chart={`
@@ -564,7 +644,8 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Versioning values
+
+## !!steps Versioning values
 
 The library also provides a way to version the files, so you can keep track of changes you made to
 the directory structure, and only write the files that have changed.
@@ -596,6 +677,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -647,7 +729,8 @@ dir.write(path)?;
 Ok::<_, dir_structure::Error>(())
 
 ```
- ## !!steps Writing changed values
+
+## !!steps Writing changed values
 
 We've created a `Versioned` wrapper around a `String` value, but we are never modifying it.
 If we want to write the changed values, we need to modify the `Versioned` values first.
@@ -669,6 +752,7 @@ mindmap
             output.txt
 `}
  />
+
 
 ```rust,no_run
 #![deny(unused_imports)]
@@ -750,6 +834,7 @@ Ok::<_, dir_structure::Error>(())
 
 
 
+
+
+
 </ScrollyCoding>
-
-

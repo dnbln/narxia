@@ -739,6 +739,7 @@ version = "0.0.0"
 dependencies = [
  "doc-extract",
  "glob",
+ "thiserror 2.0.12",
  "tokio",
 ]
 
@@ -993,7 +994,7 @@ dependencies = [
 
 [[package]]
 name = "git-voyage"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "clap",
  "dir-structure",
@@ -2034,7 +2035,9 @@ version = "0.0.0"
 dependencies = [
  "cargo_metadata",
  "clap",
- "git-journey",
+ "dir-structure",
+ "doc-patchup",
+ "git-voyage",
  "glob",
  "humantime",
  "liblzma",
@@ -2049,6 +2052,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
+ "tokio",
  "zip",
 ]
 

@@ -1,6 +1,7 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
+use std::borrow::Cow;
 use std::fmt;
 use std::fmt::Write as _;
 use std::fs;
@@ -9,6 +10,7 @@ use std::io::BufRead;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
+use std::ops::Deref;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process;
@@ -24,13 +26,21 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use git_journey::git2::Repository;
+use doc_patchup::PerformEndError;
+use doc_patchup::doc_extract;
+use doc_patchup::doc_extract::Session;
+use git_voyage::Guide;
+use git_voyage::StepRef;
+use git_voyage::git2;
 use liblzma::read;
 use miette::Context;
 use miette::IntoDiagnostic;
 use miette::bail;
+use narxia_dir_structures::Workspace;
+use narxia_dir_structures::dir_structure;
 use narxia_dir_structures::dir_structure::DeferredReadOrOwn;
 use narxia_dir_structures::dir_structure::DirStructure;
+use narxia_dir_structures::dir_structure::DirStructureItem;
 use narxia_dir_structures::dir_structure::FileString;
 use narxia_dir_structures::name_resolution_tests;
 use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
@@ -42,6 +52,7 @@ use narxia_dir_structures::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
 use reqwest::blocking;
+use tokio::runtime;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -98,8 +109,17 @@ pub enum BuildSysCmd {
         check: bool,
     },
 
-    #[clap(name = "patch-guide")]
-    PatchGuide { guide: PathBuf, output: PathBuf },
+    #[clap(name = "patch-guide-step")]
+    PatchGuideStep { guide: PathBuf, step: String },
+
+    #[clap(name = "render-guide")]
+    RenderGuide {
+        guide: PathBuf,
+        #[clap(short, long)]
+        out: Option<PathBuf>,
+        #[clap(long)]
+        check: bool,
+    },
 }
 
 impl BuildSysCmd {
@@ -172,9 +192,22 @@ impl BuildSysCmd {
                 doc_patchup(check, &mut item)?;
             }
 
-            Self::PatchGuide { guide, output } => {
+            Self::PatchGuideStep { guide, step } => {
+                let step = StepRef::new(step);
                 let mut item = cx.new_child("Patch guide");
-                patch_guide(&guide, &output, &mut item)?;
+                patch_guide(&guide, &step, &mut item)?;
+            }
+
+            Self::RenderGuide {
+                guide,
+                out: output,
+                check,
+            } => {
+                let mut item = cx.new_child("Render guide");
+                let g = Guide::read(&guide)
+                    .into_diagnostic()
+                    .wrap_err("Failed to read guide")?;
+                render_guide(&g, &guide, output.as_deref(), check, &mut item)?;
             }
         }
 
@@ -182,20 +215,125 @@ impl BuildSysCmd {
     }
 }
 
-fn patch_guide(guide: &Path, output: &Path, item: &mut Item) -> NexusR {
+fn patch_guide(guide: &Path, step: &StepRef, item: &mut Item) -> NexusR {
+    item.init(None, None);
+    let guide_dir = guide;
+    let mut guide = git_voyage::Guide::read(guide_dir)
+        .into_diagnostic()
+        .wrap_err("Failed to read guide")?;
+
+    let editor = git2::Config::open_default()
+        .into_diagnostic()
+        .wrap_err("Failed to open git config")?
+        .get_path("core.editor")
+        .into_diagnostic()
+        .wrap_err("Failed to get core.editor from git config")?;
+
+    let mut edit = |path: &Path| {
+        let mut cmd = process::Command::new(&editor);
+        cmd.arg(path);
+
+        let mut proc = cmd.spawn()?;
+        let r = proc.wait()?;
+        if !r.success() {
+            return Err(git_voyage::Error::IO(io::Error::other(format!(
+                "Editor exited with non-zero status {}",
+                r.code().unwrap_or(-1)
+            ))));
+        }
+
+        Ok(())
+    };
+
+    let step_dir = guide
+        .get_step_dir(step)
+        .ok_or(miette::Error::msg("Step not found"))?;
+
+    let old_code = step_dir.code.value();
+    edit(&step_dir.code_path())
+        .into_diagnostic()
+        .wrap_err("Failed to edit code")?;
+
+    let new_code = fs::read_to_string(step_dir.code_path())
+        .into_diagnostic()
+        .wrap_err("Failed to read code file after editing")?;
+
+    if new_code == *old_code {
+        item.done("No changes detected in code, skipping patchup.");
+        return Ok(());
+    }
+
+    git_voyage::patchup(&mut guide, guide_dir, step, &new_code, &mut edit).into_diagnostic()?;
+
+    render_guide(
+        &guide,
+        guide_dir,
+        None,
+        false,
+        &mut item.add_child("Rendering"),
+    )?;
+
+    item.done("Patchup finished");
+
+    Ok(())
+}
+
+fn render_guide(
+    guide: &Guide,
+    guide_dir: &Path,
+    output: Option<&Path>,
+    check: bool,
+    item: &mut Item,
+) -> NexusR {
     item.init(None, None);
 
-    let repo = Repository::open(guide)
-        .into_diagnostic()
-        .wrap_err("Failed to open git repository")?;
-    let docs = git_journey::collect(&repo)
-        .into_diagnostic()
-        .wrap_err("Failed to collect git journey docs")?;
-    let r = git_journey::render(&docs);
+    let rendered = guide.render_guide();
 
-    fs::write(output, r)
+    let code = runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .into_diagnostic()?
+        .block_on(async move {
+            let session = doc_extract::Session::new(ws_root()).await;
+            doc_patchup::patchup_doc(&session, rendered).await
+        });
+
+    let output_path = output.map(Cow::Borrowed).or_else(|| {
+        let target = guide_dir.canonicalize().ok()?;
+        let guides_root = dir_structure::resolve_path!([ws_root() as Workspace].guides);
+
+        let p = match target.strip_prefix(&guides_root) {
+            Ok(p) => p,
+            Err(_) => {
+                return None;
+            }
+        };
+
+        Some(Cow::Owned(
+            ws_root()
+                .join("doc/docs/content/docs")
+                .join(p.with_extension("mdx")),
+        ))
+    });
+
+    let Some(output_path) = output_path else {
+        item.done("Patchup finished, but guide directory is not in the guides root; skipping write to doc/docs/content/docs");
+        return Ok(());
+    };
+
+    if output_path.deref() == Path::new("-") {
+        println!("{}", code.after);
+        item.done("Rendered guide to stdout");
+        return Ok(());
+    }
+
+    item.info(format!("Writing guide to {}", output_path.display()));
+
+    doc_patchup::perform_end(&code, output_path.as_ref(), check)
         .into_diagnostic()
-        .wrap_err("Failed to write patched guide")?;
+        .wrap_err("Failed to perform end of doc patchup")?;
+
+    item.done(format!("Rendered guide to {}", output_path.display()));
 
     Ok(())
 }
@@ -1426,27 +1564,44 @@ fn build_docs(item: &mut Item, cname: &str) -> NexusR {
 fn doc_patchup(check: bool, item: &mut Item) -> NexusR {
     item.init(None, None);
 
-    let mut cmd = process::Command::new("cargo");
-    cmd.arg("run").arg("-p").arg("doc-patchup");
-    if check {
-        cmd.arg("--").arg("--check");
-    }
-    let cmd = cmd
-        .current_dir(ws_root())
-        .stdin(process::Stdio::null())
-        .stdout(process::Stdio::piped())
-        .stderr(process::Stdio::piped())
-        .output()
-        .into_diagnostic()?;
+    let r = runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .into_diagnostic()?
+        .block_on(async move {
+            let root_dir = ws_root();
 
-    if !cmd.status.success() {
-        item.fail("Failed to patch up docs");
-        io::stderr().write_all(&cmd.stderr).into_diagnostic()?;
-        io::stdout().write_all(&cmd.stdout).into_diagnostic()?;
-        bail!("Failed to patch up docs");
-    }
+            let session = Session::new(root_dir).await;
+            let docs = root_dir.join("doc/docs/content/docs");
 
-    item.done("Patched up docs with rustdocs");
+            for p in glob::glob(docs.join("**/*.mdx").to_str().unwrap())
+                .expect("Failed to read glob pattern")
+                .filter_map(Result::ok)
+            {
+                let before = fs::read_to_string(&p).expect("Failed to read file");
+                let code = doc_patchup::patchup_doc(&session, before).await;
+
+                doc_patchup::perform_end(&code, &p, check)?;
+            }
+
+            Ok(())
+        });
+
+    match r {
+        Ok(()) => {
+            item.done("Patched up docs with rustdocs");
+        }
+        Err(e) => match e {
+            e @ PerformEndError::ChangesDetected => {
+                item.fail("Changes detected, please run `cargo nexus build-sys doc-patchup-rustdocs` again");
+                bail!(e);
+            }
+            e => {
+                item.fail("An error occurred while patching up docs");
+                bail!(e);
+            }
+        },
+    }
 
     Ok(())
 }

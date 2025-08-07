@@ -47,9 +47,11 @@ narxia-syn = { path = "crates/narxia-syn" }
 narxia-syn-db = { path = "crates/narxia-syn-db" }
 
 doc-extract = { path = "dev/doc-extract" }
+doc-patchup = { path = "dev/doc-patchup" }
 dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.5" }
 dir-structure = { path = "dev/dir-structure", version = "0.1.5" }
 git-journey = { path = "dev/git-journey", version = "0.1.0" }
+git-voyage = { path = "dev/git-voyage", version = "0.1.0" }
 
 bumpalo = "3.6.0"
 cargo_metadata = "0.19.1"

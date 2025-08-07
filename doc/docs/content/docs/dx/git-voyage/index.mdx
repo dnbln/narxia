@@ -3,10 +3,11 @@ title: git-voyage
 description: A guide to guide programming guides
 ---
 
-`git-voyage` is a tool designed to maintain documentation, specifically programming guides.
+`git-voyage` is a tool designed to maintain programming guides, walk-through tutorials,
+and the like.
 
-Most guides out there are based on a linear structure, where each step is a small
-change to the code of the previous step, and those small changes are explained bit
+Most guides / walk-throughs out there are based on a linear structure, where each step is
+a small change to the code of the previous step, and those small changes are explained bit
 by bit in the guide itself. Previously, maintaining such guides was a manual process,
 which was tedious and error-prone.
 
@@ -18,9 +19,11 @@ a change, and it will track the change and apply it to the next code blocks in t
 automatically.
 
 It works with `git-rebase` under the hood, so it will be as smart as `git-rebase` is.
-In case of merge conflicts, it will stop and ask you to resolve them manually.
+In case of merge conflicts, it will stop and ask you to resolve them manually, by opening
+an editor for you to resolve the conflicts, and then proceed, until it finishes the rebase.
 
-Of course, the option to manually edit the code blocks is still available, due to its design.
+Of course, the option to manually edit the code blocks is still available, due guides are
+structured.
 
 ## A quick guide
 
@@ -109,6 +112,24 @@ The `steps.json` file has the following structure:
 Its only purpose is to order the steps in the guide. The names have to match the
 names of the directories in the `steps` directory.
 
+
+### `code_header` / `code_footer`
+
+In order to simplify the process of writing guides, `git-voyage` introduces global `code_header` and
+`code_footer` files, which act as defaults for all the steps, but can be overridden by any of the
+individual steps.
+
+In markdown, for example, the <code>code_header</code> should be <code>\`\`\`language</code> while the
+<code>code_footer</code> should be <code>\`\`\`</code>, corresponding to the beginning and end code
+fences of a code block.
+
+If the entire guide is written with code in a single language,
+you can use the global `code_header` and `code_footer` files to avoid repeating
+the same code fences in every step.
+
+You may also overwrite the global defaults with the
+[`code_header` and `code_footer` files in the step directories](#steps-code-header-footer).
+
 ### `steps` directory
 
 The `steps` directory contains all the individual steps of the guide.
@@ -123,11 +144,80 @@ Inside each step directory, you will find the following files:
 - `code_header` (*optional*): The content of the guide that comes before the code block in this step.
 - `code_footer` (*optional*): The content of the guide that comes after the code block in this step.
 
-In order to simplify the process of writing guides, `git-voyage` introduces global `code_header` and
-`code_footer` files, which act as defaults for all the steps, but can be overridden by any of the
-individual steps.
+#### `code`/`code.*` [#code]
 
-In markdown, for example, the <code>code_header</code> is <code>\`\`\`language</code> while the
-<code>code_footer</code> is <code>\`\`\`</code>. It is just the code fence around the code.
+The `code` file contains the entire code snippet for this step.
 
-#### `code`/`code.*`
+#### `code_header` / `code_footer` [#steps-code-header-footer]
+
+Allows to override the global `code_header` and `code_footer` for this specific step.
+
+#### `before`/`before.*` / `after`/`after.*`
+
+The `before` and `after` files contain the content of the guide that comes before and after
+the code block in this step. They are optional, but if they are present, they will be included in the guide.
+
+## Internals: How to patch a step
+
+The first thing `git-voyage` does when trying to patch a step is to first create
+a repository with the entire history of the guide, as is currently written:
+
+<Mermaid chart={`
+gitGraph
+    commit id:"1st step"
+    commit id:"2nd step"
+    commit id:"3rd step"
+    commit id:"4th step"
+    commit id:"5th step"
+    commit id:"6th step"
+    commit id:"7th step"
+    commit id:"8th step"
+`} />
+
+Then, suppose we wanted to patch the 4th step. It would open an editor with the
+contents of the `code` file of the 4th step, and we would edit it. It would then
+commit the change to the repository:
+
+<Mermaid chart={`
+gitGraph
+    commit id:"1st step"
+    commit id:"2nd step"
+    commit id:"3rd step"
+    commit id:"4th step"
+    branch edit
+    checkout edit
+    commit id:"edit 4th step" tag: "edit" type: HIGHLIGHT
+    checkout main
+    commit id:"5th step"
+    commit id:"6th step"
+    commit id:"7th step"
+    commit id:"8th step" tag: "main"
+`} />
+
+Now, `git-voyage` will rebase `main` onto `edit`:
+
+<Mermaid chart={`
+gitGraph
+    commit id:"1st step"
+    commit id:"2nd step"
+    commit id:"3rd step"
+    commit id:"4th step"
+    commit id:"edit 4th step" tag: "edit" type: HIGHLIGHT
+    commit id:"5th step"
+    commit id:"6th step"
+    commit id:"7th step"
+    commit id:"8th step" tag: "main"
+`} />
+
+If, at any point, there are merge conflicts, it will open an editor on the source
+file, and ask you to resolve the conflicts. Once you resolve the conflicts, save and
+close the editor, it will mark the conflicts as resolved, and then it will continue
+the rebase. Given that there is only one file in the repository, namely the `code`
+file, it is pretty straightforward to resolve the conflicts.
+
+Once all conflicts are resolved, and the rebase is complete, it will transverse the
+commit history, and take out the `code` file from each commit, and write it to the
+corresponding step directory, in [the corresponding `code` / `code.*` file.](#code)
+
+The `before` and `after` files are not updated, as they are part of the guide,
+not the code, and they will differ on every step.

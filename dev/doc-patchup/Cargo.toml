@@ -1,7 +1,7 @@
 [package]
 name = "doc-patchup"
 version.workspace = true
-publish.workspace = true
+publish = false
 edition.workspace = true
 homepage.workspace = true
 repository.workspace = true
@@ -13,6 +13,7 @@ license.workspace = true
 doc-extract.workspace = true
 tokio.workspace = true
 glob.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true

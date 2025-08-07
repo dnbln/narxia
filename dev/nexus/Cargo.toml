@@ -25,9 +25,12 @@ serde.workspace = true
 serde_json.workspace = true
 tar.workspace = true
 liblzma.workspace = true
+tokio.workspace = true
 zip.workspace = true
 
-git-journey.workspace = true
+dir-structure.workspace = true
+doc-patchup.workspace = true
+git-voyage.workspace = true
 narxia-log.workspace = true
 narxia-log-impl.workspace = true
 narxia-dir-structures.workspace = true

@@ -1,3 +1,5 @@
+use std::future;
+use std::future::Future;
 use std::path::PathBuf;
 
 use crate::error::Result;
@@ -92,4 +94,34 @@ pub trait FromRefForWriterAsync<'a> {
     /// Casts the reference to the inner type to a [`WriteToAsync`]
     /// reference type.
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr;
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl ReadFromAsync for () {
+    type Future = future::Ready<Result<Self>>;
+
+    fn read_from_async(_path: PathBuf) -> Self::Future {
+        future::ready(Ok(()))
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl WriteToAsync for () {
+    type Future<'a> = future::Ready<Result<()>>;
+
+    fn write_to_async<'a>(&'a self, _path: PathBuf) -> Self::Future<'a> {
+        future::ready(Ok(()))
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a> WriteToAsyncOwned<'a> for () {
+    type Future = future::Ready<Result<()>>;
+
+    fn write_to_async_owned(self, _path: PathBuf) -> Self::Future {
+        future::ready(Ok(()))
+    }
 }

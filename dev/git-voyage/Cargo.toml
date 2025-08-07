@@ -1,12 +1,12 @@
 [package]
 name = "git-voyage"
-version.workspace = true
-publish.workspace = true
+version = "0.1.0"
+publish = true
 edition.workspace = true
-homepage.workspace = true
-repository.workspace = true
-description.workspace = true
-keywords.workspace = true
+homepage = "https://nrx.dnbln.dev/docs/dx/git-voyage"
+repository = "https://github.com/dnbln/narxia/tree/trunk/dev/git-voyage"
+description = "Programming guide patching tool"
+keywords = ["git"]
 license.workspace = true
 
 [dependencies]

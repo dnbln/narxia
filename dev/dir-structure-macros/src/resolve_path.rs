@@ -3,6 +3,7 @@ use std::iter;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Token;
+use syn::braced;
 use syn::bracketed;
 use syn::parse::Parse;
 use syn::parse::discouraged::Speculative;
@@ -90,6 +91,7 @@ impl Parse for ResolvePathInput {
 enum ResolveSingleSegment {
     Ident(syn::Ident),
     StringLit(syn::LitStr),
+    DynamicStringExpr(syn::Expr),
 }
 
 impl Parse for ResolveSingleSegment {
@@ -98,6 +100,11 @@ impl Parse for ResolveSingleSegment {
             Ok(ResolveSingleSegment::Ident(input.parse()?))
         } else if input.peek(syn::LitStr) {
             Ok(ResolveSingleSegment::StringLit(input.parse()?))
+        } else if input.peek(Token![$]) {
+            input.parse::<Token![$]>()?;
+            let content;
+            braced!(content in input);
+            Ok(ResolveSingleSegment::DynamicStringExpr(content.parse()?))
         } else {
             Err(input.error("expected identifier or string literal"))
         }
@@ -148,6 +155,17 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
                     <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::Inner
                 };
             }
+            ResolveSingleSegment::DynamicStringExpr(expr) => {
+                where_clause.predicates.push(parse_quote! {
+                    #current_path: ::dir_structure::DynamicHasField
+                });
+                resolve.extend(quote! {
+                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #expr);
+                });
+                current_path = parse_quote! {
+                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                };
+            }
             ResolveSingleSegment::StringLit(lit_str) => {
                 let value = lit_str.value();
                 where_clause.predicates.push(parse_quote! {
@@ -166,11 +184,8 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
     let p = input.path;
 
     Ok(quote! {{
-        fn __resolve_path(__current: ::std::path::PathBuf) -> ::std::path::PathBuf {
-            #resolve
-            __current
-        }
-
-        __resolve_path(#p.into())
+        let __current: ::std::path::PathBuf = #p.into();
+        #resolve
+        __current
     }})
 }

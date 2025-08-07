@@ -85,3 +85,15 @@ pub trait NewtypeToInner {
     /// Converts the newtype to its inner type.
     fn into_inner(self) -> Self::Inner;
 }
+
+impl ReadFrom for () {
+    fn read_from(_path: &Path) -> Result<Self> {
+        Ok(())
+    }
+}
+
+impl WriteTo for () {
+    fn write_to(&self, _path: &Path) -> Result<()> {
+        Ok(())
+    }
+}

@@ -16,8 +16,7 @@ more detail, while this guide focuses on the practical aspects of using the crat
 
 <ScrollyCoding>
 
-
- ## !!steps Basics
+## !!steps Basics
 
 The `dir-structure` crate provides an easy way to define and manipulate file system directories in a structured way.
 In this guide, we will explore all the features of the `dir-structure` crate.
@@ -55,8 +54,7 @@ let dir = Dir::read(path)?;
 
 ```
 
-
- ## !!steps Writing is also possible
+## !!steps Writing is also possible
 
 You can easily write an instance back to the file system.
 
@@ -94,7 +92,7 @@ dir.write(path)?;
 
 ```
 
- ## !!steps But what about more complex data types, not just Strings?
+## !!steps But what about more complex data types, not just Strings?
 
 `dir-structure` allows you to use more complex data types, such as `Vec<u8>` (for binary files),
 any type that implements `FromStr` and `Display`, or even custom types that implement `ReadFrom` and `WriteTo`.
@@ -137,7 +135,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Or even serde types?
+
+## !!steps Or even serde types?
 
 Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
 
@@ -152,6 +151,7 @@ mindmap
     f.json
 `}
  />
+
 
 ```rust ! usage.rs no_run
 // !lints
@@ -197,7 +197,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Let's go back to the basics
+
+## !!steps Let's go back to the basics
 
 We have a couple of other features to show, so let's go back to the example in the beginning.
 
@@ -209,6 +210,7 @@ mindmap
     output.txt
 `}
  />
+
 
 ```rust ! usage.rs no_run
 // !lints
@@ -233,7 +235,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps But what if we had more complex structures?
+
+## !!steps But what if we had more complex structures?
 
 You can easily nest them.
 
@@ -278,7 +281,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Or yet even more complex structures?
+
+## !!steps Or yet even more complex structures?
 
 Or even more complex structures, with file-names not known at compile time.
 
@@ -332,7 +336,80 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Or for extension-only filters?
+
+## !!steps If we need to filter the subdirectories?
+
+We can pass a filter to the `DirChildren` type. In the example, we filter only directories with the `.d` extension.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />
+
+```rust ! usage.rs no_run
+use std::path::Path;
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/DirChildren/] DirChildren
+// !tooltip[/Filter/] Filter
+use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+
+// !tooltip[/DirStructure/] DirStructure
+#[derive(DirStructure)]
+struct Dir {
+    // !mark(1:2)
+    #[dir_structure(path = "subdirs")]
+    // !tooltip[/DirChildren/] DirChildren
+    subdirs: DirChildren<SubDir, Filt>,
+}
+
+// !mark(1:11)
+struct Filt;
+
+// !tooltip[/Filter/] Filter
+impl Filter for Filt {
+    fn make_filter() -> Self {
+        Self
+    }
+
+    fn allows(&self, path: &Path) -> bool {
+        path.extension().map_or(false, |ext| ext == "d")
+    }
+}
+
+// !tooltip[/DirStructure/] DirStructure
+#[derive(DirStructure)]
+struct SubDir {
+    #[dir_structure(path = "input.txt")]
+    input: String,
+    #[dir_structure(path = "output.txt")]
+    output: String,
+}
+
+// !hidden let path = "dir";
+// !tooltip[/read/] DirStructureItem::read#
+let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
+dir.write(path)?;
+// !tail dir_structure::Error
+
+```
+
+## !!steps Or for extension-only filters?
 
 Extension-only filters are very common, so the library provides a convenient macro to create them.
 The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
@@ -405,7 +482,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Or even large directories?
+
+## !!steps Or even large directories?
 
 When dealing with large directories, you can use deferred (lazy) reading.
 This can be achieved with `DeferredRead`.
@@ -478,7 +556,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps And if we want to cache the read values?
+
+## !!steps And if we want to cache the read values?
 
 The library also exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
 
@@ -555,7 +634,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Versioning values
+
+## !!steps Versioning values
 
 The library also provides a way to version the files, so you can keep track of changes you made to
 the directory structure, and only write the files that have changed.
@@ -586,6 +666,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
 use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -637,7 +718,8 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!steps Writing changed values
+
+## !!steps Writing changed values
 
 We've created a `Versioned` wrapper around a `String` value, but we are never modifying it.
 If we want to write the changed values, we need to modify the `Versioned` values first.
@@ -659,6 +741,7 @@ mindmap
             output.txt
 `}
  />
+
 
 ```rust ! usage.rs no_run
 // !lints
@@ -722,12 +805,15 @@ dir.write(path)?;
 // !tail dir_structure::Error
 
 ```
- ## !!doctooltips DirStructureItem
+
+
+
+## !!doctooltips DirStructureItem
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::traits::sync
 ```
 
 ```rust ,ignore
@@ -742,16 +828,16 @@ Is not dyn-compatible due to having a dyn-incompatible supertrait `ReadFrom`
 
 ---
 
-Helper trait, implemented for all types that have a [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html)
-and [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation.
+Helper trait, implemented for all types that have a [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.ReadFrom.html)
+and [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.WriteTo.html) implementation.
 </DocTooltip>
 
- ## !!doctooltips DirStructure
+## !!doctooltips DirStructure
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::traits::sync
 ```
 
 ```rust ,ignore
@@ -762,19 +848,23 @@ where
 
 ---
 
+Is not dyn-compatible due to having a dyn-incompatible supertrait `ReadFrom`
+
+---
+
 The main trait. This is implemented for
 all directory structures by the derive macro.
 
 This trait doesn't have any methods, just a supertype:
-[`DirStructureItem`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.DirStructureItem.html).
+[`DirStructureItem`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.DirStructureItem.html).
 </DocTooltip>
 
- ## !!doctooltips DirStructureItem::read#
+## !!doctooltips DirStructureItem::read#
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DirStructureItem
+dir_structure::traits::sync::DirStructureItem
 ```
 
 ```rust ,ignore
@@ -788,16 +878,16 @@ where
 
 ---
 
-Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html) implementation to read the structure from
+Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.ReadFrom.html) implementation to read the structure from
 disk, from the specified path.
 </DocTooltip>
 
- ## !!doctooltips DirStructureItem::write#
+## !!doctooltips DirStructureItem::write#
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DirStructureItem
+dir_structure::traits::sync::DirStructureItem
 ```
 
 ```rust ,ignore
@@ -810,16 +900,16 @@ where
 
 ---
 
-Uses the [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation to write the structure
+Uses the [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.WriteTo.html) implementation to write the structure
 to disk at the specified path.
 </DocTooltip>
 
- ## !!doctooltips FmtWrapper
+## !!doctooltips FmtWrapper
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::fmt_wrapper
 ```
 
 ```rust ,ignore
@@ -837,7 +927,7 @@ for serialization / deserialization.
 
 For example: u8, i8, i16, u16, all integer types... bool etc.
 
- # Examples
+# Examples
 
 ```rust ,ignore
 use std::path::Path;
@@ -845,7 +935,7 @@ use dir_structure::DirStructureItem;
 
 use dir_structure::FmtWrapper;
 
- #[derive(dir_structure::DirStructure, PartialEq, Debug)]
+#[derive(dir_structure::DirStructure, PartialEq, Debug)]
 struct Dir {
    #[dir_structure(path = "f.txt", with_newtype = FmtWrapper<u8>)]
    f: u8,
@@ -871,12 +961,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 </DocTooltip>
 
- ## !!doctooltips Json
+## !!doctooltips Json
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::json
+dir_structure::data_formats::json
 ```
 
 ```rust ,ignore
@@ -898,7 +988,7 @@ directory structure.
 ---
 
 ```rust ,ignore
-dir_structure::json
+dir_structure::data_formats::json
 ```
 
 ```rust ,ignore
@@ -914,12 +1004,12 @@ thus allowing us to parse and serialize it from / to json when we read / write a
 directory structure.
 </DocTooltip>
 
- ## !!doctooltips DirChildren
+## !!doctooltips DirChildren
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::dir_children
 ```
 
 ```rust ,ignore
@@ -944,21 +1034,21 @@ and as such we cannot use the derive macro.
 
 Instead we know that all the entries in the directory are folders,
 and that they all have the same structure inside (defined by the `T` type parameter),
-or they are all files (which can be read with [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DirChildren.html)\<[`String`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html)\> for example).
+or they are all files (which can be read with [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/dir_children/struct.DirChildren.html)\<[`String`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html)\> for example).
 
-In either case, [`ReadFrom::read_from`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.ReadFrom.html#tymethod.read_from) must be able to read all the entries in
+In either case, [`ReadFrom::read_from`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.ReadFrom.html#tymethod.read_from) must be able to read all the entries in
 the directory.
 
-The [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.WriteTo.html) implementation will directly write the children to the directory it
+The [`WriteTo`](https://docs.rs/dir_structure/0.1.5/dir_structure/traits/sync/trait.WriteTo.html) implementation will directly write the children to the directory it
 is passed, with no regards to the path stored in `self_path`.
 </DocTooltip>
 
- ## !!doctooltips Filter
+## !!doctooltips Filter
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::dir_children
 ```
 
 ```rust ,ignore
@@ -971,16 +1061,16 @@ Is not dyn-compatible due to having a method `make_filter` that is not dispatcha
 
 ---
 
-A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DirChildren.html) structure.
+A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.1.5/dir_structure/dir_children/struct.DirChildren.html) structure.
 
 This is used to filter out children that we don't want to
 read into the structure. For example, if we have a directory
 with a lot of files, we can use this to only read the
 files we want, for example, that have just a certain extension.
 
- # Examples
+# Examples
 
-For example, for a [`Filter`](https://docs.rs/dir_structure/0.1.5/dir_structure/trait.Filter.html) that only allows `.txt` files:
+For example, for a [`Filter`](https://docs.rs/dir_structure/0.1.5/dir_structure/dir_children/trait.Filter.html) that only allows `.txt` files:
 
 ```rust ,ignore
 use std::path::Path;
@@ -1027,12 +1117,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 </DocTooltip>
 
- ## !!doctooltips ext_filter
+## !!doctooltips ext_filter
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::dir_children
 ```
 
 ```rust ,ignore
@@ -1040,12 +1130,12 @@ macro_rules! ext_filter
 ```
 </DocTooltip>
 
- ## !!doctooltips DeferredRead
+## !!doctooltips DeferredRead
 
 <DocTooltip>
 
 ```rust ,ignore
-crash
+dir_structure::deferred_read
 ```
 
 ```rust ,ignore
@@ -1055,15 +1145,24 @@ pub struct DeferredRead<T>(pub PathBuf, PhantomData<T>)
 ---
 
 size = 24 (0x18), align = 0x8, needs Drop
+
+---
+
+A wrapper that defers the reading of a file until it is actually needed.
+
+The only thing you can do with a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read/struct.DeferredRead.html) is to call [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read),
+which will read the file and return the value.
+
+See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read) method for more details.
 </DocTooltip>
 
- ## !!doctooltips DirChildren::iter-R
+## !!doctooltips DirChildren::iter-R
 `DirChildren<T, F>::iter#`
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DirChildren
+dir_structure::dir_children::DirChildren
 ```
 
 ```rust ,ignore
@@ -1078,7 +1177,7 @@ where
 
 Returns an iterator over the children.
 
- # Examples
+# Examples
 
 ```rust ,ignore
 use std::path::{Path, PathBuf};
@@ -1102,13 +1201,13 @@ assert_eq!(i.next(), None);
 ```
 </DocTooltip>
 
- ## !!doctooltips DirChildren::iter_mut-R
+## !!doctooltips DirChildren::iter_mut-R
 `DirChildren<T, F>::iter_mut#`
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DirChildren
+dir_structure::dir_children::DirChildren
 ```
 
 ```rust ,ignore
@@ -1123,7 +1222,7 @@ where
 
 Returns a mutable iterator over the children.
 
- # Examples
+# Examples
 
 ```rust ,ignore
 use std::path::{Path, PathBuf};
@@ -1163,13 +1262,13 @@ assert_eq!(i.next(), None);
 ```
 </DocTooltip>
 
- ## !!doctooltips DeferredRead::perform_read-R
+## !!doctooltips DeferredRead::perform_read-R
 `DeferredRead<T>::perform_read#`
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DeferredRead
+dir_structure::deferred_read::DeferredRead
 ```
 
 ```rust ,ignore
@@ -1184,19 +1283,19 @@ where
 
 Performs the read and returns the value.
 
-If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html) was created, then the
+If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read/struct.DeferredRead.html) was created, then the
 new value will be read from disk and returned.
 
-For a cached version see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html).
+For a cached version see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html).
 
- # Examples
+# Examples
 
 ```rust ,ignore
 use std::path::Path;
 use dir_structure::DirStructureItem;
 use dir_structure::DeferredRead;
 
- #[derive(dir_structure::DirStructure)]
+#[derive(dir_structure::DirStructure)]
 struct Dir {
     #[dir_structure(path = "f.txt")]
     f: DeferredRead<String>,
@@ -1219,12 +1318,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 </DocTooltip>
 
- ## !!doctooltips DeferredReadOrOwn
+## !!doctooltips DeferredReadOrOwn
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::deferred_read_or_own
 ```
 
 ```rust ,ignore
@@ -1246,30 +1345,30 @@ but can also store the value.
 It allows us to read the value from disk, and then store it in memory,
 and if we ever need it again, we can just return the stored value.
 
-This type exposes 2 functions: [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get) and
-[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read).
+This type exposes 2 functions: [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read).
 
 The table below summarizes the differences between the two functions:
 
-|State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
+|State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
 |-----|------------------------|-------------------------------------------|
 |New, not cached|Reads the value, does not cache|Reads the value, and caches it, returns reference|
 |Cached|Clones the cached value|Returns a reference to the cached value|
 
-As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
-[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&mut T>`.
+As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&mut T>`.
 
-If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html#method.get),
-that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.DeferredRead.html), and that should be preferred instead.
+If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get),
+that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read/struct.DeferredRead.html), and that should be preferred instead.
 </DocTooltip>
 
- ## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
+## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
 `DeferredReadOrOwn<T>::perform_and_store_read#`
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::DeferredReadOrOwn
+dir_structure::deferred_read_or_own::DeferredReadOrOwn
 ```
 
 ```rust ,ignore
@@ -1285,9 +1384,9 @@ where
 Performs the read and stores the value. If the value is already read, it will
 just return a reference to it.
 
-See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/enum.DeferredReadOrOwn.html) for more details.
+See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.5/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html) for more details.
 
- # Examples
+# Examples
 
 ```rust ,ignore
 use std::path::Path;
@@ -1312,12 +1411,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 </DocTooltip>
 
- ## !!doctooltips Versioned
+## !!doctooltips Versioned
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure
+dir_structure::versioned
 ```
 
 ```rust ,ignore
@@ -1343,10 +1442,10 @@ you can get a mutable reference to the value via its [`DerefMut`](https://doc.ru
 
 The version is incremented every time [`DerefMut::deref_mut`](https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html#tymethod.deref_mut) is called.
 
-Alternatively, for [`Eq`](https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html) types, you can use the [`Versioned::edit_eq_check`](https://docs.rs/dir_structure/0.1.5/dir_structure/struct.Versioned.html#method.edit_eq_check)
+Alternatively, for [`Eq`](https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html) types, you can use the [`Versioned::edit_eq_check`](https://docs.rs/dir_structure/0.1.5/dir_structure/versioned/struct.Versioned.html#method.edit_eq_check)
 method to edit the value, and it will increment the version if the value has changed.
 
- # Example
+# Example
 
 ```rust ,ignore
 use dir_structure::VersionedString;
@@ -1360,13 +1459,13 @@ assert!(v.is_dirty());
 ```
 </DocTooltip>
 
- ## !!doctooltips Versioned::edit_eq_check-R
+## !!doctooltips Versioned::edit_eq_check-R
 `Versioned<T>::edit_eq_check#`
 
 <DocTooltip>
 
 ```rust ,ignore
-dir_structure::Versioned
+dir_structure::versioned::Versioned
 ```
 
 ```rust ,ignore
@@ -1381,7 +1480,7 @@ where
 Edits the value using the provided closure, and increments the version
 if the value has changed.
 
- # Example
+# Example
 
 ```rust ,ignore
 use dir_structure::VersionedString;
@@ -1396,4 +1495,3 @@ assert!(v.is_dirty());
 </DocTooltip>
 
 </ScrollyCoding>
-

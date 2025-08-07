@@ -377,6 +377,30 @@ data_format_impl!(
 );
 
 data_format_impl!(
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    json_pretty,
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to json when we read / write a
+    /// directory structure.
+    ///
+    /// This is a pretty-printed version of [`Json`][crate::json::Json].
+    JsonPretty,
+    |s| serde_json::from_str(s),
+    serde_json::Error,
+    JsonPrettyToStr,
+    |v| serde_json::to_string_pretty(&v),
+    |v, w| serde_json::to_writer_pretty(w, v).map_err(ToWriterError::Serde),
+    serde_json::Error,
+    /// [`FromRefForWriter`] implementation for [`Json`].
+    JsonPrettyRefWr,
+    ".json", r##"r#"{
+  "name": "John",
+  "age": 30
+}"#"##,
+);
+
+data_format_impl!(
     #[cfg(feature = "toml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     toml,
