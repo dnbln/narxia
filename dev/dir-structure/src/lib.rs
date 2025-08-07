@@ -111,8 +111,9 @@ mod __doc_check {
 // TODO: other async runtimes
 #[cfg(all(feature = "async", not(any(feature = "tokio"))))]
 compile_error!(
-    "The `async` feature requires the `tokio` feature to be enabled. \
-     Please enable the `tokio` feature in your Cargo.toml."
+    "The `async` feature requires choosing an async runtime. \
+     Please enable the `tokio` feature in your Cargo.toml
+     (currently the only supported async runtime)."
 );
 
 use std::fs::File;

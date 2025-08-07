@@ -48,8 +48,8 @@ narxia-syn-db = { path = "crates/narxia-syn-db" }
 
 doc-extract = { path = "dev/doc-extract" }
 doc-patchup = { path = "dev/doc-patchup" }
-dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.5" }
-dir-structure = { path = "dev/dir-structure", version = "0.1.5" }
+dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.6" }
+dir-structure = { path = "dev/dir-structure", version = "0.1.6" }
 git-journey = { path = "dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "dev/git-voyage", version = "0.1.0" }
 
@@ -72,7 +72,7 @@ llvm-sys = { version = "201.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"
-pin-project = "1"
+pin-project = { version = "1", default-features = false }
 prodash = { version = "29.0.0", default-features = false, features = [
     "render-line",
     "render-line-crossterm",

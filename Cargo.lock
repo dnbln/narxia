@@ -689,7 +689,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "dir-structure-macros",
  "pin-project",
@@ -704,7 +704,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-macros"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3828,9 +3828,9 @@ checksum = "271414315aff87387382ec3d271b52d7ae78726f5d44ac98b4f4030c91880486"
 
 [[package]]
 name = "winnow"
-version = "0.7.6"
+version = "0.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63d3fcd9bba44b03821e7d699eeee959f3126dcc4aa8e4ae18ec617c2a5cea10"
+checksum = "f3edebf492c8125044983378ecb5766203ad3b4c2f7a922bd7dd207f6d443e95"
 dependencies = [
  "memchr",
 ]

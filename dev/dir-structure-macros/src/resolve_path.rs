@@ -10,11 +10,11 @@ use syn::parse::discouraged::Speculative;
 use syn::parse_quote;
 use syn::punctuated::Punctuated;
 
-// resolve_path!([T @ path_expr].a."b".c.d);
+// resolve_path!([T @ path_expr].a."b".c.d.${e});
 // or
-// resolve_path!(["path/to/dir" as T].a."b".c.d);
+// resolve_path!(["path/to/dir" as T].a."b".c.d.${e});
 
-pub const MAX_LEN: usize = 16;
+pub const MAX_LEN: usize = 32;
 
 struct ResolvePathInput {
     // lt: Token![<],

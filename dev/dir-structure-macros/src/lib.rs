@@ -209,7 +209,9 @@ fn expand_dir_structure_for_field(
     };
 
     #[cfg(feature = "resolve-path")]
-    let has_field_impl = {
+    let has_field_impl = if self_path {
+        quote! {}
+    } else {
         use std::iter;
 
         use crate::resolve_path::MAX_LEN;
@@ -426,6 +428,7 @@ pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     resolve_path::resolve_path(input)
 }
 
+#[cfg(feature = "resolve-path")]
 #[proc_macro]
 pub fn __resolve_max_len(_input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // This macro is used to get the maximum length of a field name for the `HasField` trait.

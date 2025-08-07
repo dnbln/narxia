@@ -1,4 +1,39 @@
-# Unreleased Changes
+# 0.1.6
+
+Released: 2025-08-07
+
+## Async support
+
+The `async` feature has been added, allowing for asynchronous operations. This feature
+requires an async runtime to be enabled, currently only `tokio` is supported.
+
+## `resolve-path` feature (nightly-only)
+
+The `resolve-path` feature has been added, which allows for resolving paths to specific
+fields in a structure.
+
+```rust
+#[derive(DirStructure)]
+struct MyStruct {
+    #[dir_structure(path = "my_field.txt")]
+    my_field: String,
+    #[dir_structure(path = "my_field2.d")]
+    my_field2: MyStruct2,
+}
+#[derive(DirStructure)]
+struct MyStruct2 {
+    #[dir_structure(path = "my_field3.txt")]
+    my_field3: String,
+}
+assert_eq!(
+    resolve_path!([MyStruct @ "/path/to/dir"].my_field),
+    PathBuf::from("/path/to/dir/my_field.txt")
+);
+assert_eq!(
+    resolve_path!(["/path/to/dir" as MyStruct].my_field2.my_field3),
+    PathBuf::from("/path/to/dir/my_field2.d/my_field3.txt")
+);
+```
 
 ## `ext_filter` macro
 
