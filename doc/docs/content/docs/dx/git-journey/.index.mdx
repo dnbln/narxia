@@ -1,0 +1,422 @@
+---
+title: "git-journey"
+description: "A guide to understanding how guides in the Narxia documentation are built."
+---
+
+<UnderConstruction/>
+
+This is a guide to understanding how guides in the Narxia documentation are built.
+We use a custom tool, called `git-journey`, to generate (some of) these guides.
+
+`git-journey` is a tool that allows us to create guides that are based on the Git
+history of a project. The way it works is that we have a file called `source`,
+around which we will build our guide. We commit multiple times to this file,
+for every step of the guide. Each commit will contain a small change to the file,
+and the commit message will describe the change.
+
+Part of the commit message can contain text with the `git-journey-pre:` and
+`git-journey-post:` headers, which will add the corresponding text to the generated
+guide, before and after the `source` file, respectively.
+
+<details>
+<summary>For example, here is how we represent the [`dir-structure` guide](../dir-structure/guide.mdx).</summary>
+```plaintext
+commit ead7b758c4372351872c13ec8c491281ef2624b1
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 13:25:31 2025 +0200
+
+    initial
+
+commit f7b3f9b881dff2c6e5384234ed07c360439b0663
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 13:55:27 2025 +0200
+
+    Intro to dir-structure
+    
+    git-journey-begin:
+    ---
+    title: Quick intro guide to dir-structure
+    full: true
+    ---
+    
+    This guide is intended to provide a comprehensive overview of the `dir-structure` crate,
+    which simplifies the representation and manipulation of directory structures in Rust.
+    It covers basic usage, advanced features, and practical examples to help you get started quickly.
+    
+    Each step shows an example directory structure that the code will expect to read or write.
+    
+    This guide is mostly adapted from the [introductory blog post][blog post]. The blog post discusses it in
+    more detail, while this guide focuses on the practical aspects of using the crate.
+    
+    [blog post]: https://dnbln.dev/blog/dir-structure
+    
+    <ScrollyCoding>
+
+commit 61d8d09991aef29f6f0979ed4fe62d69eced8da9
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 13:58:07 2025 +0200
+
+    Initial block
+    
+    git-journey-pre:
+    
+     ## !!steps Basics
+    
+    The `dir-structure` crate provides an easy way to define and manipulate file system directories in a structured way.
+    In this guide, we will explore all the features of the `dir-structure` crate.
+    
+    On the right, you can see a quick example of how to use it, in order to read a directory structure, defined in Rust.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        input.txt
+        output.txt
+    `}
+     />
+
+commit e88e9fcc97393323c5eb86f0632b6e90c9de7626
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:03:59 2025 +0200
+
+    Writing is also possible
+    
+    git-journey-pre:
+    
+     ## !!steps Writing is also possible
+    
+    You can easily write an instance back to the file system.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        input.txt
+        output.txt
+    `}
+     />
+
+commit a94bc1e1c85df0481cbff17fe0954792ccb1d940
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:14:51 2025 +0200
+
+    ReadFrom and WriteTo, FmtWrapper
+    
+    git-journey-pre:
+     ## !!steps But what about more complex data types, not just Strings?
+    
+    `dir-structure` allows you to use more complex data types, such as `Vec<u8>` (for binary files),
+    any type that implements `FromStr` and `Display`, or even custom types that implement `ReadFrom` and `WriteTo`.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        input.bin
+        number.txt
+    `}
+     />
+
+commit 12183f600a1421b9bd5c135a9af0f36352f21479
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:16:35 2025 +0200
+
+    Serde
+    
+    git-journey-pre:
+     ## !!steps Or even serde types?
+    
+    Yes, you can use serde types as well. You need to tell the library what format to use for serialization and deserialization.
+    
+    This is an example using JSON, but TOML, YAML, and RON are also supported, behind the respective features.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        input.bin
+        number.txt
+        f.json
+    `}
+     />
+
+commit 9597818ef1bb8721dbd934841e3c4a84b4ea2c47
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:19:02 2025 +0200
+
+    Back to basics
+    
+    git-journey-pre:
+     ## !!steps Let's go back to the basics
+    
+    We have a couple of other features to show, so let's go back to the example in the beginning.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        input.txt
+        output.txt
+    `}
+     />
+
+commit e3fff057f804fa229b7e407530852f5d33c7ffbe
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:20:13 2025 +0200
+
+    More complex structures
+    
+    git-journey-pre:
+     ## !!steps But what if we had more complex structures?
+    
+    You can easily nest them.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdir
+            input.txt
+            output.txt
+    `}
+     />
+
+commit f727af84406307ac33ba06664c73e4afbfd953ff
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:21:46 2025 +0200
+
+    Introducing DirChildren
+    
+    git-journey-pre:
+     ## !!steps Or yet even more complex structures?
+    
+    Or even more complex structures, with file-names not known at compile time.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1
+                input.txt
+                output.txt
+            subdir2
+                input.txt
+                output.txt
+            other_random_subdir
+                input.txt
+                output.txt
+    `}
+     />
+
+commit 149994f2d04e4b3925f996750087ee73ad681e8d
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:22:58 2025 +0200
+
+    DirChildren filter
+    
+    git-journey-pre:
+     ## !!steps Or for extension-only filters?
+    
+    Extension-only filters are very common, so the library provides a convenient macro to create them.
+    The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1.d
+                input.txt
+                output.txt
+            subdir2.d
+                input.txt
+                output.txt
+            ))ignored.txt((
+            ))ignoreddir((
+                ))will not be read((
+                    ))input.txt((
+                    ))output.txt((
+    `}
+     />
+
+commit 130ff9f19481cac6478a9a4ece2ac4094534116d
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:24:05 2025 +0200
+
+    DeferredRead
+    
+    git-journey-pre:
+     ## !!steps Or even large directories?
+    
+    When dealing with large directories, you can use deferred (lazy) reading.
+    This can be achieved with `DeferredRead`.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1.d
+                input.txt
+                output.txt
+            subdir2.d
+                input.txt
+                output.txt
+    `}
+     />
+
+commit a0baee4e3f24ecfc10d68dfbf853e77f66e44c1f
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:25:13 2025 +0200
+
+    DeferredReadOrOwn
+    
+    git-journey-pre:
+     ## !!steps And if we want to cache the read values?
+    
+    The library also exposes a `DeferredReadOrOwn` type, which allows you to cache the read values.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1.d
+                input.txt
+                output.txt
+            subdir2.d
+                input.txt
+                output.txt
+    `}
+    />
+
+commit 3d4e2ec9380c5d062c1930838f6af73b7ddc308a
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:26:54 2025 +0200
+
+    Versioned
+    
+    git-journey-pre:
+     ## !!steps Versioning values
+    
+    The library also provides a way to version the files, so you can keep track of changes you made to
+    the directory structure, and only write the files that have changed.
+    
+    This happens through the `Versioned` wrapper.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1.d
+                input.txt
+                output.txt
+            subdir2.d
+                input.txt
+                output.txt
+    `}
+     />
+
+commit 03f6661ae06c663f5f4e1c9d8bc6f961565c7fec
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:27:50 2025 +0200
+
+    Versioned edits
+    
+    git-journey-pre:
+     ## !!steps Writing changed values
+    
+    We've created a `Versioned` wrapper around a `String` value, but we are never modifying it.
+    If we want to write the changed values, we need to modify the `Versioned` values first.
+    
+    There are 2 ways to do this:
+    1. By using its `DerefMut` implementation, which allows you to modify the inner value directly.
+    2. By using the `edit_eq_check` method, which allows you to modify the value and check if it has changed, with the type's `Eq` implementation.
+    
+    <Mermaid
+      chart={`
+    mindmap
+      root((Root))
+        subdirs
+            subdir1.d
+                input.txt
+                output.txt
+            subdir2.d
+                input.txt
+                output.txt
+    `}
+     />
+
+commit 3ac566b8bbf91fde455f8e64aa348a8f3d948b15
+Author: Dinu Blanovschi <git@dnbln.dev>
+Date:   Tue Aug 5 14:28:52 2025 +0200
+
+     ## !!doctooltips DirStructureItem
+    
+     ## !!doctooltips DirStructure
+    
+     ## !!doctooltips DirStructureItem::read#
+    
+     ## !!doctooltips DirStructureItem::write#
+    
+     ## !!doctooltips FmtWrapper
+    
+     ## !!doctooltips Json
+    
+     ## !!doctooltips DirChildren
+    
+     ## !!doctooltips Filter
+    
+     ## !!doctooltips ext_filter
+    
+     ## !!doctooltips DeferredRead
+    
+     ## !!doctooltips DirChildren::iter-R
+    `DirChildren<T, F>::iter#`
+    
+     ## !!doctooltips DirChildren::iter_mut-R
+    `DirChildren<T, F>::iter_mut#`
+    
+     ## !!doctooltips DeferredRead::perform_read-R
+    `DeferredRead<T>::perform_read#`
+    
+     ## !!doctooltips DeferredReadOrOwn
+    
+     ## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
+    `DeferredReadOrOwn<T>::perform_and_store_read#`
+    
+     ## !!doctooltips Versioned
+    
+     ## !!doctooltips Versioned::edit_eq_check-R
+    `Versioned<T>::edit_eq_check#`
+    
+    </ScrollyCoding>
+```
+</details>
+
+Here we will go over what `git-journey` actually does, and how to use it.
+
+# So why does it exist?
+
+Guides can sometimes be hard to maintain, especially when they are based on code
+examples that change frequently. Sometimes those changes have to be repeated
+for the subsequent blocks of the guide, which can lead to a lot of repetitive code.
+
+This is where `git-journey` comes in. It allows us to create guides that are
+based on a Git history of some file, which we call `source`. The `source` file
+is a file that contains the code examples that we want to show in the guide.
+
+We can commit to this file multiple times, each time adding a small change to it,
+and the commit message will contain the text that we want to show in the guide,
+around the code. Now, whenever we want to update the guide, we find the commit
+corresponding to the first version of the file where we can make the change we
+want to make, and we can do a rebase starting from that commit. This allows us
+to avoid repeating the changes for all subsequent blocks in the guide, and we
+can just focus on the changes that we want to make.
+
+The guides are maintained as separate branches in the repository; to update a guide,
+you should first check out the branch corresponding to the guide you want to update,
+and then rebase, and edit the history.

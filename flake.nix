@@ -32,6 +32,7 @@
             nodejs
             mandoc
             openssl
+            tree
           ];
 
           shellHook = ''

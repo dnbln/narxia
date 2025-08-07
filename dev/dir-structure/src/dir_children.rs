@@ -1,6 +1,9 @@
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::marker;
+use std::marker::PhantomData;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 #[cfg(feature = "async")]
@@ -13,6 +16,7 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
+use crate::Error;
 use crate::WrapIoError;
 use crate::error::Result;
 #[cfg(feature = "async")]
@@ -180,10 +184,47 @@ macro_rules! ext_filter {
     };
 }
 
-impl<T> Default for DirChildren<T>
-where
-    T: DirStructureItem,
-{
+#[macro_export]
+macro_rules! stem_filter {
+    ($vis:vis $name:ident, $base_name:literal) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        $vis struct $name;
+
+        impl $crate::Filter for $name {
+            fn make_filter() -> Self {
+                Self
+            }
+
+            fn allows(&self, path: &::std::path::Path) -> bool {
+                path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .map_or(false, |s| s == $base_name)
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! file_prefix_filter {
+    ($vis:vis $name:ident, $file_prefix:literal) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        $vis struct $name;
+
+        impl $crate::Filter for $name {
+            fn make_filter() -> Self {
+                Self
+            }
+
+            fn allows(&self, path: &::std::path::Path) -> bool {
+                path.file_prefix()
+                    .and_then(|s| s.to_str())
+                    .map_or(false, |s| s == $file_prefix)
+            }
+        }
+    };
+}
+
+impl<T, F: Filter> Default for DirChildren<T, F> {
     fn default() -> Self {
         Self::new()
     }
@@ -535,7 +576,7 @@ where
 
 impl<T, F> ReadFrom for DirChildren<T, F>
 where
-    T: DirStructureItem,
+    T: ReadFrom,
     F: Filter,
 {
     fn read_from(path: &Path) -> Result<Self>
@@ -571,7 +612,7 @@ where
 #[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
 pub enum DirChildrenReadAsyncFuture<T, F>
 where
-    T: DirStructureItem + ReadFromAsync + 'static,
+    T: ReadFromAsync + 'static,
     F: Filter + Send + 'static,
     T::Future: Future<Output = Result<T>> + Send + Unpin,
 {
@@ -597,7 +638,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T, F> Future for DirChildrenReadAsyncFuture<T, F>
 where
-    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    T: ReadFromAsync + Send + 'static,
     F: Filter + Send + 'static,
     T::Future: Future<Output = Result<T>> + Unpin + 'static,
 {
@@ -707,7 +748,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<T, F> ReadFromAsync for DirChildren<T, F>
 where
-    T: DirStructureItem + ReadFromAsync + Send + 'static,
+    T: ReadFromAsync + Send + 'static,
     F: Filter + Send + 'static,
     T::Future: Future<Output = Result<T>> + Unpin + 'static,
 {
@@ -721,7 +762,7 @@ where
 
 impl<T, F> WriteTo for DirChildren<T, F>
 where
-    T: DirStructureItem,
+    T: WriteTo,
     F: Filter,
 {
     fn write_to(&self, path: &Path) -> Result<()> {
@@ -1108,4 +1149,187 @@ macro_rules! dir_children_wrapper {
             }
         }
     };
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DirChildSingle<T, F: Filter> {
+    /// The file name of the child.
+    file_name: OsString,
+    /// The parsed value of the child.
+    value: T,
+    _phantom: PhantomData<F>,
+}
+
+impl<T, F: Filter> ReadFrom for DirChildSingle<T, F>
+where
+    T: ReadFrom,
+{
+    fn read_from(path: &Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let children = DirChildren::<T, F>::read_from(path)?;
+        if children.len() != 1 {
+            return Err(Error::UnexpectedNumberOfChildren {
+                expected: "1",
+                found: children.len(),
+                path: path.to_path_buf(),
+            });
+        }
+
+        let child = children.children.into_iter().next().unwrap();
+        Ok(DirChildSingle {
+            file_name: child.file_name,
+            value: child.value,
+            _phantom: PhantomData,
+        })
+    }
+}
+
+impl<T, F: Filter> WriteTo for DirChildSingle<T, F>
+where
+    T: WriteTo,
+{
+    fn write_to(&self, path: &Path) -> Result<()> {
+        let child_path = path.join(&self.file_name);
+        self.value.write_to(&child_path)
+    }
+}
+
+impl<T, F: Filter> DirChildSingle<T, F> {
+    /// Creates a new [`DirChildSingle`] with the specified file name and value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, ReadFrom, WriteTo};
+    ///
+    /// let d = DirChildSingle::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
+    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+        Self {
+            file_name: file_name.into(),
+            value,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    pub fn file_name(&self) -> &OsString {
+        &self.file_name
+    }
+
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    pub fn file_name_mut(&mut self) -> &mut OsString {
+        &mut self.file_name
+    }
+
+    /// Gets the value of the child.
+    pub fn value(&self) -> &T {
+        &self.value
+    }
+
+    /// Gets the value of the child. Mutable reference version of [`Self::value`].
+    pub fn value_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+}
+
+impl<T, F> Deref for DirChildSingle<T, F>
+where
+    F: Filter,
+{
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T, F> DerefMut for DirChildSingle<T, F>
+where
+    F: Filter,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DirChildSingleOpt<T, F: Filter> {
+    None,
+    Some(DirChildSingle<T, F>),
+}
+
+impl<T, F: Filter> DirChildSingleOpt<T, F> {
+    /// Creates a new [`DirChildSingleOpt`] with the specified file name and value.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingleOpt, ReadFrom, WriteTo};
+    ///
+    /// let d = DirChildSingleOpt::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
+    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+        DirChildSingleOpt::Some(DirChildSingle::new(file_name, value))
+    }
+
+    /// Returns `true` if this is a [`DirChildSingleOpt::Some`].
+    pub fn is_some(&self) -> bool {
+        matches!(self, DirChildSingleOpt::Some(_))
+    }
+
+    /// Returns `true` if this is a [`DirChildSingleOpt::None`].
+    pub fn is_none(&self) -> bool {
+        matches!(self, DirChildSingleOpt::None)
+    }
+}
+
+impl<T, F> ReadFrom for DirChildSingleOpt<T, F>
+where
+    T: ReadFrom,
+    F: Filter,
+{
+    fn read_from(path: &Path) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let children = DirChildren::<T, F>::read_from(path)?;
+        if children.len() == 1 {
+            let child = children.children.into_iter().next().unwrap();
+            Ok(DirChildSingleOpt::Some(DirChildSingle {
+                file_name: child.file_name,
+                value: child.value,
+                _phantom: PhantomData,
+            }))
+        } else if children.len() == 0 {
+            Ok(DirChildSingleOpt::None)
+        } else {
+            Err(Error::UnexpectedNumberOfChildren {
+                expected: "0 or 1",
+                found: children.len(),
+                path: path.to_path_buf(),
+            })
+        }
+    }
+}
+
+impl<T, F> WriteTo for DirChildSingleOpt<T, F>
+where
+    T: WriteTo,
+    F: Filter,
+{
+    fn write_to(&self, path: &Path) -> Result<()> {
+        match self {
+            DirChildSingleOpt::Some(child) => child.write_to(path),
+            DirChildSingleOpt::None => Ok(()),
+        }
+    }
 }

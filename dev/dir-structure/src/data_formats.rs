@@ -125,7 +125,7 @@ and write them back to disk."##
             use crate::FileString;
 
             $(#[$main_ty_attrs])*
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Hash)]
             #[serde(transparent)]
             pub struct $main_ty<T>(#[serde(bound = "")] pub T)
             where
@@ -331,6 +331,26 @@ and write them back to disk."##
                             .map_err(|e| crate::Error::Serde(path.clone(), e.into()))?;
                         FileString::new(s).write_to_async_owned(path).await
                     })
+                }
+            }
+
+            impl<T> std::ops::Deref for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                type Target = T;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl<T> std::ops::DerefMut for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+            {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.0
                 }
             }
         }

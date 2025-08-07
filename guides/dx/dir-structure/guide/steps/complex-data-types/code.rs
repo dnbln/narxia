@@ -1,0 +1,26 @@
+// !lints
+// !tooltip[/DirStructure/] DirStructure
+// !tooltip[/DirStructureItem/] DirStructureItem
+// !tooltip[/FmtWrapper/] FmtWrapper
+use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+
+// !tooltip[/DirStructure/] DirStructure
+#[derive(DirStructure)]
+struct Dir {
+    #[dir_structure(path = "input.bin")]
+    binary: Vec<u8>,
+    #[dir_structure(
+        path = "number.txt",
+        // !mark
+        // !tooltip[/FmtWrapper/] FmtWrapper
+        with_newtype = FmtWrapper<u32>,
+    )]
+    number: u32,
+}
+
+// !hidden let path = "dir";
+// !tooltip[/read/] DirStructureItem::read#
+let dir = Dir::read(path)?;
+// !tooltip[/write/] DirStructureItem::write#
+dir.write(path)?;
+// !tail dir_structure::Error

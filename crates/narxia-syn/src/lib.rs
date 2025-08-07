@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![feature(closure_track_caller)]
 #![feature(core_intrinsics)]
 #![feature(rustc_attrs)]

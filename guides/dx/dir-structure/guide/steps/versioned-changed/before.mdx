@@ -1,0 +1,23 @@
+## !!steps Writing changed values
+
+We've created a `Versioned` wrapper around a `String` value, but we are never modifying it.
+If we want to write the changed values, we need to modify the `Versioned` values first.
+
+There are 2 ways to do this:
+1. By using its `DerefMut` implementation, which allows you to modify the inner value directly.
+2. By using the `edit_eq_check` method, which allows you to modify the value and check if it has changed, with the type's `Eq` implementation.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+`}
+ />
+

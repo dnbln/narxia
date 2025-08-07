@@ -1,0 +1,23 @@
+## !!steps Or for extension-only filters?
+
+Extension-only filters are very common, so the library provides a convenient macro to create them.
+The code to the right is equivalent to the previous example, but uses the `ext_filter!` macro.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />

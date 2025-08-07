@@ -1,0 +1,133 @@
+---
+title: git-voyage
+description: A guide to guide programming guides
+---
+
+`git-voyage` is a tool designed to maintain documentation, specifically programming guides.
+
+Most guides out there are based on a linear structure, where each step is a small
+change to the code of the previous step, and those small changes are explained bit
+by bit in the guide itself. Previously, maintaining such guides was a manual process,
+which was tedious and error-prone.
+
+`git-voyage` automates part of this process, specifically around repeating changes to
+the next code blocks in the same guide.
+
+It allows you to edit a single code block in your guide, where you would like to introduce
+a change, and it will track the change and apply it to the next code blocks in the guide,
+automatically.
+
+It works with `git-rebase` under the hood, so it will be as smart as `git-rebase` is.
+In case of merge conflicts, it will stop and ask you to resolve them manually.
+
+Of course, the option to manually edit the code blocks is still available, due to its design.
+
+## A quick guide
+
+As an example, let's take the [dir-structure guide](../dir-structure/guide.mdx).
+
+```tree
+.
+├── code_footer
+├── code_header
+├── steps
+│   ├── back-to-basics
+│   │   ├── before.mdx
+│   │   └── code.rs
+│   ├── basics
+│   │   ├── before.mdx
+│   │   └── code.rs
+|  ...
+│   ├── versioned-changed
+│   │   ├── before.mdx
+│   │   └── code.rs
+│   └── writing
+│       ├── before.mdx
+│       └── code.rs
+├── steps.json
+└── template.mdx
+```
+
+`git-voyage` doesn't need to know about the exact documentation markup /
+programming languages that you use in your guide, the only requirements
+it has are that you name your files `template` or `template.*`, `before`
+or `before.*`, `after` or `after.*`, and finally, `code` or `code.*`.
+That is, as long as the names match, the extensions don't matter.
+
+### `template`/`template.*`
+
+We have to start with a template file, which gives us the "template" of the guide.
+`git-voyage` was specifically designed to output markdown, but other documentation formats
+will most likely work out of the box as well.
+
+```mdx
+---
+title: My guide
+---
+
+Introduction to my guide.
+
+<__GitVoyageSteps />
+
+Ending of my guide.
+
+```
+
+`git-voyage` will read this file and create a guide from it. The `<__GitVoyageSteps />`
+is a placeholder for the steps of the guide, which will be replaced when the guide is
+'baked.'
+
+<Callout type="warn">
+  **Warning:** The `<__GitVoyageSteps />` has to match **exactly**, otherwise it will
+  **not be replaced**.
+</Callout>
+
+### `steps.json`
+
+The `steps.json` file has the following structure:
+
+```json
+{
+    "steps": [
+        "basics",
+        "writing",
+        "complex-data-types",
+        "serde-types",
+        "back-to-basics",
+        "complex-structures",
+        "even-more-complex-structures",
+        "filter-subdirs",
+        "extension-only-filters",
+        "deferred-read",
+        "deferred-read-or-own",
+        "versioned",
+        "versioned-changed"
+    ]
+}
+```
+
+Its only purpose is to order the steps in the guide. The names have to match the
+names of the directories in the `steps` directory.
+
+### `steps` directory
+
+The `steps` directory contains all the individual steps of the guide.
+Each step is a separate directory, and its name corresponds to the step
+name used in the `steps.json` file.
+
+Inside each step directory, you will find the following files:
+
+- `code`/`code.*` (***mandatory***): The **entire** snippet of code that is used in this step.
+- `before`/`before.*` (*optional*): The content of the guide that comes before the code in this step.
+- `after`/`after.*` (*optional*): The content of the guide that comes after the code in this step.
+- `code_header` (*optional*): The content of the guide that comes before the code block in this step.
+- `code_footer` (*optional*): The content of the guide that comes after the code block in this step.
+
+In order to simplify the process of writing guides, `git-voyage` introduces global `code_header` and
+`code_footer` files, which act as defaults for all the steps, but can be overridden by any of the
+individual steps.
+
+In markdown, for example, the <code>code_header</code> is <code>\`\`\`language</code> while the
+<code>code_footer</code> is <code>\`\`\`</code>. It is just the code fence around the code.
+
+#### `code`/`code.*`

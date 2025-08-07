@@ -97,16 +97,18 @@ fn expand_dir_structure_for_field(
         })?;
     }
 
-    let (actual_path_expr, path_pusher_for_has_field) = match path {
+    let (actual_path_expr, actual_path_expr_move, path_pusher_for_has_field) = match path {
         PathData::Path(p) => (
-            quote! {#path_param_name.join(#p)},
+            quote! { #path_param_name.join(#p) },
+            quote! { #path_param_name.join(#p) },
             quote! { #path_param_name.push(#p); },
         ),
-        PathData::SelfPath => (quote! { #path_param_name }, quote! {}),
+        PathData::SelfPath => (quote! { #path_param_name }, quote! { #path_param_name.clone() }, quote! {}),
         PathData::None => {
             let name = field_name.to_string();
             (
-                quote! {#path_param_name.join(#name)},
+                quote! { #path_param_name.join(#name) },
+                quote! { #path_param_name.join(#name) },
                 quote! { #path_param_name.push(#name); },
             )
         }
@@ -152,7 +154,7 @@ fn expand_dir_structure_for_field(
         };
 
         quote! {{
-            let __translated_path = #actual_path_expr;
+            let __translated_path = #actual_path_expr_move;
             let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFromAsync>::read_from_async(__translated_path).await?;
             #end_expr
         }}
@@ -181,12 +183,12 @@ fn expand_dir_structure_for_field(
         match &with_newtype {
             Some(nt) => {
                 quote! {
-                    let __translated_path = #actual_path_expr;
+                    let __translated_path = #actual_path_expr_move;
                     <<#nt as ::dir_structure::FromRefForWriterAsync<'_>>::Wr as ::dir_structure::WriteToAsyncOwned<'_>>::write_to_async_owned(<#nt as ::dir_structure::FromRefForWriterAsync<'_>>::from_ref_for_writer_async(&self.#field_name), __translated_path).await?;
                 }
             }
             None => quote! {
-                let __translated_path = #actual_path_expr;
+                let __translated_path = #actual_path_expr_move;
                 <#actual_field_ty_perform as ::dir_structure::WriteToAsync>::write_to_async(&self.#field_name, __translated_path).await?;
             },
         }
@@ -197,7 +199,7 @@ fn expand_dir_structure_for_field(
         quote! {}
     } else {
         quote! {
-            let __translated_path = #actual_path_expr;
+            let __translated_path = #actual_path_expr_move;
             ::dir_structure::WriteToAsyncOwned<'_>::write_to_async_owned(self.#field_name, __translated_path).await?;
         }
     };

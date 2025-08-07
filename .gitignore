@@ -8,5 +8,3 @@
 
 *.before.mdx
 rustc-ice-*.txt
-
-/guides

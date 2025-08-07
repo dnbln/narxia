@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use std::fmt::Debug;
 
 use narxia_hir::HirId;

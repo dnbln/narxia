@@ -1,5 +1,4 @@
 #![feature(try_blocks)]
-#![feature(let_chains)]
 
 use std::fmt;
 use std::ops;

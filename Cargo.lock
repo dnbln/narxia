@@ -992,6 +992,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-voyage"
+version = "0.0.0"
+dependencies = [
+ "clap",
+ "dir-structure",
+ "git2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "git2"
 version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

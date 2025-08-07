@@ -61,6 +61,7 @@ use crate::utils;
 ///     Ok(())
 /// }
 /// ```
+#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct CleanDir<T>(pub T);
 
 impl<T> ReadFrom for CleanDir<T>

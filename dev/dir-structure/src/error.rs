@@ -13,6 +13,14 @@ pub enum Error {
     /// Serde error.
     #[error("Serde error at {0:?}: {1}")]
     Serde(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
+
+    /// An error related to the directory structure.
+    #[error("Unexpected number of children: expected {expected}, found {found} at {path:?}")]
+    UnexpectedNumberOfChildren {
+        expected: &'static str,
+        found: usize,
+        path: PathBuf,
+    },
 }
 
 mod sealed {

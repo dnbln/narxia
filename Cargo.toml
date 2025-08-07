@@ -97,6 +97,7 @@ unsafe_code = "deny"
 unused_imports = "deny"
 unused_unsafe = "deny"
 mismatched_lifetime_syntaxes = "deny"
+stable_features = "deny"
 
 
 [workspace.lints.clippy]

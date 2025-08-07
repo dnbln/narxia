@@ -1,0 +1,17 @@
+{
+    "steps": [
+        "basics",
+        "writing",
+        "complex-data-types",
+        "serde-types",
+        "back-to-basics",
+        "complex-structures",
+        "even-more-complex-structures",
+        "filter-subdirs",
+        "extension-only-filters",
+        "deferred-read",
+        "deferred-read-or-own",
+        "versioned",
+        "versioned-changed"
+    ]
+}

@@ -1,5 +1,3 @@
-#![feature(trait_upcasting)]
-
 use narxia_syn::syntree::GreenTree;
 
 #[salsa::db]

@@ -1,0 +1,22 @@
+## !!steps If we need to filter the subdirectories?
+
+We can pass a filter to the `DirChildren` type. In the example, we filter only directories with the `.d` extension.
+
+<Mermaid
+  chart={`
+mindmap
+  root((Root))
+    subdirs
+        subdir1.d
+            input.txt
+            output.txt
+        subdir2.d
+            input.txt
+            output.txt
+        ))ignored.txt((
+        ))ignoreddir((
+            ))will not be read((
+                ))input.txt((
+                ))output.txt((
+`}
+ />
