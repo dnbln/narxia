@@ -103,7 +103,11 @@ fn expand_dir_structure_for_field(
             quote! { #path_param_name.join(#p) },
             quote! { #path_param_name.push(#p); },
         ),
-        PathData::SelfPath => (quote! { #path_param_name }, quote! { #path_param_name.clone() }, quote! {}),
+        PathData::SelfPath => (
+            quote! { #path_param_name },
+            quote! { #path_param_name.clone() },
+            quote! {},
+        ),
         PathData::None => {
             let name = field_name.to_string();
             (
@@ -206,6 +210,8 @@ fn expand_dir_structure_for_field(
 
     #[cfg(feature = "resolve-path")]
     let has_field_impl = {
+        use std::iter;
+
         use crate::resolve_path::MAX_LEN;
 
         let field_name_str = field_name.to_string();
@@ -220,7 +226,7 @@ fn expand_dir_structure_for_field(
         }
         let field_name_array: [char; MAX_LEN] = field_name_str
             .chars()
-            .chain(std::iter::repeat('\0'))
+            .chain(iter::repeat('\0'))
             .take(MAX_LEN)
             .collect::<Vec<_>>()
             .try_into()

@@ -1203,9 +1203,9 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, ReadFrom, WriteTo};
+    /// use dir_structure::{DirChildSingle, ReadFrom, WriteTo, NoFilter};
     ///
-    /// let d = DirChildSingle::new("file.txt", "file".to_owned());
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
@@ -1271,9 +1271,11 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingleOpt, ReadFrom, WriteTo};
+    /// use dir_structure::{DirChildSingleOpt, ReadFrom, WriteTo, NoFilter};
     ///
-    /// let d = DirChildSingleOpt::new("file.txt", "file".to_owned());
+    /// let DirChildSingleOpt::Some(d) = DirChildSingleOpt::<_, NoFilter>::new("file.txt", "file".to_owned()) else {
+    ///    panic!("Expected Some variant");
+    /// };
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```

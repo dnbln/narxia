@@ -2,8 +2,12 @@
 
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::fs;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::result;
+use std::slice;
 
 use dir_structure::DirChildSingle;
 use dir_structure::DirChildSingleOpt;
@@ -27,10 +31,10 @@ pub enum Error {
     #[error("dir-structure error: {0}")]
     DirStructureError(#[from] dir_structure::Error),
     #[error("IO error: {0}")]
-    IO(#[from] std::io::Error),
+    IO(#[from] io::Error),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;
 
 #[derive(DirStructure)]
 pub struct Guide {
@@ -70,7 +74,7 @@ impl Guide {
     }
 }
 
-pub struct StepsIter<'a>(std::slice::Iter<'a, StepRef>, &'a DirChildren<StepDir>);
+pub struct StepsIter<'a>(slice::Iter<'a, StepRef>, &'a DirChildren<StepDir>);
 
 impl<'a> Iterator for StepsIter<'a> {
     type Item = (&'a StepRef, &'a StepDir);
@@ -124,19 +128,11 @@ impl StepDir {
         if let DirChildSingleOpt::Some(before) = &self.before {
             writeln!(output, "{}", before.value()).unwrap();
         }
-        if let Some(header) = &self
-            .code_header
-            .as_ref()
-            .or_else(|| guide.code_header.as_ref())
-        {
+        if let Some(header) = &self.code_header.as_ref().or(guide.code_header.as_ref()) {
             writeln!(output, "{header}").unwrap();
         }
         writeln!(output, "{}", self.code.value()).unwrap();
-        if let Some(footer) = &self
-            .code_footer
-            .as_ref()
-            .or_else(|| guide.code_footer.as_ref())
-        {
+        if let Some(footer) = &self.code_footer.as_ref().or(guide.code_footer.as_ref()) {
             writeln!(output, "{footer}").unwrap();
         }
         if let DirChildSingleOpt::Some(after) = &self.after {
@@ -175,7 +171,7 @@ trait DbgGitErr {
     fn dbg_git_err(self) -> Self;
 }
 
-impl<T> DbgGitErr for std::result::Result<T, git2::Error> {
+impl<T> DbgGitErr for result::Result<T, git2::Error> {
     fn dbg_git_err(self) -> Self {
         match self {
             Ok(v) => Ok(v),
@@ -196,11 +192,10 @@ fn perform_patchup(
     new_code: &str,
     repo_root: &Path,
     repo: &Repository,
+    mut resolve_conflict: impl FnMut(&Path) -> Result<()>,
 ) -> Result<()> {
-    eprintln!("Steps: {:?}", guide.steps.steps);
-
     let code_file = repo_root.join("code");
-    std::fs::write(&code_file, b"")?;
+    fs::write(&code_file, b"")?;
 
     let mut index = repo.index()?;
     index.add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)?;
@@ -223,8 +218,8 @@ fn perform_patchup(
     for s in &guide.steps.steps {
         let mut index = repo.index()?;
         let code = &*guide.step_dirs.get_name(&s.0).unwrap().value().code;
-        std::fs::write(&code_file, code)?;
-        index.add_all(&["code"], git2::IndexAddOption::DEFAULT, None)?;
+        fs::write(&code_file, code)?;
+        index.add_all(["code"], git2::IndexAddOption::DEFAULT, None)?;
         index.write()?;
         let tree_id = index.write_tree()?;
         let c = repo.commit(
@@ -240,9 +235,9 @@ fn perform_patchup(
 
         if s == step {
             before_ed_branch = Some(repo.branch("before-edit", &current_commit, true)?);
-            std::fs::write(&code_file, new_code)?;
+            fs::write(&code_file, new_code)?;
 
-            index.add_all(&["code"], git2::IndexAddOption::DEFAULT, None)?;
+            index.add_all(["code"], git2::IndexAddOption::DEFAULT, None)?;
             index.write()?;
             let tree_id = index.write_tree()?;
             let edit_c = repo.commit(
@@ -297,19 +292,7 @@ fn perform_patchup(
             .len();
         if len > 0 {
             eprintln!("Found {} changes in commit: {}", len, info.id());
-            let editor = repo.config().dbg_git_err()?.get_path("core.editor")?;
-            let mut proc = std::process::Command::new(editor).arg(&code_file).spawn()?;
-            let r = proc.wait().expect("Editor process failed");
-            if !r.success() {
-                eprintln!(
-                    "Editor exited with non-zero status {}",
-                    r.code().unwrap_or(-1)
-                );
-                return Err(Error::IO(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Editor exited with non-zero status",
-                )));
-            }
+            resolve_conflict(&code_file)?;
             repo.index()?.add_path(Path::new("code"))?;
         }
         match info.kind() {
@@ -342,14 +325,20 @@ fn perform_patchup(
     Ok(())
 }
 
-pub fn patchup(guide: &mut Guide, dir: &Path, step: &StepRef, new_code: &str) -> Result<()> {
+pub fn patchup(
+    guide: &mut Guide,
+    dir: &Path,
+    step: &StepRef,
+    new_code: &str,
+    resolve_conflict: impl FnMut(&Path) -> Result<()>,
+) -> Result<()> {
     let repo_root = dir.join(".repo");
     if repo_root.exists() {
-        std::fs::remove_dir_all(&repo_root)?;
+        fs::remove_dir_all(&repo_root)?;
     }
-    std::fs::create_dir_all(&repo_root)?;
+    fs::create_dir_all(&repo_root)?;
     let repo = Repository::init(&repo_root)?;
-    match perform_patchup(guide, step, new_code, &repo_root, &repo) {
+    match perform_patchup(guide, step, new_code, &repo_root, &repo, resolve_conflict) {
         Ok(_) => {
             repatch(guide, dir)?;
         }
@@ -365,8 +354,8 @@ pub fn patchup(guide: &mut Guide, dir: &Path, step: &StepRef, new_code: &str) ->
 pub fn repatch(guide: &mut Guide, dir: &Path) -> Result<()> {
     let repo_root = dir.join(".repo");
     if !repo_root.exists() {
-        return Err(Error::IO(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
+        return Err(Error::IO(io::Error::new(
+            io::ErrorKind::NotFound,
             "Repository not found",
         )));
     }
@@ -374,8 +363,8 @@ pub fn repatch(guide: &mut Guide, dir: &Path) -> Result<()> {
     let code_file = repo_root.join("code");
 
     if !code_file.exists() {
-        return Err(Error::IO(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
+        return Err(Error::IO(io::Error::new(
+            io::ErrorKind::NotFound,
             "Code file not found",
         )));
     }

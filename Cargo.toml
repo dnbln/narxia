@@ -106,3 +106,4 @@ alloc_instead_of_core = "deny"
 allow_attributes = "deny"
 suspicious = { level = "deny", priority = -1 }
 style = "deny"
+useless_format = "deny"

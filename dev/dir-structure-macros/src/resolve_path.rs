@@ -1,3 +1,5 @@
+use std::iter;
+
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Token;
@@ -42,7 +44,7 @@ impl Parse for ResolvePathInput {
                     e => {
                         return Err(syn::Error::new_spanned(
                             e,
-                            format!("expected expression to be `value as type`"),
+                            "expected expression to be `value as type`",
                         ));
                     }
                 },
@@ -131,7 +133,7 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
                 let name_array: [char; MAX_LEN] = name
                     .iter()
                     .cloned()
-                    .chain(std::iter::repeat('\0'))
+                    .chain(iter::repeat('\0'))
                     .take(MAX_LEN)
                     .collect::<Vec<_>>()
                     .try_into()
