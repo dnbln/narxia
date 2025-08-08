@@ -1,10 +1,10 @@
 // !lints
-use std::path::Path;
+// !tooltip[/ext_filter/] ext_filter
+use dir_structure::ext_filter;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-// !tooltip[/Filter/] Filter
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+use dir_structure::{DirStructure, DirStructureItem, DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -15,19 +15,8 @@ struct Dir {
     subdirs: DirChildren<SubDir, Filt>,
 }
 
-// !mark(1:11)
-struct Filt;
-
-// !tooltip[/Filter/] Filter
-impl Filter for Filt {
-    fn make_filter() -> Self {
-        Self
-    }
-
-    fn allows(&self, path: &Path) -> bool {
-        path.extension().map_or(false, |ext| ext == "d")
-    }
-}
+// !tooltip[/ext_filter/] ext_filter
+ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
