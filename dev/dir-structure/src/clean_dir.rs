@@ -1,7 +1,7 @@
+use std::marker;
 use std::path::Path;
 #[cfg(any(feature = "async", feature = "resolve-path"))]
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -23,9 +23,7 @@ use crate::HAS_FIELD_MAX_LEN;
 use crate::HasField;
 use crate::NewtypeToInner;
 use crate::Result;
-use crate::WrapIoError;
 use crate::prelude::*;
-use crate::utils;
 
 /// A newtype that will clean the directory it is written to, before writing
 /// the value.
@@ -64,24 +62,25 @@ use crate::utils;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct CleanDir<T>(pub T);
 
-impl<T> ReadFrom for CleanDir<T>
+impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for CleanDir<T>
 where
-    T: ReadFrom,
+    T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &Path) -> Result<Self>
+    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
     {
-        Ok(Self(T::read_from(path)?))
+        Ok(Self(T::read_from(path, vfs)?))
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
-pub struct CleanDirReadFuture<T>
+pub struct CleanDirReadFuture<'a, T, Vfs>
 where
-    T: ReadFromAsync + Send + 'static,
+    T: ReadFromAsync<'a, Vfs> + Send + 'static,
+    Vfs: crate::VfsAsync,
 {
     #[pin]
     inner: T::Future,
@@ -89,9 +88,9 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> Future for CleanDirReadFuture<T>
+impl<'a, T, Vfs: crate::VfsAsync> Future for CleanDirReadFuture<'a, T, Vfs>
 where
-    T: ReadFromAsync + Send + 'static,
+    T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
     type Output = Result<CleanDir<T>>;
 
@@ -106,65 +105,66 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> ReadFromAsync for CleanDir<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for CleanDir<T>
 where
-    T: ReadFromAsync + Send + 'static,
+    T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>;
 
-    fn read_from_async(path: PathBuf) -> Self::Future {
-        Box::pin(async move { T::read_from_async(path).await.map(Self) })
+    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        Box::pin(async move { T::read_from_async(path, vfs).await.map(Self) })
     }
 }
 
-impl<T> WriteTo for CleanDir<T>
+impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for CleanDir<T>
 where
-    T: WriteTo,
+    T: WriteTo<Vfs>,
 {
-    fn write_to(&self, path: &Path) -> Result<()> {
-        Self::from_ref_for_writer(&self.0).write_to(path)
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+        Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> WriteToAsync for CleanDir<T>
+impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for CleanDir<T>
 where
-    T: WriteToAsync + Send + Sync + 'static,
+    T: WriteToAsync<Vfs> + Send + Sync + 'static,
 {
     type Future<'a>
-        = <CleanDirRefWr<'a, T> as WriteToAsync>::Future<'a>
+        = <CleanDirRefWr<'a, T, Vfs> as WriteToAsync<Vfs>>::Future<'a>
     where
         Self: 'a;
 
-    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
-        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path)
+    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
+        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path, vfs)
     }
 }
 
-impl<'a, T> FromRefForWriter<'a> for CleanDir<T>
+impl<'a, T, Vfs: crate::Vfs> FromRefForWriter<'a, Vfs> for CleanDir<T>
 where
-    T: WriteTo + 'a,
+    T: WriteTo<Vfs> + 'a,
+    Vfs: 'a,
 {
     type Inner = T;
-    type Wr = CleanDirRefWr<'a, T>;
+    type Wr = CleanDirRefWr<'a, T, Vfs>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
-        CleanDirRefWr(value)
+        CleanDirRefWr(value, marker::PhantomData)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> FromRefForWriterAsync<'a> for CleanDir<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for CleanDir<T>
 where
-    T: WriteToAsync + Send + Sync + 'static,
+    T: WriteToAsync<Vfs> + Send + Sync + 'static,
 {
     type Inner = T;
-    type Wr = CleanDirRefWr<'a, T>;
+    type Wr = CleanDirRefWr<'a, T, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
-        CleanDirRefWr(value)
+        CleanDirRefWr(value, marker::PhantomData)
     }
 }
 
@@ -206,71 +206,61 @@ where
 }
 
 /// [`WriteTo`] impl for [`CleanDir`]
-pub struct CleanDirRefWr<'a, T: ?Sized>(&'a T);
+pub struct CleanDirRefWr<'a, T: ?Sized, Vfs: 'a>(&'a T, marker::PhantomData<Vfs>);
 
-impl<T> WriteTo for CleanDirRefWr<'_, T>
+impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for CleanDirRefWr<'_, T, Vfs>
 where
-    T: ?Sized + WriteTo,
+    T: ?Sized + WriteTo<Vfs>,
 {
-    fn write_to(&self, path: &Path) -> Result<()> {
-        if path.exists() {
-            std::fs::remove_dir_all(path).wrap_io_error_with(path)?;
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+        if vfs.exists(path)? {
+            vfs.remove_dir_all(path)?;
         } else {
-            utils::create_parent_dir(path)?;
+            vfs.create_parent_dir(path)?;
         }
-        self.0.write_to(path)
+        self.0.write_to(path, vfs)
     }
 }
 
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<T> WriteToAsync for CleanDirRefWr<'_, T>
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for CleanDirRefWr<'_, T, Vfs>
 where
-    T: ?Sized + WriteToAsync + Send + Sync + 'static,
+    T: ?Sized + WriteToAsync<Vfs> + Send + Sync + 'static,
 {
     type Future<'a>
         = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
     where
         Self: 'a;
 
-    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
         Box::pin(async move {
-            if tokio::fs::try_exists(&path)
-                .await
-                .wrap_io_error_with(&path)?
-            {
-                tokio::fs::remove_dir_all(&path)
-                    .await
-                    .wrap_io_error_with(&path)?;
+            if vfs.exists(path.clone()).await? {
+                vfs.remove_dir_all(path.clone()).await?;
             } else {
-                utils::create_parent_dir_async(&path).await?;
+                vfs.create_parent_dir(path.clone()).await?;
             }
-            self.0.write_to_async(path).await
+            self.0.write_to_async(path, vfs).await
         })
     }
 }
 
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<'a, T> WriteToAsyncOwned<'a> for CleanDirRefWr<'a, T>
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for CleanDirRefWr<'a, T, Vfs>
 where
-    T: ?Sized + WriteToAsync + Send + Sync + 'static,
+    T: ?Sized + WriteToAsync<Vfs> + Send + Sync + 'static,
 {
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
-            if tokio::fs::try_exists(&path)
-                .await
-                .wrap_io_error_with(&path)?
-            {
-                tokio::fs::remove_dir_all(&path)
-                    .await
-                    .wrap_io_error_with(&path)?;
+            if vfs.exists(path.clone()).await? {
+                vfs.remove_dir_all(path.clone()).await?;
             } else {
-                utils::create_parent_dir_async(&path).await?;
+                vfs.create_parent_dir(path.clone()).await?;
             }
-            self.0.write_to_async(path).await
+            self.0.write_to_async(path, vfs).await
         })
     }
 }

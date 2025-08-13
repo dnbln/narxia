@@ -2,7 +2,6 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -161,19 +160,23 @@ impl<T> Versioned<T> {
     }
 }
 
-impl<T: ReadFrom> ReadFrom for Versioned<T> {
-    fn read_from(path: &Path) -> Result<Self>
+impl<'a, Vfs: crate::Vfs, T> ReadFrom<'a, Vfs> for Versioned<T>
+where
+    T: ReadFrom<'a, Vfs>,
+{
+    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
     {
-        T::read_from(path).map(|it| Self::new(it, path))
+        T::read_from(path, vfs).map(|it| Self::new(it, path))
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
-pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
+pub struct VersionedReadFuture<'a, Vfs: crate::VfsAsync, T: ReadFromAsync<'a, Vfs> + Send + 'static>
+{
     #[pin]
     inner: T::Future,
     path: PathBuf,
@@ -181,9 +184,9 @@ pub struct VersionedReadFuture<T: ReadFromAsync + Send + 'static> {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> Future for VersionedReadFuture<T>
+impl<'a, Vfs: crate::VfsAsync + 'static, T> Future for VersionedReadFuture<'a, Vfs, T>
 where
-    T: ReadFromAsync + Send + 'static,
+    T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
     type Output = Result<Versioned<T>>;
 
@@ -201,48 +204,50 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T: ReadFromAsync + Send + 'static> ReadFromAsync for Versioned<T> {
-    type Future = VersionedReadFuture<T>;
+impl<'a, Vfs: crate::VfsAsync + 'static, T: ReadFromAsync<'a, Vfs> + Send + 'static>
+    ReadFromAsync<'a, Vfs> for Versioned<T>
+{
+    type Future = VersionedReadFuture<'a, Vfs, T>;
 
-    fn read_from_async(path: PathBuf) -> Self::Future {
+    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         VersionedReadFuture {
-            inner: T::read_from_async(path.clone()),
+            inner: T::read_from_async(path.clone(), vfs),
             path,
         }
     }
 }
 
-impl<T: WriteTo> WriteTo for Versioned<T> {
-    fn write_to(&self, path: &Path) -> Result<()> {
+impl<Vfs: crate::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         if self.path == path && self.is_clean() {
             return Ok(());
         }
 
-        self.value.write_to(path)
+        self.value.write_to(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteFutureProj)]
-pub enum VersionedWriteFuture<'a, T>
+pub enum VersionedWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: WriteToAsync + Send + Sync + 'static,
-    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
 {
     Poisson,
     NotTouched,
     Writing {
-        inner: <T as WriteToAsync>::Future<'a>,
+        inner: <T as WriteToAsync<Vfs>>::Future<'a>,
     },
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> Future for VersionedWriteFuture<'a, T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
 where
-    T: WriteToAsync + Send + Sync + 'static,
-    <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
 {
     type Output = Result<()>;
 
@@ -268,23 +273,23 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> WriteToAsync for Versioned<T>
+impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for Versioned<T>
 where
-    T: WriteToAsync + Send + Sync + 'static,
-    for<'a> <T as WriteToAsync>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    for<'a> <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin,
 {
     type Future<'a>
-        = VersionedWriteFuture<'a, T>
+        = VersionedWriteFuture<'a, T, Vfs>
     where
         Self: 'a;
 
-    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
         if self.path == path && self.is_clean() {
             return VersionedWriteFuture::NotTouched;
         }
 
         VersionedWriteFuture::Writing {
-            inner: self.value.write_to_async(path),
+            inner: self.value.write_to_async(path, vfs),
         }
     }
 }
@@ -292,24 +297,24 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteOwnedFutureProj)]
-pub enum VersionedWriteOwnedFuture<'a, T>
+pub enum VersionedWriteOwnedFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
     Poisson,
     NotTouched,
     Writing {
-        inner: <T as WriteToAsyncOwned<'a>>::Future,
+        inner: <T as WriteToAsyncOwned<'a, Vfs>>::Future,
     },
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> Future for VersionedWriteOwnedFuture<'a, T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteOwnedFuture<'a, T, Vfs>
 where
-    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
     type Output = Result<()>;
 
@@ -337,20 +342,20 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> WriteToAsyncOwned<'a> for Versioned<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> WriteToAsyncOwned<'a, Vfs> for Versioned<T>
 where
-    T: WriteToAsyncOwned<'a> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
-    type Future = VersionedWriteOwnedFuture<'a, T>;
+    type Future = VersionedWriteOwnedFuture<'a, T, Vfs>;
 
-    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         if self.path == path && self.is_clean() {
             return VersionedWriteOwnedFuture::NotTouched;
         }
 
         VersionedWriteOwnedFuture::Writing {
-            inner: self.value.write_to_async_owned(path),
+            inner: self.value.write_to_async_owned(path, vfs),
         }
     }
 }

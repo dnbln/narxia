@@ -1,7 +1,6 @@
 use std::path::Path;
 #[cfg(any(feature = "async", feature = "resolve-path"))]
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -27,16 +26,16 @@ use crate::WriteToAsync;
 #[cfg(feature = "async")]
 use crate::WriteToAsyncOwned;
 
-impl<T> ReadFrom for Option<T>
+impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for Option<T>
 where
-    T: ReadFrom,
+    T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &Path) -> Result<Self>
+    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
     {
         if path.exists() {
-            T::read_from(path).map(Some)
+            T::read_from(path, vfs).map(Some)
         } else {
             Ok(None)
         }
@@ -46,27 +45,29 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = OptionReadFromAsyncFutureOwnProj)]
-pub enum OptionReadFromAsyncFuture<T>
+pub enum OptionReadFromAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: ReadFromAsync + 'static,
+    T: ReadFromAsync<'a, Vfs> + 'static,
     T::Future: Future<Output = Result<T>> + Unpin,
 {
     Poison,
     Check {
         path: PathBuf,
         check_fut: Pin<Box<dyn Future<Output = std::io::Result<bool>> + Send>>,
+        vfs: Pin<&'a Vfs>,
     },
     HasContents {
         inner: T::Future,
+        vfs: Pin<&'a Vfs>,
     },
     NoContents,
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> Future for OptionReadFromAsyncFuture<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for OptionReadFromAsyncFuture<'a, T, Vfs>
 where
-    T: ReadFromAsync + 'static,
+    T: ReadFromAsync<'a, Vfs> + 'static,
     T::Future: Future<Output = Result<T>> + Unpin,
 {
     type Output = Result<Option<T>>;
@@ -79,11 +80,13 @@ where
             OptionReadFromAsyncFutureOwnProj::Check {
                 path,
                 mut check_fut,
+                vfs,
             } => {
                 match check_fut.as_mut().poll(cx) {
                     Poll::Ready(Ok(true)) => {
                         self.project_replace(Self::HasContents {
-                            inner: T::read_from_async(path),
+                            inner: T::read_from_async(path, vfs),
+                            vfs,
                         });
                         cx.waker().wake_by_ref();
                         Poll::Pending
@@ -95,16 +98,20 @@ where
                     Poll::Ready(Err(e)) => Poll::Ready(Err(crate::Error::Io(path, e))),
                     Poll::Pending => {
                         // If the check is still pending, we return Pending
-                        self.project_replace(Self::Check { path, check_fut });
+                        self.project_replace(Self::Check {
+                            path,
+                            check_fut,
+                            vfs,
+                        });
                         Poll::Pending
                     }
                 }
             }
-            OptionReadFromAsyncFutureOwnProj::HasContents { mut inner } => {
+            OptionReadFromAsyncFutureOwnProj::HasContents { mut inner, vfs } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(v) => Poll::Ready(v.map(Some)),
                     Poll::Pending => {
-                        self.project_replace(Self::HasContents { inner });
+                        self.project_replace(Self::HasContents { inner, vfs });
                         Poll::Pending
                     }
                 }
@@ -122,31 +129,32 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> ReadFromAsync for Option<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for Option<T>
 where
-    T: ReadFromAsync + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin,
+    T: ReadFromAsync<'a, Vfs> + 'static,
+    T::Future: Future<Output = Result<T>> + Unpin + 'a,
 {
     type Future
-        = OptionReadFromAsyncFuture<T>
+        = OptionReadFromAsyncFuture<'a, T, Vfs>
     where
         Self: 'static;
 
-    fn read_from_async(path: PathBuf) -> Self::Future {
+    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         OptionReadFromAsyncFuture::Check {
             check_fut: Box::pin(tokio::fs::try_exists(path.clone())),
             path,
+            vfs,
         }
     }
 }
 
-impl<T> WriteTo for Option<T>
+impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for Option<T>
 where
-    T: WriteTo,
+    T: WriteTo<Vfs>,
 {
-    fn write_to(&self, path: &Path) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         if let Some(v) = self {
-            v.write_to(path)
+            v.write_to(path, vfs)
         } else {
             Ok(())
         }
@@ -156,22 +164,22 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = OptionWriteToAsyncFutureProj)]
-pub enum OptionWriteToAsyncFuture<'a, T>
+pub enum OptionWriteToAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: WriteToAsync + 'static,
+    T: WriteToAsync<Vfs> + 'static,
 {
     HasContents {
         #[pin]
-        inner: <T as WriteToAsync>::Future<'a>,
+        inner: <T as WriteToAsync<Vfs>>::Future<'a>,
     },
     NoContents,
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> Future for OptionWriteToAsyncFuture<'a, T>
+impl<'a, T, Vfs: crate::VfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
 where
-    T: WriteToAsync + 'static,
+    T: WriteToAsync<Vfs> + 'static,
 {
     type Output = Result<()>;
 
@@ -186,19 +194,20 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> WriteToAsync for Option<T>
+impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for Option<T>
 where
-    T: WriteToAsync + Send + 'static,
+    T: WriteToAsync<Vfs> + Send + 'static,
 {
     type Future<'a>
-        = OptionWriteToAsyncFuture<'a, T>
+        = OptionWriteToAsyncFuture<'a, T, Vfs>
     where
-        Self: 'a;
+        Self: 'a,
+        Vfs: 'a;
 
-    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
         if let Some(v) = self {
             OptionWriteToAsyncFuture::HasContents {
-                inner: v.write_to_async(path),
+                inner: v.write_to_async(path, vfs),
             }
         } else {
             OptionWriteToAsyncFuture::NoContents
@@ -209,22 +218,22 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = OptionWriteToAsyncOwnedFutureProj)]
-pub enum OptionWriteToAsyncOwnedFuture<'a, T>
+pub enum OptionWriteToAsyncOwnedFuture<'a, T, Vfs: crate::VfsAsync>
 where
-    T: WriteToAsyncOwned<'a> + 'static,
+    T: WriteToAsyncOwned<'a, Vfs> + 'static,
 {
     HasContents {
         #[pin]
-        inner: <T as WriteToAsyncOwned<'a>>::Future,
+        inner: <T as WriteToAsyncOwned<'a, Vfs>>::Future,
     },
     NoContents,
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> Future for OptionWriteToAsyncOwnedFuture<'a, T>
+impl<'a, T, Vfs: crate::VfsAsync> Future for OptionWriteToAsyncOwnedFuture<'a, T, Vfs>
 where
-    T: WriteToAsyncOwned<'a> + 'static,
+    T: WriteToAsyncOwned<'a, Vfs> + 'static,
 {
     type Output = Result<()>;
 
@@ -241,19 +250,19 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> WriteToAsyncOwned<'a> for Option<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> WriteToAsyncOwned<'a, Vfs> for Option<T>
 where
-    T: WriteToAsyncOwned<'a> + Send + 'static,
+    T: WriteToAsyncOwned<'a, Vfs> + Send + 'static,
 {
     type Future
-        = OptionWriteToAsyncOwnedFuture<'a, T>
+        = OptionWriteToAsyncOwnedFuture<'a, T, Vfs>
     where
         Self: 'a;
 
-    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         if let Some(v) = self {
             OptionWriteToAsyncOwnedFuture::HasContents {
-                inner: v.write_to_async_owned(path),
+                inner: v.write_to_async_owned(path, vfs),
             }
         } else {
             OptionWriteToAsyncOwnedFuture::NoContents

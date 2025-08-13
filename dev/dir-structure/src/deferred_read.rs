@@ -3,7 +3,6 @@ use std::future;
 use std::marker;
 use std::path::Path;
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -29,36 +28,43 @@ use crate::prelude::*;
 ///
 /// See the [`DeferredRead::perform_read`] method for more details.
 #[derive(Debug, Clone, Hash)]
-pub struct DeferredRead<T>(pub PathBuf, marker::PhantomData<T>);
+pub struct DeferredRead<'a, T, Vfs = crate::FsVfs>(
+    pub PathBuf,
+    Pin<&'a Vfs>,
+    marker::PhantomData<T>,
+);
 
-impl<T> ReadFrom for DeferredRead<T>
+impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for DeferredRead<'a, T, Vfs>
 where
-    T: ReadFrom,
+    T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &Path) -> Result<Self>
+    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
     {
-        Ok(Self(path.to_path_buf(), marker::PhantomData))
+        Ok(Self(path.to_path_buf(), vfs, marker::PhantomData))
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> ReadFromAsync for DeferredRead<T>
+impl<'a, T, Vfs: crate::VfsAsync> ReadFromAsync<'a, Vfs> for DeferredRead<'a, T, Vfs>
 where
-    T: Send + 'static,
+    T: Send + ReadFromAsync<'a, Vfs> + 'static,
 {
-    type Future = future::Ready<Result<Self>>;
+    type Future
+        = future::Ready<Result<Self>>
+    where
+        Self: 'a;
 
-    fn read_from_async(path: PathBuf) -> Self::Future {
-        future::ready(Ok(Self(path, marker::PhantomData)))
+    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        future::ready(Ok(Self(path, vfs, marker::PhantomData)))
     }
 }
 
-impl<T> DeferredRead<T>
+impl<'a, T, Vfs: crate::Vfs> DeferredRead<'a, T, Vfs>
 where
-    T: ReadFrom,
+    T: ReadFrom<'a, Vfs>,
 {
     /// Performs the read and returns the value.
     ///
@@ -71,13 +77,14 @@ where
     ///
     /// ```rust
     /// use std::path::Path;
+    /// use std::pin::Pin;
     /// use dir_structure::DirStructureItem;
     /// use dir_structure::DeferredRead;
     ///
     /// #[derive(dir_structure::DirStructure)]
-    /// struct Dir {
+    /// struct Dir<'vfs, Vfs> {
     ///     #[dir_structure(path = "f.txt")]
-    ///     f: DeferredRead<String>,
+    ///     f: DeferredRead<'vfs, String, Vfs>,
     /// }
     ///
     /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -97,15 +104,15 @@ where
     /// }
     /// ```
     pub fn perform_read(&self) -> Result<T> {
-        T::read_from(&self.0)
+        T::read_from(&self.0, self.1)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> DeferredRead<T>
+impl<'a, T, Vfs: crate::VfsAsync> DeferredRead<'a, T, Vfs>
 where
-    T: ReadFromAsync + Send + 'static,
+    T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
     /// Performs the read asynchronously and returns the value.
     ///
@@ -116,15 +123,15 @@ where
     ///
     /// Asynchronous version of [`DeferredRead::perform_read`].
     pub async fn perform_read_async(&self) -> Result<T> {
-        T::read_from_async(self.0.clone()).await
+        T::read_from_async(self.0.clone(), self.1).await
     }
 }
 
-impl<T> WriteTo for DeferredRead<T>
+impl<'a, T, Vfs: crate::Vfs> WriteTo<Vfs> for DeferredRead<'a, T, Vfs>
 where
-    T: ReadFrom + WriteTo,
+    T: ReadFrom<'a, Vfs> + WriteTo<Vfs>,
 {
-    fn write_to(&self, path: &Path) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         if path == self.0 {
             // Optimization: We were asked to write to the same path
             // we are supposed to read from. We can just ignore it, since
@@ -137,37 +144,38 @@ where
         }
 
         let r = self.perform_read()?;
-        r.write_to(path)
+        r.write_to(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DeferredReadWriteFutureProj)]
-pub enum DeferredReadWriteFuture<'a, T>
+pub enum DeferredReadWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: ReadFromAsync + WriteToAsyncOwned<'a> + Send + 'static,
-    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
-    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: ReadFromAsync<'a, Vfs> + WriteToAsyncOwned<'a, Vfs> + Send + 'static,
+    <T as ReadFromAsync<'a, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'a,
+    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
     Poisson,
     SamePath,
     Reading {
-        inner: <T as ReadFromAsync>::Future,
+        vfs: Pin<&'a Vfs>,
+        inner: <T as ReadFromAsync<'a, Vfs>>::Future,
         path: PathBuf,
     },
     Writing {
-        inner: <T as WriteToAsyncOwned<'a>>::Future,
+        inner: <T as WriteToAsyncOwned<'a, Vfs>>::Future,
     },
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> Future for DeferredReadWriteFuture<'a, T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for DeferredReadWriteFuture<'a, T, Vfs>
 where
-    T: ReadFromAsync + WriteToAsyncOwned<'a> + Send + 'static,
-    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
-    <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: ReadFromAsync<'a, Vfs> + WriteToAsyncOwned<'a, Vfs> + Send + 'static,
+    <T as ReadFromAsync<'a, Vfs>>::Future: Future<Output = Result<T>> + Unpin,
+    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
     type Output = Result<()>;
 
@@ -175,22 +183,24 @@ where
         let this = self.as_mut().project_replace(Self::Poisson);
         match this {
             DeferredReadWriteFutureProj::SamePath => Poll::Ready(Ok(())),
-            DeferredReadWriteFutureProj::Reading { mut inner, path } => {
-                match Pin::new(&mut inner).poll(cx) {
-                    Poll::Ready(Ok(v)) => {
-                        self.project_replace(Self::Writing {
-                            inner: v.write_to_async_owned(path),
-                        });
-                        cx.waker().wake_by_ref();
-                        Poll::Pending
-                    }
-                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
-                    Poll::Pending => {
-                        self.project_replace(Self::Reading { inner, path });
-                        Poll::Pending
-                    }
+            DeferredReadWriteFutureProj::Reading {
+                mut inner,
+                vfs,
+                path,
+            } => match Pin::new(&mut inner).poll(cx) {
+                Poll::Ready(Ok(v)) => {
+                    self.project_replace(Self::Writing {
+                        inner: v.write_to_async_owned(path, vfs),
+                    });
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
                 }
-            }
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                Poll::Pending => {
+                    self.project_replace(Self::Reading { inner, path, vfs });
+                    Poll::Pending
+                }
+            },
             DeferredReadWriteFutureProj::Writing { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(Ok(())) => Poll::Ready(Ok(())),
@@ -212,18 +222,18 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T> WriteToAsync for DeferredRead<T>
+impl<'f, T, Vfs: crate::VfsAsync + 'f> WriteToAsync<Vfs> for DeferredRead<'f, T, Vfs>
 where
-    T: ReadFromAsync + for<'a> WriteToAsyncOwned<'a> + Send + 'static,
-    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
-    for<'a> <T as WriteToAsyncOwned<'a>>::Future: Future<Output = Result<()>> + Unpin,
+    T: for<'a> ReadFromAsync<'a, Vfs> + for<'a> WriteToAsyncOwned<'a, Vfs> + Send + 'static,
+    for<'a> <T as ReadFromAsync<'a, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'a,
+    for<'a> <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
     type Future<'a>
-        = DeferredReadWriteFuture<'a, T>
+        = DeferredReadWriteFuture<'a, T, Vfs>
     where
         Self: 'a;
 
-    fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
         if path == self.0 {
             // Optimization: We were asked to write to the same path
             // we are supposed to read from. We can just ignore it, since
@@ -236,23 +246,24 @@ where
         }
 
         DeferredReadWriteFuture::Reading {
-            inner: T::read_from_async(self.0.clone()),
+            inner: T::read_from_async(self.0.clone(), vfs),
             path,
+            vfs,
         }
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T> WriteToAsyncOwned<'a> for DeferredRead<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'a> WriteToAsyncOwned<'a, Vfs> for DeferredRead<'a, T, Vfs>
 where
-    T: ReadFromAsync + for<'b> WriteToAsyncOwned<'b> + Send + 'static,
-    <T as ReadFromAsync>::Future: Future<Output = Result<T>> + Unpin,
-    for<'b> <T as WriteToAsyncOwned<'b>>::Future: Future<Output = Result<()>> + Unpin,
+    T: ReadFromAsync<'a, Vfs> + for<'b> WriteToAsyncOwned<'b, Vfs> + Send + 'static,
+    <T as ReadFromAsync<'a, Vfs>>::Future: Future<Output = Result<T>> + Unpin,
+    for<'b> <T as WriteToAsyncOwned<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
-    type Future = DeferredReadWriteFuture<'a, T>;
+    type Future = DeferredReadWriteFuture<'a, T, Vfs>;
 
-    fn write_to_async_owned(self, path: PathBuf) -> Self::Future {
+    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         if path == self.0 {
             // Optimization: We were asked to write to the same path
             // we are supposed to read from. We can just ignore it, since
@@ -265,15 +276,16 @@ where
         }
 
         DeferredReadWriteFuture::Reading {
-            inner: T::read_from_async(self.0),
+            inner: T::read_from_async(self.0, vfs),
             path,
+            vfs,
         }
     }
 }
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for DeferredRead<T>
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T, Vfs> HasField<NAME> for DeferredRead<'_, T, Vfs>
 where
     T: HasField<NAME>,
 {
@@ -286,7 +298,7 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<T> DynamicHasField for DeferredRead<T>
+impl<T, Vfs> DynamicHasField for DeferredRead<'_, T, Vfs>
 where
     T: DynamicHasField,
 {

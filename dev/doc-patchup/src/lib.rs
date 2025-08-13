@@ -158,6 +158,12 @@ pub enum PerformEndError {
 }
 
 pub fn perform_end(code: &Code, p: &Path, check_mode: bool) -> Result<(), PerformEndError> {
+    if code.write_doctests {
+        let name = p.file_name().unwrap().to_str().unwrap();
+        let new_name = format!(".{name}.doctests");
+        fs::write(p.with_file_name(new_name), &code.all_code_for_doctests)?;
+    }
+
     if check_mode {
         if code.before == code.after {
             return Ok(());
@@ -181,12 +187,6 @@ pub fn perform_end(code: &Code, p: &Path, check_mode: bool) -> Result<(), Perfor
         fs::write(p, &code.after)?;
     } else {
         return Ok(());
-    }
-
-    if code.write_doctests {
-        let name = p.file_name().unwrap().to_str().unwrap();
-        let new_name = format!(".{name}.doctests");
-        fs::write(p.with_file_name(new_name), &code.all_code_for_doctests)?;
     }
 
     Ok(())

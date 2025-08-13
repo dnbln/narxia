@@ -1,13 +1,14 @@
+#![feature(impl_trait_in_assoc_type)]
+
 use std::path::Path;
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
 use dir_structure::DirChild;
 use dir_structure::DirChildren;
-use dir_structure::DirStructureItem;
+use dir_structure::FsVfs;
 use dir_structure::ReadFrom;
 #[cfg(feature = "async")]
 use dir_structure::ReadFromAsync;
@@ -47,7 +48,7 @@ fn write_simple() {
         f2: "f2".to_owned(),
         f3: "f3".to_owned(),
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
@@ -73,7 +74,7 @@ fn write_simple_with_subdir() {
         f2: "f2".to_owned(),
         f3: "f3".to_owned(),
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
@@ -109,7 +110,7 @@ fn write_simple_nested() {
         },
         f3: "f3".to_owned(),
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
@@ -137,7 +138,7 @@ fn read_simple() {
         f3: String,
     }
 
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -161,7 +162,7 @@ fn read_simple_with_subdir() {
         f3: String,
     }
 
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -190,7 +191,7 @@ fn read_simple_nested() {
         f2: String,
     }
 
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.subdir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -214,7 +215,7 @@ fn read_numbers() {
         f3: u32,
     }
 
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.f1, 1);
     assert_eq!(dir.f2, 2);
     assert_eq!(dir.f3, 3);
@@ -239,7 +240,7 @@ fn write_numbers() {
         f2: 2,
         f3: 3,
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "1");
@@ -250,15 +251,15 @@ fn write_numbers() {
 #[test]
 fn deferred_read() {
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
+    struct FDir<'vfs, Vfs> {
         #[dir_structure(path = "f1.txt")]
-        f: dir_structure::DeferredRead<String>,
+        f: dir_structure::DeferredRead<'vfs, String, Vfs>,
     }
 
     let p = test_dir("deferred_read");
     let d = p.join("dir");
     std::fs::create_dir_all(&d).unwrap();
-    let r = Dir::read_from(&d);
+    let r = FDir::read_from(&d, Pin::new(&FsVfs));
     assert!(r.is_ok());
     let dir = r.unwrap();
     assert!(dir.f.perform_read().is_err());
@@ -280,7 +281,7 @@ fn read_all_directory_files() {
     std::fs::write(subdir.join("f1.txt"), "f1").unwrap();
     std::fs::write(subdir.join("f2.txt"), "f2").unwrap();
     std::fs::write(subdir.join("f3"), "f3").unwrap();
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.subdir.len(), 3);
     assert_eq!(dir.subdir.get_name("f1.txt").unwrap().value(), "f1");
     assert_eq!(dir.subdir.get_name("f2.txt").unwrap().value(), "f2");
@@ -307,7 +308,7 @@ fn write_subdirectory_children() {
             ],
         ),
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
     let mut len = 0;
     for file in subdir.read_dir().unwrap() {
@@ -350,7 +351,7 @@ fn parse_dirs_inner_with_self_path() {
     let subdir = d.join("subdir");
     std::fs::create_dir_all(&subdir).unwrap();
     std::fs::write(subdir.join("f.txt"), "f").unwrap();
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(dir.subdirs.len(), 1);
     assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
 }
@@ -373,7 +374,7 @@ fn clean_dir_writer() {
         f2: "f2".to_owned(),
         f3: "f3".to_owned(),
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
@@ -386,7 +387,7 @@ fn clean_dir_writer() {
         f2: "f2".to_owned(),
         f3: "f3".to_owned(),
     })
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
@@ -421,7 +422,7 @@ fn clean_dir_writer_newtype() {
             f3: "f3".to_owned(),
         },
     }
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(
@@ -442,7 +443,7 @@ fn clean_dir_writer_newtype() {
             f3: "f3".to_owned(),
         },
     })
-    .write_to(&d)
+    .write_to(&d, Pin::new(&FsVfs))
     .unwrap();
 
     assert_eq!(
@@ -471,18 +472,18 @@ fn versioned_works() {
     std::fs::create_dir_all(&d).unwrap();
     std::fs::write(d.join("f1.txt"), "f1").unwrap();
 
-    let dir = Dir::read_from(&d).unwrap();
+    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
     assert_eq!(*dir.f1, "f1");
 
-    dir.write_to(&d).unwrap();
+    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
 
-    let mut dir = Dir::read_from(&d).unwrap();
+    let mut dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
 
     assert_eq!(*dir.f1, "f1");
 
     *dir.f1 = "f2".to_owned();
 
-    dir.write_to(&d).unwrap();
+    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
 }
@@ -494,53 +495,53 @@ fn versioned_doesnt_call_write_if_not_changed() {
         inner: T,
     }
 
-    impl<T: DirStructureItem> ReadFrom for WriteCounter<T> {
-        fn read_from(path: &Path) -> dir_structure::Result<Self> {
+    impl<'a, Vfs: dir_structure::Vfs, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
+        fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::Result<Self> {
             Ok(Self {
                 count: AtomicUsize::new(0),
-                inner: T::read_from(path)?,
+                inner: T::read_from(path, vfs)?,
             })
         }
     }
 
-    impl<T: DirStructureItem> WriteTo for WriteCounter<T> {
-        fn write_to(&self, path: &Path) -> dir_structure::Result<()> {
+    impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
+        fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<()> {
             self.count.fetch_add(1, Ordering::SeqCst);
-            self.inner.write_to(path)
+            self.inner.write_to(path, vfs)
         }
     }
 
     #[cfg(feature = "async")]
-    impl<T> ReadFromAsync for WriteCounter<T>
+    impl<'vfs, T, Vfs: dir_structure::VfsAsync + 'vfs> ReadFromAsync<'vfs, Vfs> for WriteCounter<T>
     where
-        T: ReadFromAsync + Send + Sync + 'static,
+        T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
     {
-        type Future = Pin<Box<dyn Future<Output = dir_structure::Result<Self>> + Send + 'static>>;
+        type Future = Pin<Box<dyn Future<Output = dir_structure::Result<Self>> + Send + 'vfs>>;
 
-        fn read_from_async(path: PathBuf) -> Self::Future {
+        fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
             Box::pin(async move {
                 Ok(Self {
                     count: AtomicUsize::new(0),
-                    inner: T::read_from_async(path).await?,
+                    inner: T::read_from_async(path, vfs).await?,
                 })
             })
         }
     }
 
     #[cfg(feature = "async")]
-    impl<T> WriteToAsync for WriteCounter<T>
+    impl<T, Vfs: dir_structure::VfsAsync + 'static> WriteToAsync<Vfs> for WriteCounter<T>
     where
-        T: WriteToAsync + Send + Sync + 'static,
+        T: WriteToAsync<Vfs> + Send + Sync + 'static,
     {
         type Future<'a>
             = Pin<Box<dyn Future<Output = dir_structure::Result<()>> + Send + 'a>>
         where
             Self: 'a;
 
-        fn write_to_async(&self, path: PathBuf) -> Self::Future<'_> {
+        fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
             Box::pin(async move {
                 self.count.fetch_add(1, Ordering::SeqCst);
-                self.inner.write_to_async(path).await
+                self.inner.write_to_async(path, vfs).await
             })
         }
     }
@@ -564,19 +565,19 @@ fn versioned_doesnt_call_write_if_not_changed() {
         ),
     };
 
-    dir.write_to(&d).unwrap();
+    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
 
-    let mut dir = Dir::read_from(&d).unwrap();
+    let mut dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 
-    dir.write_to(&d).unwrap();
+    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 
     dir.f1.inner = "f2".to_owned();
 
-    dir.write_to(&d).unwrap();
+    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 1);

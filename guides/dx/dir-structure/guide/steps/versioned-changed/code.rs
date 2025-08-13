@@ -10,10 +10,10 @@ use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrO
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<'vfs, Vfs> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -21,15 +21,15 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir {
+struct SubDir<'vfs, Vfs> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    input: DeferredReadOrOwn<Versioned<String>>,
+    input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    output: DeferredReadOrOwn<Versioned<String>>,
+    output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
 }
 
 // !hidden let path = "dir";

@@ -6,7 +6,11 @@ pub struct StreamingFileWriter {
 
 impl StreamingFileWriter {
     pub fn new(path: &Path) -> Result<Self> {
-        utils::create_parent_dir(path)?;
+        if let Some(parent) = path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent).wrap_io_error_with(parent)?;
+            }
+        }
         let f = File::create(path).wrap_io_error_with(path)?;
         Ok(Self { f })
     }
@@ -14,7 +18,7 @@ impl StreamingFileWriter {
 
 impl std::io::Write for StreamingFileWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.f.write(buf)
+        <File as std::io::Write>::write(&mut self.f, buf)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

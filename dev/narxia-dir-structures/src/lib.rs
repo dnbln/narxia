@@ -34,21 +34,21 @@ pub mod parser_tests {
     pub const OUTPUT_FILE_NAME: &str = "output.txt";
 
     #[derive(DirStructure, Clone)]
-    pub struct ParserTestSingleFolder {
+    pub struct ParserTestSingleFolder<'vfs, Vfs> {
         #[dir_structure(path = "input.nrx")]
-        pub input: DeferredReadOrOwn<FileString>,
+        pub input: DeferredReadOrOwn<'vfs, FileString, Vfs>,
         #[dir_structure(path = "output.txt")]
-        pub output: Option<DeferredReadOrOwn<FileString>>,
+        pub output: Option<DeferredReadOrOwn<'vfs, FileString, Vfs>>,
         pub self_path: PathBuf,
     }
 
-    impl ParserTestSingleFolder {
+    impl<'vfs, Vfs> ParserTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            self.self_path.join(INPUT_FILE_NAME)
+            dir_structure::resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            self.self_path.join(OUTPUT_FILE_NAME)
+            dir_structure::resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 }
@@ -67,21 +67,21 @@ pub mod name_resolution_tests {
     }
 
     #[derive(DirStructure, Clone)]
-    pub struct NameResolutionTestSingleFolder {
+    pub struct NameResolutionTestSingleFolder<'vfs, Vfs> {
         #[dir_structure(path = "input.nrx")]
-        pub input: DeferredReadOrOwn<FileString>,
+        pub input: DeferredReadOrOwn<'vfs, FileString, Vfs>,
         #[dir_structure(path = "output.txt")]
-        pub output: Option<DeferredReadOrOwn<FileString>>,
+        pub output: Option<DeferredReadOrOwn<'vfs, FileString, Vfs>>,
         pub self_path: PathBuf,
     }
 
-    impl NameResolutionTestSingleFolder {
+    impl<'vfs, Vfs> NameResolutionTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([NameResolutionTestSingleFolder @ self.self_path.clone()].input)
+            dir_structure::resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([NameResolutionTestSingleFolder @ self.self_path.clone()].output)
+            dir_structure::resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 }
@@ -100,21 +100,21 @@ pub mod ssa_tests {
     }
 
     #[derive(DirStructure, Clone)]
-    pub struct SsaTestSingleFolder {
+    pub struct SsaTestSingleFolder<'vfs, Vfs> {
         #[dir_structure(path = "input.nrx")]
-        pub input: DeferredReadOrOwn<FileString>,
+        pub input: DeferredReadOrOwn<'vfs, FileString, Vfs>,
         #[dir_structure(path = "output.nrxssa")]
-        pub output: Option<DeferredReadOrOwn<FileString>>,
+        pub output: Option<DeferredReadOrOwn<'vfs, FileString, Vfs>>,
         pub self_path: PathBuf,
     }
 
-    impl SsaTestSingleFolder {
+    impl<'vfs, Vfs> SsaTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([SsaTestSingleFolder @ self.self_path.clone()].input)
+            dir_structure::resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([SsaTestSingleFolder @ self.self_path.clone()].output)
+            dir_structure::resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 }

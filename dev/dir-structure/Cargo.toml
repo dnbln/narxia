@@ -17,7 +17,7 @@ json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
 ron = ["dep:serde", "dep:ron"]
-async = ["dep:pin-project", "dir-structure-macros/async"]
+async = ["dep:pin-project", "dep:futures-core", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
 resolve-path = ["dir-structure-macros/resolve-path"]
 
@@ -26,6 +26,7 @@ tokio = { version = "1", features = ["full"] }
 
 [dependencies]
 dir-structure-macros.workspace = true
+futures-core = { version = "0.3", optional = true, default-features = false }
 thiserror.workspace = true
 pin-project = {workspace = true, optional = true }
 ron = { version = "0.8", optional = true, default-features = false }

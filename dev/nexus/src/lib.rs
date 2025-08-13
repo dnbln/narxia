@@ -26,6 +26,7 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
+use dir_structure::FsVfs;
 use doc_patchup::PerformEndError;
 use doc_patchup::doc_extract;
 use doc_patchup::doc_extract::Session;
@@ -133,7 +134,7 @@ impl BuildSysCmd {
             }
             Self::CollectParserTests => {
                 let mut item = cx.new_child("collect parser tests");
-                collect_tests_from_source::<ParserTestSingleFolder>(
+                collect_tests_from_source::<ParserTestSingleFolder<FsVfs>>(
                     "crates/narxia-syn/src/**/*.rs",
                     "// parser-test:",
                     &mut item,
@@ -141,7 +142,7 @@ impl BuildSysCmd {
             }
             Self::CollectNameResolutionTests => {
                 let mut item = cx.new_child("collect name resolution tests");
-                collect_tests_from_source::<NameResolutionTestSingleFolder>(
+                collect_tests_from_source::<NameResolutionTestSingleFolder<FsVfs>>(
                     "crates/narxia-hir-typechk/src/**/*.rs",
                     "// name-resolution-test:",
                     &mut item,
@@ -149,7 +150,7 @@ impl BuildSysCmd {
             }
             Self::CollectSSATests => {
                 let mut item = cx.new_child("collect ssa tests");
-                collect_tests_from_source::<SsaTestSingleFolder>(
+                collect_tests_from_source::<SsaTestSingleFolder<FsVfs>>(
                     "crates/narxia-ssa-lower/src/**/*.rs",
                     "// ssa-test:",
                     &mut item,
@@ -338,12 +339,12 @@ fn render_guide(
     Ok(())
 }
 
-trait GenericTestDirType: DirStructure {
+trait GenericTestDirType: DirStructure + dir_structure::WriteTo<dir_structure::FsVfs> {
     fn path_to_write_to(&self) -> &Path;
     fn from_name_and_code(name: &str, code: String) -> Self;
 }
 
-impl GenericTestDirType for ParserTestSingleFolder {
+impl GenericTestDirType for ParserTestSingleFolder<'_, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }
@@ -357,7 +358,7 @@ impl GenericTestDirType for ParserTestSingleFolder {
     }
 }
 
-impl GenericTestDirType for NameResolutionTestSingleFolder {
+impl GenericTestDirType for NameResolutionTestSingleFolder<'_, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }
@@ -371,7 +372,7 @@ impl GenericTestDirType for NameResolutionTestSingleFolder {
     }
 }
 
-impl GenericTestDirType for SsaTestSingleFolder {
+impl GenericTestDirType for SsaTestSingleFolder<'_, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }

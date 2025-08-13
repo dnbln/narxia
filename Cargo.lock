@@ -692,6 +692,7 @@ name = "dir-structure"
 version = "0.1.6"
 dependencies = [
  "dir-structure-macros",
+ "futures-core",
  "pin-project",
  "ron",
  "serde",

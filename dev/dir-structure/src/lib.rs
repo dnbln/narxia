@@ -145,8 +145,6 @@ mod std_types;
 mod traits;
 mod versioned;
 
-mod utils;
-
 #[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
 mod sfw;
 
@@ -160,7 +158,10 @@ pub use fmt_wrapper::*;
 pub use std_types::*;
 #[cfg(feature = "async")]
 pub use traits::asy::*;
+#[cfg(feature = "async")]
+pub use traits::async_vfs::*;
 #[cfg(feature = "resolve-path")]
 pub use traits::resolve::*;
 pub use traits::sync::*;
+pub use traits::vfs::*;
 pub use versioned::*;

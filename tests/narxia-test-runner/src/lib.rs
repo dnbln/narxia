@@ -4,6 +4,7 @@ pub extern crate narxia_dir_structures;
 
 pub mod parser_tests {
     use dir_structure::DirStructureItem;
+    use dir_structure::FsVfs;
     use miette::bail;
     use miette::IntoDiagnostic;
     use narxia_dir_structures::parser_tests::parser_tests_dir;
@@ -27,7 +28,7 @@ pub mod parser_tests {
     }
 
     pub fn lower_to_hir<'db>(
-        folder: &mut ParserTestSingleFolder,
+        folder: &mut ParserTestSingleFolder<FsVfs>,
         ctx: &'db DriverCtx,
     ) -> miette::Result<HirFile<'db>> {
         let input = folder
@@ -39,15 +40,16 @@ pub mod parser_tests {
         do_lower_to_hir(src_file, ctx)
     }
 
-    dir_structure::dir_children_wrapper!(pub ParserTestsFolder ParserTestSingleFolder);
+    dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder);
 
-    pub fn collect_parser_tests() -> miette::Result<ParserTestsFolder> {
-        ParserTestsFolder::read(parser_tests_dir()).into_diagnostic()
+    pub fn collect_parser_tests() -> miette::Result<ParserTestsFolder<'static, FsVfs>> {
+        ParserTestsFolder::<FsVfs>::read(parser_tests_dir()).into_diagnostic()
     }
 }
 
 pub mod name_resolution_tests {
     use dir_structure::DirStructureItem;
+    use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_data_structures::FxBTreeMap;
     use narxia_dir_structures::name_resolution_tests::name_resolution_tests_dir;
@@ -60,10 +62,10 @@ pub mod name_resolution_tests {
 
     use crate::parser_tests::do_lower_to_hir;
 
-    dir_structure::dir_children_wrapper!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
+    dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
 
     pub fn name_resolution(
-        folder: &mut NameResolutionTestSingleFolder,
+        folder: &mut NameResolutionTestSingleFolder<FsVfs>,
         ctx: &DriverCtx,
     ) -> miette::Result<(SemanticAnalysisResult, FxBTreeMap<HirId, DefId>)> {
         let input = folder
@@ -91,13 +93,15 @@ pub mod name_resolution_tests {
         ))
     }
 
-    pub fn collect_name_resolution_tests() -> miette::Result<NameResolutionTestsFolder> {
-        NameResolutionTestsFolder::read(name_resolution_tests_dir()).into_diagnostic()
+    pub fn collect_name_resolution_tests(
+    ) -> miette::Result<NameResolutionTestsFolder<'static, FsVfs>> {
+        NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir()).into_diagnostic()
     }
 }
 
 pub mod ssa_tests {
     use dir_structure::DirStructureItem;
+    use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_dir_structures::ssa_tests::ssa_tests_dir;
     use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
@@ -108,9 +112,9 @@ pub mod ssa_tests {
 
     use crate::parser_tests::do_lower_to_hir;
 
-    dir_structure::dir_children_wrapper!(pub SsaTestsFolder SsaTestSingleFolder);
+    dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder);
 
-    pub fn ssa(folder: &mut SsaTestSingleFolder, ctx: &DriverCtx) -> miette::Result<Module> {
+    pub fn ssa(folder: &mut SsaTestSingleFolder<FsVfs>, ctx: &DriverCtx) -> miette::Result<Module> {
         let input = folder
             .input
             .perform_and_store_read()
@@ -134,8 +138,8 @@ pub mod ssa_tests {
         Ok(narxia_ssa_lower::convert(tcx, &hir_map, mod_id))
     }
 
-    pub fn collect_ssa_tests() -> miette::Result<SsaTestsFolder> {
-        SsaTestsFolder::read(ssa_tests_dir()).into_diagnostic()
+    pub fn collect_ssa_tests() -> miette::Result<SsaTestsFolder<'static, FsVfs>> {
+        SsaTestsFolder::<FsVfs>::read(ssa_tests_dir()).into_diagnostic()
     }
 }
 
@@ -170,7 +174,7 @@ macro_rules! parser_test_trials {
 #[macro_export]
 macro_rules! test_main_parser_tests_foreach {
     (|$name:ident| { $($do:tt)* }) => {
-        fn __trial($name: $crate::narxia_dir_structures::parser_tests::ParserTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_dir_structures::parser_tests::ParserTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
 
@@ -215,7 +219,7 @@ macro_rules! name_resolution_tests_trials {
 #[macro_export]
 macro_rules! test_main_name_resolution_tests_foreach {
     (|$name:ident| { $($do:tt)* }) => {
-        fn __trial($name: $crate::narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
         $crate::name_resolution_tests_trials!(__collect_trials, __trial);
@@ -259,7 +263,7 @@ macro_rules! ssa_tests_trials {
 #[macro_export]
 macro_rules! test_main_ssa_tests_foreach {
     (|$name:ident| {$($do:tt)*}) => {
-        fn __trial($name: $crate::narxia_dir_structures::ssa_tests::SsaTestSingleFolder) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_dir_structures::ssa_tests::SsaTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
 
