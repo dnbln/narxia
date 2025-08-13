@@ -1,8 +1,10 @@
 use std::collections::BTreeSet;
 
+use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
+use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {
@@ -28,10 +30,7 @@ fn format_resolution(
     format!("{id:?} -> {:?}", tcx.lookup_def_id(def_id))
 }
 
-fn run_test(
-    mut test: narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder,
-    mode: TestMode,
-) -> miette::Result<()> {
+fn run_test(mut test: NameResolutionTestSingleFolder<FsVfs>, mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let (_sema_result, names) =
         narxia_test_runner::name_resolution_tests::name_resolution(&mut test, &ctx)?;

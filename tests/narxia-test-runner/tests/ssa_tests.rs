@@ -1,3 +1,4 @@
+use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
@@ -19,7 +20,7 @@ impl TestMode {
     }
 }
 
-fn trial(mut test: SsaTestSingleFolder) -> miette::Result<()> {
+fn trial(mut test: SsaTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let test_mode = TestMode::get_behavior();
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let ssa_mod = narxia_test_runner::ssa_tests::ssa(&mut test, &ctx)?;

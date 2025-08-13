@@ -15,6 +15,7 @@
 
 use std::fmt::Write as _;
 
+use dir_structure::FsVfs;
 use dir_structure::NewtypeToInner;
 use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
@@ -97,7 +98,7 @@ fn trivia_tokens(input: &str) -> Vec<std::ops::Range<usize>> {
     ranges
 }
 
-fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
+fn run_test(mut test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let orig = test.input.get().into_diagnostic()?.into_inner();
     let hir = lower_to_hir(&mut test, &ctx)?;

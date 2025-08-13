@@ -2,6 +2,7 @@
 //!
 //! This is useful to ensure that the visitor is not missing any HIR nodes.
 
+use dir_structure::FsVfs;
 use miette::bail;
 use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
@@ -24,7 +25,7 @@ impl<'hir> HirVisitor<'hir> for Visitor<'hir> {
     }
 }
 
-fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
+fn run_test(mut test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let hir = lower_to_hir(&mut test, &ctx)?;
     ctx.trace_hir_file(hir);

@@ -1,6 +1,7 @@
 //! This test checks that there are no orphan hir_ids after the parent
 //! of each hir_id is computed, except for the root module.
 
+use dir_structure::FsVfs;
 use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
 use hir::HirIdNewtype;
@@ -41,7 +42,7 @@ impl<'hir> HirVisitor<'hir> for OrphanHirIdVisitor<'hir> {
     }
 }
 
-fn run_test(mut test: ParserTestSingleFolder) -> miette::Result<()> {
+fn run_test(mut test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let hir = lower_to_hir(&mut test, &ctx)?;
 

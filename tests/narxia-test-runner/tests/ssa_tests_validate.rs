@@ -1,8 +1,9 @@
+use dir_structure::FsVfs;
 use miette::bail;
 use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
 use narxia_test_runner::ssa_tests;
 
-fn trial(mut test: SsaTestSingleFolder) -> miette::Result<()> {
+fn trial(mut test: SsaTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let span = narxia_log::einfo_span!("ssa_tests_validate");
     let ssa_mod = ssa_tests::ssa(&mut test, &ctx)?;

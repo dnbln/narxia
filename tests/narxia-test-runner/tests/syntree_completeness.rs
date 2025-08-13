@@ -14,6 +14,7 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
+use dir_structure::FsVfs;
 use miette::bail;
 use miette::IntoDiagnostic;
 use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
@@ -59,7 +60,7 @@ fn acdl_contains(acdl: &AccessorCalledDataList, chk: impl Fn(&ElemRef) -> bool) 
     false
 }
 
-fn run_for_test(test: ParserTestSingleFolder) -> miette::Result<()> {
+fn run_for_test(test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let input = test.input.get().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);

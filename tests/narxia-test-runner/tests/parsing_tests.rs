@@ -13,6 +13,7 @@
 // - Compare: The parser will compare the pretty-printed version of the parse tree with the
 //   contents of the `output.txt` file. If they don't match, the test fails.
 
+use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
@@ -35,7 +36,7 @@ impl TestMode {
     }
 }
 
-fn run_test(test: ParserTestSingleFolder, test_mode: TestMode) -> miette::Result<()> {
+fn run_test(test: ParserTestSingleFolder<FsVfs>, test_mode: TestMode) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();
     let input = test.input.get().into_diagnostic()?;
     let src_file = narxia_driver::load_file(&ctx, test.input_file_path(), &input.0);
