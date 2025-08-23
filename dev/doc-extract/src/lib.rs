@@ -101,6 +101,7 @@ impl Session {
             let (term_name, ends_with_hash) = symbol
                 .strip_suffix('#')
                 .map_or((symbol, false), |f| (f, true));
+            // eprintln!("Searching for term name: {term_name}, ends_with_hash: {ends_with_hash}");
             let (root_name, term_name) = match term_name.split_once("::") {
                 Some((root, term)) => (Some(root), term),
                 None => (None, term_name),
@@ -113,6 +114,7 @@ impl Session {
                         ..Default::default()
                     },
                     |result| {
+                        // eprintln!("Result: {result:?}");
                         tx.send(result).expect("unable to send to receiver");
                     },
                 )
@@ -289,7 +291,7 @@ fn prepare_command() -> Child {
     Command::new("rust-analyzer")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .expect("Failed to start rust-analyzer process")
 }

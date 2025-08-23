@@ -1,3 +1,4 @@
+// !req-feature json
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem

@@ -1,333 +1,334 @@
----
-title: Plumbing the Depths
-full: true
----
-
-<UnderConstruction/>
-
-This is a guide for the internals of the `dir-structure` library.
-After reading this, you should be able to understand a bit about how the
-library works, and how to extend it. In this guide, we will be extending
-it to support a new type of wrapper, `FsMtime`, which will allow us to
-read and write the modification time of files.
-
-<ScrollyCoding>
-
- ## !!steps Begin
-
-Let's start by defining the wrapper type first.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::time::SystemTime;
-
-// !collapse(1:4)
-// !mark(1:4)
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-```
-
- ## !!steps ReadFrom
-
-Now, we need to implement the `ReadFrom` trait for our wrapper type.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !mark(1:5)
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        todo!()
-    }
-}
-```
-
- ## !!steps Metadata
-
-Let's grab the metadata of the file and read the modification time.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        // !mark(1:3)
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        todo!()
-    }
-}
-```
-
- ## !!steps ReadFrom Value
-
-Now, we need to read the inner value from the path.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        // !mark
-        let value = T::read_from(path, vfs)?;
-        todo!()
-    }
-}
-```
-
- ## !!steps Return
-
-Finally, we return the wrapper type with the modification time and the inner value.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !collapse(1:9)
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        let value = T::read_from(path, vfs)?;
-        // !mark
-        Ok(FsMtime { mtime, value })
-    }
-}
-```
-
- ## !!steps WriteTo
-
-Now, we need to implement the `WriteTo` trait for our wrapper type.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !collapse(1:9) collapsed
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        let value = T::read_from(path, vfs)?;
-        Ok(FsMtime { mtime, value })
-    }
-}
-
-// !mark(1:6)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-        todo!();
-        Ok(())
-    }
-}
-```
-
- ## !!steps Write the value
-
-We first need to write the inner value to the path.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !collapse(1:9) collapsed
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        let value = T::read_from(path, vfs)?;
-        Ok(FsMtime { mtime, value })
-    }
-}
-
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-        // !mark
-        self.value.write_to(path, vfs)?;
-        todo!();
-        Ok(())
-    }
-}
-```
-
-
- ## !!steps Write the mtime
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
-
-// !collapse(1:4) collapsed
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !collapse(1:9) collapsed
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        let value = T::read_from(path, vfs)?;
-        Ok(FsMtime { mtime, value })
-    }
-}
-
-// !collapse(1:9)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-        self.value.write_to(path, vfs)?;
-        // !mark(1:3)
-        std::fs::File::open(path)
-            .and_then(|f| f.set_modified(self.mtime))
-            .wrap_io_error_with(path)?;
-        Ok(())
-    }
-}
-```
-
- ## !!steps End
-
-And that's it! We have implemented a new wrapper type that allows us to read
-and write the modification time of files. Let's see how to use this wrapper
-in practice.
-
-```rust,no_run
-#![deny(unused_imports)]
-
-use std::path::Path;
-use std::pin::Pin;
-use std::time::SystemTime;
-
-use dir_structure::{DirStructure, DirStructureItem, ReadFrom, Result, WrapIoError, WriteTo};
-
-// !collapse(1:4)
-struct FsMtime<T> {
-    mtime: SystemTime,
-    value: T,
-}
-
-// !collapse(1:9)
-impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        let mtime = path.metadata()
-            .and_then(|m| m.modified())
-            .wrap_io_error_with(path)?;
-        let value = T::read_from(path, vfs)?;
-        Ok(FsMtime { mtime, value })
-    }
-}
-
-// !collapse(1:9)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-        self.value.write_to(path, vfs)?;
-        std::fs::File::open(path)
-            .and_then(|f| f.set_modified(self.mtime))
-            .wrap_io_error_with(path)?;
-        Ok(())
-    }
-}
-
-// !mark(1:9)
-// !collapse(1:5)
-#[derive(DirStructure)]
-struct Dir {
-    #[dir_structure(path = "file.txt")]
-    file: FsMtime<String>,
-}
-
-let path = "dir";
-let mut dir = Dir::read(path)?;
-dir.file.mtime = SystemTime::UNIX_EPOCH;
-dir.write(path)?;
-Ok::<_, dir_structure::Error>(())
-
-```
-
-</ScrollyCoding>
+/// ---
+/// title: Plumbing the Depths
+/// full: true
+/// ---
+/// 
+/// <UnderConstruction/>
+/// 
+/// This is a guide for the internals of the `dir-structure` library.
+/// After reading this, you should be able to understand a bit about how the
+/// library works, and how to extend it. In this guide, we will be extending
+/// it to support a new type of wrapper, `FsMtime`, which will allow us to
+/// read and write the modification time of files.
+/// 
+/// <ScrollyCoding>
+/// 
+///  ## !!steps Begin
+/// 
+/// Let's start by defining the wrapper type first.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::time::SystemTime;
+/// 
+/// // !collapse(1:4)
+/// // !mark(1:4)
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// ```
+/// 
+///  ## !!steps ReadFrom
+/// 
+/// Now, we need to implement the `ReadFrom` trait for our wrapper type.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !mark(1:5)
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         todo!()
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps Metadata
+/// 
+/// Let's grab the metadata of the file and read the modification time.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         // !mark(1:3)
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         todo!()
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps ReadFrom Value
+/// 
+/// Now, we need to read the inner value from the path.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         // !mark
+///         let value = T::read_from(path, vfs)?;
+///         todo!()
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps Return
+/// 
+/// Finally, we return the wrapper type with the modification time and the inner value.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !collapse(1:9)
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         let value = T::read_from(path, vfs)?;
+///         // !mark
+///         Ok(FsMtime { mtime, value })
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps WriteTo
+/// 
+/// Now, we need to implement the `WriteTo` trait for our wrapper type.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !collapse(1:9) collapsed
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         let value = T::read_from(path, vfs)?;
+///         Ok(FsMtime { mtime, value })
+///     }
+/// }
+/// 
+/// // !mark(1:6)
+/// impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+///         todo!();
+///         Ok(())
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps Write the value
+/// 
+/// We first need to write the inner value to the path.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !collapse(1:9) collapsed
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         let value = T::read_from(path, vfs)?;
+///         Ok(FsMtime { mtime, value })
+///     }
+/// }
+/// 
+/// impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+///         // !mark
+///         self.value.write_to(path, vfs)?;
+///         todo!();
+///         Ok(())
+///     }
+/// }
+/// ```
+/// 
+/// 
+///  ## !!steps Write the mtime
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{ReadFrom, Result, WrapIoError, WriteTo};
+/// 
+/// // !collapse(1:4) collapsed
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !collapse(1:9) collapsed
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         let value = T::read_from(path, vfs)?;
+///         Ok(FsMtime { mtime, value })
+///     }
+/// }
+/// 
+/// // !collapse(1:9)
+/// impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+///         self.value.write_to(path, vfs)?;
+///         // !mark(1:3)
+///         std::fs::File::open(path)
+///             .and_then(|f| f.set_modified(self.mtime))
+///             .wrap_io_error_with(path)?;
+///         Ok(())
+///     }
+/// }
+/// ```
+/// 
+///  ## !!steps End
+/// 
+/// And that's it! We have implemented a new wrapper type that allows us to read
+/// and write the modification time of files. Let's see how to use this wrapper
+/// in practice.
+/// 
+/// ```rust,no_run
+/// #![deny(unused_imports)]
+/// 
+/// use std::path::Path;
+/// use std::pin::Pin;
+/// use std::time::SystemTime;
+/// 
+/// use dir_structure::{DirStructure, DirStructureItem, ReadFrom, Result, WrapIoError, WriteTo};
+/// 
+/// // !collapse(1:4)
+/// struct FsMtime<T> {
+///     mtime: SystemTime,
+///     value: T,
+/// }
+/// 
+/// // !collapse(1:9)
+/// impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+///         let mtime = path.metadata()
+///             .and_then(|m| m.modified())
+///             .wrap_io_error_with(path)?;
+///         let value = T::read_from(path, vfs)?;
+///         Ok(FsMtime { mtime, value })
+///     }
+/// }
+/// 
+/// // !collapse(1:9)
+/// impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+///         self.value.write_to(path, vfs)?;
+///         std::fs::File::open(path)
+///             .and_then(|f| f.set_modified(self.mtime))
+///             .wrap_io_error_with(path)?;
+///         Ok(())
+///     }
+/// }
+/// 
+/// // !mark(1:9)
+/// // !collapse(1:5)
+/// #[derive(DirStructure)]
+/// struct Dir {
+///     #[dir_structure(path = "file.txt")]
+///     file: FsMtime<String>,
+/// }
+/// 
+/// let path = "dir";
+/// let mut dir = Dir::read(path)?;
+/// dir.file.mtime = SystemTime::UNIX_EPOCH;
+/// dir.write(path)?;
+/// Ok::<_, dir_structure::Error>(())
+/// 
+/// ```
+/// 
+/// </ScrollyCoding>
+struct Guide;

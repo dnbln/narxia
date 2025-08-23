@@ -17,6 +17,10 @@ pub struct Code {
 pub async fn patchup_doc(session: &Session, before: String) -> Code {
     let mut after = String::new();
     let mut all_code_for_doctests = String::new();
+
+    let mut current_doctest = String::new();
+    let mut current_doctest_req_features = Vec::new();
+
     let mut previous_r = false;
     let mut in_doc_tooltip = false;
     let mut write_doctests = false;
@@ -74,9 +78,13 @@ pub async fn patchup_doc(session: &Session, before: String) -> Code {
         } else {
             writeln!(&mut after, "{line}").unwrap();
             if line == "```rust" {
-                writeln!(&mut all_code_for_doctests, "```rust").unwrap();
+                current_doctest.clear();
+                current_doctest_req_features.clear();
+                writeln!(&mut current_doctest, "```rust").unwrap();
                 in_code_block = true;
             } else if line.starts_with("```rust !") {
+                current_doctest.clear();
+                current_doctest_req_features.clear();
                 in_code_block = true;
                 let tag = if line.ends_with("no_run") {
                     write_doctests = true;
@@ -91,24 +99,44 @@ pub async fn patchup_doc(session: &Session, before: String) -> Code {
                     write_doctests = true;
                     "compile_fail"
                 } else {
-                    writeln!(&mut all_code_for_doctests, "```rust").unwrap();
+                    writeln!(&mut current_doctest, "```rust").unwrap();
                     continue;
                 };
 
-                writeln!(&mut all_code_for_doctests, "```rust,{tag}").unwrap();
+                writeln!(&mut current_doctest, "```rust,{tag}").unwrap();
             } else if line == "```" {
                 in_code_block = !in_code_block;
-                writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                if in_code_block {
+                    current_doctest.clear();
+                    current_doctest_req_features.clear();
+                    writeln!(&mut current_doctest, "{line}").unwrap();
+                } else {
+                    writeln!(&mut current_doctest, "{line}").unwrap();
+                    if current_doctest_req_features.is_empty() {
+                        for line in current_doctest.lines() {
+                            writeln!(&mut all_code_for_doctests, "/// {line}").unwrap();
+                        }
+                    } else {
+                        write!(&mut all_code_for_doctests, "#[cfg_attr(all(").unwrap();
+                        for feature in &current_doctest_req_features {
+                            write!(&mut all_code_for_doctests, "feature = {feature:?}, ").unwrap();
+                        }
+                        writeln!(&mut all_code_for_doctests, "), doc = r##########\"{current_doctest}\"##########)]").unwrap();
+                    }
+                }
             } else if in_code_block {
                 if let Some(tail) = line.strip_prefix("// !tail ") {
                     write_doctests = true;
-                    writeln!(&mut all_code_for_doctests, "Ok::<_, {tail}>(())").unwrap();
+                    writeln!(&mut current_doctest, "Ok::<_, {tail}>(())").unwrap();
                 } else if let Some(hidden) = line.strip_prefix("// !hidden ") {
                     write_doctests = true;
-                    writeln!(&mut all_code_for_doctests, "{hidden}").unwrap();
+                    writeln!(&mut current_doctest, "{hidden}").unwrap();
+                } else if let Some(feature) = line.strip_prefix("// !req-feature ") {
+                    write_doctests = true;
+                    current_doctest_req_features.push(feature.trim().to_owned());
                 } else if line == "// !lints" {
                     writeln!(
-                        &mut all_code_for_doctests,
+                        &mut current_doctest,
                         "{}",
                         r#"
 #![deny(unused_imports)]
@@ -117,13 +145,15 @@ pub async fn patchup_doc(session: &Session, before: String) -> Code {
                     )
                     .unwrap();
                 } else {
-                    writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                    writeln!(&mut current_doctest, "{line}").unwrap();
                 }
             } else {
-                writeln!(&mut all_code_for_doctests, "{}", line).unwrap();
+                writeln!(&mut all_code_for_doctests, "/// {line}").unwrap();
             }
         }
     }
+
+    writeln!(&mut all_code_for_doctests, "struct Guide;").unwrap();
 
     Code {
         before,
