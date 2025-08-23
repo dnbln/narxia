@@ -219,24 +219,16 @@ where
 #[pin_project(project_replace = DeferredReadOrOwnWriteFutureProj)]
 pub enum DeferredReadOrOwnWriteFuture<'a, T, Vfs: crate::VfsAsync + 'static>
 where
-    T: for<'b> ReadFromAsync<'b, Vfs>
-        + WriteToAsync<Vfs>
-        + for<'b> WriteToAsyncOwned<'b, Vfs>
-        + Send
-        + 'static,
+    T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
     for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'b,
-    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-    for<'b> <T as WriteToAsyncOwned<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
 {
     Poisson,
     Own {
-        inner: <T as WriteToAsync<Vfs>>::Future<'a>,
-    },
-    OwnOwned {
-        inner: <T as WriteToAsyncOwned<'a, Vfs>>::Future,
+        inner: <T as WriteToAsync<'a, Vfs>>::Future,
     },
     Deferred {
-        inner: <DeferredRead<'a, T, Vfs> as WriteToAsync<Vfs>>::Future<'a>,
+        inner: <DeferredRead<'a, T, Vfs> as WriteToAsync<'a, Vfs>>::Future,
     },
 }
 
@@ -244,14 +236,9 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for DeferredReadOrOwnWriteFuture<'a, T, Vfs>
 where
-    T: for<'b> ReadFromAsync<'b, Vfs>
-        + WriteToAsync<Vfs>
-        + for<'b> WriteToAsyncOwned<'b, Vfs>
-        + Send
-        + 'static,
+    T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
     for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'b,
-    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-    for<'b> <T as WriteToAsyncOwned<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
 {
     type Output = Result<()>;
 
@@ -259,12 +246,6 @@ where
         let this = self.as_mut().project_replace(Self::Poisson);
         match this {
             DeferredReadOrOwnWriteFutureProj::Own { mut inner } => {
-                match Pin::new(&mut inner).poll(cx) {
-                    Poll::Ready(v) => Poll::Ready(v),
-                    Poll::Pending => Poll::Pending,
-                }
-            }
-            DeferredReadOrOwnWriteFutureProj::OwnOwned { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(v) => Poll::Ready(v),
                     Poll::Pending => Poll::Pending,
@@ -287,62 +268,21 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for DeferredReadOrOwn<'a, T, Vfs>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs>
 where
-    T: for<'b> ReadFromAsync<'b, Vfs>
-        + WriteToAsync<Vfs>
-        + for<'b> WriteToAsyncOwned<'b, Vfs>
-        + Send
-        + 'static,
+    T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
     for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'b,
-    for<'b> <T as WriteToAsync<Vfs>>::Future<'b>: Future<Output = Result<()>> + Unpin + 'b,
-    for<'b> <T as WriteToAsyncOwned<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
 {
-    type Future<'b>
-        = DeferredReadOrOwnWriteFuture<'b, T, Vfs>
-    where
-        Self: 'b,
-        Vfs: 'b;
+    type Future = DeferredReadOrOwnWriteFuture<'a, T, Vfs>;
 
-    fn write_to_async<'b>(&'b self, path: PathBuf, vfs: Pin<&'b Vfs>) -> Self::Future<'b> {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         match self {
             DeferredReadOrOwn::Own(own) => DeferredReadOrOwnWriteFuture::Own {
                 inner: own.write_to_async(path, vfs),
             },
             DeferredReadOrOwn::Deferred(d) => DeferredReadOrOwnWriteFuture::Deferred {
                 inner: d.write_to_async(path, vfs),
-            },
-        }
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs>
-    for DeferredReadOrOwn<'a, T, Vfs>
-where
-    T: for<'b> ReadFromAsync<'b, Vfs>
-        + WriteToAsync<Vfs>
-        + for<'b> WriteToAsyncOwned<'b, Vfs>
-        + Send
-        + 'static,
-    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = Result<T>> + Unpin + 'b,
-    for<'b> <T as WriteToAsync<Vfs>>::Future<'b>: Future<Output = Result<()>> + Unpin + 'b,
-    for<'b> <T as WriteToAsyncOwned<'b, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'b,
-{
-    type Future
-        = DeferredReadOrOwnWriteFuture<'a, T, Vfs>
-    where
-        Self: 'a,
-        Vfs: 'a;
-
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        match self {
-            DeferredReadOrOwn::Own(own) => DeferredReadOrOwnWriteFuture::OwnOwned {
-                inner: own.write_to_async_owned(path, vfs),
-            },
-            DeferredReadOrOwn::Deferred(d) => DeferredReadOrOwnWriteFuture::Deferred {
-                inner: d.write_to_async_owned(path, vfs),
             },
         }
     }

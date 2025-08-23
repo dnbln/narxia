@@ -96,6 +96,9 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "resolve-path", feature(adt_const_params))]
 
+#[cfg(feature = "async")]
+pub extern crate pin_project;
+
 #[cfg(doctest)]
 mod __doc_check {
     #[doc = include_str!("../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests")]
@@ -108,18 +111,11 @@ mod __doc_check {
     struct Readme;
 }
 
-// TODO: other async runtimes
-#[cfg(all(feature = "async", not(any(feature = "tokio"))))]
-compile_error!(
-    "The `async` feature requires choosing an async runtime. \
-     Please enable the `tokio` feature in your Cargo.toml
-     (currently the only supported async runtime)."
-);
-
 use std::fs::File;
 use std::path::Path;
 
 pub use dir_structure_macros::DirStructure;
+pub use dir_structure_macros::DirStructureAsync;
 
 pub mod prelude {
     pub use super::DirStructure;
@@ -130,7 +126,7 @@ pub mod prelude {
     #[cfg(feature = "async")]
     pub use super::WriteToAsync;
     #[cfg(feature = "async")]
-    pub use super::WriteToAsyncOwned;
+    pub use super::WriteToAsyncRef;
 }
 
 mod clean_dir;

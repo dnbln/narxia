@@ -1,5 +1,3 @@
-#![feature(path_file_prefix)]
-
 pub extern crate git2;
 
 use std::collections::BTreeMap;

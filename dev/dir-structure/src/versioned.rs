@@ -232,13 +232,13 @@ impl<Vfs: crate::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
 #[pin_project(project_replace = VersionedWriteFutureProj)]
 pub enum VersionedWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
     Poisson,
     NotTouched,
     Writing {
-        inner: <T as WriteToAsync<Vfs>>::Future<'a>,
+        inner: <T as WriteToAsync<'a, Vfs>>::Future,
     },
 }
 
@@ -246,8 +246,8 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
     type Output = Result<()>;
 
@@ -273,17 +273,14 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for Versioned<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for Versioned<T>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
-    for<'a> <T as WriteToAsync<Vfs>>::Future<'a>: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
-    type Future<'a>
-        = VersionedWriteFuture<'a, T, Vfs>
-    where
-        Self: 'a;
+    type Future = VersionedWriteFuture<'a, T, Vfs>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         if self.path == path && self.is_clean() {
             return VersionedWriteFuture::NotTouched;
         }
@@ -296,33 +293,35 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[pin_project(project_replace = VersionedWriteOwnedFutureProj)]
-pub enum VersionedWriteOwnedFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+#[pin_project(project_replace = VersionedWriteRefFutureProj)]
+pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
 {
     Poisson,
     NotTouched,
     Writing {
-        inner: <T as WriteToAsyncOwned<'a, Vfs>>::Future,
+        inner: <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>,
     },
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteOwnedFuture<'a, T, Vfs>
+impl<'a, 'f, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteRefFuture<'a, 'f, T, Vfs>
 where
-    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
 {
     type Output = Result<()>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);
         match this {
-            VersionedWriteOwnedFutureProj::NotTouched => Poll::Ready(Ok(())),
-            VersionedWriteOwnedFutureProj::Writing { mut inner } => {
+            VersionedWriteRefFutureProj::NotTouched => Poll::Ready(Ok(())),
+            VersionedWriteRefFutureProj::Writing { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(res) => Poll::Ready(res),
                     Poll::Pending => {
@@ -331,9 +330,9 @@ where
                     }
                 }
             }
-            VersionedWriteOwnedFutureProj::Poisson => {
+            VersionedWriteRefFutureProj::Poisson => {
                 panic!(
-                    "VersionedWriteOwnedFuture is in an invalid state. This is a bug in the code."
+                    "VersionedWriteRefFuture is in an invalid state. This is a bug in the code."
                 );
             }
         }
@@ -342,20 +341,32 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> WriteToAsyncOwned<'a, Vfs> for Versioned<T>
+impl<'r, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for Versioned<T>
 where
-    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
+    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
 {
-    type Future = VersionedWriteOwnedFuture<'a, T, Vfs>;
+    type Future<'a>
+        = VersionedWriteRefFuture<'r, 'a, T, Vfs>
+    where
+        Self: 'a,
+        'r: 'a,
+        Vfs: 'a;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async_ref<'a>(
+        &'a self,
+        path: PathBuf,
+        vfs: Pin<&'a Vfs>,
+    ) -> <Self as WriteToAsyncRef<'r, Vfs>>::Future<'a>
+    where
+        'r: 'a,
+    {
         if self.path == path && self.is_clean() {
-            return VersionedWriteOwnedFuture::NotTouched;
+            return VersionedWriteRefFuture::NotTouched;
         }
 
-        VersionedWriteOwnedFuture::Writing {
-            inner: self.value.write_to_async_owned(path, vfs),
+        VersionedWriteRefFuture::Writing {
+            inner: self.value.write_to_async_ref(path, vfs),
         }
     }
 }

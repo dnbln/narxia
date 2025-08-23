@@ -12,16 +12,9 @@ use crate::FromRefForWriter;
 #[cfg(feature = "async")]
 use crate::FromRefForWriterAsync;
 use crate::NewtypeToInner;
-use crate::ReadFrom;
-#[cfg(feature = "async")]
-use crate::ReadFromAsync;
 use crate::Result;
 use crate::WrapIoError;
-use crate::WriteTo;
-#[cfg(feature = "async")]
-use crate::WriteToAsync;
-#[cfg(feature = "async")]
-use crate::WriteToAsyncOwned;
+use crate::prelude::*;
 
 /// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
 /// for serialization / deserialization.
@@ -119,18 +112,15 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + Send + Sync + 'static,
 {
-    type Future<'a>
-        = <FmtWrapperRefWr<'a, T, Vfs> as WriteToAsyncOwned<'a, Vfs>>::Future
-    where
-        Self: 'a,
-        Vfs: 'a;
+    type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        let s = self.0.to_string();
+        FileString::new(s).write_to_async(path, vfs)
     }
 }
 
@@ -180,33 +170,14 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for FmtWrapperRefWr<'a, T, Vfs>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapperRefWr<'a, T, Vfs>
 where
     T: Display + Send + 'a,
 {
-    type Future<'f>
-        = <FileString as WriteToAsyncOwned<'f, Vfs>>::Future
-    where
-        Self: 'f,
-        Vfs: 'f;
+    type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async<'b>(&'b self, path: PathBuf, vfs: Pin<&'b Vfs>) -> Self::Future<'b> {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         let s = self.0.to_string();
-        FileString::new(s).write_to_async_owned(path, vfs)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs>
-    for FmtWrapperRefWr<'a, T, Vfs>
-where
-    T: Display + Send + 'a,
-{
-    type Future = <FileString as WriteToAsyncOwned<'a, Vfs>>::Future;
-
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        let s = self.0.to_string();
-        FileString::new(s).write_to_async_owned(path, vfs)
+        FileString::new(s).write_to_async(path, vfs)
     }
 }

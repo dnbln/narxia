@@ -511,41 +511,6 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    #[cfg(feature = "async")]
-    impl<'vfs, T, Vfs: dir_structure::VfsAsync + 'vfs> ReadFromAsync<'vfs, Vfs> for WriteCounter<T>
-    where
-        T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
-    {
-        type Future = Pin<Box<dyn Future<Output = dir_structure::Result<Self>> + Send + 'vfs>>;
-
-        fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
-            Box::pin(async move {
-                Ok(Self {
-                    count: AtomicUsize::new(0),
-                    inner: T::read_from_async(path, vfs).await?,
-                })
-            })
-        }
-    }
-
-    #[cfg(feature = "async")]
-    impl<T, Vfs: dir_structure::VfsAsync + 'static> WriteToAsync<Vfs> for WriteCounter<T>
-    where
-        T: WriteToAsync<Vfs> + Send + Sync + 'static,
-    {
-        type Future<'a>
-            = Pin<Box<dyn Future<Output = dir_structure::Result<()>> + Send + 'a>>
-        where
-            Self: 'a;
-
-        fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-            Box::pin(async move {
-                self.count.fetch_add(1, Ordering::SeqCst);
-                self.inner.write_to_async(path, vfs).await
-            })
-        }
-    }
-
     #[derive(dir_structure::DirStructure)]
     struct Dir {
         #[dir_structure(path = "f1.txt")]

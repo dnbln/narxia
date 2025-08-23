@@ -10,19 +10,19 @@ use pin_project::pin_project;
 
 use crate::Result;
 
-pub trait VfsAsync: Send + Sync {
-    type ReadFuture<'a>: Future<Output = Result<Vec<u8>>> + Send + 'a
+pub trait VfsAsync: Send + Sync + Unpin {
+    type ReadFuture<'a>: Future<Output = Result<Vec<u8>>> + Send + Unpin + 'a
     where
         Self: 'a;
 
     fn read<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadFuture<'a>;
 
-    type ReadStringFuture<'a>: Future<Output = Result<String>> + Send + 'a
+    type ReadStringFuture<'a>: Future<Output = Result<String>> + Send + Unpin + 'a
     where
         Self: 'a;
     fn read_string<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadStringFuture<'a>;
 
-    type WriteFuture<'a>: Future<Output = Result<()>> + Send + 'a
+    type WriteFuture<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
     where
         Self: 'a;
 

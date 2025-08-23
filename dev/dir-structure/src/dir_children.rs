@@ -15,20 +15,13 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::Error;
-use crate::WrapIoError;
-#[cfg(feature = "tokio")]
-use crate::WriteToAsyncOwned;
-use crate::error::Result;
-#[cfg(feature = "async")]
-use crate::traits::asy::ReadFromAsync;
-#[cfg(feature = "async")]
-use crate::traits::asy::WriteToAsync;
+use crate::DirStructureItem;
 #[cfg(feature = "resolve-path")]
-use crate::traits::resolve::DynamicHasField;
-use crate::traits::sync::DirStructureItem;
-use crate::traits::sync::ReadFrom;
-use crate::traits::sync::WriteTo;
+use crate::DynamicHasField;
+use crate::Error;
+use crate::Result;
+use crate::WrapIoError;
+use crate::prelude::*;
 
 /// A directory structure where we don't know the names of the folders at compile-time,
 /// and as such we cannot use the derive macro.
@@ -824,100 +817,32 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
-pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+impl<'a, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for DirChildren<T, F>
 where
-    T: WriteToAsync<Vfs> + 'a,
-    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-{
-    Poison,
-    Begin(DirChildrenIter<'a, T>, PathBuf, Pin<&'a Vfs>),
-    Write(DirChildrenIter<'a, T>, PathBuf, T::Future<'a>, Pin<&'a Vfs>),
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync> Future for DirChildrenWriteAsyncFuture<'a, T, Vfs>
-where
-    T: WriteToAsync<Vfs> + 'a,
-    T::Future<'a>: Future<Output = Result<()>> + Unpin,
-{
-    type Output = Result<()>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.as_mut().project_replace(Self::Poison);
-
-        match this {
-            DirChildrenWriteAsyncFutureProjOwn::Begin(mut iter, path, vfs) => {
-                if let Some(child) = iter.next() {
-                    let child_path = path.join(&child.file_name);
-                    let fut = child.value.write_to_async(child_path, vfs);
-                    self.project_replace(Self::Write(iter, path, fut, vfs));
-                    cx.waker().wake_by_ref();
-                    Poll::Pending
-                } else {
-                    Poll::Ready(Ok(()))
-                }
-            }
-            DirChildrenWriteAsyncFutureProjOwn::Write(mut iter, path, mut fut, vfs) => {
-                match Pin::new(&mut fut).poll(cx) {
-                    Poll::Ready(Ok(())) => {
-                        if let Some(child) = iter.next() {
-                            let child_path = path.join(&child.file_name);
-                            let new_fut = child.value.write_to_async(child_path, vfs);
-                            self.project_replace(Self::Write(iter, path, new_fut, vfs));
-                            cx.waker().wake_by_ref();
-                            Poll::Pending
-                        } else {
-                            Poll::Ready(Ok(()))
-                        }
-                    }
-                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
-                    Poll::Pending => {
-                        self.project_replace(Self::Write(iter, path, fut, vfs));
-                        Poll::Pending
-                    }
-                }
-            }
-            DirChildrenWriteAsyncFutureProjOwn::Poison => {
-                panic!("DirChildrenWriteAsyncFuture is poisoned, this should never happen");
-            }
-        }
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, F, Vfs: crate::VfsAsync> WriteToAsync<Vfs> for DirChildren<T, F>
-where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + 'static,
-    for<'a> T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    T::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
-    type Future<'a>
-        = DirChildrenWriteAsyncFuture<'a, T, Vfs>
-    where
-        Self: 'a,
-        Vfs: 'a;
+    type Future = DirChildrenWriteAsyncFuture<'a, T, Vfs>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        DirChildrenWriteAsyncFuture::Begin(self.iter(), path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        DirChildrenWriteAsyncFuture::Init(self.into_iter(), path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[pin_project(project_replace = DirChildrenWriteAsyncOwnedFutureProjOwn)]
-pub enum DirChildrenWriteAsyncOwnedFuture<'a, T, Vfs: crate::VfsAsync>
+#[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
+pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'static>
 where
-    T: WriteToAsyncOwned<'a, Vfs>,
-    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<'a, Vfs>,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
     Poison,
     Init(DirChildrenIntoIter<T>, PathBuf, Pin<&'a Vfs>),
     Write(
         DirChildrenIntoIter<T>,
-        <T as WriteToAsyncOwned<'a, Vfs>>::Future,
+        <T as WriteToAsync<'a, Vfs>>::Future,
         PathBuf,
         Pin<&'a Vfs>,
     ),
@@ -925,10 +850,10 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync> Future for DirChildrenWriteAsyncOwnedFuture<'a, T, Vfs>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> Future for DirChildrenWriteAsyncFuture<'a, T, Vfs>
 where
-    T: WriteToAsyncOwned<'a, Vfs>,
-    <T as WriteToAsyncOwned<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    T: WriteToAsync<'a, Vfs>,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
     type Output = Result<()>;
 
@@ -936,11 +861,9 @@ where
         let this = self.as_mut().project_replace(Self::Poison);
 
         match this {
-            DirChildrenWriteAsyncOwnedFutureProjOwn::Init(mut iter, path, vfs) => {
+            DirChildrenWriteAsyncFutureProjOwn::Init(mut iter, path, vfs) => {
                 if let Some(child) = iter.next() {
-                    let fut = child
-                        .value
-                        .write_to_async_owned(path.join(&child.file_name), vfs);
+                    let fut = child.value.write_to_async(path.join(&child.file_name), vfs);
                     self.project_replace(Self::Write(iter, fut, path.clone(), vfs));
                     cx.waker().wake_by_ref();
                     Poll::Pending
@@ -948,13 +871,12 @@ where
                     Poll::Ready(Ok(()))
                 }
             }
-            DirChildrenWriteAsyncOwnedFutureProjOwn::Write(mut iter, mut fut, path, vfs) => {
+            DirChildrenWriteAsyncFutureProjOwn::Write(mut iter, mut fut, path, vfs) => {
                 match Pin::new(&mut fut).poll(cx) {
                     Poll::Ready(Ok(())) => {
                         if let Some(child) = iter.next() {
-                            let new_fut = child
-                                .value
-                                .write_to_async_owned(path.join(&child.file_name), vfs);
+                            let new_fut =
+                                child.value.write_to_async(path.join(&child.file_name), vfs);
                             self.project_replace(Self::Write(iter, new_fut, path.clone(), vfs));
                             cx.waker().wake_by_ref();
                             Poll::Pending
@@ -969,8 +891,8 @@ where
                     }
                 }
             }
-            DirChildrenWriteAsyncOwnedFutureProjOwn::Poison => {
-                panic!("DirChildrenWriteAsyncOwnedFuture is poisoned, this should never happen");
+            DirChildrenWriteAsyncFutureProjOwn::Poison => {
+                panic!("DirChildrenWriteAsyncFuture is poisoned, this should never happen");
             }
         }
     }
@@ -978,16 +900,103 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync + 'a> WriteToAsyncOwned<'a, Vfs> for DirChildren<T, F>
+impl<'r, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for DirChildren<T, F>
 where
-    T: WriteToAsyncOwned<'a, Vfs> + Send + 'a,
-    F: Filter + 'a,
-    T::Future: Future<Output = Result<()>> + Unpin + 'a,
+    T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
+    F: Filter + Send + 'static,
+    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
 {
-    type Future = DirChildrenWriteAsyncOwnedFuture<'a, T, Vfs>;
+    type Future<'a>
+        = DirChildrenWriteAsyncRefFuture<'r, 'a, T, Vfs>
+    where
+        T: 'a,
+        Vfs: 'a,
+        Self: 'a,
+        'r: 'a;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        DirChildrenWriteAsyncOwnedFuture::Init(self.into_iter(), path, vfs)
+    fn write_to_async_ref<'a>(
+        &'a self,
+        path: PathBuf,
+        vfs: Pin<&'a Vfs>,
+    ) -> <Self as WriteToAsyncRef<'r, Vfs>>::Future<'a>
+    where
+        'r: 'a,
+    {
+        DirChildrenWriteAsyncRefFuture::Init(self.iter(), path, vfs)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DirChildrenWriteAsyncRefFutureProjOwn)]
+pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: crate::VfsAsync + 'static>
+where
+    T: WriteToAsyncRef<'r, Vfs> + 'r,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    'r: 'f,
+{
+    Poison,
+    Init(DirChildrenIter<'f, T>, PathBuf, Pin<&'f Vfs>),
+    Write(
+        DirChildrenIter<'f, T>,
+        <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>,
+        PathBuf,
+        Pin<&'f Vfs>,
+    ),
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'r, 'f, T, Vfs: crate::VfsAsync + 'static> Future
+    for DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs>
+where
+    T: WriteToAsyncRef<'r, Vfs>,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    'r: 'f,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+
+        match this {
+            DirChildrenWriteAsyncRefFutureProjOwn::Init(mut iter, path, vfs) => {
+                if let Some(child) = iter.next() {
+                    let fut = child
+                        .value
+                        .write_to_async_ref(path.join(&child.file_name), vfs);
+                    self.project_replace(Self::Write(iter, fut, path.clone(), vfs));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                } else {
+                    Poll::Ready(Ok(()))
+                }
+            }
+            DirChildrenWriteAsyncRefFutureProjOwn::Write(mut iter, mut fut, path, vfs) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(())) => {
+                        if let Some(child) = iter.next() {
+                            let new_fut = child
+                                .value
+                                .write_to_async_ref(path.join(&child.file_name), vfs);
+                            self.project_replace(Self::Write(iter, new_fut, path.clone(), vfs));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        } else {
+                            Poll::Ready(Ok(()))
+                        }
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::Write(iter, fut, path.clone(), vfs));
+                        Poll::Pending
+                    }
+                }
+            }
+            DirChildrenWriteAsyncRefFutureProjOwn::Poison => {
+                panic!("DirChildrenWriteAsyncRefFuture is poisoned, this should never happen");
+            }
+        }
     }
 }
 
@@ -1736,43 +1745,22 @@ where
     }
 }
 
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<T, F, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for ForceCreateDirChildren<T, F>
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for ForceCreateDirChildren<T, F>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + Sync + 'static,
-    for<'a> T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-{
-    type Future<'a> = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
-
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Box::pin(async move {
-            tokio::fs::create_dir_all(&path)
-                .await
-                .wrap_io_error_with(&path)?;
-
-            self.children.write_to_async(path, vfs).await
-        })
-    }
-}
-
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<'a, T, F, Vfs: crate::VfsAsync> WriteToAsyncOwned<'a, Vfs> for ForceCreateDirChildren<T, F>
-where
-    F: Filter + Send + 'a,
-    T: WriteToAsyncOwned<'a, Vfs> + Send + Sync + 'static,
     T::Future: Future<Output = Result<()>> + Unpin + 'a,
 {
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
-            tokio::fs::create_dir_all(&path)
-                .await
-                .wrap_io_error_with(&path)?;
-            self.children.write_to_async_owned(path, vfs).await
+            vfs.create_dir_all(path.clone()).await?;
+
+            self.children.write_to_async(path, vfs).await
         })
     }
 }

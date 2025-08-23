@@ -14,8 +14,6 @@ use std::task::Poll;
 use pin_project::pin_project;
 
 use crate::FromRefForWriter;
-#[cfg(feature = "async")]
-use crate::FromRefForWriterAsync;
 use crate::NewtypeToInner;
 use crate::ReadFrom;
 #[cfg(feature = "tokio")]
@@ -26,7 +24,7 @@ use crate::WriteTo;
 #[cfg(feature = "async")]
 use crate::WriteToAsync;
 #[cfg(feature = "async")]
-use crate::WriteToAsyncOwned;
+use crate::WriteToAsyncRef;
 
 /// A newtype around a `Vec<u8>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -92,16 +90,16 @@ impl<'a, Vfs: crate::Vfs + 'a> FromRefForWriter<'a, Vfs> for FileBytes {
     }
 }
 
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileBytes {
-    type Inner = [u8];
-    type Wr = FileBytesRefWr<'a, Vfs>;
+// #[cfg(feature = "async")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+// impl<'a, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileBytes {
+//     type Inner = [u8];
+//     type Wr = FileBytesRefWr<'a, Vfs>;
 
-    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
-        FileBytesRefWr(value, marker::PhantomData)
-    }
-}
+//     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
+//         FileBytesRefWr(value, marker::PhantomData)
+//     }
+// }
 
 /// The [`WriteTo`] wrapper around a reference to a `[u8]`.
 pub struct FileBytesRefWr<'a, Vfs: 'a>(&'a [u8], marker::PhantomData<Vfs>);
@@ -114,29 +112,12 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for FileBytesRefWr<'_, Vfs> {
     }
 }
 
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for FileBytesRefWr<'_, Vfs> {
-    type Future<'a>
-        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
-    where
-        Self: 'a;
-
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Box::pin(async move {
-            vfs.create_parent_dir(path.clone()).await?;
-            vfs.write(path, self.0).await?;
-            Ok(())
-        })
-    }
-}
-
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for FileBytesRefWr<'a, Vfs> {
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FileBytesRefWr<'a, Vfs> {
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
             vfs.create_parent_dir(path.clone()).await?;
             vfs.write(path, self.0).await?;
@@ -185,13 +166,30 @@ impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for FileString {
     }
 }
 
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+pub struct FileStringReadFuture<'a, Vfs: crate::VfsAsync + 'static>(Vfs::ReadStringFuture<'a>);
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, Vfs: crate::VfsAsync + 'static> Future for FileStringReadFuture<'a, Vfs> {
+    type Output = Result<FileString>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        match Pin::new(&mut self.0).poll(cx) {
+            Poll::Ready(res) => Poll::Ready(res.map(FileString)),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: crate::VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileString {
-    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>;
+    type Future = FileStringReadFuture<'a, Vfs>;
 
     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        Box::pin(async move { vfs.read_string(path).await.map(Self) })
+        FileStringReadFuture(vfs.read_string(path))
     }
 }
 
@@ -203,23 +201,10 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for FileString {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for FileString {
-    type Future<'a>
-        = <FileStrWr<'a, Vfs> as WriteToAsync<Vfs>>::Future<'a>
-    where
-        Self: 'a;
-
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path, vfs)
-    }
-}
-
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for FileString {
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FileString {
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
             vfs.create_parent_dir(path.clone()).await?;
             vfs.write(path, self.0.as_bytes()).await?;
@@ -237,16 +222,16 @@ impl<'a, Vfs: crate::Vfs + 'a> FromRefForWriter<'a, Vfs> for FileString {
     }
 }
 
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileString {
-    type Inner = str;
-    type Wr = FileStrWr<'a, Vfs>;
+// #[cfg(feature = "async")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+// impl<'a, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileString {
+//     type Inner = str;
+//     type Wr = FileStrWr<'a, Vfs>;
 
-    fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
-        FileStrWr(value, marker::PhantomData)
-    }
-}
+//     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
+//         FileStrWr(value, marker::PhantomData)
+//     }
+// }
 
 /// The [`WriteTo`] wrapper around a reference to a [`str`].
 pub struct FileStrWr<'a, Vfs: 'a>(&'a str, marker::PhantomData<Vfs>);
@@ -257,29 +242,15 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for FileStrWr<'_, Vfs> {
     }
 }
 
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for FileStrWr<'_, Vfs> {
-    type Future<'b>
-        = <FileBytesRefWr<'b, Vfs> as WriteToAsync<Vfs>>::Future<'b>
-    where
-        Self: 'b,
-        Vfs: 'b;
+// #[cfg(feature = "async")]
+// #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+// impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FileStrWr<'a, Vfs> {
+//     type Future = <FileBytesRefWr<'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async_owned(path, vfs)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for FileStrWr<'a, Vfs> {
-    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
-
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async_owned(path, vfs)
-    }
-}
+//     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+//         FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async_owned(path, vfs)
+//     }
+// }
 
 // Impls for std types.
 
@@ -288,39 +259,17 @@ impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for String {
     where
         Self: Sized,
     {
-        FileString::read_from(path, vfs).map(|v| v.0)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-#[pin_project]
-pub struct StringReadFuture<'a, Vfs: crate::VfsAsync + 'static>(
-    #[pin] <FileString as ReadFromAsync<'a, Vfs>>::Future,
-);
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> Future for StringReadFuture<'a, Vfs> {
-    type Output = Result<String>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let projection = self.project();
-        let res = <FileString as ReadFromAsync<'a, Vfs>>::Future::poll(projection.0, cx);
-        match res {
-            Poll::Ready(res) => Poll::Ready(res.map(|inner| inner.0)),
-            Poll::Pending => Poll::Pending,
-        }
+        vfs.read_string(path)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: crate::VfsAsync + 'static> ReadFromAsync<'a, Vfs> for String {
-    type Future = StringReadFuture<'a, Vfs>;
+    type Future = Vfs::ReadStringFuture<'a>;
 
     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        StringReadFuture(FileString::read_from_async(path, vfs))
+        vfs.read_string(path)
     }
 }
 
@@ -332,24 +281,33 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for String {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for String {
-    type Future<'b>
-        = <FileStrWr<'b, Vfs> as WriteToAsync<Vfs>>::Future<'b>
-    where
-        Self: 'b;
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for String {
+    type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileString::from_ref_for_writer_async(self).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        FileString::new(self).write_to_async(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for String {
-    type Future = <FileString as WriteToAsyncOwned<'a, Vfs>>::Future;
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for String {
+    type Future<'b>
+        = <FileString as WriteToAsync<'b, Vfs>>::Future
+    where
+        Self: 'b,
+        'a: 'b,
+        Vfs: 'b;
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        FileString::new(self).write_to_async_owned(path, vfs)
+    fn write_to_async_ref<'b>(
+        &'b self,
+        path: PathBuf,
+        vfs: Pin<&'b Vfs>,
+    ) -> <Self as WriteToAsync<'b, Vfs>>::Future
+    where
+        'a: 'b,
+    {
+        FileString::new(self).write_to_async(path, vfs)
     }
 }
 
@@ -402,35 +360,20 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for Vec<u8> {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for Vec<u8> {
-    type Future<'b>
-        = <FileBytesRefWr<'b, Vfs> as WriteToAsync<Vfs>>::Future<'b>
-    where
-        Self: 'b,
-        Vfs: 'b;
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for Vec<u8> {
+    type Future = <FileBytesRefWr<'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileBytes::from_ref_for_writer_async(self).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        Box::pin(async move {
+            vfs.create_parent_dir(path.clone()).await?;
+            vfs.write(path, &self).await
+        })
     }
 }
 
 impl<Vfs: crate::Vfs> WriteTo<Vfs> for str {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         FileStrWr(self, marker::PhantomData).write_to(path, vfs)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for str {
-    type Future<'a>
-        = <FileStrWr<'a, Vfs> as WriteToAsync<Vfs>>::Future<'a>
-    where
-        Self: 'a,
-        Vfs: 'a;
-
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileStrWr(self, marker::PhantomData).write_to_async_owned(path, vfs)
     }
 }
 
@@ -442,45 +385,17 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for &str {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for &str {
-    type Future<'a>
-        = <FileStrWr<'a, Vfs> as WriteToAsync<Vfs>>::Future<'a>
-    where
-        Self: 'a,
-        Vfs: 'a;
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a str {
+    type Future = <Vfs as crate::VfsAsync>::WriteFuture<'a>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileStrWr(self, marker::PhantomData).write_to_async_owned(path, vfs)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for &'a str {
-    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
-
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        FileStrWr(self, marker::PhantomData).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        vfs.write(path, self.as_bytes())
     }
 }
 
 impl<Vfs: crate::Vfs> WriteTo<Vfs> for [u8] {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         FileBytesRefWr(self, marker::PhantomData).write_to(path, vfs)
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for [u8] {
-    type Future<'a>
-        = <FileBytesRefWr<'a, Vfs> as WriteToAsyncOwned<'a, Vfs>>::Future
-    where
-        Self: 'a,
-        Vfs: 'a;
-
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileBytesRefWr(self, marker::PhantomData).write_to_async_owned(path, vfs)
     }
 }
 
@@ -492,15 +407,11 @@ impl<Vfs: crate::Vfs> WriteTo<Vfs> for &[u8] {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for &[u8] {
-    type Future<'a>
-        = <FileBytesRefWr<'a, Vfs> as WriteToAsyncOwned<'a, Vfs>>::Future
-    where
-        Self: 'a,
-        Vfs: 'a;
+impl<'a, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a [u8] {
+    type Future = <Vfs as crate::VfsAsync>::WriteFuture<'a>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        FileBytesRefWr(self, marker::PhantomData).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        vfs.write(path, self)
     }
 }
 
@@ -534,26 +445,26 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for marker::PhantomData<T>
-where
-    T: Send + Sync + 'static,
-{
-    type Future<'a> = future::Ready<Result<()>>;
-
-    fn write_to_async<'a>(&'a self, _path: PathBuf, _vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        future::ready(Ok(()))
-    }
-}
-
-#[cfg(feature = "async")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync> WriteToAsyncOwned<'_, Vfs> for marker::PhantomData<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for marker::PhantomData<T>
 where
     T: Send + Sync + 'static,
 {
     type Future = future::Ready<Result<()>>;
 
-    fn write_to_async_owned(self, _path: PathBuf, _vfs: Pin<&Vfs>) -> Self::Future {
+    fn write_to_async(self, _path: PathBuf, _vfs: Pin<&'a Vfs>) -> Self::Future {
         future::ready(Ok(()))
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::TokioFsVfs;
+
+//     fn assert_unpin<T: Unpin>() {}
+
+//     #[test]
+//     fn test_file_string_read_future() {
+//         assert_unpin::<FileStringReadFuture<TokioFsVfs>>();
+//     }
+// }

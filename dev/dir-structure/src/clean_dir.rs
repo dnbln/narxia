@@ -23,6 +23,8 @@ use crate::HAS_FIELD_MAX_LEN;
 use crate::HasField;
 use crate::NewtypeToInner;
 use crate::Result;
+#[cfg(feature = "async")]
+use crate::WriteToAsyncRef;
 use crate::prelude::*;
 
 /// A newtype that will clean the directory it is written to, before writing
@@ -127,17 +129,21 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for CleanDir<T>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for CleanDir<T>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
 {
-    type Future<'a>
-        = <CleanDirRefWr<'a, T, Vfs> as WriteToAsync<Vfs>>::Future<'a>
-    where
-        Self: 'a;
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Self::from_ref_for_writer_async(&self.0).write_to_async_owned(path, vfs)
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        Box::pin(async move {
+            if vfs.exists(path.clone()).await? {
+                vfs.remove_dir_all(path.clone()).await?;
+            } else {
+                vfs.create_parent_dir(path.clone()).await?;
+            }
+            self.0.write_to_async(path, vfs).await
+        })
     }
 }
 
@@ -158,7 +164,11 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, T, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for CleanDir<T>
 where
-    T: WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
+        std::future::Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
+        std::future::Future<Output = Result<()>> + Unpin + 'f,
 {
     type Inner = T;
     type Wr = CleanDirRefWr<'a, T, Vfs>;
@@ -224,43 +234,119 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<T, Vfs: crate::VfsAsync + 'static> WriteToAsync<Vfs> for CleanDirRefWr<'_, T, Vfs>
+impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for CleanDirRefWr<'a, T, Vfs>
 where
-    T: ?Sized + WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
+        std::future::Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
+        std::future::Future<Output = Result<()>> + Unpin + 'f,
 {
-    type Future<'a>
-        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
-    where
-        Self: 'a;
+    type Future = CleanDirRefWrWriteFuture<'a, T, Vfs>;
 
-    fn write_to_async<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a> {
-        Box::pin(async move {
-            if vfs.exists(path.clone()).await? {
-                vfs.remove_dir_all(path.clone()).await?;
-            } else {
-                vfs.create_parent_dir(path.clone()).await?;
-            }
-            self.0.write_to_async(path, vfs).await
-        })
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        let exists_future = vfs.exists(path.clone());
+        CleanDirRefWrWriteFuture::ExistsCheck(exists_future, path, vfs, self.0)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncOwned<'a, Vfs> for CleanDirRefWr<'a, T, Vfs>
+#[pin_project(project_replace = CleanDirRefWrWriteFutureProjOwn)]
+pub enum CleanDirRefWrWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
-    T: ?Sized + WriteToAsync<Vfs> + Send + Sync + 'static,
+    T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
+    T::Future<'a>: std::future::Future<Output = Result<()>> + Unpin + 'a,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
+        std::future::Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
+        std::future::Future<Output = Result<()>> + Unpin + 'f,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+    Poison,
+    ExistsCheck(
+        <Vfs as crate::VfsAsync>::ExistsFuture<'a>,
+        PathBuf,
+        Pin<&'a Vfs>,
+        &'a T,
+    ),
+    RemoveDirAll(
+        <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'a>,
+        PathBuf,
+        Pin<&'a Vfs>,
+        &'a T,
+    ),
+    Write(
+        <T as WriteToAsyncRef<'a, Vfs>>::Future<'a>,
+        PathBuf,
+        Pin<&'a Vfs>,
+    ),
+}
 
-    fn write_to_async_owned(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        Box::pin(async move {
-            if vfs.exists(path.clone()).await? {
-                vfs.remove_dir_all(path.clone()).await?;
-            } else {
-                vfs.create_parent_dir(path.clone()).await?;
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for CleanDirRefWrWriteFuture<'a, T, Vfs>
+where
+    T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
+    T::Future<'a>: std::future::Future<Output = Result<()>> + Unpin + 'a,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
+        std::future::Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
+        std::future::Future<Output = Result<()>> + Unpin + 'f,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+        match this {
+            CleanDirRefWrWriteFutureProjOwn::Poison => {
+                panic!("polled after completion")
             }
-            self.0.write_to_async(path, vfs).await
-        })
+            CleanDirRefWrWriteFutureProjOwn::ExistsCheck(mut fut, path, vfs, v) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(exists)) => {
+                        if exists {
+                            let fut = vfs.remove_dir_all(path.clone());
+                            self.project_replace(Self::RemoveDirAll(fut, path.clone(), vfs, v));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        } else {
+                            let fut = T::write_to_async_ref(v, path.clone(), vfs);
+                            self.project_replace(Self::Write(fut, path.clone(), vfs));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        }
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::ExistsCheck(fut, path, vfs, v));
+                        Poll::Pending
+                    }
+                }
+            }
+            CleanDirRefWrWriteFutureProjOwn::RemoveDirAll(mut fut, path, vfs, v) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(())) => {
+                        let fut = T::write_to_async_ref(v, path.clone(), vfs);
+                        self.project_replace(Self::Write(fut, path.clone(), vfs));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::RemoveDirAll(fut, path, vfs, v));
+                        Poll::Pending
+                    }
+                }
+            }
+            CleanDirRefWrWriteFutureProjOwn::Write(mut fut, _path, _vfs) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(v) => Poll::Ready(v),
+                    Poll::Pending => {
+                        self.project_replace(Self::Write(fut, _path, _vfs));
+                        Poll::Pending
+                    }
+                }
+            }
+        }
     }
 }

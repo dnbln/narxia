@@ -96,7 +96,13 @@ impl VfsAsync for TokioFsVfs {
         self: Pin<&'a Self>,
         path: PathBuf,
     ) -> Self::CreateParentDirFuture<'a> {
-        CreateParentDirDefaultFuture::Start { vfs: self, path }
+        let parent = path
+            .parent()
+            .map_or_else(|| path.join(".."), |p| p.to_path_buf());
+        CreateParentDirDefaultFuture::Start {
+            vfs: self,
+            path: parent,
+        }
     }
 
     type StatFuture<'a>
