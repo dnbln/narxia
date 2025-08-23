@@ -121,7 +121,11 @@ pub async fn patchup_doc(session: &Session, before: String) -> Code {
                         for feature in &current_doctest_req_features {
                             write!(&mut all_code_for_doctests, "feature = {feature:?}, ").unwrap();
                         }
-                        writeln!(&mut all_code_for_doctests, "), doc = r##########\"{current_doctest}\"##########)]").unwrap();
+                        writeln!(
+                            &mut all_code_for_doctests,
+                            "), doc = r##########\"{current_doctest}\"##########)]"
+                        )
+                        .unwrap();
                     }
                 }
             } else if in_code_block {
