@@ -101,14 +101,12 @@ pub extern crate pin_project;
 
 #[cfg(doctest)]
 mod __doc_check {
-    // #[path = "../../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests"]
     mod guide {
-        include!("../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests");
+        include!("../../../../doc/docs/content/docs/dx/dir-structure/.guide.mdx.doctests");
     }
 
-    // #[path = "../../../../doc/docs/content/docs/dx/dir-structure/.custom-impl.mdx.doctests"]
     mod plumbing_guide {
-        include!("../../../doc/docs/content/docs/dx/dir-structure/.custom-impl.mdx.doctests");
+        include!("../../../../doc/docs/content/docs/dx/dir-structure/.custom-impl.mdx.doctests");
     }
 
     #[doc = include_str!("../README.md")]
