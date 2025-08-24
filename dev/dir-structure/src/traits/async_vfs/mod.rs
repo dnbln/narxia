@@ -58,10 +58,6 @@ pub trait VfsAsync: Send + Sync + Unpin {
         Self: 'a;
     fn create_parent_dir<'a>(self: Pin<&'a Self>, path: PathBuf)
     -> Self::CreateParentDirFuture<'a>;
-    type StatFuture<'a>: Future<Output = Result<fs::Metadata>> + Send + 'a
-    where
-        Self: 'a;
-    fn stat<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::StatFuture<'a>;
 
     type DirWalk<'a>: Stream<Item = Result<(OsString, PathBuf)>> + Send + 'a
     where

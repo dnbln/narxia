@@ -105,18 +105,6 @@ impl VfsAsync for TokioFsVfs {
         }
     }
 
-    type StatFuture<'a>
-        = IoErrorWrapperFuture<
-        std_fs::Metadata,
-        Pin<Box<dyn Future<Output = io::Result<std_fs::Metadata>> + Send + 'a>>,
-    >
-    where
-        Self: 'a;
-
-    fn stat<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::StatFuture<'a> {
-        IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::metadata(path)))
-    }
-
     type DirWalk<'a>
         = DirWalker
     where

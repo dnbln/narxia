@@ -43,11 +43,6 @@ impl Vfs for FsVfs {
         Ok(path.exists())
     }
 
-    fn stat(self: Pin<&Self>, path: &Path) -> Result<()> {
-        fs::metadata(path).wrap_io_error_with(path)?;
-        Ok(())
-    }
-
     fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk> {
         fs::read_dir(path)
             .wrap_io_error_with(path)

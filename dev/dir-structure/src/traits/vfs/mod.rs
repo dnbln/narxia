@@ -1,4 +1,5 @@
 use std::ffi::OsString;
+use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -23,7 +24,6 @@ pub trait Vfs: Clone {
         }
         Ok(())
     }
-    fn stat(self: Pin<&Self>, path: &Path) -> Result<()>;
     fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk>;
 }
 
