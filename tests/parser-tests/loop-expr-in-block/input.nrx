@@ -1,4 +1,4 @@
-// test loop-expr-in-block at crates/narxia-syn/src/parser/expr.rs
+// test loop-expr-in-block at src/compiler/narxia-syn/src/parser/expr.rs
 {
     loop {}
 }

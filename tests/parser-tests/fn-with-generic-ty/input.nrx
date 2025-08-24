@@ -1,3 +1,3 @@
-// test fn-with-generic-ty at crates/narxia-syn/src/parser/fun.rs
+// test fn-with-generic-ty at src/compiler/narxia-syn/src/parser/fun.rs
 fn f<T>(v: T) {
 }

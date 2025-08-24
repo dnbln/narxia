@@ -1,2 +1,2 @@
-// test module at crates/narxia-syn/src/parser/mod.rs
+// test module at src/compiler/narxia-syn/src/parser/mod.rs
 module a

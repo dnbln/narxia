@@ -1,4 +1,4 @@
-// test if-expr at crates/narxia-ssa-lower/src/lib.rs
+// test if-expr at src/compiler/narxia-ssa-lower/src/lib.rs
 fn main() {
     if (1) {
         println("Hello world")

@@ -1,2 +1,2 @@
-// test call-with-multi-args-and-explicit-lambda-param at crates/narxia-syn/src/parser/expr.rs
+// test call-with-multi-args-and-explicit-lambda-param at src/compiler/narxia-syn/src/parser/expr.rs
 f(a, b, c, { it -> it + a })

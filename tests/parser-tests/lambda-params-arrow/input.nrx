@@ -1,4 +1,4 @@
-// test lambda-params-arrow at crates/narxia-syn/src/parser/expr.rs
+// test lambda-params-arrow at src/compiler/narxia-syn/src/parser/expr.rs
 { a,
   b,
   c

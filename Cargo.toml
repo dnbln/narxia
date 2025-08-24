@@ -1,6 +1,6 @@
 [workspace]
-members = ["crates/*", "dev/*", "tests/narxia-test-runner"]
-default-members = ["dev/cargo-guard"]
+members = ["src/compiler/*", "src/dev/*", "tests/narxia-test-runner"]
+default-members = ["src/dev/cargo-guard"]
 resolver = "2"
 
 [workspace.package]
@@ -26,32 +26,31 @@ opt-level = 3
 opt-level = 3
 
 [workspace.dependencies]
-narxia-codegen = { path = "crates/narxia-codegen" }
-narxia-codegen-llvm = { path = "crates/narxia-codegen-llvm" }
-narxia-data-structures = { path = "crates/narxia-data-structures" }
-narxia-dir-structures = { path = "dev/narxia-dir-structures" }
-narxia-driver = { path = "crates/narxia-driver" }
-narxia-hir = { path = "crates/narxia-hir" }
-narxia-hir-lower = { path = "crates/narxia-hir-lower" }
-narxia-hir-db = { path = "crates/narxia-hir-db" }
-narxia-hir-typechk = { path = "crates/narxia-hir-typechk" }
-narxia-hiri = { path = "crates/narxia-hiri" }
-narxia-log = { path = "crates/narxia-log" }
-narxia-log-impl = { path = "crates/narxia-log-impl" }
-narxia-proc = { path = "crates/narxia-proc" }
-narxia-src-db = { path = "crates/narxia-src-db" }
-narxia-ssa = { path = "crates/narxia-ssa" }
-narxia-ssa-lower = { path = "crates/narxia-ssa-lower" }
-narxia-ssa-validator = { path = "crates/narxia-ssa-validator" }
-narxia-syn = { path = "crates/narxia-syn" }
-narxia-syn-db = { path = "crates/narxia-syn-db" }
+narxia-codegen = { path = "src/compiler/narxia-codegen" }
+narxia-codegen-llvm = { path = "src/compiler/narxia-codegen-llvm" }
+narxia-data-structures = { path = "src/compiler/narxia-data-structures" }
+narxia-dir-structures = { path = "src/dev/narxia-dir-structures" }
+narxia-driver = { path = "src/compiler/narxia-driver" }
+narxia-hir = { path = "src/compiler/narxia-hir" }
+narxia-hir-lower = { path = "src/compiler/narxia-hir-lower" }
+narxia-hir-db = { path = "src/compiler/narxia-hir-db" }
+narxia-hir-typechk = { path = "src/compiler/narxia-hir-typechk" }
+narxia-hiri = { path = "src/compiler/narxia-hiri" }
+narxia-log = { path = "src/compiler/narxia-log" }
+narxia-log-impl = { path = "src/compiler/narxia-log-impl" }
+narxia-proc = { path = "src/compiler/narxia-proc" }
+narxia-src-db = { path = "src/compiler/narxia-src-db" }
+narxia-ssa = { path = "src/compiler/narxia-ssa" }
+narxia-ssa-lower = { path = "src/compiler/narxia-ssa-lower" }
+narxia-ssa-validator = { path = "src/compiler/narxia-ssa-validator" }
+narxia-syn = { path = "src/compiler/narxia-syn" }
+narxia-syn-db = { path = "src/compiler/narxia-syn-db" }
 
-doc-extract = { path = "dev/doc-extract" }
-doc-patchup = { path = "dev/doc-patchup" }
-dir-structure-macros = { path = "dev/dir-structure-macros", version = "=0.1.6" }
-dir-structure = { path = "dev/dir-structure", version = "0.1.6" }
-git-journey = { path = "dev/git-journey", version = "0.1.0" }
-git-voyage = { path = "dev/git-voyage", version = "0.1.0" }
+doc-extract = { path = "src/dev/doc-extract" }
+dir-structure-macros = { path = "src/dev/dir-structure-macros", version = "=0.1.6" }
+dir-structure = { path = "src/dev/dir-structure", version = "0.1.6" }
+git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
+git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
 bumpalo = "3.6.0"
 cargo_metadata = "0.19.1"
@@ -63,7 +62,6 @@ criterion = { version = "0.5", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
-glob = "0.3.0"
 human-panic = "2.0.0"
 humantime = "2.1.0"
 libc = "0.2"
@@ -81,7 +79,7 @@ prodash = { version = "29.0.0", default-features = false, features = [
 ] }
 reqwest = { version = "0.12.15", features = ["blocking"] }
 rowan = "0.16.1"
-salsa = { path = "crates/narxia-salsa" }
+salsa = { path = "src/compiler/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 similar = "2.7"

@@ -1,2 +1,2 @@
-// test method-call-with-simple-lambda-after-normal-single-arg at crates/narxia-syn/src/parser/expr.rs
+// test method-call-with-simple-lambda-after-normal-single-arg at src/compiler/narxia-syn/src/parser/expr.rs
 a.f(a) { it + b }

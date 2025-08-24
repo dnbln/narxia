@@ -1,2 +1,2 @@
-// test let-stmt-mut at crates/narxia-syn/src/parser/stmt.rs
+// test let-stmt-mut at src/compiler/narxia-syn/src/parser/stmt.rs
 let mut x

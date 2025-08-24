@@ -1,2 +1,2 @@
-// test method-call-with-simple-lambda at crates/narxia-syn/src/parser/expr.rs
+// test method-call-with-simple-lambda at src/compiler/narxia-syn/src/parser/expr.rs
 a.f { it + a }

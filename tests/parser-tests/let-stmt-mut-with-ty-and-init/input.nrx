@@ -1,2 +1,2 @@
-// test let-stmt-mut-with-ty-and-init at crates/narxia-syn/src/parser/stmt.rs
+// test let-stmt-mut-with-ty-and-init at src/compiler/narxia-syn/src/parser/stmt.rs
 let mut x: i32 = 1

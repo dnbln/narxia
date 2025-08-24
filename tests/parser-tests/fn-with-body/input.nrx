@@ -1,4 +1,4 @@
-// test fn-with-body at crates/narxia-syn/src/parser/fun.rs
+// test fn-with-body at src/compiler/narxia-syn/src/parser/fun.rs
 fn main() {
     let x = a
     let y = b

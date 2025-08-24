@@ -1,4 +1,4 @@
-// test resolve-to-fn-param-shadowing at crates/narxia-hir-typechk/src/sema/mod.rs
+// test resolve-to-fn-param-shadowing at src/compiler/narxia-hir-typechk/src/sema/mod.rs
 fn foo(s: str) {
     let s = 1
     return s

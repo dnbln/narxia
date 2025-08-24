@@ -1,0 +1,36 @@
+[package]
+name = "nexus"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+cargo_metadata.workspace = true
+clap.workspace = true
+humantime.workspace = true
+miette.workspace = true
+nextest-metadata.workspace = true
+owo-colors.workspace = true
+prodash.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tar.workspace = true
+liblzma.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+zip.workspace = true
+
+dir-structure.workspace = true
+doc-extract.workspace = true
+git-voyage.workspace = true
+narxia-log.workspace = true
+narxia-log-impl.workspace = true
+narxia-dir-structures.workspace = true

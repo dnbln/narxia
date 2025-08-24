@@ -1,2 +1,2 @@
-// test simple-paren-expression at crates/narxia-syn/src/parser/expr.rs
+// test simple-paren-expression at src/compiler/narxia-syn/src/parser/expr.rs
 let x = (1)

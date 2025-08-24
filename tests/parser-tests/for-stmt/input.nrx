@@ -1,3 +1,3 @@
-// test for-stmt at crates/narxia-syn/src/parser/stmt.rs
+// test for-stmt at src/compiler/narxia-syn/src/parser/stmt.rs
 for (i in f()) {
 }

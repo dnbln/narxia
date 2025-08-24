@@ -1,2 +1,2 @@
-// test num-lit-dec-with-underscore at crates/narxia-syn/src/parser/expr.rs
+// test num-lit-dec-with-underscore at src/compiler/narxia-syn/src/parser/expr.rs
 let x = 123_456_789

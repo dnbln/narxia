@@ -1,4 +1,4 @@
-// test simple-use-stmt-with-list-in-path-and-alias at crates/narxia-syn/src/parser/mod.rs
+// test simple-use-stmt-with-list-in-path-and-alias at src/compiler/narxia-syn/src/parser/mod.rs
 use println::aaaa::{
     a as b
     b as c

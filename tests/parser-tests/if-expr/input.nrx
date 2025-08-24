@@ -1,2 +1,2 @@
-// test if-expr at crates/narxia-syn/src/parser/expr.rs
+// test if-expr at src/compiler/narxia-syn/src/parser/expr.rs
 if (a == b) a else b

@@ -1,2 +1,2 @@
-// test fn-ty-with-params at crates/narxia-syn/src/parser/mod.rs
+// test fn-ty-with-params at src/compiler/narxia-syn/src/parser/mod.rs
 let x: fn(i32, i32)

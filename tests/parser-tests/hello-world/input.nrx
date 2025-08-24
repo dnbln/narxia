@@ -1,2 +1,2 @@
-// test hello-world at crates/narxia-syn/src/parser/mod.rs
+// test hello-world at src/compiler/narxia-syn/src/parser/mod.rs
 println("Hello, world!")

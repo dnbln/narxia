@@ -1,2 +1,2 @@
-// test fn-with-ret-ty at crates/narxia-syn/src/parser/fun.rs
+// test fn-with-ret-ty at src/compiler/narxia-syn/src/parser/fun.rs
 fn main() -> i32 { 0 }

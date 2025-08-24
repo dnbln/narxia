@@ -1,0 +1,20 @@
+[package]
+name = "doc-extract"
+version.workspace = true
+publish.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[dependencies]
+lsp-types = { version = "0.97" }
+lsp_client = { git = "https://github.com/dnbln/lsp_client", rev = "0a95ce0c914969f36fd6ae3dbdc21bd66e882d37" }
+tokio.workspace = true
+url = "2"
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,4 +1,4 @@
-// test nested-if-exprs at crates/narxia-ssa-lower/src/lib.rs
+// test nested-if-exprs at src/compiler/narxia-ssa-lower/src/lib.rs
 fn main() {
     if (1) {
         let s = "Hello world"

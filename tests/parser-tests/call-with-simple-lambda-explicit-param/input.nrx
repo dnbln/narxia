@@ -1,2 +1,2 @@
-// test call-with-simple-lambda-explicit-param at crates/narxia-syn/src/parser/expr.rs
+// test call-with-simple-lambda-explicit-param at src/compiler/narxia-syn/src/parser/expr.rs
 f { it -> it + a }

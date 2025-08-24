@@ -1,0 +1,67 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build LLVM",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "nexus",
+                "build-sys",
+                "build",
+                "--targets",
+                "llvm"
+            ],
+            "group": "build",
+        },
+        {
+            "label": "Build compiler",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "nexus",
+                "build-sys",
+                "build",
+                "--targets",
+                "compiler"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "Run tests",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "nexus",
+                "test"
+            ],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": true
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "hiri hello world",
+            "type": "process",
+            "command": "cargo",
+            "args": [
+                "nexus",
+                "run",
+                "hiri",
+                "examples/hello_world.nrx"
+            ],
+            "group": "test",
+        }
+    ]
+}

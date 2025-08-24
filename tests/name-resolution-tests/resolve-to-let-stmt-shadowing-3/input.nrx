@@ -1,4 +1,4 @@
-// test resolve-to-let-stmt-shadowing-3 at crates/narxia-hir-typechk/src/sema/mod.rs
+// test resolve-to-let-stmt-shadowing-3 at src/compiler/narxia-hir-typechk/src/sema/mod.rs
 let s = 1
 {
     let s = 2

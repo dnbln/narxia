@@ -1,2 +1,2 @@
-// test return-expr-no-value at crates/narxia-syn/src/parser/expr.rs
+// test return-expr-no-value at src/compiler/narxia-syn/src/parser/expr.rs
 return

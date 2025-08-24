@@ -1,2 +1,2 @@
-// test num-lit-dec at crates/narxia-syn/src/parser/expr.rs
+// test num-lit-dec at src/compiler/narxia-syn/src/parser/expr.rs
 let x = 123

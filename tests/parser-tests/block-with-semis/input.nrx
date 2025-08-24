@@ -1,4 +1,4 @@
-// test block-with-semis at crates/narxia-syn/src/parser/mod.rs
+// test block-with-semis at src/compiler/narxia-syn/src/parser/mod.rs
 { let x = a; let y = b;;;
      ;;
      ;;

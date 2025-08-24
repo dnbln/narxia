@@ -478,13 +478,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crash"
-version = "0.0.0"
-dependencies = [
- "pin-project",
-]
-
-[[package]]
 name = "crc32fast"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -732,16 +725,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "url",
-]
-
-[[package]]
-name = "doc-patchup"
-version = "0.0.0"
-dependencies = [
- "doc-extract",
- "glob",
- "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]
@@ -1019,12 +1002,6 @@ dependencies = [
  "openssl-sys",
  "url",
 ]
-
-[[package]]
-name = "glob"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "guppy-workspace-hack"
@@ -1690,7 +1667,7 @@ dependencies = [
 [[package]]
 name = "lsp_client"
 version = "0.1.0"
-source = "git+https://github.com/codestoryai/lsp_client?rev=40605429f9b70157a1c30303b658b3f6476f7600#40605429f9b70157a1c30303b658b3f6476f7600"
+source = "git+https://github.com/dnbln/lsp_client?rev=0a95ce0c914969f36fd6ae3dbdc21bd66e882d37#0a95ce0c914969f36fd6ae3dbdc21bd66e882d37"
 dependencies = [
  "futures",
  "jsonrpc-lite",
@@ -2037,9 +2014,8 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "dir-structure",
- "doc-patchup",
+ "doc-extract",
  "git-voyage",
- "glob",
  "humantime",
  "liblzma",
  "miette",
@@ -2053,6 +2029,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
+ "thiserror 2.0.12",
  "tokio",
  "zip",
 ]

@@ -1,2 +1,2 @@
-// test resolve-to-fn-param at crates/narxia-hir-typechk/src/sema/mod.rs
+// test resolve-to-fn-param at src/compiler/narxia-hir-typechk/src/sema/mod.rs
 fn foo(s: str) {return s}
