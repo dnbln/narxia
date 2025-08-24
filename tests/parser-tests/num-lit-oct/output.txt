@@ -1,17 +1,17 @@
-Root@0..79
-  COMPOSED_TRIVIA@0..60 "// test num-lit-oct at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@60..78
-    Stmt@60..78
-      LetStmt@60..78
-        LET_KW@60..63 "let"
-        COMPOSED_TRIVIA@63..64 " "
-        Pat@64..65
-          IDENT@64..65 "x"
-        COMPOSED_TRIVIA@65..66 " "
-        EQ@66..67 "="
-        COMPOSED_TRIVIA@67..68 " "
-        Expr@68..78
-          ExprAtom@68..78
-            NumLit@68..78
-              NUM_OCT@68..78 "01_234_567"
-  COMPOSED_TRIVIA@78..79 "\n"
+Root@0..85
+  COMPOSED_TRIVIA@0..66 "// test num-lit-oct at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@66..84
+    Stmt@66..84
+      LetStmt@66..84
+        LET_KW@66..69 "let"
+        COMPOSED_TRIVIA@69..70 " "
+        Pat@70..71
+          IDENT@70..71 "x"
+        COMPOSED_TRIVIA@71..72 " "
+        EQ@72..73 "="
+        COMPOSED_TRIVIA@73..74 " "
+        Expr@74..84
+          ExprAtom@74..84
+            NumLit@74..84
+              NUM_OCT@74..84 "01_234_567"
+  COMPOSED_TRIVIA@84..85 "\n"

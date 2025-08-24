@@ -1,23 +1,23 @@
-Root@0..83
-  COMPOSED_TRIVIA@0..67 "// test loop-expr-in-block at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@67..82
-    Stmt@67..82
-      Expr@67..82
-        ExprAtom@67..82
-          BlockExpr@67..82
-            Block@67..82
-              L_BRACE@67..68 "{"
-              COMPOSED_TRIVIA@68..73 "\n    "
-              Item@73..80
-                Stmt@73..80
-                  Expr@73..80
-                    ExprAtom@73..80
-                      LoopExpr@73..80
-                        LOOP_KW@73..77 "loop"
-                        COMPOSED_TRIVIA@77..78 " "
-                        Block@78..80
-                          L_BRACE@78..79 "{"
-                          R_BRACE@79..80 "}"
-              NEWLINE@80..81 "\n"
-              R_BRACE@81..82 "}"
-  COMPOSED_TRIVIA@82..83 "\n"
+Root@0..89
+  COMPOSED_TRIVIA@0..73 "// test loop-expr-in-block at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@73..88
+    Stmt@73..88
+      Expr@73..88
+        ExprAtom@73..88
+          BlockExpr@73..88
+            Block@73..88
+              L_BRACE@73..74 "{"
+              COMPOSED_TRIVIA@74..79 "\n    "
+              Item@79..86
+                Stmt@79..86
+                  Expr@79..86
+                    ExprAtom@79..86
+                      LoopExpr@79..86
+                        LOOP_KW@79..83 "loop"
+                        COMPOSED_TRIVIA@83..84 " "
+                        Block@84..86
+                          L_BRACE@84..85 "{"
+                          R_BRACE@85..86 "}"
+              NEWLINE@86..87 "\n"
+              R_BRACE@87..88 "}"
+  COMPOSED_TRIVIA@88..89 "\n"

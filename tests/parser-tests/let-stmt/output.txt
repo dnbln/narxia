@@ -1,10 +1,10 @@
-Root@0..63
-  COMPOSED_TRIVIA@0..57 "// test let-stmt at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@57..62
-    Stmt@57..62
-      LetStmt@57..62
-        LET_KW@57..60 "let"
-        COMPOSED_TRIVIA@60..61 " "
-        Pat@61..62
-          IDENT@61..62 "x"
-  COMPOSED_TRIVIA@62..63 "\n"
+Root@0..69
+  COMPOSED_TRIVIA@0..63 "// test let-stmt at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@63..68
+    Stmt@63..68
+      LetStmt@63..68
+        LET_KW@63..66 "let"
+        COMPOSED_TRIVIA@66..67 " "
+        Pat@67..68
+          IDENT@67..68 "x"
+  COMPOSED_TRIVIA@68..69 "\n"

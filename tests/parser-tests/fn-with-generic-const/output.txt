@@ -1,39 +1,39 @@
-Root@0..98
-  COMPOSED_TRIVIA@0..69 "// test fn-with-generic-const at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@69..97
-    FnDef@69..97
-      FnHead@69..94
-        FN_KW@69..71 "fn"
-        COMPOSED_TRIVIA@71..72 " "
-        FnName@72..73
-          IDENT@72..73 "f"
-        GenericParamList@73..86
-          L_ANGLE@73..74 "<"
-          GenericParam@74..85
-            GenericConstParam@74..85
-              CONST_KW@74..79 "const"
-              COMPOSED_TRIVIA@79..80 " "
-              GenericConstParamName@80..81
-                IDENT@80..81 "V"
-              COLON@81..82 ":"
-              COMPOSED_TRIVIA@82..83 " "
-              TyRef@83..85
-                IDENT@83..85 "Ty"
-          R_ANGLE@85..86 ">"
-        FnParamList@86..94
-          L_PAREN@86..87 "("
-          FnParam@87..93
-            FnParamName@87..88
-              Pat@87..88
-                IDENT@87..88 "a"
-            COLON@88..89 ":"
-            COMPOSED_TRIVIA@89..90 " "
-            FnParamTy@90..93
-              TyRef@90..93
-                IDENT@90..93 "i32"
-          R_PAREN@93..94 ")"
-      COMPOSED_TRIVIA@94..95 " "
-      Block@95..97
-        L_BRACE@95..96 "{"
-        R_BRACE@96..97 "}"
-  COMPOSED_TRIVIA@97..98 "\n"
+Root@0..104
+  COMPOSED_TRIVIA@0..75 "// test fn-with-generic-const at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@75..103
+    FnDef@75..103
+      FnHead@75..100
+        FN_KW@75..77 "fn"
+        COMPOSED_TRIVIA@77..78 " "
+        FnName@78..79
+          IDENT@78..79 "f"
+        GenericParamList@79..92
+          L_ANGLE@79..80 "<"
+          GenericParam@80..91
+            GenericConstParam@80..91
+              CONST_KW@80..85 "const"
+              COMPOSED_TRIVIA@85..86 " "
+              GenericConstParamName@86..87
+                IDENT@86..87 "V"
+              COLON@87..88 ":"
+              COMPOSED_TRIVIA@88..89 " "
+              TyRef@89..91
+                IDENT@89..91 "Ty"
+          R_ANGLE@91..92 ">"
+        FnParamList@92..100
+          L_PAREN@92..93 "("
+          FnParam@93..99
+            FnParamName@93..94
+              Pat@93..94
+                IDENT@93..94 "a"
+            COLON@94..95 ":"
+            COMPOSED_TRIVIA@95..96 " "
+            FnParamTy@96..99
+              TyRef@96..99
+                IDENT@96..99 "i32"
+          R_PAREN@99..100 ")"
+      COMPOSED_TRIVIA@100..101 " "
+      Block@101..103
+        L_BRACE@101..102 "{"
+        R_BRACE@102..103 "}"
+  COMPOSED_TRIVIA@103..104 "\n"

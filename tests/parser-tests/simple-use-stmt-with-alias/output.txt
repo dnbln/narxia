@@ -1,17 +1,17 @@
-Root@0..91
-  COMPOSED_TRIVIA@0..74 "// test simple-use-stmt-with-alias at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@74..90
-    UseStmt@74..90
-      USE_KW@74..77 "use"
-      COMPOSED_TRIVIA@77..78 " "
-      UsePath@78..90
-        UsePathSegmentAndPath@78..90
-          UsePathSegment@78..85
-            IDENT@78..85 "println"
-          COMPOSED_TRIVIA@85..86 " "
-          UsePathContinuation@86..90
-            UseAlias@86..90
-              AS_KW@86..88 "as"
-              COMPOSED_TRIVIA@88..89 " "
-              IDENT@89..90 "p"
-  COMPOSED_TRIVIA@90..91 "\n"
+Root@0..97
+  COMPOSED_TRIVIA@0..80 "// test simple-use-stmt-with-alias at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@80..96
+    UseStmt@80..96
+      USE_KW@80..83 "use"
+      COMPOSED_TRIVIA@83..84 " "
+      UsePath@84..96
+        UsePathSegmentAndPath@84..96
+          UsePathSegment@84..91
+            IDENT@84..91 "println"
+          COMPOSED_TRIVIA@91..92 " "
+          UsePathContinuation@92..96
+            UseAlias@92..96
+              AS_KW@92..94 "as"
+              COMPOSED_TRIVIA@94..95 " "
+              IDENT@95..96 "p"
+  COMPOSED_TRIVIA@96..97 "\n"

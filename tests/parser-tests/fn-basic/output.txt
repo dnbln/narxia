@@ -1,17 +1,17 @@
-Root@0..69
-  COMPOSED_TRIVIA@0..56 "// test fn-basic at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@56..68
-    FnDef@56..68
-      FnHead@56..65
-        FN_KW@56..58 "fn"
-        COMPOSED_TRIVIA@58..59 " "
-        FnName@59..63
-          IDENT@59..63 "main"
-        FnParamList@63..65
-          L_PAREN@63..64 "("
-          R_PAREN@64..65 ")"
-      COMPOSED_TRIVIA@65..66 " "
-      Block@66..68
-        L_BRACE@66..67 "{"
-        R_BRACE@67..68 "}"
-  COMPOSED_TRIVIA@68..69 "\n"
+Root@0..75
+  COMPOSED_TRIVIA@0..62 "// test fn-basic at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@62..74
+    FnDef@62..74
+      FnHead@62..71
+        FN_KW@62..64 "fn"
+        COMPOSED_TRIVIA@64..65 " "
+        FnName@65..69
+          IDENT@65..69 "main"
+        FnParamList@69..71
+          L_PAREN@69..70 "("
+          R_PAREN@70..71 ")"
+      COMPOSED_TRIVIA@71..72 " "
+      Block@72..74
+        L_BRACE@72..73 "{"
+        R_BRACE@73..74 "}"
+  COMPOSED_TRIVIA@74..75 "\n"

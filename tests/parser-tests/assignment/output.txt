@@ -1,37 +1,37 @@
-Root@0..73
-  COMPOSED_TRIVIA@0..59 "// test assignment at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@59..64
-    Stmt@59..64
-      AssignmentStmt@59..64
-        AssignmentLhs@59..60
-          Expr@59..60
-            ExprAtom@59..60
-              IDENT@59..60 "x"
-        COMPOSED_TRIVIA@60..61 " "
-        AssignmentOpAndRhsExpr@61..64
-          AssignmentOp@61..62
-            EQ@61..62 "="
-          COMPOSED_TRIVIA@62..63 " "
-          Expr@63..64
-            ExprAtom@63..64
-              IDENT@63..64 "y"
-  COMPOSED_TRIVIA@64..65 "\n"
-  Item@65..72
-    Stmt@65..72
-      AssignmentStmt@65..72
-        AssignmentLhs@65..68
-          Expr@65..68
-            FieldAccess@65..68
-              ExprAtom@65..66
-                IDENT@65..66 "x"
-              DOT@66..67 "."
-              IDENT@67..68 "y"
-        COMPOSED_TRIVIA@68..69 " "
-        AssignmentOpAndRhsExpr@69..72
-          AssignmentOp@69..70
-            EQ@69..70 "="
-          COMPOSED_TRIVIA@70..71 " "
-          Expr@71..72
-            ExprAtom@71..72
-              IDENT@71..72 "z"
-  COMPOSED_TRIVIA@72..73 "\n"
+Root@0..79
+  COMPOSED_TRIVIA@0..65 "// test assignment at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@65..70
+    Stmt@65..70
+      AssignmentStmt@65..70
+        AssignmentLhs@65..66
+          Expr@65..66
+            ExprAtom@65..66
+              IDENT@65..66 "x"
+        COMPOSED_TRIVIA@66..67 " "
+        AssignmentOpAndRhsExpr@67..70
+          AssignmentOp@67..68
+            EQ@67..68 "="
+          COMPOSED_TRIVIA@68..69 " "
+          Expr@69..70
+            ExprAtom@69..70
+              IDENT@69..70 "y"
+  COMPOSED_TRIVIA@70..71 "\n"
+  Item@71..78
+    Stmt@71..78
+      AssignmentStmt@71..78
+        AssignmentLhs@71..74
+          Expr@71..74
+            FieldAccess@71..74
+              ExprAtom@71..72
+                IDENT@71..72 "x"
+              DOT@72..73 "."
+              IDENT@73..74 "y"
+        COMPOSED_TRIVIA@74..75 " "
+        AssignmentOpAndRhsExpr@75..78
+          AssignmentOp@75..76
+            EQ@75..76 "="
+          COMPOSED_TRIVIA@76..77 " "
+          Expr@77..78
+            ExprAtom@77..78
+              IDENT@77..78 "z"
+  COMPOSED_TRIVIA@78..79 "\n"

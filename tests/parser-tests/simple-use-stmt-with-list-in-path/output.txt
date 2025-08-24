@@ -1,27 +1,27 @@
-Root@0..100
-  COMPOSED_TRIVIA@0..81 "// test simple-use-stmt-with-list-in-path at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@81..99
-    UseStmt@81..99
-      USE_KW@81..84 "use"
-      COMPOSED_TRIVIA@84..85 " "
-      UsePath@85..99
-        UsePathSegmentAndPath@85..99
-          UsePathSegment@85..92
-            IDENT@85..92 "println"
-          UsePathContinuation@92..99
-            UsePathColonContinuation@92..99
-              COLON2@92..94 "::"
-              UsePath@94..99
-                UsePathList@94..99
-                  L_BRACE@94..95 "{"
-                  UsePath@95..96
-                    UsePathSegmentAndPath@95..96
-                      UsePathSegment@95..96
-                        IDENT@95..96 "a"
-                  COMPOSED_TRIVIA@96..97 " "
-                  UsePath@97..98
-                    UsePathSegmentAndPath@97..98
-                      UsePathSegment@97..98
-                        IDENT@97..98 "b"
-                  R_BRACE@98..99 "}"
-  COMPOSED_TRIVIA@99..100 "\n"
+Root@0..106
+  COMPOSED_TRIVIA@0..87 "// test simple-use-stmt-with-list-in-path at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@87..105
+    UseStmt@87..105
+      USE_KW@87..90 "use"
+      COMPOSED_TRIVIA@90..91 " "
+      UsePath@91..105
+        UsePathSegmentAndPath@91..105
+          UsePathSegment@91..98
+            IDENT@91..98 "println"
+          UsePathContinuation@98..105
+            UsePathColonContinuation@98..105
+              COLON2@98..100 "::"
+              UsePath@100..105
+                UsePathList@100..105
+                  L_BRACE@100..101 "{"
+                  UsePath@101..102
+                    UsePathSegmentAndPath@101..102
+                      UsePathSegment@101..102
+                        IDENT@101..102 "a"
+                  COMPOSED_TRIVIA@102..103 " "
+                  UsePath@103..104
+                    UsePathSegmentAndPath@103..104
+                      UsePathSegment@103..104
+                        IDENT@103..104 "b"
+                  R_BRACE@104..105 "}"
+  COMPOSED_TRIVIA@105..106 "\n"

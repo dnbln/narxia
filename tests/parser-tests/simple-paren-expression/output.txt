@@ -1,22 +1,22 @@
-Root@0..84
-  COMPOSED_TRIVIA@0..72 "// test simple-paren-expression at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@72..83
-    Stmt@72..83
-      LetStmt@72..83
-        LET_KW@72..75 "let"
-        COMPOSED_TRIVIA@75..76 " "
-        Pat@76..77
-          IDENT@76..77 "x"
-        COMPOSED_TRIVIA@77..78 " "
-        EQ@78..79 "="
-        COMPOSED_TRIVIA@79..80 " "
-        Expr@80..83
-          ExprAtom@80..83
-            TupleLikeExpr@80..83
-              L_PAREN@80..81 "("
-              Expr@81..82
-                ExprAtom@81..82
-                  NumLit@81..82
-                    NUM_DEC@81..82 "1"
-              R_PAREN@82..83 ")"
-  COMPOSED_TRIVIA@83..84 "\n"
+Root@0..90
+  COMPOSED_TRIVIA@0..78 "// test simple-paren-expression at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@78..89
+    Stmt@78..89
+      LetStmt@78..89
+        LET_KW@78..81 "let"
+        COMPOSED_TRIVIA@81..82 " "
+        Pat@82..83
+          IDENT@82..83 "x"
+        COMPOSED_TRIVIA@83..84 " "
+        EQ@84..85 "="
+        COMPOSED_TRIVIA@85..86 " "
+        Expr@86..89
+          ExprAtom@86..89
+            TupleLikeExpr@86..89
+              L_PAREN@86..87 "("
+              Expr@87..88
+                ExprAtom@87..88
+                  NumLit@87..88
+                    NUM_DEC@87..88 "1"
+              R_PAREN@88..89 ")"
+  COMPOSED_TRIVIA@89..90 "\n"

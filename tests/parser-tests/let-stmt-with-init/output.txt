@@ -1,17 +1,17 @@
-Root@0..77
-  COMPOSED_TRIVIA@0..67 "// test let-stmt-with-init at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@67..76
-    Stmt@67..76
-      LetStmt@67..76
-        LET_KW@67..70 "let"
-        COMPOSED_TRIVIA@70..71 " "
-        Pat@71..72
-          IDENT@71..72 "x"
-        COMPOSED_TRIVIA@72..73 " "
-        EQ@73..74 "="
-        COMPOSED_TRIVIA@74..75 " "
-        Expr@75..76
-          ExprAtom@75..76
-            NumLit@75..76
-              NUM_DEC@75..76 "1"
-  COMPOSED_TRIVIA@76..77 "\n"
+Root@0..83
+  COMPOSED_TRIVIA@0..73 "// test let-stmt-with-init at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@73..82
+    Stmt@73..82
+      LetStmt@73..82
+        LET_KW@73..76 "let"
+        COMPOSED_TRIVIA@76..77 " "
+        Pat@77..78
+          IDENT@77..78 "x"
+        COMPOSED_TRIVIA@78..79 " "
+        EQ@79..80 "="
+        COMPOSED_TRIVIA@80..81 " "
+        Expr@81..82
+          ExprAtom@81..82
+            NumLit@81..82
+              NUM_DEC@81..82 "1"
+  COMPOSED_TRIVIA@82..83 "\n"

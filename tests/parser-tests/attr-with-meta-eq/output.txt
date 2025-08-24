@@ -1,37 +1,37 @@
-Root@0..91
-  COMPOSED_TRIVIA@0..65 "// test attr-with-meta-eq at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@65..90
-    AttrList@65..81
-      Attr@65..80
-        HASH@65..66 "#"
-        AttrName@66..70
-          IDENT@66..70 "attr"
-        AttrMeta@70..80
-          L_BRACK@70..71 "["
-          AttrMetaItem@71..79
-            AttrMetaItemName@71..75
-              IDENT@71..75 "meta"
-            COMPOSED_TRIVIA@75..76 " "
-            AttrMetaItemEq@76..79
-              EQ@76..77 "="
-              COMPOSED_TRIVIA@77..78 " "
-              Expr@78..79
-                ExprAtom@78..79
-                  NumLit@78..79
-                    NUM_DEC@78..79 "1"
-          R_BRACK@79..80 "]"
-      COMPOSED_TRIVIA@80..81 "\n"
-    FnDef@81..90
-      FnHead@81..87
-        FN_KW@81..83 "fn"
-        COMPOSED_TRIVIA@83..84 " "
-        FnName@84..85
-          IDENT@84..85 "f"
-        FnParamList@85..87
-          L_PAREN@85..86 "("
-          R_PAREN@86..87 ")"
-      COMPOSED_TRIVIA@87..88 " "
-      Block@88..90
-        L_BRACE@88..89 "{"
-        R_BRACE@89..90 "}"
-  COMPOSED_TRIVIA@90..91 "\n"
+Root@0..97
+  COMPOSED_TRIVIA@0..71 "// test attr-with-meta-eq at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@71..96
+    AttrList@71..87
+      Attr@71..86
+        HASH@71..72 "#"
+        AttrName@72..76
+          IDENT@72..76 "attr"
+        AttrMeta@76..86
+          L_BRACK@76..77 "["
+          AttrMetaItem@77..85
+            AttrMetaItemName@77..81
+              IDENT@77..81 "meta"
+            COMPOSED_TRIVIA@81..82 " "
+            AttrMetaItemEq@82..85
+              EQ@82..83 "="
+              COMPOSED_TRIVIA@83..84 " "
+              Expr@84..85
+                ExprAtom@84..85
+                  NumLit@84..85
+                    NUM_DEC@84..85 "1"
+          R_BRACK@85..86 "]"
+      COMPOSED_TRIVIA@86..87 "\n"
+    FnDef@87..96
+      FnHead@87..93
+        FN_KW@87..89 "fn"
+        COMPOSED_TRIVIA@89..90 " "
+        FnName@90..91
+          IDENT@90..91 "f"
+        FnParamList@91..93
+          L_PAREN@91..92 "("
+          R_PAREN@92..93 ")"
+      COMPOSED_TRIVIA@93..94 " "
+      Block@94..96
+        L_BRACE@94..95 "{"
+        R_BRACE@95..96 "}"
+  COMPOSED_TRIVIA@96..97 "\n"

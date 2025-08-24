@@ -1,23 +1,23 @@
-Root@0..97
-  COMPOSED_TRIVIA@0..78 "// test let-stmt-mut-with-ty-and-init at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@78..96
-    Stmt@78..96
-      LetStmt@78..96
-        LET_KW@78..81 "let"
-        COMPOSED_TRIVIA@81..82 " "
-        MUT_KW@82..85 "mut"
-        COMPOSED_TRIVIA@85..86 " "
-        Pat@86..87
-          IDENT@86..87 "x"
-        COLON@87..88 ":"
-        COMPOSED_TRIVIA@88..89 " "
-        TyRef@89..92
-          IDENT@89..92 "i32"
-        COMPOSED_TRIVIA@92..93 " "
-        EQ@93..94 "="
+Root@0..103
+  COMPOSED_TRIVIA@0..84 "// test let-stmt-mut-with-ty-and-init at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@84..102
+    Stmt@84..102
+      LetStmt@84..102
+        LET_KW@84..87 "let"
+        COMPOSED_TRIVIA@87..88 " "
+        MUT_KW@88..91 "mut"
+        COMPOSED_TRIVIA@91..92 " "
+        Pat@92..93
+          IDENT@92..93 "x"
+        COLON@93..94 ":"
         COMPOSED_TRIVIA@94..95 " "
-        Expr@95..96
-          ExprAtom@95..96
-            NumLit@95..96
-              NUM_DEC@95..96 "1"
-  COMPOSED_TRIVIA@96..97 "\n"
+        TyRef@95..98
+          IDENT@95..98 "i32"
+        COMPOSED_TRIVIA@98..99 " "
+        EQ@99..100 "="
+        COMPOSED_TRIVIA@100..101 " "
+        Expr@101..102
+          ExprAtom@101..102
+            NumLit@101..102
+              NUM_DEC@101..102 "1"
+  COMPOSED_TRIVIA@102..103 "\n"

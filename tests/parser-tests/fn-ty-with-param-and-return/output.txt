@@ -1,26 +1,26 @@
-Root@0..97
-  COMPOSED_TRIVIA@0..75 "// test fn-ty-with-param-and-return at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@75..96
-    Stmt@75..96
-      LetStmt@75..96
-        LET_KW@75..78 "let"
-        COMPOSED_TRIVIA@78..79 " "
-        Pat@79..80
-          IDENT@79..80 "x"
-        COLON@80..81 ":"
-        COMPOSED_TRIVIA@81..82 " "
-        TyRef@82..96
-          FnTy@82..96
-            FN_KW@82..84 "fn"
-            FnTyParamTys@84..89
-              L_PAREN@84..85 "("
-              TyRef@85..88
-                IDENT@85..88 "i32"
-              R_PAREN@88..89 ")"
-            COMPOSED_TRIVIA@89..90 " "
-            FnTyRetTy@90..96
-              THIN_ARROW@90..92 "->"
-              COMPOSED_TRIVIA@92..93 " "
-              TyRef@93..96
-                IDENT@93..96 "i32"
-  COMPOSED_TRIVIA@96..97 "\n"
+Root@0..103
+  COMPOSED_TRIVIA@0..81 "// test fn-ty-with-param-and-return at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@81..102
+    Stmt@81..102
+      LetStmt@81..102
+        LET_KW@81..84 "let"
+        COMPOSED_TRIVIA@84..85 " "
+        Pat@85..86
+          IDENT@85..86 "x"
+        COLON@86..87 ":"
+        COMPOSED_TRIVIA@87..88 " "
+        TyRef@88..102
+          FnTy@88..102
+            FN_KW@88..90 "fn"
+            FnTyParamTys@90..95
+              L_PAREN@90..91 "("
+              TyRef@91..94
+                IDENT@91..94 "i32"
+              R_PAREN@94..95 ")"
+            COMPOSED_TRIVIA@95..96 " "
+            FnTyRetTy@96..102
+              THIN_ARROW@96..98 "->"
+              COMPOSED_TRIVIA@98..99 " "
+              TyRef@99..102
+                IDENT@99..102 "i32"
+  COMPOSED_TRIVIA@102..103 "\n"

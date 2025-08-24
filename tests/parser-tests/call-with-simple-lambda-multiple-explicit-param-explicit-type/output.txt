@@ -1,122 +1,122 @@
-Root@0..198
-  COMPOSED_TRIVIA@0..110 "// test call-with-simple-lambda-multiple-explicit-param-explicit-type at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@110..145
-    Stmt@110..145
-      Expr@110..145
-        CallExpr@110..145
-          ExprAtom@110..111
-            IDENT@110..111 "f"
-          COMPOSED_TRIVIA@111..112 " "
-          CallExprArgs@112..145
-            CallExprArgLambda@112..145
-              LambdaExpr@112..145
-                L_BRACE@112..113 "{"
-                COMPOSED_TRIVIA@113..114 " "
-                LambdaParamList@114..134
-                  LambdaParam@114..121
-                    FnParamName@114..116
-                      Pat@114..116
-                        IDENT@114..116 "it"
-                    COLON@116..117 ":"
-                    COMPOSED_TRIVIA@117..118 " "
-                    FnParamTy@118..121
-                      TyRef@118..121
-                        IDENT@118..121 "i32"
-                  COMMA@121..122 ","
-                  COMPOSED_TRIVIA@122..123 " "
-                  LambdaParam@123..131
-                    FnParamName@123..126
-                      Pat@123..126
-                        IDENT@123..126 "it2"
-                    COLON@126..127 ":"
-                    COMPOSED_TRIVIA@127..128 " "
-                    FnParamTy@128..131
-                      TyRef@128..131
-                        IDENT@128..131 "i32"
-                  COMPOSED_TRIVIA@131..132 " "
-                  THIN_ARROW@132..134 "->"
-                COMPOSED_TRIVIA@134..135 " "
-                Item@135..143
-                  Stmt@135..143
-                    Expr@135..143
-                      BinaryOpExpr@135..143
-                        ExprAtom@135..137
-                          IDENT@135..137 "it"
-                        COMPOSED_TRIVIA@137..138 " "
-                        BinaryOpExprOp@138..139
-                          PLUS@138..139 "+"
-                        COMPOSED_TRIVIA@139..140 " "
-                        ExprAtom@140..143
-                          IDENT@140..143 "it2"
-                COMPOSED_TRIVIA@143..144 " "
-                R_BRACE@144..145 "}"
-  COMPOSED_TRIVIA@145..146 "\n"
-  Item@146..197
-    Stmt@146..197
-      Expr@146..197
-        CallExpr@146..197
-          ExprAtom@146..147
-            IDENT@146..147 "f"
-          COMPOSED_TRIVIA@147..148 " "
-          CallExprArgs@148..197
-            CallExprArgLambda@148..197
-              LambdaExpr@148..197
-                L_BRACE@148..149 "{"
+Root@0..204
+  COMPOSED_TRIVIA@0..116 "// test call-with-simple-lambda-multiple-explicit-param-explicit-type at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@116..151
+    Stmt@116..151
+      Expr@116..151
+        CallExpr@116..151
+          ExprAtom@116..117
+            IDENT@116..117 "f"
+          COMPOSED_TRIVIA@117..118 " "
+          CallExprArgs@118..151
+            CallExprArgLambda@118..151
+              LambdaExpr@118..151
+                L_BRACE@118..119 "{"
+                COMPOSED_TRIVIA@119..120 " "
+                LambdaParamList@120..140
+                  LambdaParam@120..127
+                    FnParamName@120..122
+                      Pat@120..122
+                        IDENT@120..122 "it"
+                    COLON@122..123 ":"
+                    COMPOSED_TRIVIA@123..124 " "
+                    FnParamTy@124..127
+                      TyRef@124..127
+                        IDENT@124..127 "i32"
+                  COMMA@127..128 ","
+                  COMPOSED_TRIVIA@128..129 " "
+                  LambdaParam@129..137
+                    FnParamName@129..132
+                      Pat@129..132
+                        IDENT@129..132 "it2"
+                    COLON@132..133 ":"
+                    COMPOSED_TRIVIA@133..134 " "
+                    FnParamTy@134..137
+                      TyRef@134..137
+                        IDENT@134..137 "i32"
+                  COMPOSED_TRIVIA@137..138 " "
+                  THIN_ARROW@138..140 "->"
+                COMPOSED_TRIVIA@140..141 " "
+                Item@141..149
+                  Stmt@141..149
+                    Expr@141..149
+                      BinaryOpExpr@141..149
+                        ExprAtom@141..143
+                          IDENT@141..143 "it"
+                        COMPOSED_TRIVIA@143..144 " "
+                        BinaryOpExprOp@144..145
+                          PLUS@144..145 "+"
+                        COMPOSED_TRIVIA@145..146 " "
+                        ExprAtom@146..149
+                          IDENT@146..149 "it2"
                 COMPOSED_TRIVIA@149..150 " "
-                LambdaParamList@150..180
-                  LambdaParam@150..157
-                    FnParamName@150..152
-                      Pat@150..152
-                        IDENT@150..152 "it"
-                    COLON@152..153 ":"
-                    COMPOSED_TRIVIA@153..154 " "
-                    FnParamTy@154..157
-                      TyRef@154..157
-                        IDENT@154..157 "i32"
-                  COMMA@157..158 ","
-                  COMPOSED_TRIVIA@158..159 " "
-                  LambdaParam@159..167
-                    FnParamName@159..162
-                      Pat@159..162
-                        IDENT@159..162 "it2"
-                    COLON@162..163 ":"
-                    COMPOSED_TRIVIA@163..164 " "
-                    FnParamTy@164..167
-                      TyRef@164..167
-                        IDENT@164..167 "i32"
-                  COMMA@167..168 ","
-                  COMPOSED_TRIVIA@168..169 " "
-                  LambdaParam@169..177
-                    FnParamName@169..172
-                      Pat@169..172
-                        IDENT@169..172 "it3"
-                    COLON@172..173 ":"
-                    COMPOSED_TRIVIA@173..174 " "
-                    FnParamTy@174..177
-                      TyRef@174..177
-                        IDENT@174..177 "i32"
-                  COMPOSED_TRIVIA@177..178 " "
-                  THIN_ARROW@178..180 "->"
-                COMPOSED_TRIVIA@180..181 " "
-                Item@181..195
-                  Stmt@181..195
-                    Expr@181..195
-                      BinaryOpExpr@181..195
-                        BinaryOpExpr@181..189
-                          ExprAtom@181..183
-                            IDENT@181..183 "it"
-                          COMPOSED_TRIVIA@183..184 " "
-                          BinaryOpExprOp@184..185
-                            PLUS@184..185 "+"
-                          COMPOSED_TRIVIA@185..186 " "
-                          ExprAtom@186..189
-                            IDENT@186..189 "it2"
-                        COMPOSED_TRIVIA@189..190 " "
-                        BinaryOpExprOp@190..191
-                          PLUS@190..191 "+"
-                        COMPOSED_TRIVIA@191..192 " "
-                        ExprAtom@192..195
-                          IDENT@192..195 "it3"
-                COMPOSED_TRIVIA@195..196 " "
-                R_BRACE@196..197 "}"
-  COMPOSED_TRIVIA@197..198 "\n"
+                R_BRACE@150..151 "}"
+  COMPOSED_TRIVIA@151..152 "\n"
+  Item@152..203
+    Stmt@152..203
+      Expr@152..203
+        CallExpr@152..203
+          ExprAtom@152..153
+            IDENT@152..153 "f"
+          COMPOSED_TRIVIA@153..154 " "
+          CallExprArgs@154..203
+            CallExprArgLambda@154..203
+              LambdaExpr@154..203
+                L_BRACE@154..155 "{"
+                COMPOSED_TRIVIA@155..156 " "
+                LambdaParamList@156..186
+                  LambdaParam@156..163
+                    FnParamName@156..158
+                      Pat@156..158
+                        IDENT@156..158 "it"
+                    COLON@158..159 ":"
+                    COMPOSED_TRIVIA@159..160 " "
+                    FnParamTy@160..163
+                      TyRef@160..163
+                        IDENT@160..163 "i32"
+                  COMMA@163..164 ","
+                  COMPOSED_TRIVIA@164..165 " "
+                  LambdaParam@165..173
+                    FnParamName@165..168
+                      Pat@165..168
+                        IDENT@165..168 "it2"
+                    COLON@168..169 ":"
+                    COMPOSED_TRIVIA@169..170 " "
+                    FnParamTy@170..173
+                      TyRef@170..173
+                        IDENT@170..173 "i32"
+                  COMMA@173..174 ","
+                  COMPOSED_TRIVIA@174..175 " "
+                  LambdaParam@175..183
+                    FnParamName@175..178
+                      Pat@175..178
+                        IDENT@175..178 "it3"
+                    COLON@178..179 ":"
+                    COMPOSED_TRIVIA@179..180 " "
+                    FnParamTy@180..183
+                      TyRef@180..183
+                        IDENT@180..183 "i32"
+                  COMPOSED_TRIVIA@183..184 " "
+                  THIN_ARROW@184..186 "->"
+                COMPOSED_TRIVIA@186..187 " "
+                Item@187..201
+                  Stmt@187..201
+                    Expr@187..201
+                      BinaryOpExpr@187..201
+                        BinaryOpExpr@187..195
+                          ExprAtom@187..189
+                            IDENT@187..189 "it"
+                          COMPOSED_TRIVIA@189..190 " "
+                          BinaryOpExprOp@190..191
+                            PLUS@190..191 "+"
+                          COMPOSED_TRIVIA@191..192 " "
+                          ExprAtom@192..195
+                            IDENT@192..195 "it2"
+                        COMPOSED_TRIVIA@195..196 " "
+                        BinaryOpExprOp@196..197
+                          PLUS@196..197 "+"
+                        COMPOSED_TRIVIA@197..198 " "
+                        ExprAtom@198..201
+                          IDENT@198..201 "it3"
+                COMPOSED_TRIVIA@201..202 " "
+                R_BRACE@202..203 "}"
+  COMPOSED_TRIVIA@203..204 "\n"

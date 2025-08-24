@@ -1,29 +1,29 @@
-Root@0..93
-  COMPOSED_TRIVIA@0..71 "// test attr-with-nameonly-meta at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@71..92
-    AttrList@71..83
-      Attr@71..82
-        HASH@71..72 "#"
-        AttrName@72..76
-          IDENT@72..76 "attr"
-        AttrMeta@76..82
-          L_BRACK@76..77 "["
-          AttrMetaItem@77..81
-            AttrMetaItemName@77..81
-              IDENT@77..81 "meta"
-          R_BRACK@81..82 "]"
-      COMPOSED_TRIVIA@82..83 "\n"
-    FnDef@83..92
-      FnHead@83..89
-        FN_KW@83..85 "fn"
-        COMPOSED_TRIVIA@85..86 " "
-        FnName@86..87
-          IDENT@86..87 "f"
-        FnParamList@87..89
-          L_PAREN@87..88 "("
-          R_PAREN@88..89 ")"
-      COMPOSED_TRIVIA@89..90 " "
-      Block@90..92
-        L_BRACE@90..91 "{"
-        R_BRACE@91..92 "}"
-  COMPOSED_TRIVIA@92..93 "\n"
+Root@0..99
+  COMPOSED_TRIVIA@0..77 "// test attr-with-nameonly-meta at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@77..98
+    AttrList@77..89
+      Attr@77..88
+        HASH@77..78 "#"
+        AttrName@78..82
+          IDENT@78..82 "attr"
+        AttrMeta@82..88
+          L_BRACK@82..83 "["
+          AttrMetaItem@83..87
+            AttrMetaItemName@83..87
+              IDENT@83..87 "meta"
+          R_BRACK@87..88 "]"
+      COMPOSED_TRIVIA@88..89 "\n"
+    FnDef@89..98
+      FnHead@89..95
+        FN_KW@89..91 "fn"
+        COMPOSED_TRIVIA@91..92 " "
+        FnName@92..93
+          IDENT@92..93 "f"
+        FnParamList@93..95
+          L_PAREN@93..94 "("
+          R_PAREN@94..95 ")"
+      COMPOSED_TRIVIA@95..96 " "
+      Block@96..98
+        L_BRACE@96..97 "{"
+        R_BRACE@97..98 "}"
+  COMPOSED_TRIVIA@98..99 "\n"

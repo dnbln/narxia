@@ -1,16 +1,16 @@
-Root@0..91
-  COMPOSED_TRIVIA@0..82 "// test return-expr-with-value-on-newline at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@82..88
-    Stmt@82..88
-      Expr@82..88
-        ExprAtom@82..88
-          ReturnExpr@82..88
-            RETURN_KW@82..88 "return"
-  COMPOSED_TRIVIA@88..89 "\n"
-  Item@89..90
-    Stmt@89..90
-      Expr@89..90
-        ExprAtom@89..90
-          NumLit@89..90
-            NUM_DEC@89..90 "1"
-  COMPOSED_TRIVIA@90..91 "\n"
+Root@0..97
+  COMPOSED_TRIVIA@0..88 "// test return-expr-with-value-on-newline at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@88..94
+    Stmt@88..94
+      Expr@88..94
+        ExprAtom@88..94
+          ReturnExpr@88..94
+            RETURN_KW@88..94 "return"
+  COMPOSED_TRIVIA@94..95 "\n"
+  Item@95..96
+    Stmt@95..96
+      Expr@95..96
+        ExprAtom@95..96
+          NumLit@95..96
+            NUM_DEC@95..96 "1"
+  COMPOSED_TRIVIA@96..97 "\n"

@@ -1,15 +1,15 @@
-Root@0..87
-  COMPOSED_TRIVIA@0..73 "// test simple-use-stmt-with-list at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@73..86
-    UseStmt@73..86
-      USE_KW@73..76 "use"
-      COMPOSED_TRIVIA@76..77 " "
-      UsePath@77..86
-        UsePathList@77..86
-          L_BRACE@77..78 "{"
-          UsePath@78..85
-            UsePathSegmentAndPath@78..85
-              UsePathSegment@78..85
-                IDENT@78..85 "println"
-          R_BRACE@85..86 "}"
-  COMPOSED_TRIVIA@86..87 "\n"
+Root@0..93
+  COMPOSED_TRIVIA@0..79 "// test simple-use-stmt-with-list at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@79..92
+    UseStmt@79..92
+      USE_KW@79..82 "use"
+      COMPOSED_TRIVIA@82..83 " "
+      UsePath@83..92
+        UsePathList@83..92
+          L_BRACE@83..84 "{"
+          UsePath@84..91
+            UsePathSegmentAndPath@84..91
+              UsePathSegment@84..91
+                IDENT@84..91 "println"
+          R_BRACE@91..92 "}"
+  COMPOSED_TRIVIA@92..93 "\n"

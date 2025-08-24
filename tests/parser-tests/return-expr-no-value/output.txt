@@ -1,9 +1,9 @@
-Root@0..76
-  COMPOSED_TRIVIA@0..69 "// test return-expr-no-value at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@69..75
-    Stmt@69..75
-      Expr@69..75
-        ExprAtom@69..75
-          ReturnExpr@69..75
-            RETURN_KW@69..75 "return"
-  COMPOSED_TRIVIA@75..76 "\n"
+Root@0..82
+  COMPOSED_TRIVIA@0..75 "// test return-expr-no-value at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@75..81
+    Stmt@75..81
+      Expr@75..81
+        ExprAtom@75..81
+          ReturnExpr@75..81
+            RETURN_KW@75..81 "return"
+  COMPOSED_TRIVIA@81..82 "\n"

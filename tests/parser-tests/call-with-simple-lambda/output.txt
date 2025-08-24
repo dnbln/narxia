@@ -1,29 +1,29 @@
-Root@0..85
-  COMPOSED_TRIVIA@0..72 "// test call-with-simple-lambda at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@72..84
-    Stmt@72..84
-      Expr@72..84
-        CallExpr@72..84
-          ExprAtom@72..73
-            IDENT@72..73 "f"
-          COMPOSED_TRIVIA@73..74 " "
-          CallExprArgs@74..84
-            CallExprArgLambda@74..84
-              LambdaExpr@74..84
-                L_BRACE@74..75 "{"
-                COMPOSED_TRIVIA@75..76 " "
-                Item@76..82
-                  Stmt@76..82
-                    Expr@76..82
-                      BinaryOpExpr@76..82
-                        ExprAtom@76..78
-                          IDENT@76..78 "it"
-                        COMPOSED_TRIVIA@78..79 " "
-                        BinaryOpExprOp@79..80
-                          PLUS@79..80 "+"
-                        COMPOSED_TRIVIA@80..81 " "
-                        ExprAtom@81..82
-                          IDENT@81..82 "a"
-                COMPOSED_TRIVIA@82..83 " "
-                R_BRACE@83..84 "}"
-  COMPOSED_TRIVIA@84..85 "\n"
+Root@0..91
+  COMPOSED_TRIVIA@0..78 "// test call-with-simple-lambda at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@78..90
+    Stmt@78..90
+      Expr@78..90
+        CallExpr@78..90
+          ExprAtom@78..79
+            IDENT@78..79 "f"
+          COMPOSED_TRIVIA@79..80 " "
+          CallExprArgs@80..90
+            CallExprArgLambda@80..90
+              LambdaExpr@80..90
+                L_BRACE@80..81 "{"
+                COMPOSED_TRIVIA@81..82 " "
+                Item@82..88
+                  Stmt@82..88
+                    Expr@82..88
+                      BinaryOpExpr@82..88
+                        ExprAtom@82..84
+                          IDENT@82..84 "it"
+                        COMPOSED_TRIVIA@84..85 " "
+                        BinaryOpExprOp@85..86
+                          PLUS@85..86 "+"
+                        COMPOSED_TRIVIA@86..87 " "
+                        ExprAtom@87..88
+                          IDENT@87..88 "a"
+                COMPOSED_TRIVIA@88..89 " "
+                R_BRACE@89..90 "}"
+  COMPOSED_TRIVIA@90..91 "\n"

@@ -1,56 +1,56 @@
-Root@0..112
-  COMPOSED_TRIVIA@0..75 "// test attr-with-meta-call-with-eq at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@75..111
-    AttrList@75..102
-      Attr@75..101
-        HASH@75..76 "#"
-        AttrName@76..80
-          IDENT@76..80 "attr"
-        AttrMeta@80..101
-          L_BRACK@80..81 "["
-          AttrMetaItem@81..100
-            AttrMetaItemName@81..85
-              IDENT@81..85 "meta"
-            AttrMetaItemCall@85..100
-              L_PAREN@85..86 "("
-              AttrMetaItem@86..91
-                AttrMetaItemName@86..87
-                  IDENT@86..87 "v"
-                COMPOSED_TRIVIA@87..88 " "
-                AttrMetaItemEq@88..91
-                  EQ@88..89 "="
-                  COMPOSED_TRIVIA@89..90 " "
-                  Expr@90..91
-                    ExprAtom@90..91
-                      NumLit@90..91
-                        NUM_DEC@90..91 "1"
-              COMMA@91..92 ","
-              COMPOSED_TRIVIA@92..93 " "
-              AttrMetaItem@93..99
-                AttrMetaItemName@93..95
-                  IDENT@93..95 "v2"
-                COMPOSED_TRIVIA@95..96 " "
-                AttrMetaItemEq@96..99
-                  EQ@96..97 "="
-                  COMPOSED_TRIVIA@97..98 " "
-                  Expr@98..99
-                    ExprAtom@98..99
-                      NumLit@98..99
-                        NUM_DEC@98..99 "2"
-              R_PAREN@99..100 ")"
-          R_BRACK@100..101 "]"
-      COMPOSED_TRIVIA@101..102 "\n"
-    FnDef@102..111
-      FnHead@102..108
-        FN_KW@102..104 "fn"
-        COMPOSED_TRIVIA@104..105 " "
-        FnName@105..106
-          IDENT@105..106 "f"
-        FnParamList@106..108
-          L_PAREN@106..107 "("
-          R_PAREN@107..108 ")"
-      COMPOSED_TRIVIA@108..109 " "
-      Block@109..111
-        L_BRACE@109..110 "{"
-        R_BRACE@110..111 "}"
-  COMPOSED_TRIVIA@111..112 "\n"
+Root@0..118
+  COMPOSED_TRIVIA@0..81 "// test attr-with-meta-call-with-eq at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@81..117
+    AttrList@81..108
+      Attr@81..107
+        HASH@81..82 "#"
+        AttrName@82..86
+          IDENT@82..86 "attr"
+        AttrMeta@86..107
+          L_BRACK@86..87 "["
+          AttrMetaItem@87..106
+            AttrMetaItemName@87..91
+              IDENT@87..91 "meta"
+            AttrMetaItemCall@91..106
+              L_PAREN@91..92 "("
+              AttrMetaItem@92..97
+                AttrMetaItemName@92..93
+                  IDENT@92..93 "v"
+                COMPOSED_TRIVIA@93..94 " "
+                AttrMetaItemEq@94..97
+                  EQ@94..95 "="
+                  COMPOSED_TRIVIA@95..96 " "
+                  Expr@96..97
+                    ExprAtom@96..97
+                      NumLit@96..97
+                        NUM_DEC@96..97 "1"
+              COMMA@97..98 ","
+              COMPOSED_TRIVIA@98..99 " "
+              AttrMetaItem@99..105
+                AttrMetaItemName@99..101
+                  IDENT@99..101 "v2"
+                COMPOSED_TRIVIA@101..102 " "
+                AttrMetaItemEq@102..105
+                  EQ@102..103 "="
+                  COMPOSED_TRIVIA@103..104 " "
+                  Expr@104..105
+                    ExprAtom@104..105
+                      NumLit@104..105
+                        NUM_DEC@104..105 "2"
+              R_PAREN@105..106 ")"
+          R_BRACK@106..107 "]"
+      COMPOSED_TRIVIA@107..108 "\n"
+    FnDef@108..117
+      FnHead@108..114
+        FN_KW@108..110 "fn"
+        COMPOSED_TRIVIA@110..111 " "
+        FnName@111..112
+          IDENT@111..112 "f"
+        FnParamList@112..114
+          L_PAREN@112..113 "("
+          R_PAREN@113..114 ")"
+      COMPOSED_TRIVIA@114..115 " "
+      Block@115..117
+        L_BRACE@115..116 "{"
+        R_BRACE@116..117 "}"
+  COMPOSED_TRIVIA@117..118 "\n"

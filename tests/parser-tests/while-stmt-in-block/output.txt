@@ -1,36 +1,36 @@
-Root@0..99
-  COMPOSED_TRIVIA@0..68 "// test while-stmt-in-block at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@68..98
-    Stmt@68..98
-      Expr@68..98
-        ExprAtom@68..98
-          BlockExpr@68..98
-            Block@68..98
-              L_BRACE@68..69 "{"
-              COMPOSED_TRIVIA@69..74 "\n    "
-              Item@74..96
-                Stmt@74..96
-                  WhileStmt@74..96
-                    WHILE_KW@74..79 "while"
-                    COMPOSED_TRIVIA@79..80 " "
-                    WhileCondition@80..88
-                      L_PAREN@80..81 "("
-                      Expr@81..87
-                        BinaryOpExpr@81..87
-                          ExprAtom@81..82
-                            IDENT@81..82 "a"
-                          COMPOSED_TRIVIA@82..83 " "
-                          BinaryOpExprOp@83..85
-                            EQ2@83..85 "=="
-                          COMPOSED_TRIVIA@85..86 " "
-                          ExprAtom@86..87
-                            IDENT@86..87 "b"
-                      R_PAREN@87..88 ")"
-                    COMPOSED_TRIVIA@88..89 " "
-                    Block@89..96
-                      L_BRACE@89..90 "{"
-                      COMPOSED_TRIVIA@90..95 "\n    "
-                      R_BRACE@95..96 "}"
-              NEWLINE@96..97 "\n"
-              R_BRACE@97..98 "}"
-  COMPOSED_TRIVIA@98..99 "\n"
+Root@0..105
+  COMPOSED_TRIVIA@0..74 "// test while-stmt-in-block at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@74..104
+    Stmt@74..104
+      Expr@74..104
+        ExprAtom@74..104
+          BlockExpr@74..104
+            Block@74..104
+              L_BRACE@74..75 "{"
+              COMPOSED_TRIVIA@75..80 "\n    "
+              Item@80..102
+                Stmt@80..102
+                  WhileStmt@80..102
+                    WHILE_KW@80..85 "while"
+                    COMPOSED_TRIVIA@85..86 " "
+                    WhileCondition@86..94
+                      L_PAREN@86..87 "("
+                      Expr@87..93
+                        BinaryOpExpr@87..93
+                          ExprAtom@87..88
+                            IDENT@87..88 "a"
+                          COMPOSED_TRIVIA@88..89 " "
+                          BinaryOpExprOp@89..91
+                            EQ2@89..91 "=="
+                          COMPOSED_TRIVIA@91..92 " "
+                          ExprAtom@92..93
+                            IDENT@92..93 "b"
+                      R_PAREN@93..94 ")"
+                    COMPOSED_TRIVIA@94..95 " "
+                    Block@95..102
+                      L_BRACE@95..96 "{"
+                      COMPOSED_TRIVIA@96..101 "\n    "
+                      R_BRACE@101..102 "}"
+              NEWLINE@102..103 "\n"
+              R_BRACE@103..104 "}"
+  COMPOSED_TRIVIA@104..105 "\n"

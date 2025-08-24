@@ -1,23 +1,23 @@
-Root@0..70
-  COMPOSED_TRIVIA@0..53 "// test attr2 at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@53..69
-    AttrList@53..60
-      Attr@53..59
-        HASH@53..54 "#"
-        AttrName@54..59
-          IDENT@54..59 "attr2"
-      COMPOSED_TRIVIA@59..60 "\n"
-    FnDef@60..69
-      FnHead@60..66
-        FN_KW@60..62 "fn"
-        COMPOSED_TRIVIA@62..63 " "
-        FnName@63..64
-          IDENT@63..64 "f"
-        FnParamList@64..66
-          L_PAREN@64..65 "("
-          R_PAREN@65..66 ")"
-      COMPOSED_TRIVIA@66..67 " "
-      Block@67..69
-        L_BRACE@67..68 "{"
-        R_BRACE@68..69 "}"
-  COMPOSED_TRIVIA@69..70 "\n"
+Root@0..76
+  COMPOSED_TRIVIA@0..59 "// test attr2 at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@59..75
+    AttrList@59..66
+      Attr@59..65
+        HASH@59..60 "#"
+        AttrName@60..65
+          IDENT@60..65 "attr2"
+      COMPOSED_TRIVIA@65..66 "\n"
+    FnDef@66..75
+      FnHead@66..72
+        FN_KW@66..68 "fn"
+        COMPOSED_TRIVIA@68..69 " "
+        FnName@69..70
+          IDENT@69..70 "f"
+        FnParamList@70..72
+          L_PAREN@70..71 "("
+          R_PAREN@71..72 ")"
+      COMPOSED_TRIVIA@72..73 " "
+      Block@73..75
+        L_BRACE@73..74 "{"
+        R_BRACE@74..75 "}"
+  COMPOSED_TRIVIA@75..76 "\n"

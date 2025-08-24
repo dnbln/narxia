@@ -1,13 +1,13 @@
-Root@0..82
-  COMPOSED_TRIVIA@0..70 "// test module-with-empty-body at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@70..81
-    Module@70..81
-      MODULE_KW@70..76 "module"
-      COMPOSED_TRIVIA@76..77 " "
-      ModuleName@77..78
-        IDENT@77..78 "a"
-      COMPOSED_TRIVIA@78..79 " "
-      ModuleBody@79..81
-        L_BRACE@79..80 "{"
-        R_BRACE@80..81 "}"
-  COMPOSED_TRIVIA@81..82 "\n"
+Root@0..88
+  COMPOSED_TRIVIA@0..76 "// test module-with-empty-body at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@76..87
+    Module@76..87
+      MODULE_KW@76..82 "module"
+      COMPOSED_TRIVIA@82..83 " "
+      ModuleName@83..84
+        IDENT@83..84 "a"
+      COMPOSED_TRIVIA@84..85 " "
+      ModuleBody@85..87
+        L_BRACE@85..86 "{"
+        R_BRACE@86..87 "}"
+  COMPOSED_TRIVIA@87..88 "\n"

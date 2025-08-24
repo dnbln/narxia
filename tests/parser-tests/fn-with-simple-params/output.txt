@@ -1,37 +1,37 @@
-Root@0..97
-  COMPOSED_TRIVIA@0..69 "// test fn-with-simple-params at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@69..96
-    FnDef@69..96
-      FnHead@69..93
-        FN_KW@69..71 "fn"
-        COMPOSED_TRIVIA@71..72 " "
-        FnName@72..77
-          IDENT@72..77 "input"
-        FnParamList@77..93
-          L_PAREN@77..78 "("
-          FnParam@78..84
-            FnParamName@78..80
-              Pat@78..80
-                IDENT@78..80 "a0"
-            COLON@80..81 ":"
-            COMPOSED_TRIVIA@81..82 " "
-            FnParamTy@82..84
-              TyRef@82..84
-                IDENT@82..84 "A0"
-          COMMA@84..85 ","
-          COMPOSED_TRIVIA@85..86 " "
-          FnParam@86..92
-            FnParamName@86..88
-              Pat@86..88
-                IDENT@86..88 "a1"
-            COLON@88..89 ":"
-            COMPOSED_TRIVIA@89..90 " "
-            FnParamTy@90..92
-              TyRef@90..92
-                IDENT@90..92 "A1"
-          R_PAREN@92..93 ")"
-      COMPOSED_TRIVIA@93..94 " "
-      Block@94..96
-        L_BRACE@94..95 "{"
-        R_BRACE@95..96 "}"
-  COMPOSED_TRIVIA@96..97 "\n"
+Root@0..103
+  COMPOSED_TRIVIA@0..75 "// test fn-with-simple-params at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@75..102
+    FnDef@75..102
+      FnHead@75..99
+        FN_KW@75..77 "fn"
+        COMPOSED_TRIVIA@77..78 " "
+        FnName@78..83
+          IDENT@78..83 "input"
+        FnParamList@83..99
+          L_PAREN@83..84 "("
+          FnParam@84..90
+            FnParamName@84..86
+              Pat@84..86
+                IDENT@84..86 "a0"
+            COLON@86..87 ":"
+            COMPOSED_TRIVIA@87..88 " "
+            FnParamTy@88..90
+              TyRef@88..90
+                IDENT@88..90 "A0"
+          COMMA@90..91 ","
+          COMPOSED_TRIVIA@91..92 " "
+          FnParam@92..98
+            FnParamName@92..94
+              Pat@92..94
+                IDENT@92..94 "a1"
+            COLON@94..95 ":"
+            COMPOSED_TRIVIA@95..96 " "
+            FnParamTy@96..98
+              TyRef@96..98
+                IDENT@96..98 "A1"
+          R_PAREN@98..99 ")"
+      COMPOSED_TRIVIA@99..100 " "
+      Block@100..102
+        L_BRACE@100..101 "{"
+        R_BRACE@101..102 "}"
+  COMPOSED_TRIVIA@102..103 "\n"

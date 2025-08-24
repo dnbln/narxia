@@ -1,56 +1,56 @@
-Root@0..137
-  COMPOSED_TRIVIA@0..93 "// test call-with-simple-lambda-explicit-param-block at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@93..136
-    Stmt@93..136
-      Expr@93..136
-        CallExpr@93..136
-          ExprAtom@93..94
-            IDENT@93..94 "f"
-          COMPOSED_TRIVIA@94..95 " "
-          CallExprArgs@95..136
-            CallExprArgLambda@95..136
-              LambdaExpr@95..136
-                L_BRACE@95..96 "{"
-                COMPOSED_TRIVIA@96..97 " "
-                LambdaParamList@97..102
-                  LambdaParam@97..99
-                    FnParamName@97..99
-                      Pat@97..99
-                        IDENT@97..99 "it"
-                  COMPOSED_TRIVIA@99..100 " "
-                  THIN_ARROW@100..102 "->"
-                COMPOSED_TRIVIA@102..107 "\n    "
-                Item@107..113
-                  Stmt@107..113
-                    Expr@107..113
-                      CallExpr@107..113
-                        ExprAtom@107..111
-                          IDENT@107..111 "call"
-                        CallExprArgs@111..113
-                          CallExprArgsList@111..113
-                            L_PAREN@111..112 "("
-                            R_PAREN@112..113 ")"
-                SEMI@113..114 ";"
-                NEWLINE@114..115 "\n"
-                COMPOSED_TRIVIA@115..119 "    "
-                Item@119..126
-                  Stmt@119..126
-                    Expr@119..126
-                      CallExpr@119..126
-                        ExprAtom@119..124
-                          IDENT@119..124 "call2"
-                        CallExprArgs@124..126
-                          CallExprArgsList@124..126
-                            L_PAREN@124..125 "("
-                            R_PAREN@125..126 ")"
-                SEMI@126..127 ";"
-                NEWLINE@127..128 "\n"
-                COMPOSED_TRIVIA@128..132 "    "
-                Item@132..134
-                  Stmt@132..134
-                    Expr@132..134
-                      ExprAtom@132..134
-                        IDENT@132..134 "it"
-                NEWLINE@134..135 "\n"
-                R_BRACE@135..136 "}"
-  COMPOSED_TRIVIA@136..137 "\n"
+Root@0..143
+  COMPOSED_TRIVIA@0..99 "// test call-with-simple-lambda-explicit-param-block at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@99..142
+    Stmt@99..142
+      Expr@99..142
+        CallExpr@99..142
+          ExprAtom@99..100
+            IDENT@99..100 "f"
+          COMPOSED_TRIVIA@100..101 " "
+          CallExprArgs@101..142
+            CallExprArgLambda@101..142
+              LambdaExpr@101..142
+                L_BRACE@101..102 "{"
+                COMPOSED_TRIVIA@102..103 " "
+                LambdaParamList@103..108
+                  LambdaParam@103..105
+                    FnParamName@103..105
+                      Pat@103..105
+                        IDENT@103..105 "it"
+                  COMPOSED_TRIVIA@105..106 " "
+                  THIN_ARROW@106..108 "->"
+                COMPOSED_TRIVIA@108..113 "\n    "
+                Item@113..119
+                  Stmt@113..119
+                    Expr@113..119
+                      CallExpr@113..119
+                        ExprAtom@113..117
+                          IDENT@113..117 "call"
+                        CallExprArgs@117..119
+                          CallExprArgsList@117..119
+                            L_PAREN@117..118 "("
+                            R_PAREN@118..119 ")"
+                SEMI@119..120 ";"
+                NEWLINE@120..121 "\n"
+                COMPOSED_TRIVIA@121..125 "    "
+                Item@125..132
+                  Stmt@125..132
+                    Expr@125..132
+                      CallExpr@125..132
+                        ExprAtom@125..130
+                          IDENT@125..130 "call2"
+                        CallExprArgs@130..132
+                          CallExprArgsList@130..132
+                            L_PAREN@130..131 "("
+                            R_PAREN@131..132 ")"
+                SEMI@132..133 ";"
+                NEWLINE@133..134 "\n"
+                COMPOSED_TRIVIA@134..138 "    "
+                Item@138..140
+                  Stmt@138..140
+                    Expr@138..140
+                      ExprAtom@138..140
+                        IDENT@138..140 "it"
+                NEWLINE@140..141 "\n"
+                R_BRACE@141..142 "}"
+  COMPOSED_TRIVIA@142..143 "\n"

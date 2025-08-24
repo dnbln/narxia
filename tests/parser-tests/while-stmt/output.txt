@@ -1,26 +1,26 @@
-Root@0..78
-  COMPOSED_TRIVIA@0..59 "// test while-stmt at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@59..77
-    Stmt@59..77
-      WhileStmt@59..77
-        WHILE_KW@59..64 "while"
-        COMPOSED_TRIVIA@64..65 " "
-        WhileCondition@65..73
-          L_PAREN@65..66 "("
-          Expr@66..72
-            BinaryOpExpr@66..72
-              ExprAtom@66..67
-                IDENT@66..67 "a"
-              COMPOSED_TRIVIA@67..68 " "
-              BinaryOpExprOp@68..70
-                EQ2@68..70 "=="
-              COMPOSED_TRIVIA@70..71 " "
-              ExprAtom@71..72
-                IDENT@71..72 "b"
-          R_PAREN@72..73 ")"
-        COMPOSED_TRIVIA@73..74 " "
-        Block@74..77
-          L_BRACE@74..75 "{"
-          COMPOSED_TRIVIA@75..76 "\n"
-          R_BRACE@76..77 "}"
-  COMPOSED_TRIVIA@77..78 "\n"
+Root@0..84
+  COMPOSED_TRIVIA@0..65 "// test while-stmt at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@65..83
+    Stmt@65..83
+      WhileStmt@65..83
+        WHILE_KW@65..70 "while"
+        COMPOSED_TRIVIA@70..71 " "
+        WhileCondition@71..79
+          L_PAREN@71..72 "("
+          Expr@72..78
+            BinaryOpExpr@72..78
+              ExprAtom@72..73
+                IDENT@72..73 "a"
+              COMPOSED_TRIVIA@73..74 " "
+              BinaryOpExprOp@74..76
+                EQ2@74..76 "=="
+              COMPOSED_TRIVIA@76..77 " "
+              ExprAtom@77..78
+                IDENT@77..78 "b"
+          R_PAREN@78..79 ")"
+        COMPOSED_TRIVIA@79..80 " "
+        Block@80..83
+          L_BRACE@80..81 "{"
+          COMPOSED_TRIVIA@81..82 "\n"
+          R_BRACE@82..83 "}"
+  COMPOSED_TRIVIA@83..84 "\n"

@@ -1,33 +1,33 @@
-Root@0..104
-  COMPOSED_TRIVIA@0..87 "// test paren-multiple-expr-with-comma-compact at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@87..103
-    Stmt@87..103
-      LetStmt@87..103
-        LET_KW@87..90 "let"
-        COMPOSED_TRIVIA@90..91 " "
-        Pat@91..92
-          IDENT@91..92 "x"
-        COMPOSED_TRIVIA@92..93 " "
-        EQ@93..94 "="
-        COMPOSED_TRIVIA@94..95 " "
-        Expr@95..103
-          ExprAtom@95..103
-            TupleLikeExpr@95..103
-              L_PAREN@95..96 "("
-              Expr@96..97
-                ExprAtom@96..97
-                  NumLit@96..97
-                    NUM_DEC@96..97 "1"
-              COMMA@97..98 ","
-              Expr@98..99
-                ExprAtom@98..99
-                  NumLit@98..99
-                    NUM_DEC@98..99 "2"
-              COMMA@99..100 ","
-              Expr@100..101
-                ExprAtom@100..101
-                  NumLit@100..101
-                    NUM_DEC@100..101 "3"
-              COMMA@101..102 ","
-              R_PAREN@102..103 ")"
-  COMPOSED_TRIVIA@103..104 "\n"
+Root@0..110
+  COMPOSED_TRIVIA@0..93 "// test paren-multiple-expr-with-comma-compact at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@93..109
+    Stmt@93..109
+      LetStmt@93..109
+        LET_KW@93..96 "let"
+        COMPOSED_TRIVIA@96..97 " "
+        Pat@97..98
+          IDENT@97..98 "x"
+        COMPOSED_TRIVIA@98..99 " "
+        EQ@99..100 "="
+        COMPOSED_TRIVIA@100..101 " "
+        Expr@101..109
+          ExprAtom@101..109
+            TupleLikeExpr@101..109
+              L_PAREN@101..102 "("
+              Expr@102..103
+                ExprAtom@102..103
+                  NumLit@102..103
+                    NUM_DEC@102..103 "1"
+              COMMA@103..104 ","
+              Expr@104..105
+                ExprAtom@104..105
+                  NumLit@104..105
+                    NUM_DEC@104..105 "2"
+              COMMA@105..106 ","
+              Expr@106..107
+                ExprAtom@106..107
+                  NumLit@106..107
+                    NUM_DEC@106..107 "3"
+              COMMA@107..108 ","
+              R_PAREN@108..109 ")"
+  COMPOSED_TRIVIA@109..110 "\n"

@@ -1,63 +1,63 @@
-Root@0..123
-  COMPOSED_TRIVIA@0..75 "// test attr-with-multiple-meta-eq2 at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@75..122
-    AttrList@75..113
-      Attr@75..112
-        HASH@75..76 "#"
-        AttrName@76..80
-          IDENT@76..80 "attr"
-        AttrMeta@80..112
-          L_BRACK@80..81 "["
-          AttrMetaItem@81..89
-            AttrMetaItemName@81..85
-              IDENT@81..85 "meta"
-            COMPOSED_TRIVIA@85..86 " "
-            AttrMetaItemEq@86..89
-              EQ@86..87 "="
-              COMPOSED_TRIVIA@87..88 " "
-              Expr@88..89
-                ExprAtom@88..89
-                  NumLit@88..89
-                    NUM_DEC@88..89 "1"
-          COMMA@89..90 ","
-          COMPOSED_TRIVIA@90..91 " "
-          AttrMetaItem@91..100
-            AttrMetaItemName@91..96
-              IDENT@91..96 "meta2"
-            COMPOSED_TRIVIA@96..97 " "
-            AttrMetaItemEq@97..100
-              EQ@97..98 "="
-              COMPOSED_TRIVIA@98..99 " "
-              Expr@99..100
-                ExprAtom@99..100
-                  NumLit@99..100
-                    NUM_DEC@99..100 "2"
-          COMMA@100..101 ","
-          COMPOSED_TRIVIA@101..102 " "
-          AttrMetaItem@102..111
-            AttrMetaItemName@102..107
-              IDENT@102..107 "meta3"
-            COMPOSED_TRIVIA@107..108 " "
-            AttrMetaItemEq@108..111
-              EQ@108..109 "="
-              COMPOSED_TRIVIA@109..110 " "
-              Expr@110..111
-                ExprAtom@110..111
-                  NumLit@110..111
-                    NUM_DEC@110..111 "3"
-          R_BRACK@111..112 "]"
-      COMPOSED_TRIVIA@112..113 "\n"
-    FnDef@113..122
-      FnHead@113..119
-        FN_KW@113..115 "fn"
-        COMPOSED_TRIVIA@115..116 " "
-        FnName@116..117
-          IDENT@116..117 "f"
-        FnParamList@117..119
-          L_PAREN@117..118 "("
-          R_PAREN@118..119 ")"
-      COMPOSED_TRIVIA@119..120 " "
-      Block@120..122
-        L_BRACE@120..121 "{"
-        R_BRACE@121..122 "}"
-  COMPOSED_TRIVIA@122..123 "\n"
+Root@0..129
+  COMPOSED_TRIVIA@0..81 "// test attr-with-multiple-meta-eq2 at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@81..128
+    AttrList@81..119
+      Attr@81..118
+        HASH@81..82 "#"
+        AttrName@82..86
+          IDENT@82..86 "attr"
+        AttrMeta@86..118
+          L_BRACK@86..87 "["
+          AttrMetaItem@87..95
+            AttrMetaItemName@87..91
+              IDENT@87..91 "meta"
+            COMPOSED_TRIVIA@91..92 " "
+            AttrMetaItemEq@92..95
+              EQ@92..93 "="
+              COMPOSED_TRIVIA@93..94 " "
+              Expr@94..95
+                ExprAtom@94..95
+                  NumLit@94..95
+                    NUM_DEC@94..95 "1"
+          COMMA@95..96 ","
+          COMPOSED_TRIVIA@96..97 " "
+          AttrMetaItem@97..106
+            AttrMetaItemName@97..102
+              IDENT@97..102 "meta2"
+            COMPOSED_TRIVIA@102..103 " "
+            AttrMetaItemEq@103..106
+              EQ@103..104 "="
+              COMPOSED_TRIVIA@104..105 " "
+              Expr@105..106
+                ExprAtom@105..106
+                  NumLit@105..106
+                    NUM_DEC@105..106 "2"
+          COMMA@106..107 ","
+          COMPOSED_TRIVIA@107..108 " "
+          AttrMetaItem@108..117
+            AttrMetaItemName@108..113
+              IDENT@108..113 "meta3"
+            COMPOSED_TRIVIA@113..114 " "
+            AttrMetaItemEq@114..117
+              EQ@114..115 "="
+              COMPOSED_TRIVIA@115..116 " "
+              Expr@116..117
+                ExprAtom@116..117
+                  NumLit@116..117
+                    NUM_DEC@116..117 "3"
+          R_BRACK@117..118 "]"
+      COMPOSED_TRIVIA@118..119 "\n"
+    FnDef@119..128
+      FnHead@119..125
+        FN_KW@119..121 "fn"
+        COMPOSED_TRIVIA@121..122 " "
+        FnName@122..123
+          IDENT@122..123 "f"
+        FnParamList@123..125
+          L_PAREN@123..124 "("
+          R_PAREN@124..125 ")"
+      COMPOSED_TRIVIA@125..126 " "
+      Block@126..128
+        L_BRACE@126..127 "{"
+        R_BRACE@127..128 "}"
+  COMPOSED_TRIVIA@128..129 "\n"

@@ -1,45 +1,45 @@
-Root@0..102
-  COMPOSED_TRIVIA@0..80 "// test call-with-multi-args-and-lambda at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@80..101
-    Stmt@80..101
-      Expr@80..101
-        CallExpr@80..101
-          ExprAtom@80..81
-            IDENT@80..81 "f"
-          CallExprArgs@81..101
-            CallExprArgsList@81..90
-              L_PAREN@81..82 "("
-              Expr@82..83
-                ExprAtom@82..83
-                  IDENT@82..83 "a"
-              COMMA@83..84 ","
-              COMPOSED_TRIVIA@84..85 " "
-              Expr@85..86
-                ExprAtom@85..86
-                  IDENT@85..86 "b"
-              COMMA@86..87 ","
-              COMPOSED_TRIVIA@87..88 " "
+Root@0..108
+  COMPOSED_TRIVIA@0..86 "// test call-with-multi-args-and-lambda at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@86..107
+    Stmt@86..107
+      Expr@86..107
+        CallExpr@86..107
+          ExprAtom@86..87
+            IDENT@86..87 "f"
+          CallExprArgs@87..107
+            CallExprArgsList@87..96
+              L_PAREN@87..88 "("
               Expr@88..89
                 ExprAtom@88..89
-                  IDENT@88..89 "c"
-              R_PAREN@89..90 ")"
-            COMPOSED_TRIVIA@90..91 " "
-            CallExprArgLambda@91..101
-              LambdaExpr@91..101
-                L_BRACE@91..92 "{"
-                COMPOSED_TRIVIA@92..93 " "
-                Item@93..99
-                  Stmt@93..99
-                    Expr@93..99
-                      BinaryOpExpr@93..99
-                        ExprAtom@93..95
-                          IDENT@93..95 "it"
-                        COMPOSED_TRIVIA@95..96 " "
-                        BinaryOpExprOp@96..97
-                          PLUS@96..97 "+"
-                        COMPOSED_TRIVIA@97..98 " "
-                        ExprAtom@98..99
-                          IDENT@98..99 "a"
-                COMPOSED_TRIVIA@99..100 " "
-                R_BRACE@100..101 "}"
-  COMPOSED_TRIVIA@101..102 "\n"
+                  IDENT@88..89 "a"
+              COMMA@89..90 ","
+              COMPOSED_TRIVIA@90..91 " "
+              Expr@91..92
+                ExprAtom@91..92
+                  IDENT@91..92 "b"
+              COMMA@92..93 ","
+              COMPOSED_TRIVIA@93..94 " "
+              Expr@94..95
+                ExprAtom@94..95
+                  IDENT@94..95 "c"
+              R_PAREN@95..96 ")"
+            COMPOSED_TRIVIA@96..97 " "
+            CallExprArgLambda@97..107
+              LambdaExpr@97..107
+                L_BRACE@97..98 "{"
+                COMPOSED_TRIVIA@98..99 " "
+                Item@99..105
+                  Stmt@99..105
+                    Expr@99..105
+                      BinaryOpExpr@99..105
+                        ExprAtom@99..101
+                          IDENT@99..101 "it"
+                        COMPOSED_TRIVIA@101..102 " "
+                        BinaryOpExprOp@102..103
+                          PLUS@102..103 "+"
+                        COMPOSED_TRIVIA@103..104 " "
+                        ExprAtom@104..105
+                          IDENT@104..105 "a"
+                COMPOSED_TRIVIA@105..106 " "
+                R_BRACE@106..107 "}"
+  COMPOSED_TRIVIA@107..108 "\n"

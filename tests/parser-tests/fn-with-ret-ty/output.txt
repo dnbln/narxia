@@ -1,31 +1,31 @@
-Root@0..85
-  COMPOSED_TRIVIA@0..62 "// test fn-with-ret-ty at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@62..84
-    FnDef@62..84
-      FnHead@62..78
-        FN_KW@62..64 "fn"
-        COMPOSED_TRIVIA@64..65 " "
-        FnName@65..69
-          IDENT@65..69 "main"
-        FnParamList@69..71
-          L_PAREN@69..70 "("
-          R_PAREN@70..71 ")"
-        COMPOSED_TRIVIA@71..72 " "
-        FnRetTy@72..78
-          THIN_ARROW@72..74 "->"
-          COMPOSED_TRIVIA@74..75 " "
-          TyRef@75..78
-            IDENT@75..78 "i32"
-      COMPOSED_TRIVIA@78..79 " "
-      Block@79..84
-        L_BRACE@79..80 "{"
-        COMPOSED_TRIVIA@80..81 " "
-        Item@81..82
-          Stmt@81..82
-            Expr@81..82
-              ExprAtom@81..82
-                NumLit@81..82
-                  NUM_DEC@81..82 "0"
-        COMPOSED_TRIVIA@82..83 " "
-        R_BRACE@83..84 "}"
-  COMPOSED_TRIVIA@84..85 "\n"
+Root@0..91
+  COMPOSED_TRIVIA@0..68 "// test fn-with-ret-ty at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@68..90
+    FnDef@68..90
+      FnHead@68..84
+        FN_KW@68..70 "fn"
+        COMPOSED_TRIVIA@70..71 " "
+        FnName@71..75
+          IDENT@71..75 "main"
+        FnParamList@75..77
+          L_PAREN@75..76 "("
+          R_PAREN@76..77 ")"
+        COMPOSED_TRIVIA@77..78 " "
+        FnRetTy@78..84
+          THIN_ARROW@78..80 "->"
+          COMPOSED_TRIVIA@80..81 " "
+          TyRef@81..84
+            IDENT@81..84 "i32"
+      COMPOSED_TRIVIA@84..85 " "
+      Block@85..90
+        L_BRACE@85..86 "{"
+        COMPOSED_TRIVIA@86..87 " "
+        Item@87..88
+          Stmt@87..88
+            Expr@87..88
+              ExprAtom@87..88
+                NumLit@87..88
+                  NUM_DEC@87..88 "0"
+        COMPOSED_TRIVIA@88..89 " "
+        R_BRACE@89..90 "}"
+  COMPOSED_TRIVIA@90..91 "\n"

@@ -1,9 +1,9 @@
-Root@0..63
-  COMPOSED_TRIVIA@0..54 "// test module at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@54..62
-    Module@54..62
-      MODULE_KW@54..60 "module"
-      COMPOSED_TRIVIA@60..61 " "
-      ModuleName@61..62
-        IDENT@61..62 "a"
-  COMPOSED_TRIVIA@62..63 "\n"
+Root@0..69
+  COMPOSED_TRIVIA@0..60 "// test module at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@60..68
+    Module@60..68
+      MODULE_KW@60..66 "module"
+      COMPOSED_TRIVIA@66..67 " "
+      ModuleName@67..68
+        IDENT@67..68 "a"
+  COMPOSED_TRIVIA@68..69 "\n"

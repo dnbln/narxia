@@ -1,9 +1,9 @@
-Root@0..71
-  COMPOSED_TRIVIA@0..62 "// test continue-expr at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@62..70
-    Stmt@62..70
-      Expr@62..70
-        ExprAtom@62..70
-          ContinueExpr@62..70
-            CONTINUE_KW@62..70 "continue"
-  COMPOSED_TRIVIA@70..71 "\n"
+Root@0..77
+  COMPOSED_TRIVIA@0..68 "// test continue-expr at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@68..76
+    Stmt@68..76
+      Expr@68..76
+        ExprAtom@68..76
+          ContinueExpr@68..76
+            CONTINUE_KW@68..76 "continue"
+  COMPOSED_TRIVIA@76..77 "\n"

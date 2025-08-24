@@ -1,30 +1,30 @@
-Root@0..76
-  COMPOSED_TRIVIA@0..57 "// test for-stmt at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@57..75
-    Stmt@57..75
-      ForStmt@57..75
-        FOR_KW@57..60 "for"
-        COMPOSED_TRIVIA@60..61 " "
-        L_PAREN@61..62 "("
-        ForPat@62..63
-          Pat@62..63
-            IDENT@62..63 "i"
-        COMPOSED_TRIVIA@63..64 " "
-        IN_KW@64..66 "in"
+Root@0..82
+  COMPOSED_TRIVIA@0..63 "// test for-stmt at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@63..81
+    Stmt@63..81
+      ForStmt@63..81
+        FOR_KW@63..66 "for"
         COMPOSED_TRIVIA@66..67 " "
-        ForInExpr@67..70
-          Expr@67..70
-            CallExpr@67..70
-              ExprAtom@67..68
-                IDENT@67..68 "f"
-              CallExprArgs@68..70
-                CallExprArgsList@68..70
-                  L_PAREN@68..69 "("
-                  R_PAREN@69..70 ")"
-        R_PAREN@70..71 ")"
-        COMPOSED_TRIVIA@71..72 " "
-        Block@72..75
-          L_BRACE@72..73 "{"
-          COMPOSED_TRIVIA@73..74 "\n"
-          R_BRACE@74..75 "}"
-  COMPOSED_TRIVIA@75..76 "\n"
+        L_PAREN@67..68 "("
+        ForPat@68..69
+          Pat@68..69
+            IDENT@68..69 "i"
+        COMPOSED_TRIVIA@69..70 " "
+        IN_KW@70..72 "in"
+        COMPOSED_TRIVIA@72..73 " "
+        ForInExpr@73..76
+          Expr@73..76
+            CallExpr@73..76
+              ExprAtom@73..74
+                IDENT@73..74 "f"
+              CallExprArgs@74..76
+                CallExprArgsList@74..76
+                  L_PAREN@74..75 "("
+                  R_PAREN@75..76 ")"
+        R_PAREN@76..77 ")"
+        COMPOSED_TRIVIA@77..78 " "
+        Block@78..81
+          L_BRACE@78..79 "{"
+          COMPOSED_TRIVIA@79..80 "\n"
+          R_BRACE@80..81 "}"
+  COMPOSED_TRIVIA@81..82 "\n"

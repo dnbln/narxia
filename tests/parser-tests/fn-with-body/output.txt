@@ -1,47 +1,47 @@
-Root@0..102
-  COMPOSED_TRIVIA@0..60 "// test fn-with-body at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@60..101
-    FnDef@60..101
-      FnHead@60..69
-        FN_KW@60..62 "fn"
-        COMPOSED_TRIVIA@62..63 " "
-        FnName@63..67
-          IDENT@63..67 "main"
-        FnParamList@67..69
-          L_PAREN@67..68 "("
-          R_PAREN@68..69 ")"
-      COMPOSED_TRIVIA@69..70 " "
-      Block@70..101
-        L_BRACE@70..71 "{"
-        COMPOSED_TRIVIA@71..76 "\n    "
-        Item@76..85
-          Stmt@76..85
-            LetStmt@76..85
-              LET_KW@76..79 "let"
-              COMPOSED_TRIVIA@79..80 " "
-              Pat@80..81
-                IDENT@80..81 "x"
-              COMPOSED_TRIVIA@81..82 " "
-              EQ@82..83 "="
-              COMPOSED_TRIVIA@83..84 " "
-              Expr@84..85
-                ExprAtom@84..85
-                  IDENT@84..85 "a"
-        NEWLINE@85..86 "\n"
-        COMPOSED_TRIVIA@86..90 "    "
-        Item@90..99
-          Stmt@90..99
-            LetStmt@90..99
-              LET_KW@90..93 "let"
-              COMPOSED_TRIVIA@93..94 " "
-              Pat@94..95
-                IDENT@94..95 "y"
-              COMPOSED_TRIVIA@95..96 " "
-              EQ@96..97 "="
-              COMPOSED_TRIVIA@97..98 " "
-              Expr@98..99
-                ExprAtom@98..99
-                  IDENT@98..99 "b"
-        NEWLINE@99..100 "\n"
-        R_BRACE@100..101 "}"
-  COMPOSED_TRIVIA@101..102 "\n"
+Root@0..108
+  COMPOSED_TRIVIA@0..66 "// test fn-with-body at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@66..107
+    FnDef@66..107
+      FnHead@66..75
+        FN_KW@66..68 "fn"
+        COMPOSED_TRIVIA@68..69 " "
+        FnName@69..73
+          IDENT@69..73 "main"
+        FnParamList@73..75
+          L_PAREN@73..74 "("
+          R_PAREN@74..75 ")"
+      COMPOSED_TRIVIA@75..76 " "
+      Block@76..107
+        L_BRACE@76..77 "{"
+        COMPOSED_TRIVIA@77..82 "\n    "
+        Item@82..91
+          Stmt@82..91
+            LetStmt@82..91
+              LET_KW@82..85 "let"
+              COMPOSED_TRIVIA@85..86 " "
+              Pat@86..87
+                IDENT@86..87 "x"
+              COMPOSED_TRIVIA@87..88 " "
+              EQ@88..89 "="
+              COMPOSED_TRIVIA@89..90 " "
+              Expr@90..91
+                ExprAtom@90..91
+                  IDENT@90..91 "a"
+        NEWLINE@91..92 "\n"
+        COMPOSED_TRIVIA@92..96 "    "
+        Item@96..105
+          Stmt@96..105
+            LetStmt@96..105
+              LET_KW@96..99 "let"
+              COMPOSED_TRIVIA@99..100 " "
+              Pat@100..101
+                IDENT@100..101 "y"
+              COMPOSED_TRIVIA@101..102 " "
+              EQ@102..103 "="
+              COMPOSED_TRIVIA@103..104 " "
+              Expr@104..105
+                ExprAtom@104..105
+                  IDENT@104..105 "b"
+        NEWLINE@105..106 "\n"
+        R_BRACE@106..107 "}"
+  COMPOSED_TRIVIA@107..108 "\n"

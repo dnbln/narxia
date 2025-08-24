@@ -1,19 +1,19 @@
-Root@0..85
-  COMPOSED_TRIVIA@0..71 "// test let-stmt-mut-with-init at crates/narxia-syn/src/parser/stmt.rs\n"
-  Item@71..84
-    Stmt@71..84
-      LetStmt@71..84
-        LET_KW@71..74 "let"
-        COMPOSED_TRIVIA@74..75 " "
-        MUT_KW@75..78 "mut"
-        COMPOSED_TRIVIA@78..79 " "
-        Pat@79..80
-          IDENT@79..80 "x"
+Root@0..91
+  COMPOSED_TRIVIA@0..77 "// test let-stmt-mut-with-init at src/compiler/narxia-syn/src/parser/stmt.rs\n"
+  Item@77..90
+    Stmt@77..90
+      LetStmt@77..90
+        LET_KW@77..80 "let"
         COMPOSED_TRIVIA@80..81 " "
-        EQ@81..82 "="
-        COMPOSED_TRIVIA@82..83 " "
-        Expr@83..84
-          ExprAtom@83..84
-            NumLit@83..84
-              NUM_DEC@83..84 "1"
-  COMPOSED_TRIVIA@84..85 "\n"
+        MUT_KW@81..84 "mut"
+        COMPOSED_TRIVIA@84..85 " "
+        Pat@85..86
+          IDENT@85..86 "x"
+        COMPOSED_TRIVIA@86..87 " "
+        EQ@87..88 "="
+        COMPOSED_TRIVIA@88..89 " "
+        Expr@89..90
+          ExprAtom@89..90
+            NumLit@89..90
+              NUM_DEC@89..90 "1"
+  COMPOSED_TRIVIA@90..91 "\n"

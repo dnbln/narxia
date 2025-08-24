@@ -1,51 +1,51 @@
-Root@0..94
-  COMPOSED_TRIVIA@0..67 "// test fn-with-generic-ty2 at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@67..93
-    FnDef@67..93
-      FnHead@67..89
-        FN_KW@67..69 "fn"
-        COMPOSED_TRIVIA@69..70 " "
-        FnName@70..71
-          IDENT@70..71 "f"
-        GenericParamList@71..77
-          L_ANGLE@71..72 "<"
-          GenericParam@72..73
-            GenericTyParam@72..73
-              GenericTyParamName@72..73
-                IDENT@72..73 "T"
-          COMMA@73..74 ","
-          COMPOSED_TRIVIA@74..75 " "
-          GenericParam@75..76
-            GenericTyParam@75..76
-              GenericTyParamName@75..76
-                IDENT@75..76 "U"
-          R_ANGLE@76..77 ">"
-        FnParamList@77..89
-          L_PAREN@77..78 "("
-          FnParam@78..82
-            FnParamName@78..79
-              Pat@78..79
-                IDENT@78..79 "v"
-            COLON@79..80 ":"
-            COMPOSED_TRIVIA@80..81 " "
-            FnParamTy@81..82
-              TyRef@81..82
-                IDENT@81..82 "T"
-          COMMA@82..83 ","
-          COMPOSED_TRIVIA@83..84 " "
+Root@0..100
+  COMPOSED_TRIVIA@0..73 "// test fn-with-generic-ty2 at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@73..99
+    FnDef@73..99
+      FnHead@73..95
+        FN_KW@73..75 "fn"
+        COMPOSED_TRIVIA@75..76 " "
+        FnName@76..77
+          IDENT@76..77 "f"
+        GenericParamList@77..83
+          L_ANGLE@77..78 "<"
+          GenericParam@78..79
+            GenericTyParam@78..79
+              GenericTyParamName@78..79
+                IDENT@78..79 "T"
+          COMMA@79..80 ","
+          COMPOSED_TRIVIA@80..81 " "
+          GenericParam@81..82
+            GenericTyParam@81..82
+              GenericTyParamName@81..82
+                IDENT@81..82 "U"
+          R_ANGLE@82..83 ">"
+        FnParamList@83..95
+          L_PAREN@83..84 "("
           FnParam@84..88
             FnParamName@84..85
               Pat@84..85
-                IDENT@84..85 "w"
+                IDENT@84..85 "v"
             COLON@85..86 ":"
             COMPOSED_TRIVIA@86..87 " "
             FnParamTy@87..88
               TyRef@87..88
-                IDENT@87..88 "U"
-          R_PAREN@88..89 ")"
-      COMPOSED_TRIVIA@89..90 " "
-      Block@90..93
-        L_BRACE@90..91 "{"
-        COMPOSED_TRIVIA@91..92 "\n"
-        R_BRACE@92..93 "}"
-  COMPOSED_TRIVIA@93..94 "\n"
+                IDENT@87..88 "T"
+          COMMA@88..89 ","
+          COMPOSED_TRIVIA@89..90 " "
+          FnParam@90..94
+            FnParamName@90..91
+              Pat@90..91
+                IDENT@90..91 "w"
+            COLON@91..92 ":"
+            COMPOSED_TRIVIA@92..93 " "
+            FnParamTy@93..94
+              TyRef@93..94
+                IDENT@93..94 "U"
+          R_PAREN@94..95 ")"
+      COMPOSED_TRIVIA@95..96 " "
+      Block@96..99
+        L_BRACE@96..97 "{"
+        COMPOSED_TRIVIA@97..98 "\n"
+        R_BRACE@98..99 "}"
+  COMPOSED_TRIVIA@99..100 "\n"

@@ -1,41 +1,41 @@
-Root@0..168
-  COMPOSED_TRIVIA@0..78 "// test num-lit-all-extra-underscores at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@78..167
-    Stmt@78..167
-      LetStmt@78..167
-        LET_KW@78..81 "let"
-        COMPOSED_TRIVIA@81..82 " "
-        Pat@82..83
-          IDENT@82..83 "x"
-        COMPOSED_TRIVIA@83..84 " "
-        EQ@84..85 "="
-        COMPOSED_TRIVIA@85..86 " "
-        Expr@86..167
-          BinaryOpExpr@86..167
-            BinaryOpExpr@86..145
-              BinaryOpExpr@86..122
-                ExprAtom@86..108
-                  NumLit@86..108
-                    NUM_DEC@86..108 "123_4____56________789"
-                COMPOSED_TRIVIA@108..109 " "
-                BinaryOpExprOp@109..110
-                  PLUS@109..110 "+"
-                COMPOSED_TRIVIA@110..111 " "
-                ExprAtom@111..122
-                  NumLit@111..122
-                    NUM_BIN@111..122 "0b____01_00"
-              COMPOSED_TRIVIA@122..123 " "
-              BinaryOpExprOp@123..124
-                PLUS@123..124 "+"
-              COMPOSED_TRIVIA@124..125 " "
-              ExprAtom@125..145
-                NumLit@125..145
-                  NUM_OCT@125..145 "01________23___4_567"
-            COMPOSED_TRIVIA@145..146 " "
-            BinaryOpExprOp@146..147
-              PLUS@146..147 "+"
-            COMPOSED_TRIVIA@147..148 " "
-            ExprAtom@148..167
-              NumLit@148..167
-                NUM_HEX@148..167 "0x3_a______bc_de__f"
-  COMPOSED_TRIVIA@167..168 "\n"
+Root@0..174
+  COMPOSED_TRIVIA@0..84 "// test num-lit-all-extra-underscores at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@84..173
+    Stmt@84..173
+      LetStmt@84..173
+        LET_KW@84..87 "let"
+        COMPOSED_TRIVIA@87..88 " "
+        Pat@88..89
+          IDENT@88..89 "x"
+        COMPOSED_TRIVIA@89..90 " "
+        EQ@90..91 "="
+        COMPOSED_TRIVIA@91..92 " "
+        Expr@92..173
+          BinaryOpExpr@92..173
+            BinaryOpExpr@92..151
+              BinaryOpExpr@92..128
+                ExprAtom@92..114
+                  NumLit@92..114
+                    NUM_DEC@92..114 "123_4____56________789"
+                COMPOSED_TRIVIA@114..115 " "
+                BinaryOpExprOp@115..116
+                  PLUS@115..116 "+"
+                COMPOSED_TRIVIA@116..117 " "
+                ExprAtom@117..128
+                  NumLit@117..128
+                    NUM_BIN@117..128 "0b____01_00"
+              COMPOSED_TRIVIA@128..129 " "
+              BinaryOpExprOp@129..130
+                PLUS@129..130 "+"
+              COMPOSED_TRIVIA@130..131 " "
+              ExprAtom@131..151
+                NumLit@131..151
+                  NUM_OCT@131..151 "01________23___4_567"
+            COMPOSED_TRIVIA@151..152 " "
+            BinaryOpExprOp@152..153
+              PLUS@152..153 "+"
+            COMPOSED_TRIVIA@153..154 " "
+            ExprAtom@154..173
+              NumLit@154..173
+                NUM_HEX@154..173 "0x3_a______bc_de__f"
+  COMPOSED_TRIVIA@173..174 "\n"

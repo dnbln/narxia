@@ -1,49 +1,49 @@
-Root@0..126
-  COMPOSED_TRIVIA@0..77 "// test fn-with-simple-params-default at crates/narxia-syn/src/parser/fun.rs\n"
-  Item@77..125
-    FnDef@77..125
-      FnHead@77..122
-        FN_KW@77..79 "fn"
-        COMPOSED_TRIVIA@79..80 " "
-        FnName@80..99
-          IDENT@80..99 "input_with_defaults"
-        FnParamList@99..122
-          L_PAREN@99..100 "("
-          FnParam@100..106
-            FnParamName@100..102
-              Pat@100..102
-                IDENT@100..102 "a0"
-            COLON@102..103 ":"
-            COMPOSED_TRIVIA@103..104 " "
-            FnParamTy@104..106
-              TyRef@104..106
-                IDENT@104..106 "A0"
-          COMMA@106..107 ","
-          COMPOSED_TRIVIA@107..108 " "
-          FnParam@108..121
-            FnParamName@108..110
-              Pat@108..110
-                IDENT@108..110 "a1"
-            COLON@110..111 ":"
-            COMPOSED_TRIVIA@111..112 " "
-            FnParamTy@112..114
-              TyRef@112..114
-                IDENT@112..114 "A1"
-            COMPOSED_TRIVIA@114..115 " "
-            FnParamDefault@115..121
-              EQ@115..116 "="
-              COMPOSED_TRIVIA@116..117 " "
-              Expr@117..121
-                CallExpr@117..121
-                  ExprAtom@117..119
-                    IDENT@117..119 "A1"
-                  CallExprArgs@119..121
-                    CallExprArgsList@119..121
-                      L_PAREN@119..120 "("
-                      R_PAREN@120..121 ")"
-          R_PAREN@121..122 ")"
-      COMPOSED_TRIVIA@122..123 " "
-      Block@123..125
-        L_BRACE@123..124 "{"
-        R_BRACE@124..125 "}"
-  COMPOSED_TRIVIA@125..126 "\n"
+Root@0..132
+  COMPOSED_TRIVIA@0..83 "// test fn-with-simple-params-default at src/compiler/narxia-syn/src/parser/fun.rs\n"
+  Item@83..131
+    FnDef@83..131
+      FnHead@83..128
+        FN_KW@83..85 "fn"
+        COMPOSED_TRIVIA@85..86 " "
+        FnName@86..105
+          IDENT@86..105 "input_with_defaults"
+        FnParamList@105..128
+          L_PAREN@105..106 "("
+          FnParam@106..112
+            FnParamName@106..108
+              Pat@106..108
+                IDENT@106..108 "a0"
+            COLON@108..109 ":"
+            COMPOSED_TRIVIA@109..110 " "
+            FnParamTy@110..112
+              TyRef@110..112
+                IDENT@110..112 "A0"
+          COMMA@112..113 ","
+          COMPOSED_TRIVIA@113..114 " "
+          FnParam@114..127
+            FnParamName@114..116
+              Pat@114..116
+                IDENT@114..116 "a1"
+            COLON@116..117 ":"
+            COMPOSED_TRIVIA@117..118 " "
+            FnParamTy@118..120
+              TyRef@118..120
+                IDENT@118..120 "A1"
+            COMPOSED_TRIVIA@120..121 " "
+            FnParamDefault@121..127
+              EQ@121..122 "="
+              COMPOSED_TRIVIA@122..123 " "
+              Expr@123..127
+                CallExpr@123..127
+                  ExprAtom@123..125
+                    IDENT@123..125 "A1"
+                  CallExprArgs@125..127
+                    CallExprArgsList@125..127
+                      L_PAREN@125..126 "("
+                      R_PAREN@126..127 ")"
+          R_PAREN@127..128 ")"
+      COMPOSED_TRIVIA@128..129 " "
+      Block@129..131
+        L_BRACE@129..130 "{"
+        R_BRACE@130..131 "}"
+  COMPOSED_TRIVIA@131..132 "\n"

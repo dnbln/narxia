@@ -1,19 +1,19 @@
-Root@0..90
-  COMPOSED_TRIVIA@0..77 "// test module-with-brance-on-newline at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@77..85
-    Module@77..85
-      MODULE_KW@77..83 "module"
-      COMPOSED_TRIVIA@83..84 " "
-      ModuleName@84..85
-        IDENT@84..85 "a"
-  COMPOSED_TRIVIA@85..86 "\n"
-  Item@86..89
-    Stmt@86..89
-      Expr@86..89
-        ExprAtom@86..89
-          BlockExpr@86..89
-            Block@86..89
-              L_BRACE@86..87 "{"
-              COMPOSED_TRIVIA@87..88 "\n"
-              R_BRACE@88..89 "}"
-  COMPOSED_TRIVIA@89..90 "\n"
+Root@0..96
+  COMPOSED_TRIVIA@0..83 "// test module-with-brance-on-newline at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@83..91
+    Module@83..91
+      MODULE_KW@83..89 "module"
+      COMPOSED_TRIVIA@89..90 " "
+      ModuleName@90..91
+        IDENT@90..91 "a"
+  COMPOSED_TRIVIA@91..92 "\n"
+  Item@92..95
+    Stmt@92..95
+      Expr@92..95
+        ExprAtom@92..95
+          BlockExpr@92..95
+            Block@92..95
+              L_BRACE@92..93 "{"
+              COMPOSED_TRIVIA@93..94 "\n"
+              R_BRACE@94..95 "}"
+  COMPOSED_TRIVIA@95..96 "\n"

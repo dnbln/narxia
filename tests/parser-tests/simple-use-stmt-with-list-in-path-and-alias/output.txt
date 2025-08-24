@@ -1,59 +1,59 @@
-Root@0..147
-  COMPOSED_TRIVIA@0..91 "// test simple-use-stmt-with-list-in-path-and-alias at crates/narxia-syn/src/parser/mod.rs\n"
-  Item@91..146
-    UseStmt@91..146
-      USE_KW@91..94 "use"
-      COMPOSED_TRIVIA@94..95 " "
-      UsePath@95..146
-        UsePathSegmentAndPath@95..146
-          UsePathSegment@95..102
-            IDENT@95..102 "println"
-          UsePathContinuation@102..146
-            UsePathColonContinuation@102..146
-              COLON2@102..104 "::"
-              UsePath@104..146
-                UsePathSegmentAndPath@104..146
-                  UsePathSegment@104..108
-                    IDENT@104..108 "aaaa"
-                  UsePathContinuation@108..146
-                    UsePathColonContinuation@108..146
-                      COLON2@108..110 "::"
-                      UsePath@110..146
-                        UsePathList@110..146
-                          L_BRACE@110..111 "{"
-                          COMPOSED_TRIVIA@111..116 "\n    "
-                          UsePath@116..122
-                            UsePathSegmentAndPath@116..122
-                              UsePathSegment@116..117
-                                IDENT@116..117 "a"
-                              COMPOSED_TRIVIA@117..118 " "
-                              UsePathContinuation@118..122
-                                UseAlias@118..122
-                                  AS_KW@118..120 "as"
-                                  COMPOSED_TRIVIA@120..121 " "
-                                  IDENT@121..122 "b"
-                          COMPOSED_TRIVIA@122..127 "\n    "
-                          UsePath@127..133
-                            UsePathSegmentAndPath@127..133
-                              UsePathSegment@127..128
-                                IDENT@127..128 "b"
-                              COMPOSED_TRIVIA@128..129 " "
-                              UsePathContinuation@129..133
-                                UseAlias@129..133
-                                  AS_KW@129..131 "as"
-                                  COMPOSED_TRIVIA@131..132 " "
-                                  IDENT@132..133 "c"
-                          COMPOSED_TRIVIA@133..138 "\n    "
-                          UsePath@138..144
-                            UsePathSegmentAndPath@138..144
-                              UsePathSegment@138..139
-                                IDENT@138..139 "c"
-                              COMPOSED_TRIVIA@139..140 " "
-                              UsePathContinuation@140..144
-                                UseAlias@140..144
-                                  AS_KW@140..142 "as"
-                                  COMPOSED_TRIVIA@142..143 " "
-                                  IDENT@143..144 "a"
-                          COMPOSED_TRIVIA@144..145 "\n"
-                          R_BRACE@145..146 "}"
-  COMPOSED_TRIVIA@146..147 "\n"
+Root@0..153
+  COMPOSED_TRIVIA@0..97 "// test simple-use-stmt-with-list-in-path-and-alias at src/compiler/narxia-syn/src/parser/mod.rs\n"
+  Item@97..152
+    UseStmt@97..152
+      USE_KW@97..100 "use"
+      COMPOSED_TRIVIA@100..101 " "
+      UsePath@101..152
+        UsePathSegmentAndPath@101..152
+          UsePathSegment@101..108
+            IDENT@101..108 "println"
+          UsePathContinuation@108..152
+            UsePathColonContinuation@108..152
+              COLON2@108..110 "::"
+              UsePath@110..152
+                UsePathSegmentAndPath@110..152
+                  UsePathSegment@110..114
+                    IDENT@110..114 "aaaa"
+                  UsePathContinuation@114..152
+                    UsePathColonContinuation@114..152
+                      COLON2@114..116 "::"
+                      UsePath@116..152
+                        UsePathList@116..152
+                          L_BRACE@116..117 "{"
+                          COMPOSED_TRIVIA@117..122 "\n    "
+                          UsePath@122..128
+                            UsePathSegmentAndPath@122..128
+                              UsePathSegment@122..123
+                                IDENT@122..123 "a"
+                              COMPOSED_TRIVIA@123..124 " "
+                              UsePathContinuation@124..128
+                                UseAlias@124..128
+                                  AS_KW@124..126 "as"
+                                  COMPOSED_TRIVIA@126..127 " "
+                                  IDENT@127..128 "b"
+                          COMPOSED_TRIVIA@128..133 "\n    "
+                          UsePath@133..139
+                            UsePathSegmentAndPath@133..139
+                              UsePathSegment@133..134
+                                IDENT@133..134 "b"
+                              COMPOSED_TRIVIA@134..135 " "
+                              UsePathContinuation@135..139
+                                UseAlias@135..139
+                                  AS_KW@135..137 "as"
+                                  COMPOSED_TRIVIA@137..138 " "
+                                  IDENT@138..139 "c"
+                          COMPOSED_TRIVIA@139..144 "\n    "
+                          UsePath@144..150
+                            UsePathSegmentAndPath@144..150
+                              UsePathSegment@144..145
+                                IDENT@144..145 "c"
+                              COMPOSED_TRIVIA@145..146 " "
+                              UsePathContinuation@146..150
+                                UseAlias@146..150
+                                  AS_KW@146..148 "as"
+                                  COMPOSED_TRIVIA@148..149 " "
+                                  IDENT@149..150 "a"
+                          COMPOSED_TRIVIA@150..151 "\n"
+                          R_BRACE@151..152 "}"
+  COMPOSED_TRIVIA@152..153 "\n"

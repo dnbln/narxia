@@ -1,34 +1,34 @@
-Root@0..86
-  COMPOSED_TRIVIA@0..68 "// test paren-multiple-expr at crates/narxia-syn/src/parser/expr.rs\n"
-  Item@68..85
-    Stmt@68..85
-      LetStmt@68..85
-        LET_KW@68..71 "let"
-        COMPOSED_TRIVIA@71..72 " "
-        Pat@72..73
-          IDENT@72..73 "x"
-        COMPOSED_TRIVIA@73..74 " "
-        EQ@74..75 "="
-        COMPOSED_TRIVIA@75..76 " "
-        Expr@76..85
-          ExprAtom@76..85
-            TupleLikeExpr@76..85
-              L_PAREN@76..77 "("
-              Expr@77..78
-                ExprAtom@77..78
-                  NumLit@77..78
-                    NUM_DEC@77..78 "1"
-              COMMA@78..79 ","
-              COMPOSED_TRIVIA@79..80 " "
-              Expr@80..81
-                ExprAtom@80..81
-                  NumLit@80..81
-                    NUM_DEC@80..81 "2"
-              COMMA@81..82 ","
-              COMPOSED_TRIVIA@82..83 " "
+Root@0..92
+  COMPOSED_TRIVIA@0..74 "// test paren-multiple-expr at src/compiler/narxia-syn/src/parser/expr.rs\n"
+  Item@74..91
+    Stmt@74..91
+      LetStmt@74..91
+        LET_KW@74..77 "let"
+        COMPOSED_TRIVIA@77..78 " "
+        Pat@78..79
+          IDENT@78..79 "x"
+        COMPOSED_TRIVIA@79..80 " "
+        EQ@80..81 "="
+        COMPOSED_TRIVIA@81..82 " "
+        Expr@82..91
+          ExprAtom@82..91
+            TupleLikeExpr@82..91
+              L_PAREN@82..83 "("
               Expr@83..84
                 ExprAtom@83..84
                   NumLit@83..84
-                    NUM_DEC@83..84 "3"
-              R_PAREN@84..85 ")"
-  COMPOSED_TRIVIA@85..86 "\n"
+                    NUM_DEC@83..84 "1"
+              COMMA@84..85 ","
+              COMPOSED_TRIVIA@85..86 " "
+              Expr@86..87
+                ExprAtom@86..87
+                  NumLit@86..87
+                    NUM_DEC@86..87 "2"
+              COMMA@87..88 ","
+              COMPOSED_TRIVIA@88..89 " "
+              Expr@89..90
+                ExprAtom@89..90
+                  NumLit@89..90
+                    NUM_DEC@89..90 "3"
+              R_PAREN@90..91 ")"
+  COMPOSED_TRIVIA@91..92 "\n"
