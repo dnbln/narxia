@@ -1,8 +1,8 @@
 use dir_structure::FsVfs;
 use miette::bail;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_test_runner::parser_tests::lower_to_hir;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
 fn run_test(mut test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();

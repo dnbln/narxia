@@ -7,10 +7,10 @@ pub mod parser_tests {
     use dir_structure::FsVfs;
     use miette::bail;
     use miette::IntoDiagnostic;
-    use narxia_workspace::parser_tests::parser_tests_dir;
-    use narxia_workspace::parser_tests::ParserTestSingleFolder;
     use narxia_driver::DriverCtx;
     use narxia_hir_db::HirFile;
+    use narxia_workspace::parser_tests::parser_tests_dir;
+    use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
     pub(crate) fn do_lower_to_hir(
         src_file: narxia_src_db::SrcFile,

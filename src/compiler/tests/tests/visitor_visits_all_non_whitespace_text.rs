@@ -21,11 +21,11 @@ use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
 use miette::bail;
 use miette::IntoDiagnostic;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_hir as hir;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::token_source::TokenSource;
 use narxia_test_runner::parser_tests::lower_to_hir;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use owo_colors::OwoColorize;
 
 struct OrphanSpanVisitor<'hir> {

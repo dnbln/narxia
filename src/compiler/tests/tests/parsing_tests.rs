@@ -17,8 +17,8 @@ use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_syn::syntree::TreePresenterStyle;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {

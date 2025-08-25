@@ -17,7 +17,6 @@
 use dir_structure::FsVfs;
 use miette::bail;
 use miette::IntoDiagnostic;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree::tests_data::AccessorCalledDataList;
 use narxia_syn::syntree::tests_data::AccessorCalledDataReturned;
@@ -26,6 +25,7 @@ use narxia_syn::syntree::Node;
 use narxia_syn::syntree::Token;
 use narxia_syn::syntree::TreeNode;
 use narxia_syn::text_span::TextSpan;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use owo_colors::OwoColorize;
 use owo_colors::Style;
 

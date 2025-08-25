@@ -7,10 +7,10 @@ use hir::visitor::HirVisitor;
 use hir::HirIdNewtype;
 use hir::SpecialIdents;
 use miette::bail;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir as hir;
 use narxia_test_runner::parser_tests::lower_to_hir;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
 struct OrphanHirIdVisitor<'hir> {
     hir_map: &'hir HirMap,

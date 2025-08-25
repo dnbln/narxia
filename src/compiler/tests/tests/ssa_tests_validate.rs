@@ -1,7 +1,7 @@
 use dir_structure::FsVfs;
 use miette::bail;
-use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 use narxia_test_runner::ssa_tests;
+use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 
 fn trial(mut test: SsaTestSingleFolder<FsVfs>) -> miette::Result<()> {
     let ctx = narxia_driver::DriverCtx::initialize_in_test();

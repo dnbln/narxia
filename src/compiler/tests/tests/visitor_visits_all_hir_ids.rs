@@ -4,11 +4,11 @@
 
 use dir_structure::FsVfs;
 use miette::bail;
-use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::HirId;
 use narxia_test_runner::parser_tests::lower_to_hir;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
 struct Visitor<'hir> {
     hir_map: &'hir narxia_hir::hir_map::HirMap,
