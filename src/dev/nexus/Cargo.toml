@@ -33,4 +33,4 @@ doc-extract.workspace = true
 git-voyage.workspace = true
 narxia-log.workspace = true
 narxia-log-impl.workspace = true
-narxia-dir-structures.workspace = true
+narxia-workspace.workspace = true

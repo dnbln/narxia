@@ -4,7 +4,7 @@ use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
-use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
+use narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {

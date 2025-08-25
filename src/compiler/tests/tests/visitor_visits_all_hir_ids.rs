@@ -4,7 +4,7 @@
 
 use dir_structure::FsVfs;
 use miette::bail;
-use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
+use narxia_workspace::parser_tests::ParserTestSingleFolder;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;
 use narxia_hir::HirId;

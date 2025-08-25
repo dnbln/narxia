@@ -13,7 +13,6 @@ miette.workspace = true
 similar.workspace = true
 
 narxia-data-structures.workspace = true
-narxia-dir-structures.workspace = true
 narxia-driver.workspace = true
 narxia-hir.workspace = true
 narxia-hir-db.workspace = true
@@ -24,6 +23,7 @@ narxia-ssa-lower.workspace = true
 narxia-ssa-validator.workspace = true
 narxia-syn.workspace = true
 narxia-src-db.workspace = true
+narxia-workspace.workspace = true
 
 [lints]
 workspace = true

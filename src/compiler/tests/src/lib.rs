@@ -1,14 +1,14 @@
 #![feature(internal_output_capture)]
 
-pub extern crate narxia_dir_structures;
+pub extern crate narxia_workspace;
 
 pub mod parser_tests {
     use dir_structure::DirStructureItem;
     use dir_structure::FsVfs;
     use miette::bail;
     use miette::IntoDiagnostic;
-    use narxia_dir_structures::parser_tests::parser_tests_dir;
-    use narxia_dir_structures::parser_tests::ParserTestSingleFolder;
+    use narxia_workspace::parser_tests::parser_tests_dir;
+    use narxia_workspace::parser_tests::ParserTestSingleFolder;
     use narxia_driver::DriverCtx;
     use narxia_hir_db::HirFile;
 
@@ -52,13 +52,13 @@ pub mod name_resolution_tests {
     use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_data_structures::FxBTreeMap;
-    use narxia_dir_structures::name_resolution_tests::name_resolution_tests_dir;
-    use narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder;
     use narxia_driver::DriverCtx;
     use narxia_hir::HirId;
     use narxia_hir_typechk::def_id::DefId;
     use narxia_hir_typechk::sema;
     use narxia_hir_typechk::sema::SemanticAnalysisResult;
+    use narxia_workspace::name_resolution_tests::name_resolution_tests_dir;
+    use narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder;
 
     use crate::parser_tests::do_lower_to_hir;
 
@@ -103,12 +103,12 @@ pub mod ssa_tests {
     use dir_structure::DirStructureItem;
     use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
-    use narxia_dir_structures::ssa_tests::ssa_tests_dir;
-    use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
     use narxia_driver::DriverCtx;
     use narxia_hir_typechk::sema;
     use narxia_ssa::Module;
     use narxia_syn::narxia_log::info;
+    use narxia_workspace::ssa_tests::ssa_tests_dir;
+    use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 
     use crate::parser_tests::do_lower_to_hir;
 
@@ -174,7 +174,7 @@ macro_rules! parser_test_trials {
 #[macro_export]
 macro_rules! test_main_parser_tests_foreach {
     (|$name:ident| { $($do:tt)* }) => {
-        fn __trial($name: $crate::narxia_dir_structures::parser_tests::ParserTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_workspace::parser_tests::ParserTestSingleFolder<$crate::narxia_workspace::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
 
@@ -219,7 +219,7 @@ macro_rules! name_resolution_tests_trials {
 #[macro_export]
 macro_rules! test_main_name_resolution_tests_foreach {
     (|$name:ident| { $($do:tt)* }) => {
-        fn __trial($name: $crate::narxia_dir_structures::name_resolution_tests::NameResolutionTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder<$crate::narxia_workspace::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
         $crate::name_resolution_tests_trials!(__collect_trials, __trial);
@@ -263,7 +263,7 @@ macro_rules! ssa_tests_trials {
 #[macro_export]
 macro_rules! test_main_ssa_tests_foreach {
     (|$name:ident| {$($do:tt)*}) => {
-        fn __trial($name: $crate::narxia_dir_structures::ssa_tests::SsaTestSingleFolder<$crate::narxia_dir_structures::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
+        fn __trial($name: $crate::narxia_workspace::ssa_tests::SsaTestSingleFolder<$crate::narxia_workspace::dir_structure::FsVfs>) -> Result<(), libtest_mimic::Failed> {
             {$($do)*}.map_err(libtest_mimic::Failed::from)
         }
 

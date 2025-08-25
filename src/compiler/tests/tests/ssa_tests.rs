@@ -2,7 +2,7 @@ use dir_structure::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
-use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
+use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 
 #[derive(Debug, Clone, Copy)]
 enum TestMode {

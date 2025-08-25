@@ -131,7 +131,7 @@ pub mod parser_tests {
     use crate::ws_root;
 
     pub fn parser_tests_dir() -> PathBuf {
-        ws_root().join("tests/parser-tests")
+        ws_root().join("src/compiler/tests/testData/parser-tests")
     }
 
     pub const INPUT_FILE_NAME: &str = "input.nrx";
@@ -167,7 +167,7 @@ pub mod name_resolution_tests {
     use crate::ws_root;
 
     pub fn name_resolution_tests_dir() -> PathBuf {
-        ws_root().join("tests/name-resolution-tests")
+        ws_root().join("src/compiler/tests/testData/name-resolution-tests")
     }
 
     #[derive(DirStructure, Clone)]
@@ -200,7 +200,7 @@ pub mod ssa_tests {
     use crate::ws_root;
 
     pub fn ssa_tests_dir() -> PathBuf {
-        ws_root().join("tests/ssa-tests")
+        ws_root().join("src/compiler/tests/testData/ssa-tests")
     }
 
     #[derive(DirStructure, Clone)]

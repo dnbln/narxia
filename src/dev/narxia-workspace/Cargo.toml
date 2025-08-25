@@ -1,5 +1,5 @@
 [package]
-name = "narxia-dir-structures"
+name = "narxia-workspace"
 version.workspace = true
 publish.workspace = true
 edition.workspace = true

@@ -1,6 +1,6 @@
 use dir_structure::FsVfs;
 use miette::bail;
-use narxia_dir_structures::ssa_tests::SsaTestSingleFolder;
+use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 use narxia_test_runner::ssa_tests;
 
 fn trial(mut test: SsaTestSingleFolder<FsVfs>) -> miette::Result<()> {

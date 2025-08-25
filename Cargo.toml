@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/compiler/*", "src/dev/*", "tests/narxia-test-runner"]
+members = ["src/compiler/*", "src/dev/*"]
 default-members = ["src/dev/cargo-guard"]
 resolver = "2"
 
@@ -29,7 +29,7 @@ opt-level = 3
 narxia-codegen = { path = "src/compiler/narxia-codegen" }
 narxia-codegen-llvm = { path = "src/compiler/narxia-codegen-llvm" }
 narxia-data-structures = { path = "src/compiler/narxia-data-structures" }
-narxia-dir-structures = { path = "src/dev/narxia-dir-structures" }
+narxia-workspace = { path = "src/dev/narxia-workspace" }
 narxia-driver = { path = "src/compiler/narxia-driver" }
 narxia-hir = { path = "src/compiler/narxia-hir" }
 narxia-hir-lower = { path = "src/compiler/narxia-hir-lower" }
