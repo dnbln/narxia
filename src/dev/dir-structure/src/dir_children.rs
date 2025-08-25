@@ -1344,6 +1344,14 @@ macro_rules! dir_children_wrapper_with_vfs {
                 self.0.into_iter()
             }
         }
+
+        impl<'vfs, Vfs> $crate::DynamicHasField for $name<'vfs, Vfs> where $crate::DirChildren<$ty<'vfs, Vfs>>: $crate::DynamicHasField {
+            type Inner = <$crate::DirChildren<$ty<'vfs, Vfs>> as $crate::DynamicHasField>::Inner;
+
+            fn resolve_path(p: PathBuf, field: &str) -> PathBuf {
+                <$crate::DirChildren<$ty<'vfs, Vfs>> as $crate::DynamicHasField>::resolve_path(p, field)
+            }
+        }
     };
 }
 

@@ -75,6 +75,8 @@ fn run_test(mut test: NameResolutionTestSingleFolder<FsVfs>, mode: TestMode) -> 
     Ok(())
 }
 
-narxia_test_runner::test_main_name_resolution_tests_foreach!(|test| {
+fn run_test_main(test: NameResolutionTestSingleFolder<'static, FsVfs>) -> miette::Result<()> {
     run_test(test, TestMode::get_behavior())
-});
+}
+
+include!(concat!(env!("OUT_DIR"), "/name_resolution_tests.rs"));

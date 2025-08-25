@@ -50,4 +50,8 @@ fn trial(mut test: SsaTestSingleFolder<FsVfs>) -> miette::Result<()> {
     Ok(())
 }
 
-narxia_test_runner::test_main_ssa_tests_foreach!(|test| { trial(test) });
+fn run_test_main(test: SsaTestSingleFolder<'static, FsVfs>) -> miette::Result<()> {
+    trial(test)
+}
+
+include!(concat!(env!("OUT_DIR"), "/ssa_tests.rs"));

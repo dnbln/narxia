@@ -5,6 +5,7 @@
 .DS_Store
 /.direnv
 /.fleet
+/.vscode
 
 *.before.mdx
 rustc-ice-*.txt

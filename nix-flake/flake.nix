@@ -70,6 +70,12 @@
 
             export_alias_exec nrx "$(realpath target/debug/nrx)"
             export_function nrxc
+
+            nexus() {
+                cargo nexus $@
+            }
+
+            export_function nexus
           '';
         };
       }

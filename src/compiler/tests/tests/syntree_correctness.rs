@@ -27,7 +27,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use miette::bail;
-use miette::IntoDiagnostic;
 use narxia_syn::syntree::tests_data::AccessorCalledDataList;
 use narxia_syn::syntree::tests_data::AccessorCalledDataReturned;
 use narxia_syn::syntree::tests_data::AccessorInfo;

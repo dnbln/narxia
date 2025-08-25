@@ -27,6 +27,8 @@ fn run_test(mut test: ParserTestSingleFolder<FsVfs>) -> miette::Result<()> {
     Ok(())
 }
 
-narxia_test_runner::test_main_parser_tests_foreach! {
-    |test| { run_test(test) }
+fn run_test_main(test: ParserTestSingleFolder<'static, FsVfs>) -> miette::Result<()> {
+    run_test(test)
 }
+
+include!(concat!(env!("OUT_DIR"), "/parser_tests.rs"));

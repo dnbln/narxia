@@ -163,7 +163,9 @@ pub mod parser_tests {
 
     use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
+    use dir_structure::DirStructureItem;
     use dir_structure::FileString;
+    use dir_structure::FsVfs;
 
     use crate::ws_root;
 
@@ -192,6 +194,12 @@ pub mod parser_tests {
             dir_structure::resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
+
+    dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder);
+
+    pub fn collect_parser_tests() -> dir_structure::Result<ParserTestsFolder<'static, FsVfs>> {
+        ParserTestsFolder::<FsVfs>::read(parser_tests_dir())
+    }
 }
 
 pub mod name_resolution_tests {
@@ -199,7 +207,9 @@ pub mod name_resolution_tests {
 
     use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
+    use dir_structure::DirStructureItem;
     use dir_structure::FileString;
+    use dir_structure::FsVfs;
 
     use crate::ws_root;
 
@@ -225,6 +235,13 @@ pub mod name_resolution_tests {
             dir_structure::resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
+
+    dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
+
+    pub fn collect_name_resolution_tests()
+    -> dir_structure::Result<NameResolutionTestsFolder<'static, FsVfs>> {
+        NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir())
+    }
 }
 
 pub mod ssa_tests {
@@ -232,7 +249,9 @@ pub mod ssa_tests {
 
     use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
+    use dir_structure::DirStructureItem;
     use dir_structure::FileString;
+    use dir_structure::FsVfs;
 
     use crate::ws_root;
 
@@ -257,5 +276,11 @@ pub mod ssa_tests {
         pub fn output_file_path(&self) -> PathBuf {
             dir_structure::resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
+    }
+
+    dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder);
+
+    pub fn collect_ssa_tests() -> dir_structure::Result<SsaTestsFolder<'static, FsVfs>> {
+        SsaTestsFolder::<FsVfs>::read(ssa_tests_dir())
     }
 }

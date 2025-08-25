@@ -3,13 +3,11 @@
 pub extern crate narxia_workspace;
 
 pub mod parser_tests {
-    use dir_structure::DirStructureItem;
     use dir_structure::FsVfs;
     use miette::bail;
     use miette::IntoDiagnostic;
     use narxia_driver::DriverCtx;
     use narxia_hir_db::HirFile;
-    use narxia_workspace::parser_tests::parser_tests_dir;
     use narxia_workspace::parser_tests::ParserTestSingleFolder;
 
     pub(crate) fn do_lower_to_hir(
@@ -39,16 +37,9 @@ pub mod parser_tests {
         let src_file = narxia_driver::load_file(ctx, folder.input_file_path(), &input.0);
         do_lower_to_hir(src_file, ctx)
     }
-
-    dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder);
-
-    pub fn collect_parser_tests() -> miette::Result<ParserTestsFolder<'static, FsVfs>> {
-        ParserTestsFolder::<FsVfs>::read(parser_tests_dir()).into_diagnostic()
-    }
 }
 
 pub mod name_resolution_tests {
-    use dir_structure::DirStructureItem;
     use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_data_structures::FxBTreeMap;
@@ -57,12 +48,9 @@ pub mod name_resolution_tests {
     use narxia_hir_typechk::def_id::DefId;
     use narxia_hir_typechk::sema;
     use narxia_hir_typechk::sema::SemanticAnalysisResult;
-    use narxia_workspace::name_resolution_tests::name_resolution_tests_dir;
     use narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder;
 
     use crate::parser_tests::do_lower_to_hir;
-
-    dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
 
     pub fn name_resolution(
         folder: &mut NameResolutionTestSingleFolder<FsVfs>,
@@ -92,27 +80,18 @@ pub mod name_resolution_tests {
                 .__get_name_resolutions(),
         ))
     }
-
-    pub fn collect_name_resolution_tests(
-    ) -> miette::Result<NameResolutionTestsFolder<'static, FsVfs>> {
-        NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir()).into_diagnostic()
-    }
 }
 
 pub mod ssa_tests {
-    use dir_structure::DirStructureItem;
     use dir_structure::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_driver::DriverCtx;
     use narxia_hir_typechk::sema;
     use narxia_ssa::Module;
     use narxia_syn::narxia_log::info;
-    use narxia_workspace::ssa_tests::ssa_tests_dir;
     use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 
     use crate::parser_tests::do_lower_to_hir;
-
-    dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder);
 
     pub fn ssa(folder: &mut SsaTestSingleFolder<FsVfs>, ctx: &DriverCtx) -> miette::Result<Module> {
         let input = folder
@@ -137,19 +116,17 @@ pub mod ssa_tests {
 
         Ok(narxia_ssa_lower::convert(tcx, &hir_map, mod_id))
     }
-
-    pub fn collect_ssa_tests() -> miette::Result<SsaTestsFolder<'static, FsVfs>> {
-        SsaTestsFolder::<FsVfs>::read(ssa_tests_dir()).into_diagnostic()
-    }
 }
 
 #[macro_export]
 macro_rules! for_each_parser_test {
-    (|$name:ident| { $($do:tt)* }) => {
-        for $name in $crate::parser_tests::collect_parser_tests()? {
+    (|$name:ident| { $($do:tt)* }) => {{
+        use miette::IntoDiagnostic;
+
+        for $name in $crate::narxia_workspace::parser_tests::collect_parser_tests().into_diagnostic()? {
             $($do)*
         }
-    };
+    }};
 }
 
 #[macro_export]
@@ -190,11 +167,12 @@ macro_rules! test_main_parser_tests_foreach {
 
 #[macro_export]
 macro_rules! for_each_name_resolution_test {
-    (|$name:ident| { $($do:tt)* }) => {
-        for $name in $crate::name_resolution_tests::collect_name_resolution_tests()? {
+    (|$name:ident| { $($do:tt)* }) => {{
+        use miette::IntoDiagnostic;
+        for $name in $crate::narxia_workspace::name_resolution_tests::collect_name_resolution_tests().into_diagnostic()? {
             $($do)*
         }
-    };
+    }};
 }
 
 #[macro_export]
@@ -234,11 +212,13 @@ macro_rules! test_main_name_resolution_tests_foreach {
 
 #[macro_export]
 macro_rules! for_each_ssa_test {
-    (|$name:ident| {$($do:tt)*}) => {
-        for $name in $crate::ssa_tests::collect_ssa_tests()? {
+    (|$name:ident| {$($do:tt)*}) => {{
+        use miette::IntoDiagnostic;
+
+        for $name in $crate::narxia_workspace::ssa_tests::collect_ssa_tests().into_diagnostic()? {
             $($do)*
         }
-    };
+    }};
 }
 
 #[macro_export]

@@ -72,6 +72,8 @@ fn run_test(test: ParserTestSingleFolder<FsVfs>, test_mode: TestMode) -> miette:
     Ok(())
 }
 
-narxia_test_runner::test_main_parser_tests_foreach!(|test| {
+fn run_test_main(test: ParserTestSingleFolder<'static, FsVfs>) -> miette::Result<()> {
     run_test(test, TestMode::get_behavior())
-});
+}
+
+include!(concat!(env!("OUT_DIR"), "/parser_tests.rs"));
