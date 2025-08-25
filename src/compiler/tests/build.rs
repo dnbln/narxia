@@ -32,17 +32,7 @@ fn main() {
 fn {test_name}() -> miette::Result<()> {{
     use miette::IntoDiagnostic;
 
-    crate::run_test_main(
-        <
-            narxia_workspace::parser_tests::ParserTestSingleFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            as narxia_workspace::dir_structure::DirStructureItem
-        >::read(narxia_workspace::dir_structure::resolve_path!(
-            [
-            narxia_workspace::parser_tests::parser_tests_dir()
-                as narxia_workspace::parser_tests::ParserTestsFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            ].{dir_name:?}
-        )).into_diagnostic()?
-    )
+    crate::run_test_main(narxia_workspace::parser_tests::load_parser_test({dir_name:?}).into_diagnostic()?)
 }}
 
 "#
@@ -67,17 +57,7 @@ fn {test_name}() -> miette::Result<()> {{
 fn {test_name}() -> miette::Result<()> {{
     use miette::IntoDiagnostic;
 
-    crate::run_test_main(
-        <
-            narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            as narxia_workspace::dir_structure::DirStructureItem
-        >::read(narxia_workspace::dir_structure::resolve_path!(
-            [
-            narxia_workspace::name_resolution_tests::name_resolution_tests_dir()
-                as narxia_workspace::name_resolution_tests::NameResolutionTestsFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            ].{dir_name:?}
-        )).into_diagnostic()?
-    )
+    crate::run_test_main(narxia_workspace::name_resolution_tests::load_name_resolution_test({dir_name:?}).into_diagnostic()?)
 }}
 
 "#).unwrap();
@@ -104,17 +84,7 @@ fn {test_name}() -> miette::Result<()> {{
 fn {test_name}() -> miette::Result<()> {{
     use miette::IntoDiagnostic;
 
-    crate::run_test_main(
-        <
-            narxia_workspace::ssa_tests::SsaTestSingleFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            as narxia_workspace::dir_structure::DirStructureItem
-        >::read(narxia_workspace::dir_structure::resolve_path!(
-            [
-            narxia_workspace::ssa_tests::ssa_tests_dir()
-                as narxia_workspace::ssa_tests::SsaTestsFolder::<'static, narxia_workspace::dir_structure::FsVfs>
-            ].{dir_name:?}
-        )).into_diagnostic()?
-    )
+    crate::run_test_main(narxia_workspace::ssa_tests::load_ssa_test({dir_name:?}).into_diagnostic()?)
 }}
 
 "#

@@ -21,6 +21,9 @@ pub trait DynamicHasField {
     fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
 }
 
+#[cfg(feature = "resolve-path")]
+#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+pub use dir_structure_macros::load_path;
 /// A macro to resolve a path to a specific field in a directory structure.
 ///
 /// # Examples

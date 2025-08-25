@@ -200,6 +200,12 @@ pub mod parser_tests {
     pub fn collect_parser_tests() -> dir_structure::Result<ParserTestsFolder<'static, FsVfs>> {
         ParserTestsFolder::<FsVfs>::read(parser_tests_dir())
     }
+
+    pub fn load_parser_test(
+        test: &str,
+    ) -> dir_structure::Result<ParserTestSingleFolder<'static, FsVfs>> {
+        dir_structure::load_path!([parser_tests_dir() as ParserTestsFolder<'static, FsVfs>].${test})
+    }
 }
 
 pub mod name_resolution_tests {
@@ -242,6 +248,12 @@ pub mod name_resolution_tests {
     -> dir_structure::Result<NameResolutionTestsFolder<'static, FsVfs>> {
         NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir())
     }
+
+    pub fn load_name_resolution_test(
+        test: &str,
+    ) -> dir_structure::Result<NameResolutionTestSingleFolder<'static, FsVfs>> {
+        dir_structure::load_path!([name_resolution_tests_dir() as NameResolutionTestsFolder<'static, FsVfs>].${test})
+    }
 }
 
 pub mod ssa_tests {
@@ -282,5 +294,9 @@ pub mod ssa_tests {
 
     pub fn collect_ssa_tests() -> dir_structure::Result<SsaTestsFolder<'static, FsVfs>> {
         SsaTestsFolder::<FsVfs>::read(ssa_tests_dir())
+    }
+
+    pub fn load_ssa_test(test: &str) -> dir_structure::Result<SsaTestSingleFolder<'static, FsVfs>> {
+        dir_structure::load_path!([ssa_tests_dir() as SsaTestsFolder<'static, FsVfs>].${test})
     }
 }

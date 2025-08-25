@@ -5,6 +5,7 @@ use quote::quote;
 use syn::Token;
 use syn::braced;
 use syn::bracketed;
+use syn::parenthesized;
 use syn::parse::Parse;
 use syn::parse::discouraged::Speculative;
 use syn::parse_quote;
@@ -16,22 +17,14 @@ use syn::punctuated::Punctuated;
 
 pub const MAX_LEN: usize = 32;
 
-struct ResolvePathInput {
-    // lt: Token![<],
+struct CoreTyExpression {
     path: syn::Expr,
-    // at: Token![@],
     ty: syn::Type,
-    // rt: Token![>],
-    // dot: Token![.],
-    segments: Punctuated<ResolveSingleSegment, Token![.]>,
 }
 
-#[expect(unused)]
-impl Parse for ResolvePathInput {
+impl Parse for CoreTyExpression {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let content;
-        bracketed!(content in input);
-        let fork = content.fork();
+        let fork = input.fork();
 
         let (path, ty) = match fork.parse::<syn::Expr>() {
             Ok(expr) => match fork.is_empty() {
@@ -39,7 +32,7 @@ impl Parse for ResolvePathInput {
                     syn::Expr::Cast(expr_cast) => {
                         let expr = *expr_cast.expr;
                         let ty = *expr_cast.ty;
-                        content.advance_to(&fork);
+                        input.advance_to(&fork);
                         (expr, ty)
                     }
                     e => {
@@ -55,19 +48,35 @@ impl Parse for ResolvePathInput {
                         return Err(fork.error("expected 'as' or '@'"));
                     }
                     // reinterpret the expression as a type
-                    let ty = content.parse::<syn::Type>()?;
-                    content.parse::<Token![@]>()?;
-                    let expr = content.parse::<syn::Expr>()?;
+                    let ty = input.parse::<syn::Type>()?;
+                    input.parse::<Token![@]>()?;
+                    let expr = input.parse::<syn::Expr>()?;
                     (expr, ty)
                 }
             },
             Err(_) => {
-                let ty = content.parse::<syn::Type>()?;
-                content.parse::<Token![@]>()?;
-                let expr = content.parse::<syn::Expr>()?;
+                let ty = input.parse::<syn::Type>()?;
+                input.parse::<Token![@]>()?;
+                let expr = input.parse::<syn::Expr>()?;
                 (expr, ty)
             }
         };
+
+        Ok(CoreTyExpression { path, ty })
+    }
+}
+
+struct ResolvePathInput {
+    core: CoreTyExpression,
+    segments: Punctuated<ResolveSingleSegment, Token![.]>,
+}
+
+#[expect(unused)]
+impl Parse for ResolvePathInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let content;
+        bracketed!(content in input);
+        let core = content.parse()?;
         let dot: Token![.] = input.parse()?;
         let segments =
             Punctuated::<ResolveSingleSegment, Token![.]>::parse_separated_nonempty(input)?;
@@ -76,15 +85,7 @@ impl Parse for ResolvePathInput {
             return Err(input.error("expected end of input after path segments"));
         }
 
-        Ok(ResolvePathInput {
-            // lt,
-            path,
-            // at,
-            ty,
-            // rt,
-            // dot,
-            segments,
-        })
+        Ok(ResolvePathInput { core, segments })
     }
 }
 
@@ -120,7 +121,7 @@ pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
-    let mut current_path = input.ty.clone();
+    let mut current_path = input.core.ty.clone();
 
     let mut where_clause = syn::WhereClause {
         where_token: <Token![where]>::default(),
@@ -181,11 +182,131 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
         }
     }
 
-    let p = input.path;
+    let p = input.core.path;
 
     Ok(quote! {{
-        let __current: ::std::path::PathBuf = #p.into();
+        let __current: ::std::path::PathBuf = ::std::path::PathBuf::from(#p);
         #resolve
         __current
+    }})
+}
+
+struct LoadPathInput {
+    core: CoreTyExpression,
+    vfs: Option<syn::Expr>,
+    segments: Punctuated<ResolveSingleSegment, Token![.]>,
+}
+
+impl Parse for LoadPathInput {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let content;
+        bracketed!(content in input);
+        let core = content.parse()?;
+
+        let vfs = if input.peek(Token![in]) {
+            let _in: Token![in] = input.parse()?;
+            let c;
+            parenthesized!(c in input);
+            let vfs = c.parse()?;
+            Some(vfs)
+        } else {
+            None
+        };
+
+        let _dot: Token![.] = input.parse()?;
+        let segments =
+            Punctuated::<ResolveSingleSegment, Token![.]>::parse_separated_nonempty(input)?;
+
+        if !input.is_empty() {
+            return Err(input.error("expected end of input after path segments"));
+        }
+
+        Ok(LoadPathInput {
+            core,
+            vfs,
+            segments,
+        })
+    }
+}
+
+pub fn load_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(input as LoadPathInput);
+
+    do_load_path(input)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
+    let mut current_path = input.core.ty.clone();
+
+    let mut where_clause = syn::WhereClause {
+        where_token: <Token![where]>::default(),
+        predicates: Punctuated::new(),
+    };
+
+    let mut resolve = quote! {};
+
+    for segment in &input.segments {
+        match segment {
+            ResolveSingleSegment::Ident(ident) => {
+                let name = ident.to_string();
+                let name = name.chars().collect::<Vec<_>>();
+                if name.len() > MAX_LEN {
+                    return Err(syn::Error::new(ident.span(), "Identifier too long"));
+                }
+                let name_array: [char; MAX_LEN] = name
+                    .iter()
+                    .cloned()
+                    .chain(iter::repeat('\0'))
+                    .take(MAX_LEN)
+                    .collect::<Vec<_>>()
+                    .try_into()
+                    .unwrap();
+                where_clause.predicates.push(parse_quote! {
+                    #current_path: ::dir_structure::HasField<{ [#(#name_array),*] }>
+                });
+                resolve.extend(quote! {
+                    let __current = <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
+                });
+                current_path = parse_quote! {
+                    <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::Inner
+                };
+            }
+            ResolveSingleSegment::DynamicStringExpr(expr) => {
+                where_clause.predicates.push(parse_quote! {
+                    #current_path: ::dir_structure::DynamicHasField
+                });
+                resolve.extend(quote! {
+                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #expr);
+                });
+                current_path = parse_quote! {
+                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                };
+            }
+            ResolveSingleSegment::StringLit(lit_str) => {
+                let value = lit_str.value();
+                where_clause.predicates.push(parse_quote! {
+                    #current_path: ::dir_structure::DynamicHasField
+                });
+                resolve.extend(quote! {
+                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #value);
+                });
+                current_path = parse_quote! {
+                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                };
+            }
+        }
+    }
+
+    let p = input.core.path;
+    let vfs = input
+        .vfs
+        .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::FsVfs) });
+
+    Ok(quote! {{
+        let __current: ::std::path::PathBuf = ::std::path::PathBuf::from(#p);
+        #resolve
+        <#current_path as ::dir_structure::ReadFrom<'_, _>>::read_from(&__current, #vfs)
     }})
 }
