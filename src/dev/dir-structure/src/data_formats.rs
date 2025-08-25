@@ -162,7 +162,7 @@ and write them back to disk."##
             }
 
             enum ToWriterError {
-                #[allow(unused)]
+                #[allow(clippy::allow_attributes, unused)]
                 Io(std::io::Error),
                 Serde($to_str_error),
             }
@@ -218,7 +218,7 @@ and write them back to disk."##
                 }
             }
 
-            impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for $main_ty<T>
+            impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
@@ -229,7 +229,7 @@ and write them back to disk."##
 
             #[cfg(feature = "async")]
             #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-            impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for $main_ty<T>
+            impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
             {
@@ -255,7 +255,7 @@ and write them back to disk."##
                 }
             }
 
-            impl<'a, T, Vfs: crate::Vfs + 'a> FromRefForWriter<'a, Vfs> for $main_ty<T>
+            impl<'a, T, Vfs: crate::WriteSupportingVfs + 'a> FromRefForWriter<'a, Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
@@ -267,26 +267,26 @@ and write them back to disk."##
                 }
             }
 
-            // #[cfg(feature = "async")]
-            // #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-            // impl<'a, T, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for $main_ty<T>
-            // where
-            //     T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
-            // {
-            //     type Inner = T;
-            //     type Wr = $writer_ty<'a, T, Vfs>;
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+            impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for $main_ty<T>
+            where
+                T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
+            {
+                type Inner = T;
+                type Wr = $writer_ty<'a, T, Vfs>;
 
-            //     fn from_ref_for_writer_async(value: &'a <Self as FromRefForWriterAsync<'a, Vfs>>::Inner) -> Self::Wr {
-            //         $writer_ty(value, marker::PhantomData)
-            //     }
-            // }
+                fn from_ref_for_writer_async(value: &'a <Self as FromRefForWriterAsync<'a, Vfs>>::Inner) -> Self::Wr {
+                    $writer_ty(value, marker::PhantomData)
+                }
+            }
 
             $(#[$writer_ty_attrs])*
             pub struct $writer_ty<'a, T, Vfs>(&'a T, marker::PhantomData<Vfs>)
             where
                 T: serde::Serialize + 'a;
 
-            impl<'a, T, Vfs: crate::Vfs> WriteTo<Vfs> for $writer_ty<'a, T, Vfs>
+            impl<'a, T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for $writer_ty<'a, T, Vfs>
             where
                 T: serde::Serialize + 'a,
             {
@@ -302,22 +302,22 @@ and write them back to disk."##
                 }
             }
 
-            // #[cfg(feature = "async")]
-            // #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-            // impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for $writer_ty<'a, T, Vfs>
-            // where
-            //     T: serde::Serialize + Send + Sync + 'a,
-            // {
-            //     type Future = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'a>> where Self: 'a, Vfs: 'a;
+            #[cfg(feature = "async")]
+            #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+            impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for $writer_ty<'a, T, Vfs>
+            where
+                T: serde::Serialize + Send + Sync + 'a,
+            {
+                type Future = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'a>> where Self: 'a, Vfs: 'a;
 
-            //     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-            //         Box::pin(async move {
-            //             let s = $to_str_ty(self.0).to_str()
-            //                 .map_err(|e| crate::Error::Serde(path.clone(), e.into()))?;
-            //             FileString::new(s).write_to_async(path, vfs).await
-            //         })
-            //     }
-            // }
+                fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+                    Box::pin(async move {
+                        let s = $to_str_ty(self.0).to_str()
+                            .map_err(|e| crate::Error::Serde(path.clone(), e.into()))?;
+                        FileString::new(s).write_to_async(path, vfs).await
+                    })
+                }
+            }
 
             impl<T> std::ops::Deref for $main_ty<T>
             where

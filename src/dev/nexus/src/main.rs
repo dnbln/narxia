@@ -222,6 +222,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                         .map(|p| p.to_env())
                         .map(|(a, b)| (a.into(), b.into()))
                         .unwrap()],
+                    cx,
                 )?
                 .test_count;
 
@@ -256,7 +257,7 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                 run_tests
             };
 
-            run_tests.run(Some(&mut item), cx.groups())?;
+            run_tests.run(Some(&mut item), cx.groups(), cx)?;
         }
         App::DocTest {
             fail_fast,
@@ -413,6 +414,7 @@ fn main() -> NexusR {
     };
 
     let (mut cx, tree) = NexusContext::new(groups)?;
+
     let start = time::Instant::now();
 
     let mut opts = line::Options {

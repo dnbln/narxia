@@ -383,11 +383,7 @@ struct Filt;
 
 // !tooltip[/Filter/] Filter
 impl Filter for Filt {
-    fn make_filter() -> Self {
-        Self
-    }
-
-    fn allows(&self, path: &Path) -> bool {
+    fn allows(path: &Path) -> bool {
         path.extension().map_or(false, |ext| ext == "d")
     }
 }
@@ -1042,7 +1038,7 @@ pub trait Filter
 
 ---
 
-Is not dyn-compatible due to having a method `make_filter` that is not dispatchable due to missing a receiver
+Is not dyn-compatible due to having a method `allows` that is not dispatchable due to missing a receiver
 
 ---
 
@@ -1066,11 +1062,7 @@ use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
 pub struct TextFileFilter;
 
 impl Filter for TextFileFilter {
-    fn make_filter() -> Self {
-       Self
-    }
-
-    fn allows(&self, path: &Path) -> bool {
+    fn allows(path: &Path) -> bool {
         path.extension()
             .and_then(|s| s.to_str())
             .map_or(false, |s| s == "txt")
@@ -1124,7 +1116,7 @@ dir_structure::deferred_read
 ```
 
 ```rust ,ignore
-pub struct DeferredRead<'a, T, Vfs = crate::FsVfs>(pub PathBuf, Pin<&'a Vfs>, PhantomData<T>)
+pub struct DeferredRead<'a, T, Vfs = crate::FsVfs, const CHECK_ON_READ: bool = {const}>(pub PathBuf, Pin<&'a Vfs>, PhantomData<T>)
 ```
 
 ---
@@ -1248,7 +1240,7 @@ assert_eq!(i.next(), None);
 </DocTooltip>
 
 ## !!doctooltips DeferredRead::perform_read-R
-`DeferredRead<'a, T, Vfs>::perform_read#`
+`DeferredRead<'a, T, Vfs, CHECK_ON_READ>::perform_read#`
 
 <DocTooltip>
 
@@ -1257,7 +1249,7 @@ dir_structure::deferred_read::DeferredRead
 ```
 
 ```rust ,ignore
-impl<'a, T, Vfs> DeferredRead<'a, T, Vfs>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredRead<'a, T, Vfs, CHECK_ON_READ>
 pub fn perform_read(&self) -> Result<T>
 where
     // Bounds from impl:
@@ -1314,7 +1306,7 @@ dir_structure::deferred_read_or_own
 ```
 
 ```rust ,ignore
-pub enum DeferredReadOrOwn<'a, T, Vfs = crate::FsVfs> {
+pub enum DeferredReadOrOwn<'a, T, Vfs = crate::FsVfs, const CHECK_ON_READ: bool = {const}> {
     Own( /* … */ ),
     Deferred( /* … */ ),
 }
@@ -1350,7 +1342,7 @@ that would effectively be the same as using a [`DeferredRead`](https://docs.rs/d
 </DocTooltip>
 
 ## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
-`DeferredReadOrOwn<'a, T, Vfs>::perform_and_store_read#`
+`DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>::perform_and_store_read#`
 
 <DocTooltip>
 
@@ -1359,7 +1351,7 @@ dir_structure::deferred_read_or_own::DeferredReadOrOwn
 ```
 
 ```rust ,ignore
-impl<'a, T, Vfs> DeferredReadOrOwn<'a, T, Vfs>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 pub fn perform_and_store_read(&mut self) -> Result<&mut T>
 where
     // Bounds from impl:

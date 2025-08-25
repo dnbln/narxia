@@ -152,6 +152,7 @@ impl<T> Versioned<T> {
     /// assert_eq!(std::fs::read_to_string("path").unwrap(), "value");
     /// # std::fs::remove_file("path").unwrap();
     /// ```
+    #[expect(unsafe_code, reason = "This function is unsafe by design")]
     pub unsafe fn reset(&mut self) {
         // This is unsafe because it allows us to reset the version to 0,
         // which means that the value will be considered clean.
@@ -217,7 +218,7 @@ impl<'a, Vfs: crate::VfsAsync + 'static, T: ReadFromAsync<'a, Vfs> + Send + 'sta
     }
 }
 
-impl<Vfs: crate::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
+impl<Vfs: crate::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         if self.path == path && self.is_clean() {
             return Ok(());
@@ -230,7 +231,7 @@ impl<Vfs: crate::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteFutureProj)]
-pub enum VersionedWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+pub enum VersionedWriteFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
@@ -244,7 +245,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
@@ -273,7 +274,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for Versioned<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Versioned<T>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
@@ -294,7 +295,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteRefFutureProj)]
-pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: crate::VfsAsync + 'a>
+pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
     <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
@@ -309,7 +310,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, 'f, T, Vfs: crate::VfsAsync + 'a> Future for VersionedWriteRefFuture<'a, 'f, T, Vfs>
+impl<'a, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'a> Future
+    for VersionedWriteRefFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
     <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
@@ -341,7 +343,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, T, Vfs: crate::VfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for Versioned<T>
+impl<'r, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for Versioned<T>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,

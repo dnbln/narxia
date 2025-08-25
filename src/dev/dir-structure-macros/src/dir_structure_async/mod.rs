@@ -495,7 +495,8 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
 
     let (read_async_impl_generics, _, _) = read_async_impl_generics.split_for_impl();
 
-    if let Some(v) = generics_for_read_write_async_impl
+    let mut write_async_impl_generics = generics_for_read_write_async_impl.clone();
+    if let Some(v) = write_async_impl_generics
         .params
         .iter_mut()
         .find_map(|p| match p {
@@ -513,13 +514,12 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
-        generics_for_read_write_async_impl
+        write_async_impl_generics
             .params
             .push(parse_quote! { Vfs: ::dir_structure::VfsAsync + 'static });
     }
 
-    let (read_write_async_impl_generics, _, _) =
-        generics_for_read_write_async_impl.split_for_impl();
+    let (write_async_impl_generics, _, _) = write_async_impl_generics.split_for_impl();
 
     let (impl_generics, ty_generics, where_clause) = st.generics.split_for_impl();
 
@@ -766,7 +766,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             quote! {
                 #[allow(non_camel_case_types)]
                 #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
-                enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::VfsAsync + 'static> #where_clause_write_future {
+                enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
                     Poison,
                     Init {
                         #path_param_name: ::std::path::PathBuf,
@@ -776,7 +776,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
                     #(#variants),*
                 }
 
-                impl<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::VfsAsync + 'static> ::std::future::Future for #name<#vfs_lifetime_header 'fut, Vfs> #where_clause_write_future {
+                impl<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::WriteSupportingVfsAsync + 'static> ::std::future::Future for #name<#vfs_lifetime_header 'fut, Vfs> #where_clause_write_future {
                     type Output = ::dir_structure::Result<()>;
 
                     fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
@@ -829,7 +829,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
 
         #write_async_ref_impl_enum
 
-        impl #read_write_async_impl_generics ::dir_structure::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async {
+        impl #write_async_impl_generics ::dir_structure::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async {
             type Future<'a> =  #write_async_ty_name<#vfs_lifetime_header 'a, Vfs>
             where
                 Self: 'a,

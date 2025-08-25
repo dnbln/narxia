@@ -1,8 +1,12 @@
+use core::fmt::Debug;
 use core::slice;
 use std::ffi::OsString;
+use std::fmt;
+use std::marker;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::vec;
 
 use crate::DirEntryInfo;
 use crate::DirWalker;
@@ -10,25 +14,33 @@ use crate::NoFilter;
 use crate::ReadFrom;
 use crate::WriteTo;
 
-pub struct DirDescendants<T, F: FolderFilter + FileFilter = NoFilter> {
+pub struct DirDescendants<T, F: FolderFilter + FolderRecurseFilter + FileFilter = NoFilter> {
     descendants: Vec<DirDescendant<T>>,
-    _phantom: std::marker::PhantomData<F>,
+    _phantom: marker::PhantomData<F>,
 }
 
-impl<T: Clone, F: FolderFilter + FileFilter> Clone for DirDescendants<T, F> {
+impl<T: Debug, F: FolderFilter + FolderRecurseFilter + FileFilter> Debug for DirDescendants<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DirDescendants")
+            .field("descendants", &self.descendants)
+            .finish()
+    }
+}
+
+impl<T: Clone, F: FolderFilter + FolderRecurseFilter + FileFilter> Clone for DirDescendants<T, F> {
     fn clone(&self) -> Self {
         Self {
             descendants: self.descendants.clone(),
-            _phantom: std::marker::PhantomData,
+            _phantom: marker::PhantomData,
         }
     }
 }
 
-impl<T, F: FolderFilter + FileFilter> DirDescendants<T, F> {
+impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F> {
     pub fn new(descendants: Vec<DirDescendant<T>>) -> Self {
         Self {
             descendants,
-            _phantom: std::marker::PhantomData,
+            _phantom: marker::PhantomData,
         }
     }
 
@@ -93,7 +105,7 @@ impl<'a, T> ExactSizeIterator for DirDescendantsIterMut<'a, T> {
     }
 }
 
-pub struct DirDescendantsIntoIter<T>(std::vec::IntoIter<DirDescendant<T>>);
+pub struct DirDescendantsIntoIter<T>(vec::IntoIter<DirDescendant<T>>);
 
 impl<'a, T> Iterator for DirDescendantsIntoIter<T> {
     type Item = DirDescendant<T>;
@@ -119,8 +131,12 @@ impl<'a, T> ExactSizeIterator for DirDescendantsIntoIter<T> {
     }
 }
 
-impl<'vfs, Vfs: crate::Vfs, T: ReadFrom<'vfs, Vfs>, F: FolderFilter + FileFilter + 'vfs>
-    ReadFrom<'vfs, Vfs> for DirDescendants<T, F>
+impl<
+    'vfs,
+    Vfs: crate::Vfs,
+    T: ReadFrom<'vfs, Vfs>,
+    F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
+> ReadFrom<'vfs, Vfs> for DirDescendants<T, F>
 {
     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self, crate::Error> {
         let mut descendants = Vec::new();
@@ -135,12 +151,19 @@ impl<'vfs, Vfs: crate::Vfs, T: ReadFrom<'vfs, Vfs>, F: FolderFilter + FileFilter
                 } = entry?;
 
                 if kind.is_dir() {
-                    if <F as FolderFilter>::allows(&entry_path) {
+                    if <F as FolderRecurseFilter>::allows(&entry_path) {
                         let sub_descendants = DirDescendants::<T, F>::read_from(&entry_path, vfs)?;
-                        descendants.extend(sub_descendants.descendants);
+                        descendants.extend(sub_descendants.descendants.into_iter().map(
+                            |mut it| {
+                                let mut p = PathBuf::from(name.clone());
+                                p.push(&it.path_relative_to_ascendant);
+                                it.path_relative_to_ascendant = p;
+                                it
+                            },
+                        ));
                     }
-                } else if kind.is_file() {
-                    if <F as FileFilter>::allows(&entry_path) {
+
+                    if <F as FolderFilter>::allows(&entry_path) {
                         let value = T::read_from(&entry_path, vfs)?;
                         descendants.push(DirDescendant {
                             name,
@@ -152,6 +175,17 @@ impl<'vfs, Vfs: crate::Vfs, T: ReadFrom<'vfs, Vfs>, F: FolderFilter + FileFilter
                             value,
                         });
                     }
+                } else if kind.is_file() && <F as FileFilter>::allows(&entry_path) {
+                    let value = T::read_from(&entry_path, vfs)?;
+                    descendants.push(DirDescendant {
+                        name,
+                        path_relative_to_ascendant: entry_path
+                            .strip_prefix(path)
+                            .unwrap()
+                            .to_path_buf(),
+                        path: entry_path,
+                        value,
+                    });
                 }
             }
         }
@@ -160,8 +194,12 @@ impl<'vfs, Vfs: crate::Vfs, T: ReadFrom<'vfs, Vfs>, F: FolderFilter + FileFilter
     }
 }
 
-impl<'vfs, Vfs: crate::Vfs, T: WriteTo<Vfs> + 'vfs, F: FileFilter + FolderFilter + 'vfs>
-    WriteTo<Vfs> for DirDescendants<T, F>
+impl<
+    'vfs,
+    Vfs: crate::WriteSupportingVfs,
+    T: WriteTo<Vfs> + 'vfs,
+    F: FileFilter + FolderRecurseFilter + FolderFilter + 'vfs,
+> WriteTo<Vfs> for DirDescendants<T, F>
 {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<(), crate::Error> {
         for descendant in &self.descendants {
@@ -183,6 +221,16 @@ impl FolderFilter for NoFilter {
     }
 }
 
+pub trait FolderRecurseFilter {
+    fn allows(folder: &Path) -> bool;
+}
+
+impl FolderRecurseFilter for NoFilter {
+    fn allows(_folder: &Path) -> bool {
+        true
+    }
+}
+
 pub trait FileFilter {
     fn allows(file: &Path) -> bool;
 }
@@ -193,7 +241,7 @@ impl FileFilter for NoFilter {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DirDescendant<T> {
     name: OsString,
     path: PathBuf,
@@ -222,6 +270,10 @@ impl<T> DirDescendant<T> {
 
     pub fn path(&self) -> &PathBuf {
         &self.path
+    }
+
+    pub fn path_relative_to_ascendant(&self) -> &PathBuf {
+        &self.path_relative_to_ascendant
     }
 
     pub fn value(&self) -> &T {

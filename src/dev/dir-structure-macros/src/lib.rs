@@ -1,6 +1,7 @@
 use syn::ItemStruct;
 
 mod dir_structure;
+#[cfg(feature = "async")]
 mod dir_structure_async;
 mod dir_structure_core;
 
@@ -17,15 +18,16 @@ pub fn derive_dir_structure(item: proc_macro::TokenStream) -> proc_macro::TokenS
         .into()
 }
 
+#[cfg(feature = "async")]
 #[proc_macro_derive(DirStructureAsync, attributes(dir_structure))]
 pub fn derive_dir_structure_async(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let item = syn::parse_macro_input!(item as ItemStruct);
 
     dir_structure_async::expand_dir_structure_async(item)
-        .map(|ts| {
-            eprintln!("Expanded DirStructureAsync for {}", ts);
-            ts
-        })
+        // .map(|ts| {
+        //     eprintln!("Expanded DirStructureAsync for {}", ts);
+        //     ts
+        // })
         .unwrap_or_else(|err| err.to_compile_error())
         .into()
 }

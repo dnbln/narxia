@@ -1,18 +1,21 @@
+use std::error;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
+use std::result;
 
 /// The error type for this library.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// An IO error.
     #[error("IO error at {0:?}: {1}")]
-    Io(PathBuf, #[source] std::io::Error),
+    Io(PathBuf, #[source] io::Error),
     /// Parse error.
     #[error("Parse error at {0:?}: {1}")]
-    Parse(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
+    Parse(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
     /// Serde error.
     #[error("Serde error at {0:?}: {1}")]
-    Serde(PathBuf, #[source] Box<dyn std::error::Error + Send + Sync>),
+    Serde(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
 
     /// An error related to the directory structure.
     #[error("Unexpected number of children: expected {expected}, found {found} at {path:?}")]
@@ -24,9 +27,11 @@ pub enum Error {
 }
 
 mod sealed {
+    use std::io;
+
     pub trait Sealed {}
 
-    impl<T> Sealed for std::io::Result<T> {}
+    impl<T> Sealed for io::Result<T> {}
 }
 
 pub trait WrapIoError: Sized + sealed::Sealed {
@@ -39,7 +44,7 @@ pub trait WrapIoError: Sized + sealed::Sealed {
     }
 }
 
-impl<T> WrapIoError for std::io::Result<T> {
+impl<T> WrapIoError for io::Result<T> {
     type Output = T;
 
     fn wrap_io_error(self, get_path: impl FnOnce() -> PathBuf) -> Result<Self::Output> {
@@ -47,4 +52,4 @@ impl<T> WrapIoError for std::io::Result<T> {
     }
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = result::Result<T, Error>;

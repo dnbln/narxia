@@ -19,11 +19,7 @@ struct Filt;
 
 // !tooltip[/Filter/] Filter
 impl Filter for Filt {
-    fn make_filter() -> Self {
-        Self
-    }
-
-    fn allows(&self, path: &Path) -> bool {
+    fn allows(path: &Path) -> bool {
         path.extension().map_or(false, |ext| ext == "d")
     }
 }

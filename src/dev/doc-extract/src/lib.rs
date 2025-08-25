@@ -104,6 +104,9 @@ where
                         }),
                         ..Default::default()
                     },
+                    initialization_options: Some(json!({
+                        "workspace": {"symbol": {"search": {"limit": 2048}}}
+                    })),
                     ..Default::default()
                 },
                 |_| {},

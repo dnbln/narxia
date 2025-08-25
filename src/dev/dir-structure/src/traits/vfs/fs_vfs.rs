@@ -1,4 +1,3 @@
-use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
@@ -10,6 +9,7 @@ use crate::DirWalker;
 use crate::Result;
 use crate::Vfs;
 use crate::WrapIoError;
+use crate::WriteSupportingVfs;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct FsVfs;
@@ -25,6 +25,18 @@ impl Vfs for FsVfs {
         fs::read_to_string(path).wrap_io_error_with(path)
     }
 
+    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool> {
+        Ok(path.exists())
+    }
+
+    fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk> {
+        fs::read_dir(path)
+            .wrap_io_error_with(path)
+            .map(|read_dir| FsDirWalker(read_dir, path.to_path_buf()))
+    }
+}
+
+impl WriteSupportingVfs for FsVfs {
     fn write(self: Pin<&Self>, path: &Path, data: &[u8]) -> Result<()> {
         fs::write(path, data).wrap_io_error_with(path)
     }
@@ -39,16 +51,6 @@ impl Vfs for FsVfs {
 
     fn remove_dir_all(self: Pin<&Self>, path: &Path) -> Result<()> {
         fs::remove_dir_all(path).wrap_io_error_with(path)
-    }
-
-    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool> {
-        Ok(path.exists())
-    }
-
-    fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk> {
-        fs::read_dir(path)
-            .wrap_io_error_with(path)
-            .map(|read_dir| FsDirWalker(read_dir, path.to_path_buf()))
     }
 }
 

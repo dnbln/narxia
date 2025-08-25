@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::fs;
+use std::io;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::Context;
@@ -22,6 +22,22 @@ pub trait VfsAsync: Send + Sync + Unpin {
         Self: 'a;
     fn read_string<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadStringFuture<'a>;
 
+    type ExistsFuture<'a>: Future<Output = Result<bool>> + Send + 'a
+    where
+        Self: 'a;
+
+    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a>;
+
+    type DirWalk<'a>: Stream<Item = Result<(OsString, PathBuf)>> + Send + 'a
+    where
+        Self: 'a;
+    type DirWalkFuture<'a>: Future<Output = Result<Self::DirWalk<'a>>> + Send + 'a
+    where
+        Self: 'a;
+    fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a>;
+}
+
+pub trait WriteSupportingVfsAsync: VfsAsync {
     type WriteFuture<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
     where
         Self: 'a;
@@ -31,12 +47,6 @@ pub trait VfsAsync: Send + Sync + Unpin {
         path: PathBuf,
         data: &'d [u8],
     ) -> Self::WriteFuture<'d>;
-
-    type ExistsFuture<'a>: Future<Output = Result<bool>> + Send + 'a
-    where
-        Self: 'a;
-
-    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a>;
 
     type RemoveDirAllFuture<'a>: Future<Output = Result<()>> + Send + 'a
     where
@@ -58,18 +68,10 @@ pub trait VfsAsync: Send + Sync + Unpin {
         Self: 'a;
     fn create_parent_dir<'a>(self: Pin<&'a Self>, path: PathBuf)
     -> Self::CreateParentDirFuture<'a>;
-
-    type DirWalk<'a>: Stream<Item = Result<(OsString, PathBuf)>> + Send + 'a
-    where
-        Self: 'a;
-    type DirWalkFuture<'a>: Future<Output = Result<Self::DirWalk<'a>>> + Send + 'a
-    where
-        Self: 'a;
-    fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a>;
 }
 
 #[pin_project(project_replace = CreateParentDirDefaultFutureProjOwn)]
-pub enum CreateParentDirDefaultFuture<'a, Vfs: VfsAsync + 'a>
+pub enum CreateParentDirDefaultFuture<'a, Vfs: WriteSupportingVfsAsync + 'a>
 where
     for<'f> Vfs::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin,
     for<'f> Vfs::CreateDirAllFuture<'f>: Future<Output = Result<()>> + Unpin,
@@ -90,7 +92,7 @@ where
     },
 }
 
-impl<'a, Vfs: VfsAsync + 'a> Future for CreateParentDirDefaultFuture<'a, Vfs>
+impl<'a, Vfs: WriteSupportingVfsAsync + 'a> Future for CreateParentDirDefaultFuture<'a, Vfs>
 where
     for<'f> Vfs::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin,
     for<'f> Vfs::CreateDirAllFuture<'f>: Future<Output = Result<()>> + Unpin,
@@ -155,7 +157,7 @@ where
 }
 
 #[pin_project(project = IoErrorWrapperFutureProj)]
-pub struct IoErrorWrapperFuture<T, F: Future<Output = std::io::Result<T>>> {
+pub struct IoErrorWrapperFuture<T, F: Future<Output = io::Result<T>>> {
     #[pin]
     future: F,
     path: PathBuf,
@@ -163,7 +165,7 @@ pub struct IoErrorWrapperFuture<T, F: Future<Output = std::io::Result<T>>> {
 
 impl<T, F> IoErrorWrapperFuture<T, F>
 where
-    F: Future<Output = std::io::Result<T>>,
+    F: Future<Output = io::Result<T>>,
 {
     pub fn new(path: PathBuf, future: F) -> Self {
         Self { future, path }
@@ -172,7 +174,7 @@ where
 
 impl<T, F> Future for IoErrorWrapperFuture<T, F>
 where
-    F: Future<Output = std::io::Result<T>>,
+    F: Future<Output = io::Result<T>>,
 {
     type Output = Result<T>;
 

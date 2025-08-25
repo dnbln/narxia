@@ -175,7 +175,7 @@ impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> 
 }
 
 // !mark(1:6)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         todo!();
         Ok(())
@@ -212,7 +212,7 @@ impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> 
     }
 }
 
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         // !mark
         self.value.write_to(path, vfs)?;
@@ -251,7 +251,7 @@ impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> 
 }
 
 // !collapse(1:9)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         self.value.write_to(path, vfs)?;
         // !mark(1:3)
@@ -295,7 +295,7 @@ impl<'vfs, Vfs: dir_structure::Vfs, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> 
 }
 
 // !collapse(1:9)
-impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
+impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for FsMtime<T> {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         self.value.write_to(path, vfs)?;
         std::fs::File::open(path)

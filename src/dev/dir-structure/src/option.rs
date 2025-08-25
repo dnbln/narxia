@@ -46,12 +46,13 @@ where
 pub enum OptionReadFromAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
+    Vfs::ExistsFuture<'a>: Future<Output = Result<bool>>,
     T::Future: Future<Output = Result<T>> + Unpin,
 {
     Poison,
     Check {
         path: PathBuf,
-        check_fut: Pin<Box<dyn Future<Output = std::io::Result<bool>> + Send>>,
+        check_fut: Pin<Box<Vfs::ExistsFuture<'a>>>,
         vfs: Pin<&'a Vfs>,
     },
     HasContents {
@@ -93,7 +94,7 @@ where
                         // If the path does not exist, we return None
                         Poll::Ready(Ok(None))
                     }
-                    Poll::Ready(Err(e)) => Poll::Ready(Err(crate::Error::Io(path, e))),
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
                     Poll::Pending => {
                         // If the check is still pending, we return Pending
                         self.project_replace(Self::Check {
@@ -139,14 +140,14 @@ where
 
     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         OptionReadFromAsyncFuture::Check {
-            check_fut: Box::pin(tokio::fs::try_exists(path.clone())),
+            check_fut: Box::pin(vfs.exists(path.clone())),
             path,
             vfs,
         }
     }
 }
 
-impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for Option<T>
+impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for Option<T>
 where
     T: WriteTo<Vfs>,
 {
@@ -162,7 +163,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = OptionWriteToAsyncFutureProj)]
-pub enum OptionWriteToAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+pub enum OptionWriteToAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
@@ -175,7 +176,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
@@ -192,7 +193,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Option<T>
 where
     T: WriteToAsync<'a, Vfs> + Send + 'static,
 {

@@ -51,7 +51,7 @@ pub trait ReadFrom<'a, Vfs: crate::Vfs>: Sized + 'a {
 /// not necessary (unless used empty children
 /// directories, in which case no directories will
 /// really be created).
-pub trait WriteTo<Vfs: crate::Vfs> {
+pub trait WriteTo<Vfs: crate::WriteSupportingVfs> {
     /// Writes the structure to the specified path.
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()>;
 }
@@ -66,7 +66,7 @@ pub trait WriteTo<Vfs: crate::Vfs> {
 /// only cast what they have to write to those reference types
 /// (via the function below), and then call the [`WriteTo::write_to`]
 /// method on that reference.
-pub trait FromRefForWriter<'a, Vfs: crate::Vfs + 'a> {
+pub trait FromRefForWriter<'a, Vfs: crate::WriteSupportingVfs + 'a> {
     /// The inner type to cast.
     type Inner: ?Sized;
     /// The reference type to cast to.
@@ -96,7 +96,7 @@ impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for () {
     }
 }
 
-impl<Vfs: crate::Vfs> WriteTo<Vfs> for () {
+impl<Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for () {
     fn write_to(&self, _path: &Path, _vfs: Pin<&Vfs>) -> Result<()> {
         Ok(())
     }

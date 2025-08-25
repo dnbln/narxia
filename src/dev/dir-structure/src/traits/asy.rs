@@ -24,7 +24,7 @@ pub trait ReadFromAsync<'a, Vfs: crate::VfsAsync + 'a>: Sized {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-pub trait WriteToAsync<'a, Vfs: crate::VfsAsync + 'a> {
+pub trait WriteToAsync<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> {
     /// The future type returned by the async write function.
     type Future: Future<Output = Result<()>> + Send + Unpin + 'a;
 
@@ -34,7 +34,7 @@ pub trait WriteToAsync<'a, Vfs: crate::VfsAsync + 'a> {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-pub trait WriteToAsyncRef<'r, Vfs: crate::VfsAsync + 'r> {
+pub trait WriteToAsyncRef<'r, Vfs: crate::WriteSupportingVfsAsync + 'r> {
     /// The future type returned by the async write function.
     type Future<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
     where
@@ -50,7 +50,7 @@ pub trait WriteToAsyncRef<'r, Vfs: crate::VfsAsync + 'r> {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-pub trait FromRefForWriterAsync<'a, Vfs: crate::VfsAsync + 'a> {
+pub trait FromRefForWriterAsync<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> {
     /// The inner type to cast.
     type Inner: ?Sized;
     /// The reference type to cast to.
@@ -73,7 +73,7 @@ impl<'a, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for () {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: crate::VfsAsync + 'a> WriteToAsync<'a, Vfs> for () {
+impl<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> WriteToAsync<'a, Vfs> for () {
     type Future = future::Ready<Result<()>>;
 
     fn write_to_async(self, _path: PathBuf, _vfs: Pin<&'a Vfs>) -> Self::Future {

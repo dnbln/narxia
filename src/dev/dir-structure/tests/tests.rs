@@ -10,13 +10,9 @@ use dir_structure::DirChild;
 use dir_structure::DirChildren;
 use dir_structure::FsVfs;
 use dir_structure::ReadFrom;
-#[cfg(feature = "async")]
-use dir_structure::ReadFromAsync;
 use dir_structure::Versioned;
 use dir_structure::VersionedString;
 use dir_structure::WriteTo;
-#[cfg(feature = "async")]
-use dir_structure::WriteToAsync;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -504,7 +500,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    impl<Vfs: dir_structure::Vfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
+    impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
         fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<()> {
             self.count.fetch_add(1, Ordering::SeqCst);
             self.inner.write_to(path, vfs)

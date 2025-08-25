@@ -1,3 +1,5 @@
+#[cfg(feature = "async")]
+use std::future::Future;
 use std::marker;
 use std::path::Path;
 #[cfg(any(feature = "async", feature = "resolve-path"))]
@@ -118,7 +120,7 @@ where
     }
 }
 
-impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for CleanDir<T>
+impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for CleanDir<T>
 where
     T: WriteTo<Vfs>,
 {
@@ -129,7 +131,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for CleanDir<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for CleanDir<T>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
 {
@@ -147,7 +149,7 @@ where
     }
 }
 
-impl<'a, T, Vfs: crate::Vfs> FromRefForWriter<'a, Vfs> for CleanDir<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for CleanDir<T>
 where
     T: WriteTo<Vfs> + 'a,
     Vfs: 'a,
@@ -162,13 +164,13 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for CleanDir<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs>
+    for CleanDir<T>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
-        std::future::Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
-        std::future::Future<Output = Result<()>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
 {
     type Inner = T;
     type Wr = CleanDirRefWr<'a, T, Vfs>;
@@ -218,7 +220,7 @@ where
 /// [`WriteTo`] impl for [`CleanDir`]
 pub struct CleanDirRefWr<'a, T: ?Sized, Vfs: 'a>(&'a T, marker::PhantomData<Vfs>);
 
-impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for CleanDirRefWr<'_, T, Vfs>
+impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for CleanDirRefWr<'_, T, Vfs>
 where
     T: ?Sized + WriteTo<Vfs>,
 {
@@ -234,13 +236,13 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for CleanDirRefWr<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for CleanDirRefWr<'a, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
-        std::future::Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
-        std::future::Future<Output = Result<()>> + Unpin + 'f,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
 {
     type Future = CleanDirRefWrWriteFuture<'a, T, Vfs>;
 
@@ -253,14 +255,13 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = CleanDirRefWrWriteFutureProjOwn)]
-pub enum CleanDirRefWrWriteFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+pub enum CleanDirRefWrWriteFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'a>: std::future::Future<Output = Result<()>> + Unpin + 'a,
-    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
-        std::future::Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
-        std::future::Future<Output = Result<()>> + Unpin + 'f,
+    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
 {
     Poison,
     ExistsCheck(
@@ -270,7 +271,7 @@ where
         &'a T,
     ),
     RemoveDirAll(
-        <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'a>,
+        <Vfs as crate::WriteSupportingVfsAsync>::RemoveDirAllFuture<'a>,
         PathBuf,
         Pin<&'a Vfs>,
         &'a T,
@@ -284,14 +285,14 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for CleanDirRefWrWriteFuture<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a> Future
+    for CleanDirRefWrWriteFuture<'a, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'a>: std::future::Future<Output = Result<()>> + Unpin + 'a,
-    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>:
-        std::future::Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as crate::VfsAsync>::RemoveDirAllFuture<'f>:
-        std::future::Future<Output = Result<()>> + Unpin + 'f,
+    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    for<'f> <Vfs as crate::VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as crate::WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
 {
     type Output = Result<()>;
 

@@ -95,9 +95,13 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "resolve-path", feature(adt_const_params))]
+#![cfg_attr(feature = "include_dir", feature(normalize_lexically))]
 
 #[cfg(feature = "async")]
 pub extern crate pin_project;
+
+#[cfg(feature = "include_dir")]
+pub extern crate include_dir;
 
 #[cfg(doctest)]
 mod __doc_check {
@@ -113,10 +117,8 @@ mod __doc_check {
     struct Readme;
 }
 
-use std::fs::File;
-use std::path::Path;
-
 pub use dir_structure_macros::DirStructure;
+#[cfg(feature = "async")]
 pub use dir_structure_macros::DirStructureAsync;
 
 pub mod prelude {
@@ -142,12 +144,14 @@ mod fmt_wrapper;
 mod option;
 mod std_types;
 mod traits;
+mod try_parse;
 mod versioned;
 
 #[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
 mod sfw;
 
 pub use clean_dir::*;
+#[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
 pub use data_formats::*;
 pub use deferred_read::*;
 pub use deferred_read_or_own::*;
@@ -164,27 +168,27 @@ pub use traits::async_vfs::*;
 pub use traits::resolve::*;
 pub use traits::sync::*;
 pub use traits::vfs::*;
+pub use try_parse::*;
 pub use versioned::*;
 
-/// A [`Filter`], [`FileFilter`] and [`FolderFilter`] that allows all paths.
+/// A [`Filter`], [`FileFilter`], [`FolderFilter`], [`FolderRecurseFilter`] that allows all paths.
 ///
 /// ```rust
 /// # use std::path::Path;
 /// # use dir_structure::{Filter, NoFilter};
 /// #
-/// let filter = NoFilter::make_filter();
-/// assert!(filter.allows(Path::new("foo.txt")));
-/// assert!(filter.allows(Path::new("foo/bar.txt")));
-/// assert!(filter.allows(Path::new("foo/bar/baz.txt")));
-/// assert!(filter.allows(Path::new("foo/bar/baz")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/.")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/..")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/../..")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/../../..")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/../../../..")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../..")));
-/// assert!(filter.allows(Path::new("foo/bar/baz/../../../../../..")));
+/// assert!(NoFilter::allows(Path::new("foo.txt")));
+/// assert!(NoFilter::allows(Path::new("foo/bar.txt")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz.txt")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/.")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/..")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/../..")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../..")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../..")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../..")));
+/// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../../..")));
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NoFilter;

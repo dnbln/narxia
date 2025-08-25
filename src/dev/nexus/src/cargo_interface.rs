@@ -631,15 +631,24 @@ pub mod tests {
     use owo_colors::Style;
 
     use super::*;
+    use crate::NexusContext;
     use crate::NexusOutputGroups;
 
     pub fn list_tests(
         filter: Option<&String>,
         env: impl IntoIterator<Item = (OsString, OsString)>,
+        cx: &mut NexusContext,
     ) -> NexusR<nextest_metadata::TestListSummary> {
         let mut cmd = cargo_command();
         cmd.arg("nextest")
-            .args(["list", "--message-format", "json", "--workspace"]);
+            .args([
+                "list",
+                "--message-format",
+                "json",
+                "--workspace",
+                "--config-file",
+            ])
+            .arg(cx.ws.nextest_config_file());
 
         if let Some(filter) = filter {
             cmd.arg("-E").arg(filter);
@@ -772,7 +781,12 @@ pub mod tests {
             self
         }
 
-        pub fn run(self, item: Option<&mut Item>, groups: Option<&NexusOutputGroups>) -> NexusR {
+        pub fn run(
+            self,
+            item: Option<&mut Item>,
+            groups: Option<&NexusOutputGroups>,
+            cx: &NexusContext,
+        ) -> NexusR {
             let mut cmd = cargo_command();
             if self.miri {
                 cmd.arg("miri");
@@ -783,7 +797,9 @@ pub mod tests {
                     "--message-format",
                     "libtest-json-plus",
                     "--workspace",
+                    "--config-file",
                 ])
+                .arg(cx.ws.nextest_config_file())
                 .env("NEXTEST_EXPERIMENTAL_LIBTEST_JSON", "1")
                 .env(
                     "NARXIA_PARSER_SNAPSHOTS_TEST_MODE",

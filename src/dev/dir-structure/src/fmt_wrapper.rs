@@ -1,3 +1,4 @@
+use std::error;
 use std::fmt::Display;
 use std::marker;
 use std::path::Path;
@@ -13,7 +14,6 @@ use crate::FromRefForWriter;
 use crate::FromRefForWriterAsync;
 use crate::NewtypeToInner;
 use crate::Result;
-use crate::WrapIoError;
 use crate::prelude::*;
 
 /// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
@@ -67,7 +67,7 @@ impl<T> NewtypeToInner for FmtWrapper<T> {
 impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + 'a,
-    T::Err: Into<Box<dyn std::error::Error + Send + Sync>>,
+    T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
@@ -86,7 +86,7 @@ where
 impl<'a, T, Vfs: crate::VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + Send + 'static,
-    T::Err: Into<Box<dyn std::error::Error + Send + Sync>>,
+    T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
     type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>;
 
@@ -101,7 +101,7 @@ where
     }
 }
 
-impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for FmtWrapper<T>
+impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapper<T>
 where
     T: Display,
 {
@@ -112,7 +112,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + Send + Sync + 'static,
 {
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<'a, T, Vfs: crate::Vfs> FromRefForWriter<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + 'a,
     Vfs: 'a,
@@ -139,7 +139,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs>
+    for FmtWrapper<T>
 where
     T: Display + Send + 'a,
 {
@@ -155,22 +156,19 @@ where
 /// implementation to write the value.
 pub struct FmtWrapperRefWr<'a, T: ?Sized, Vfs>(pub &'a T, marker::PhantomData<Vfs>);
 
-impl<T, Vfs: crate::Vfs> WriteTo<Vfs> for FmtWrapperRefWr<'_, T, Vfs>
+impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapperRefWr<'_, T, Vfs>
 where
     T: Display + ?Sized,
 {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-        use std::io::Write;
-        vfs.create_parent_dir(path)?;
-        let mut f = std::fs::File::create(path).wrap_io_error_with(path)?;
-        write!(f, "{}", self.0).wrap_io_error_with(path)?;
-        Ok(())
+        FileString::new(self.0.to_string()).write_to(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapperRefWr<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for FmtWrapperRefWr<'a, T, Vfs>
 where
     T: Display + Send + 'a,
 {

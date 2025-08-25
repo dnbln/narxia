@@ -154,16 +154,17 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let name = &st.ident;
     let path_param_name = format_ident!("__dir_structure_path");
     let vfs_param_name = format_ident!("__vfs");
-    let mut generics_for_read_write_impl = st.generics.clone();
-    if !generics_for_read_write_impl.params.iter().any(|p| match p {
+    let mut generics_for_read_impl = st.generics.clone();
+    if !generics_for_read_impl.params.iter().any(|p| match p {
         syn::GenericParam::Lifetime(lt) => lt.lifetime.ident == "vfs",
         syn::GenericParam::Const(_) | syn::GenericParam::Type(_) => false,
     }) {
-        generics_for_read_write_impl
+        generics_for_read_impl
             .params
             .insert(0, parse_quote! { 'vfs });
     }
-    if let Some(v) = generics_for_read_write_impl
+    let fork = generics_for_read_impl.clone();
+    if let Some(v) = generics_for_read_impl
         .params
         .iter_mut()
         .find_map(|p| match p {
@@ -181,28 +182,14 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
-        generics_for_read_write_impl
+        generics_for_read_impl
             .params
             .push(parse_quote! { Vfs: ::dir_structure::Vfs + 'static });
     }
-    let (read_write_impl_generics, _, _) = generics_for_read_write_impl.split_for_impl();
+    let (read_impl_generics, _, _) = generics_for_read_impl.split_for_impl();
 
-    let mut generics_for_read_write_async_impl = st.generics.clone();
-    if !generics_for_read_write_async_impl
-        .params
-        .iter()
-        .any(|p| match p {
-            syn::GenericParam::Lifetime(lt) => lt.lifetime.ident == "vfs",
-            syn::GenericParam::Const(_) | syn::GenericParam::Type(_) => false,
-        })
-    {
-        generics_for_read_write_async_impl
-            .params
-            .insert(0, parse_quote! { 'vfs });
-    }
-    let mut read_async_impl_generics = generics_for_read_write_async_impl.clone();
-
-    if let Some(v) = read_async_impl_generics
+    let mut generics_for_write_impl = fork;
+    if let Some(v) = generics_for_write_impl
         .params
         .iter_mut()
         .find_map(|p| match p {
@@ -214,44 +201,19 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::VfsAsync + 'static };
+            v.bounds = parse_quote! { ::dir_structure::WriteSupportingVfs + 'static };
         } else {
-            v.bounds.push(parse_quote! { ::dir_structure::VfsAsync });
+            v.bounds
+                .push(parse_quote! { ::dir_structure::WriteSupportingVfs });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
-        read_async_impl_generics
+        generics_for_write_impl
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::VfsAsync + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::WriteSupportingVfs + 'static });
     }
 
-    let (read_async_impl_generics, _, _) = read_async_impl_generics.split_for_impl();
-
-    if let Some(v) = generics_for_read_write_async_impl
-        .params
-        .iter_mut()
-        .find_map(|p| match p {
-            syn::GenericParam::Lifetime(_) | syn::GenericParam::Const(_) => None,
-            syn::GenericParam::Type(type_param) => {
-                (type_param.ident == "Vfs").then_some(type_param)
-            }
-        })
-    {
-        let bounds = &v.bounds;
-        if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::VfsAsync + 'static };
-        } else {
-            v.bounds.push(parse_quote! { ::dir_structure::VfsAsync });
-            v.bounds.push(parse_quote! { 'static });
-        }
-    } else {
-        generics_for_read_write_async_impl
-            .params
-            .push(parse_quote! { Vfs: ::dir_structure::VfsAsync + 'static });
-    }
-
-    let (read_write_async_impl_generics, _, _) =
-        generics_for_read_write_async_impl.split_for_impl();
+    let (write_impl_generics, _, _) = generics_for_write_impl.split_for_impl();
 
     let (impl_generics, ty_generics, where_clause) = st.generics.split_for_impl();
 
@@ -283,7 +245,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         expect(unused_mut)
     )]
     let mut expanded = quote! {
-        impl #read_write_impl_generics ::dir_structure::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
+        impl #read_impl_generics ::dir_structure::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
             fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::Result<Self>
             where
                 Self: Sized,
@@ -293,7 +255,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
         }
-        impl #read_write_impl_generics ::dir_structure::WriteTo<Vfs> for #name #ty_generics #where_clause {
+        impl #write_impl_generics ::dir_structure::WriteTo<Vfs> for #name #ty_generics #where_clause {
             fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&Vfs>) -> ::dir_structure::Result<()> {
                 #(#field_write_impls)*
                 Ok(())

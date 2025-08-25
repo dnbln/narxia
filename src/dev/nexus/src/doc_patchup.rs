@@ -56,7 +56,7 @@ impl SessionWrapper {
         match Self::make_net(&root).await {
             Ok(session) => Ok((None, session)),
             Err(e) => {
-                eprintln!("Failed to connect to daemon: {e}. Spawning child process.");
+                eprintln!("Failed to connect to daemon: {e}.\nSpawning child process.");
                 let (child, session) = Self::make_child(root).await;
                 Ok((Some(child), session))
             }
@@ -379,13 +379,22 @@ pub fn perform_end(code: &Code, p: &Path, check_mode: bool) -> Result<(), Perfor
         fs::write(p.with_file_name(new_name), &code.all_code_for_doctests)?;
     }
 
+    let before = match fs::read_to_string(p) {
+        Ok(b) => Some(b),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => None,
+        Err(e) => {
+            eprintln!("Error reading file: {}", e);
+            return Err(PerformEndError::IO(e));
+        }
+    };
+
     if check_mode {
-        if code.before == code.after {
+        if before.as_ref() == Some(&code.after) {
             return Ok(());
         } else {
             return Err(PerformEndError::ChangesDetected);
         }
-    } else if code.before != code.after {
+    } else if before.as_ref() != Some(&code.after) {
         let new_path = p.with_extension("before.mdx");
         match fs::rename(p, &new_path) {
             Ok(_) => {}

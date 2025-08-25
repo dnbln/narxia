@@ -7,11 +7,15 @@ use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::slice;
 #[cfg(feature = "async")]
 use std::task::Context;
 #[cfg(feature = "async")]
 use std::task::Poll;
+use std::vec;
 
+#[cfg(feature = "async")]
+use futures_core::Stream;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
@@ -84,11 +88,7 @@ where
 /// pub struct TextFileFilter;
 ///
 /// impl Filter for TextFileFilter {
-///     fn make_filter() -> Self {
-///        Self
-///     }
-///
-///     fn allows(&self, path: &Path) -> bool {
+///     fn allows(path: &Path) -> bool {
 ///         path.extension()
 ///             .and_then(|s| s.to_str())
 ///             .map_or(false, |s| s == "txt")
@@ -121,18 +121,12 @@ where
 /// }
 /// ```
 pub trait Filter {
-    /// Creates an instance of this filter.
-    fn make_filter() -> Self;
     /// Checks if the path is allowed by this filter.
-    fn allows(&self, path: &Path) -> bool;
+    fn allows(path: &Path) -> bool;
 }
 
 impl Filter for NoFilter {
-    fn make_filter() -> Self {
-        Self
-    }
-
-    fn allows(&self, _path: &Path) -> bool {
+    fn allows(_path: &Path) -> bool {
         true
     }
 }
@@ -144,11 +138,7 @@ macro_rules! ext_filter {
         $vis struct $name;
 
         impl $crate::Filter for $name {
-            fn make_filter() -> Self {
-                Self
-            }
-
-            fn allows(&self, path: &::std::path::Path) -> bool {
+            fn allows(path: &::std::path::Path) -> bool {
                 path.extension()
                     .map_or(false, |s| s == $Ext)
             }
@@ -163,11 +153,7 @@ macro_rules! stem_filter {
         $vis struct $name;
 
         impl $crate::Filter for $name {
-            fn make_filter() -> Self {
-                Self
-            }
-
-            fn allows(&self, path: &::std::path::Path) -> bool {
+            fn allows(path: &::std::path::Path) -> bool {
                 path.file_stem()
                     .and_then(|s| s.to_str())
                     .map_or(false, |s| s == $base_name)
@@ -183,11 +169,7 @@ macro_rules! file_prefix_filter {
         $vis struct $name;
 
         impl $crate::Filter for $name {
-            fn make_filter() -> Self {
-                Self
-            }
-
-            fn allows(&self, path: &::std::path::Path) -> bool {
+            fn allows(path: &::std::path::Path) -> bool {
                 path.file_prefix()
                     .and_then(|s| s.to_str())
                     .map_or(false, |s| s == $file_prefix)
@@ -253,7 +235,7 @@ where
     ///     }
     /// }
     ///
-    /// impl<Vfs: dir_structure::Vfs> WriteTo<Vfs> for NewType {
+    /// impl<Vfs: dir_structure::WriteSupportingVfs> WriteTo<Vfs> for NewType {
     ///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<()> {
     ///         self.0.write_to(path, vfs)
     ///     }
@@ -309,11 +291,7 @@ where
     /// struct NewFilter;
     ///
     /// impl Filter for NewFilter {
-    ///     fn make_filter() -> Self {
-    ///         Self
-    ///     }
-    ///
-    ///     fn allows(&self, _path: &Path) -> bool {
+    ///     fn allows(_path: &Path) -> bool {
     ///         true
     ///     }
     /// }
@@ -321,7 +299,7 @@ where
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// let d2: DirChildren<String, NewFilter> = d.map_filter::<NewFilter>();
     /// ```
-    pub fn map_filter<NewF: Filter>(self) -> DirChildren<T, NewF>
+    pub fn map_filter<NewF>(self) -> DirChildren<T, NewF>
     where
         NewF: Filter,
     {
@@ -354,6 +332,10 @@ where
     /// ```
     pub fn len(&self) -> usize {
         self.children.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.children.is_empty()
     }
 
     /// Gets the child at the specified index.
@@ -599,8 +581,6 @@ where
     where
         Self: Sized,
     {
-        let filter = F::make_filter();
-
         let mut children = Vec::new();
         let mut walker = vfs.walk_dir(path)?;
         while let Some(child) = walker.next() {
@@ -610,7 +590,7 @@ where
                 ..
             } = child?;
 
-            if !filter.allows(&child_path) {
+            if !F::allows(&child_path) {
                 continue;
             }
 
@@ -640,22 +620,20 @@ where
 {
     Poison,
     Init(
-        Pin<Box<dyn Future<Output = std::io::Result<tokio::fs::ReadDir>> + Send>>,
-        F,
+        Pin<Box<Vfs::DirWalkFuture<'a>>>,
         Vec<DirChild<T>>,
         PathBuf,
         Pin<&'a Vfs>,
+        PhantomData<F>,
     ),
     Begin(
-        Pin<Box<tokio::fs::ReadDir>>,
-        F,
+        Pin<Box<Vfs::DirWalk<'a>>>,
         Vec<DirChild<T>>,
         PathBuf,
         Pin<&'a Vfs>,
     ),
     ReadAsync(
-        Pin<Box<tokio::fs::ReadDir>>,
-        F,
+        Pin<Box<Vfs::DirWalk<'a>>>,
         Vec<DirChild<T>>,
         PathBuf,
         T::Future,
@@ -678,12 +656,11 @@ where
         let this = self.as_mut().project_replace(Self::Poison);
 
         match this {
-            DirChildrenReadAsyncFutureProjOwn::Init(mut entries, filter, children, path, vfs) => {
+            DirChildrenReadAsyncFutureProjOwn::Init(mut entries, children, path, vfs, _) => {
                 match entries.as_mut().poll(cx) {
                     Poll::Ready(Ok(entries)) => {
                         self.project_replace(DirChildrenReadAsyncFuture::Begin(
                             Box::pin(entries),
-                            filter,
                             children,
                             path,
                             vfs,
@@ -691,50 +668,53 @@ where
                         cx.waker().wake_by_ref();
                         Poll::Pending
                     }
-                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
                     Poll::Pending => {
                         self.project_replace(DirChildrenReadAsyncFuture::Init(
-                            entries, filter, children, path, vfs,
+                            entries,
+                            children,
+                            path,
+                            vfs,
+                            PhantomData::<F>,
                         ));
                         Poll::Pending
                     }
                 }
             }
-            DirChildrenReadAsyncFutureProjOwn::Begin(mut entries, filter, children, path, vfs) => {
+            DirChildrenReadAsyncFutureProjOwn::Begin(mut entries, children, path, vfs) => {
                 use std::task::Poll;
 
-                match entries.poll_next_entry(cx) {
-                    Poll::Ready(Ok(Some(entry))) => {
-                        if !filter.allows(&entry.path()) {
+                match entries.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(Ok((name, path_child)))) => {
+                        if !F::allows(&path_child) {
                             return Poll::Ready(Ok(DirChildren {
-                                self_path: path.clone(),
+                                self_path: path,
                                 children,
                                 filter: marker::PhantomData,
                             }));
                         }
 
-                        let value_future = T::read_from_async(entry.path(), vfs);
+                        let value_future = T::read_from_async(path_child, vfs);
                         self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
                             entries,
-                            filter,
                             children,
                             path,
                             value_future,
-                            entry.file_name(),
+                            name,
                             vfs,
                         ));
                         cx.waker().wake_by_ref();
                         Poll::Pending
                     }
-                    Poll::Ready(Ok(None)) => Poll::Ready(Ok(DirChildren {
-                        self_path: path.clone(),
+                    Poll::Ready(None) => Poll::Ready(Ok(DirChildren {
+                        self_path: path,
                         children,
                         filter: marker::PhantomData,
                     })),
-                    Poll::Ready(Err(e)) => Poll::Ready(Err(e).wrap_io_error(|| path)),
+                    Poll::Ready(Some(Err(e))) => Poll::Ready(Err(e)),
                     Poll::Pending => {
                         self.project_replace(DirChildrenReadAsyncFuture::Begin(
-                            entries, filter, children, path, vfs,
+                            entries, children, path, vfs,
                         ));
                         Poll::Pending
                     }
@@ -742,7 +722,6 @@ where
             }
             DirChildrenReadAsyncFutureProjOwn::ReadAsync(
                 entries,
-                filter,
                 mut children,
                 path,
                 mut value_fut,
@@ -752,7 +731,7 @@ where
                 Poll::Ready(Ok(value)) => {
                     children.push(DirChild { file_name, value });
                     self.project_replace(DirChildrenReadAsyncFuture::Begin(
-                        entries, filter, children, path, vfs,
+                        entries, children, path, vfs,
                     ));
                     cx.waker().wake_by_ref();
                     Poll::Pending
@@ -761,7 +740,6 @@ where
                 Poll::Pending => {
                     self.project_replace(DirChildrenReadAsyncFuture::ReadAsync(
                         entries,
-                        filter,
                         children,
                         path,
                         value_fut,
@@ -789,12 +767,12 @@ where
     type Future = DirChildrenReadAsyncFuture<'a, T, F, Vfs>;
 
     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        let f = Box::pin(tokio::fs::read_dir(path.clone()));
-        DirChildrenReadAsyncFuture::Init(f, F::make_filter(), Vec::new(), path, vfs)
+        let f = Box::pin(vfs.walk_dir(path.clone()));
+        DirChildrenReadAsyncFuture::Init(f, Vec::new(), path, vfs, PhantomData::<F>)
     }
 }
 
-impl<T, F, Vfs: crate::Vfs> WriteTo<Vfs> for DirChildren<T, F>
+impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildren<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -811,7 +789,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for DirChildren<T, F>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + 'static,
@@ -827,7 +806,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
-pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'static>
+pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsync<'a, Vfs>,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
@@ -844,7 +823,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> Future for DirChildrenWriteAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> Future
+    for DirChildrenWriteAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs>,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
@@ -894,7 +874,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for DirChildren<T, F>
+impl<'r, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
+    for DirChildren<T, F>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     F: Filter + Send + 'static,
@@ -923,7 +904,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncRefFutureProjOwn)]
-pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: crate::VfsAsync + 'static>
+pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'r, Vfs> + 'r,
     <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
@@ -941,7 +922,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, 'f, T, Vfs: crate::VfsAsync + 'static> Future
+impl<'r, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'r, Vfs>,
@@ -1164,7 +1145,7 @@ impl<T> DirChild<T> {
 /// [`DirChildren`] structure.
 ///
 /// See [`DirChildren::iter`] for more information.
-pub struct DirChildrenIter<'a, T>(std::slice::Iter<'a, DirChild<T>>);
+pub struct DirChildrenIter<'a, T>(slice::Iter<'a, DirChild<T>>);
 
 impl<'a, T> Iterator for DirChildrenIter<'a, T> {
     type Item = &'a DirChild<T>;
@@ -1201,7 +1182,7 @@ where
 /// [`DirChildren`] structure while iterating over them.
 ///
 /// See [`DirChildren::iter_mut`] for more information.
-pub struct DirChildrenIterMut<'a, T>(std::slice::IterMut<'a, DirChild<T>>);
+pub struct DirChildrenIterMut<'a, T>(slice::IterMut<'a, DirChild<T>>);
 
 impl<'a, T> Iterator for DirChildrenIterMut<'a, T>
 where
@@ -1248,7 +1229,7 @@ where
     }
 }
 
-pub struct DirChildrenIntoIter<T>(std::vec::IntoIter<DirChild<T>>);
+pub struct DirChildrenIntoIter<T>(vec::IntoIter<DirChild<T>>);
 
 impl<T> Iterator for DirChildrenIntoIter<T> {
     type Item = DirChild<T>;
@@ -1290,7 +1271,7 @@ macro_rules! dir_children_wrapper {
             }
         }
 
-        impl<Vfs: $crate::Vfs> $crate::WriteTo<Vfs> for $name {
+        impl<Vfs: $crate::WriteSupportingVfs> $crate::WriteTo<Vfs> for $name {
             fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::Result<()> {
                 self.0.write_to(path, vfs)
             }
@@ -1335,7 +1316,7 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::Vfs + 'static> $crate::WriteTo<Vfs> for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs: $crate::WriteSupportingVfs + 'static> $crate::WriteTo<Vfs> for $name<'vfs, Vfs> {
             fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::Result<()> {
                 self.0.write_to(path, vfs)
             }
@@ -1402,7 +1383,7 @@ where
     }
 }
 
-impl<T, F: Filter, Vfs: crate::Vfs> WriteTo<Vfs> for DirChildSingle<T, F>
+impl<T, F: Filter, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingle<T, F>
 where
     T: WriteTo<Vfs>,
 {
@@ -1590,7 +1571,7 @@ where
                 value: child.value,
                 _phantom: PhantomData,
             }))
-        } else if children.len() == 0 {
+        } else if children.is_empty() {
             Ok(DirChildSingleOpt::None)
         } else {
             Err(Error::UnexpectedNumberOfChildren {
@@ -1602,7 +1583,7 @@ where
     }
 }
 
-impl<T, F, Vfs: crate::Vfs> WriteTo<Vfs> for DirChildSingleOpt<T, F>
+impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingleOpt<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -1677,7 +1658,7 @@ where
     }
 }
 
-impl<T, F, Vfs: crate::Vfs> WriteTo<Vfs> for ForceCreateDirChildren<T, F>
+impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for ForceCreateDirChildren<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -1741,7 +1722,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync + 'static> WriteToAsync<'a, Vfs>
+impl<'a, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for ForceCreateDirChildren<T, F>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
