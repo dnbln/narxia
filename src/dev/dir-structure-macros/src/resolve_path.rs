@@ -191,26 +191,44 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
     }})
 }
 
+enum LoadPathAsyncVfs {
+    Async(syn::Expr),
+    Sync(Option<syn::Expr>),
+}
+
 struct LoadPathInput {
     core: CoreTyExpression,
-    vfs: Option<syn::Expr>,
+    async_vfs: LoadPathAsyncVfs,
     segments: Punctuated<ResolveSingleSegment, Token![.]>,
 }
 
 impl Parse for LoadPathInput {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let is_async = if input.peek(Token![async]) {
+            let _async: Token![async] = input.parse()?;
+            true
+        } else {
+            false
+        };
+
         let content;
         bracketed!(content in input);
         let core = content.parse()?;
 
-        let vfs = if input.peek(Token![in]) {
+        let async_vfs = if input.peek(Token![in]) {
             let _in: Token![in] = input.parse()?;
             let c;
             parenthesized!(c in input);
             let vfs = c.parse()?;
-            Some(vfs)
+            if is_async {
+                LoadPathAsyncVfs::Async(vfs)
+            } else {
+                LoadPathAsyncVfs::Sync(Some(vfs))
+            }
+        } else if is_async {
+            return Err(input.error("expected 'in (vfs)' for async load_path"));
         } else {
-            None
+            LoadPathAsyncVfs::Sync(None)
         };
 
         let _dot: Token![.] = input.parse()?;
@@ -223,7 +241,7 @@ impl Parse for LoadPathInput {
 
         Ok(LoadPathInput {
             core,
-            vfs,
+            async_vfs,
             segments,
         })
     }
@@ -300,13 +318,26 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     }
 
     let p = input.core.path;
-    let vfs = input
-        .vfs
-        .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::FsVfs) });
+
+    let read_code = match input.async_vfs {
+        LoadPathAsyncVfs::Async(vfs) => {
+            quote! {
+                <#current_path as ::dir_structure::ReadFromAsync<'_, _>>::read_from(&__current, #vfs)
+            }
+        }
+        LoadPathAsyncVfs::Sync(vfs) => {
+            let vfs = vfs
+                .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::FsVfs) });
+
+            quote! {
+                <#current_path as ::dir_structure::ReadFrom<'_, _>>::read_from(&__current, #vfs)
+            }
+        }
+    };
 
     Ok(quote! {{
         let __current: ::std::path::PathBuf = ::std::path::PathBuf::from(#p);
         #resolve
-        <#current_path as ::dir_structure::ReadFrom<'_, _>>::read_from(&__current, #vfs)
+        #read_code
     }})
 }

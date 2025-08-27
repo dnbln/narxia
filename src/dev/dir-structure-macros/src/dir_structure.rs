@@ -38,12 +38,6 @@ fn expand_dir_structure_for_field(
 
     let field_ty = &field.ty;
 
-    enum PathData {
-        SelfPath,
-        Path(String),
-        None,
-    }
-
     let DirStructureCoreInfo {
         newtype_ty: with_newtype,
         self_path,
@@ -51,17 +45,12 @@ fn expand_dir_structure_for_field(
         ..
     } = compile_attrs(field)?;
 
-    let (actual_path_expr, actual_path_expr_move, path_pusher_for_has_field) = match path {
+    let (actual_path_expr, path_pusher_for_has_field) = match path {
         PathSpec::Path(p) => (
-            quote! { #path_param_name.join(#p) },
             quote! { #path_param_name.join(#p) },
             quote! { #path_param_name.push(#p); },
         ),
-        PathSpec::SelfPath => (
-            quote! { #path_param_name },
-            quote! { #path_param_name.clone() },
-            quote! {},
-        ),
+        PathSpec::SelfPath => (quote! { #path_param_name }, quote! {}),
     };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
     let read_code = if self_path {
@@ -131,7 +120,7 @@ fn expand_dir_structure_for_field(
 
         quote! {
             impl #impl_generics ::dir_structure::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
-                type Inner = #field_ty;
+                type Inner = #actual_field_ty_perform;
 
                 fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
                     #path_pusher_for_has_field

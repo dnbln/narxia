@@ -41,7 +41,7 @@ where
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         match self {
             Self::Success(value) => value.write_to(path, vfs),
-            Self::Failure(error) => Ok(()),
+            Self::Failure(_error) => Ok(()),
         }
     }
 }
@@ -82,5 +82,42 @@ where
             Self::Success(value) => Box::pin(value.write_to_async(path, vfs)),
             Self::Failure(error) => Box::pin(future::ready(Ok(()))),
         }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'vfs, Vfs, T> WriteToAsyncRef<'vfs, Vfs> for TryParse<T>
+where
+    Vfs: crate::WriteSupportingVfsAsync + 'static,
+    T: WriteToAsyncRef<'vfs, Vfs> + Send + 'vfs,
+    for<'a> <T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>:
+        Future<Output = crate::Result<()>> + Send + Sync + Unpin + 'a,
+{
+    type Future<'a>
+        = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + Sync + 'a>>
+    where
+        Self: 'a,
+        'vfs: 'a,
+        T: 'a,
+        Vfs: 'a;
+
+    fn write_to_async_ref<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
+    where
+        'vfs: 'a,
+    {
+        use std::future::poll_fn;
+
+        let mut wr: Option<Pin<Box<<T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>>>> = match self {
+            Self::Success(value) => {
+                Some(Box::pin(value.write_to_async_ref(path, vfs)))
+            }
+            Self::Failure(error) => None,
+        };
+
+        Box::pin(poll_fn(move |cx| match &mut wr {
+            Some(wr) => wr.as_mut().poll(cx),
+            None => Poll::Ready(Ok(())),
+        }))
     }
 }
