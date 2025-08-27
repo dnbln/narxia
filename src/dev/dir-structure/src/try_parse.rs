@@ -109,9 +109,7 @@ where
         use std::future::poll_fn;
 
         let mut wr: Option<Pin<Box<<T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>>>> = match self {
-            Self::Success(value) => {
-                Some(Box::pin(value.write_to_async_ref(path, vfs)))
-            }
+            Self::Success(value) => Some(Box::pin(value.write_to_async_ref(path, vfs))),
             Self::Failure(error) => None,
         };
 
