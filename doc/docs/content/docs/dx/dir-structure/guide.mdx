@@ -122,9 +122,9 @@ struct Dir {
         path = "number.txt",
         // !mark
         // !tooltip[/FmtWrapper/] FmtWrapper
-        with_newtype = FmtWrapper<u32>,
+        with_newtype = FmtWrapper<u64>,
     )]
-    number: u32,
+    number: u64,
 }
 
 // !hidden let path = "dir";
@@ -171,9 +171,9 @@ struct Dir {
     #[dir_structure(
         path = "number.txt",
         // !tooltip[/FmtWrapper/] FmtWrapper
-        with_newtype = FmtWrapper<u32>,
+        with_newtype = FmtWrapper<u64>,
     )]
-    number: u32,
+    number: u64,
     #[dir_structure(
         path = "f.json",
         // !mark
@@ -1104,6 +1104,23 @@ dir_structure::dir_children
 
 ```rust ,ignore
 macro_rules! ext_filter
+```
+
+---
+
+Creates a [`Filter`](https://docs.rs/dir_structure/0.1.6/dir_structure/dir_children/trait.Filter.html) type that only allows files / folders with a specific [extension](https://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.extension).
+
+# Examples
+
+```rust ,ignore
+use std::path::Path;
+use dir_structure::Filter;
+
+dir_structure::ext_filter!(RustFile, "rs");
+
+assert!(RustFile::allows(Path::new("main.rs")));
+assert!(RustFile::allows(Path::new("src/a/b/mod.rs")));
+assert!(!RustFile::allows(Path::new("main.txt")));
 ```
 </DocTooltip>
 

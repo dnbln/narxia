@@ -13,9 +13,9 @@ struct Dir {
         path = "number.txt",
         // !mark
         // !tooltip[/FmtWrapper/] FmtWrapper
-        with_newtype = FmtWrapper<u32>,
+        with_newtype = FmtWrapper<u64>,
     )]
-    number: u32,
+    number: u64,
 }
 
 // !hidden let path = "dir";
