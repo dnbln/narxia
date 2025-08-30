@@ -15,9 +15,9 @@ struct Dir {
     #[dir_structure(
         path = "number.txt",
         // !tooltip[/FmtWrapper/] FmtWrapper
-        with_newtype = FmtWrapper<u32>,
+        with_newtype = FmtWrapper<u64>,
     )]
-    number: u32,
+    number: u64,
     #[dir_structure(
         path = "f.json",
         // !mark

@@ -302,6 +302,7 @@ async fn patch_guide(
     }
 
     git_voyage::patchup(&mut guide, guide_dir, step, &new_code, &mut edit).into_diagnostic()?;
+    guide.write(guide_dir).into_diagnostic()?;
 
     render_guide(
         &guide,
