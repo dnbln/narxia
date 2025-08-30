@@ -296,7 +296,7 @@ async fn patch_guide(
         .into_diagnostic()
         .wrap_err("Failed to read code file after editing")?;
 
-    if new_code == *old_code {
+    if new_code == **old_code {
         item.done("No changes detected in code, skipping patchup.");
         return Ok(());
     }
@@ -603,7 +603,7 @@ impl BuildCmd {
         build_progress: Option<BuildCmdBuildingProgress>,
     ) -> NexusR {
         let profile = self.profile.get_profile();
-        let bins = BuildI {
+        let _bins = BuildI {
             targets: self.targets,
             profile,
             sys: SysTarget::Host,
@@ -1316,6 +1316,7 @@ macro bin_type {
             type Command = $command;
 
             fn needed_bins(command: &Self::Command, buffer: &mut Vec<$crate::Target>) {
+                let _ = command;
                 $(
                     if !buffer.contains(&$crate::Target::$field_target) {
                         buffer.push($crate::Target::$field_target);
@@ -1364,6 +1365,7 @@ macro bin_type {
                     bin_type!(@return_if_target_is_llvm: $field_opt_target, self.$field_opt_bins);
                 )*
 
+                #[allow(clippy::allow_attributes, unreachable_code)]
                 None
             }
         }

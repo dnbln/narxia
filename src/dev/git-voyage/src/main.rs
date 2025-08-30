@@ -168,7 +168,7 @@ fn main() {
             let new_code = fs::read_to_string(step_dir.code_path())
                 .expect("Failed to read code file after editing");
 
-            if new_code != *old_code {
+            if new_code != **old_code {
                 eprintln!("Code changed, performing patchup...");
                 git_voyage::patchup(&mut guide, &dir, &step, &new_code, |p| edit(&editor, p))
                     .unwrap();

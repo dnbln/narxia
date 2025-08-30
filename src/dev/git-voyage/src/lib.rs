@@ -20,6 +20,7 @@ use dir_structure::ForceCreateDirChildren;
 use dir_structure::Versioned;
 use dir_structure::file_prefix_filter;
 use dir_structure::json_pretty::JsonPretty;
+use dir_structure::resolve_path;
 use git2::RebaseOperationType;
 use git2::Repository;
 use git2::build::CheckoutBuilder;
@@ -48,10 +49,10 @@ pub struct Guide {
     steps: Versioned<JsonPretty<Steps>>,
     #[dir_structure(path = "steps")]
     step_dirs: ForceCreateDirChildren<StepDir>,
-    code_header: Option<String>,
-    code_footer: Option<String>,
+    code_header: Option<Versioned<String>>,
+    code_footer: Option<Versioned<String>>,
     #[dir_structure(path = self)]
-    template: DirChildSingle<String, TemplateFilter>,
+    template: Versioned<DirChildSingle<String, TemplateFilter>>,
 
     self_path: PathBuf,
 }
@@ -64,12 +65,19 @@ impl Guide {
                 dir_structure::resolve_path!([Guide @ dir.clone()].steps),
             ),
             step_dirs: ForceCreateDirChildren::new(DirChildren::new()),
-            code_header: Some(String::from("```")),
-            code_footer: Some(String::from("```")),
-            template: DirChildSingle::new(
-                format!("template{template_extension}"),
-                String::from(
-                    r#"
+            code_header: Some(Versioned::new_dirty(
+                String::from("```"),
+                dir.join("code_header"),
+            )),
+            code_footer: Some(Versioned::new_dirty(
+                String::from("```"),
+                dir.join("code_footer"),
+            )),
+            template: Versioned::new_dirty(
+                DirChildSingle::new(
+                    format!("template{template_extension}"),
+                    String::from(
+                        r#"
 ---
 title: My guide
 description: A guide to guides
@@ -84,8 +92,10 @@ Do not change this next line, it is used to render the steps:
 
 End of the guide.
 "#
-                    .trim_start(),
+                        .trim_start(),
+                    ),
                 ),
+                dir.join(format!("template{template_extension}")),
             ),
             self_path: dir,
         }
@@ -164,7 +174,10 @@ End of the guide.
                     )
                 }
                 None => (
-                    String::new(),
+                    Versioned::new_dirty(
+                        String::new(),
+                        resolve_path!([&self.self_path as Guide].step_dirs.${&step.0}.code),
+                    ),
                     code_extension.unwrap_or_else(Extension::default_code_extension),
                     before_after_extension
                         .unwrap_or_else(Extension::default_before_after_extension),
@@ -178,11 +191,19 @@ End of the guide.
         let step_dir = StepDir {
             before: DirChildSingleOpt::Some(DirChildSingle::new(
                 format!("before{before_after}"),
-                String::new(),
+                Versioned::new_dirty(
+                    String::new(),
+                    resolve_path!([&self.self_path as Guide].step_dirs.${&step.0})
+                        .join(format!("before{before_after}")),
+                ),
             )),
             after: DirChildSingleOpt::Some(DirChildSingle::new(
                 format!("after{before_after}"),
-                String::new(),
+                Versioned::new_dirty(
+                    String::new(),
+                    resolve_path!([&self.self_path as Guide].step_dirs.${&step.0})
+                        .join(format!("after{before_after}")),
+                ),
             )),
             code: DirChildSingle::new(format!("code{code_extension}"), code),
             code_header: None,
@@ -288,14 +309,14 @@ impl<'a> DoubleEndedIterator for StepsIter<'a> {
 #[derive(DirStructure)]
 pub struct StepDir {
     #[dir_structure(path = self)]
-    before: DirChildSingleOpt<String, BeforeFilter>,
+    before: DirChildSingleOpt<Versioned<String>, BeforeFilter>,
     #[dir_structure(path = self)]
-    after: DirChildSingleOpt<String, AfterFilter>,
+    after: DirChildSingleOpt<Versioned<String>, AfterFilter>,
     #[dir_structure(path = self)]
-    pub code: DirChildSingle<String, CodeFilter>,
+    pub code: DirChildSingle<Versioned<String>, CodeFilter>,
 
-    code_header: Option<String>,
-    code_footer: Option<String>,
+    code_header: Option<Versioned<String>>,
+    code_footer: Option<Versioned<String>>,
     self_path: PathBuf,
 }
 
@@ -307,17 +328,17 @@ impl StepDir {
     pub fn render_step(&self, guide: &Guide) -> String {
         let mut output = String::new();
         if let DirChildSingleOpt::Some(before) = &self.before {
-            writeln!(output, "{}", before.value()).unwrap();
+            writeln!(output, "{}", &**before.value()).unwrap();
         }
-        if let Some(header) = &self.code_header.as_ref().or(guide.code_header.as_ref()) {
-            writeln!(output, "{header}").unwrap();
+        if let Some(header) = self.code_header.as_ref().or(guide.code_header.as_ref()) {
+            writeln!(output, "{}", &**header).unwrap();
         }
-        writeln!(output, "{}", self.code.value()).unwrap();
-        if let Some(footer) = &self.code_footer.as_ref().or(guide.code_footer.as_ref()) {
-            writeln!(output, "{footer}").unwrap();
+        writeln!(output, "{}", &**self.code.value()).unwrap();
+        if let Some(footer) = self.code_footer.as_ref().or(guide.code_footer.as_ref()) {
+            writeln!(output, "{}", &**footer).unwrap();
         }
         if let DirChildSingleOpt::Some(after) = &self.after {
-            writeln!(output, "{}", after.value()).unwrap();
+            writeln!(output, "{}", &**after.value()).unwrap();
         }
 
         output
@@ -415,7 +436,7 @@ fn perform_patchup(
     for s in &guide.steps.steps {
         let mut index = repo.index()?;
         let code = &*guide.step_dirs.get_name(&s.0).unwrap().value().code;
-        fs::write(&code_file, code)?;
+        fs::write(&code_file, &**code)?;
         index.add_all(["code"], git2::IndexAddOption::DEFAULT, None)?;
         index.write()?;
         let tree_id = index.write_tree()?;
@@ -624,11 +645,12 @@ pub fn repatch(
         let step_name = step_dir.file_name().clone();
         if let Some(contents) = files.get(step_name.to_str().unwrap()) {
             let c = &mut step_dir.value_mut().code;
-            *c = DirChildSingle::new(c.file_name(), String::from_utf8(contents.clone()).unwrap());
+            c.value_mut()
+                .edit_eq_check(|v| *v = String::from_utf8(contents.clone()).unwrap());
             eprintln!("Repatched step: {}", step_name.to_str().unwrap());
         } else if let Some(contents) = empty_commits.get(step_name.to_str().unwrap()) {
             let c = &mut step_dir.value_mut().code;
-            *c = DirChildSingle::new(c.file_name(), contents.clone());
+            c.value_mut().edit_eq_check(|v| *v = contents.clone());
             eprintln!(
                 "Repatched step (empty commit): {}",
                 step_name.to_str().unwrap()
