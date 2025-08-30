@@ -8,7 +8,7 @@ const layoutProps: HomeLayoutProps = {
   nav: {
     title: (
         <>
-          <NarxiaIcon width="64" height="64" />
+          <NarxiaIcon width="32" height="32" />
           The Narxia Project
         </>
     )

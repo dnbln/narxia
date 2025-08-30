@@ -1,5 +1,5 @@
 import type {BaseLayoutProps} from 'fumadocs-ui/layouts/shared';
-import {NarxiaIcon, ZulipIcon} from "@/lib/assets";
+import {ZulipIcon} from "@/lib/assets";
 
 /**
  * Shared layout configurations
@@ -9,17 +9,6 @@ import {NarxiaIcon, ZulipIcon} from "@/lib/assets";
  * Docs Layout: app/docs/layout.tsx
  */
 export const baseOptions: BaseLayoutProps = {
-    nav: {
-        title: (
-            <>
-                <NarxiaIcon
-                    width="32"
-                    height="32"
-                />
-                The Narxia Project
-            </>
-        ),
-    },
     // see https://fumadocs.dev/docs/ui/navigation/links
     links: [
         {
