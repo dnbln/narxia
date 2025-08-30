@@ -166,6 +166,7 @@ impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for FileString {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[doc(hidden)]
 pub struct FileStringReadFuture<'a, Vfs: crate::VfsAsync + 'static>(Vfs::ReadStringFuture<'a>);
 
 #[cfg(feature = "async")]
@@ -325,6 +326,7 @@ impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for Vec<u8> {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
+#[doc(hidden)]
 pub struct VecReadFuture<'a, Vfs: crate::VfsAsync + 'static>(
     #[pin] <FileBytes as ReadFromAsync<'a, Vfs>>::Future,
 );

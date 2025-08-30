@@ -6,6 +6,8 @@ use std::path::PathBuf;
 use std::pin::Pin;
 
 use include_dir::Dir;
+#[cfg(doc)]
+use include_dir::include_dir;
 
 use crate::DirEntryInfo;
 use crate::DirEntryKind;
@@ -13,16 +15,21 @@ use crate::Error;
 use crate::Result;
 use crate::Vfs;
 
+/// A [`Vfs`] implementation with an [`include_dir::Dir`] directory.
 pub struct IncludeDirVfs {
     dir: Dir<'static>,
 }
 
 impl IncludeDirVfs {
+    /// Creates a new [`IncludeDirVfs`].
     pub fn new(dir: Dir<'static>) -> Self {
         Self { dir }
     }
 }
 
+/// Convenience macro to [`include_dir!(...)`][include_dir] and wrap it in an [`IncludeDirVfs`].
+///
+/// [include_dir]: include_dir
 #[macro_export]
 macro_rules! include_dir_vfs {
     ($path:expr) => {{

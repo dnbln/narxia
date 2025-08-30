@@ -1,4 +1,4 @@
-use std::fs as std_fs;
+// use std::fs as std_fs;
 use std::io;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -12,7 +12,9 @@ use crate::IoErrorWrapperFuture;
 use crate::Result;
 use crate::VfsAsync;
 use crate::WrapIoError;
+use crate::WriteSupportingVfsAsync;
 
+/// A [`VfsAsync`] and [`WriteSupportingVfsAsync`] implementation using [`tokio::fs`].
 pub struct TokioFsVfs;
 
 impl VfsAsync for TokioFsVfs {
@@ -38,6 +40,41 @@ impl VfsAsync for TokioFsVfs {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::read_to_string(path)))
     }
 
+    type ExistsFuture<'a>
+        = IoErrorWrapperFuture<bool, Pin<Box<dyn Future<Output = io::Result<bool>> + Send + 'a>>>
+    where
+        Self: 'a;
+
+    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a> {
+        IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::try_exists(path)))
+    }
+
+    type DirWalk<'a>
+        = DirWalker
+    where
+        Self: 'a;
+
+    type DirWalkFuture<'a>
+        = IoErrorWrapperFuture<
+        Self::DirWalk<'a>,
+        Pin<Box<dyn Future<Output = io::Result<Self::DirWalk<'a>>> + Send + 'a>>,
+    >
+    where
+        Self: 'a;
+
+    fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a> {
+        IoErrorWrapperFuture::new(
+            path.clone(),
+            Box::pin(async move {
+                fs::read_dir(path.clone())
+                    .await
+                    .map(|inner| DirWalker { inner, path })
+            }),
+        )
+    }
+}
+
+impl WriteSupportingVfsAsync for TokioFsVfs {
     type WriteFuture<'a>
         = IoErrorWrapperFuture<(), Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>>
     where
@@ -49,15 +86,6 @@ impl VfsAsync for TokioFsVfs {
         data: &'d [u8],
     ) -> Self::WriteFuture<'d> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::write(path, data)))
-    }
-
-    type ExistsFuture<'a>
-        = IoErrorWrapperFuture<bool, Pin<Box<dyn Future<Output = io::Result<bool>> + Send + 'a>>>
-    where
-        Self: 'a;
-
-    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a> {
-        IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::try_exists(path)))
     }
 
     type RemoveDirAllFuture<'a>
@@ -103,30 +131,6 @@ impl VfsAsync for TokioFsVfs {
             vfs: self,
             path: parent,
         }
-    }
-
-    type DirWalk<'a>
-        = DirWalker
-    where
-        Self: 'a;
-
-    type DirWalkFuture<'a>
-        = IoErrorWrapperFuture<
-        Self::DirWalk<'a>,
-        Pin<Box<dyn Future<Output = io::Result<Self::DirWalk<'a>>> + Send + 'a>>,
-    >
-    where
-        Self: 'a;
-
-    fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a> {
-        IoErrorWrapperFuture::new(
-            path.clone(),
-            Box::pin(async move {
-                fs::read_dir(path.clone())
-                    .await
-                    .map(|inner| DirWalker { inner, path })
-            }),
-        )
     }
 }
 

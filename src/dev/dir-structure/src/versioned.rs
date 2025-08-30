@@ -176,6 +176,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
+#[doc(hidden)]
 pub struct VersionedReadFuture<'a, Vfs: crate::VfsAsync, T: ReadFromAsync<'a, Vfs> + Send + 'static>
 {
     #[pin]
@@ -231,6 +232,7 @@ impl<Vfs: crate::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteFutureProj)]
+#[doc(hidden)]
 pub enum VersionedWriteFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
@@ -295,6 +297,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = VersionedWriteRefFutureProj)]
+#[doc(hidden)]
 pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
@@ -417,5 +420,7 @@ impl<T> DerefMut for Versioned<T> {
     }
 }
 
+/// A [`Versioned`] [`String`].
 pub type VersionedString = Versioned<String>;
+/// A [`Versioned`] `Vec<u8>`.
 pub type VersionedBytes = Versioned<Vec<u8>>;

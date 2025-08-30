@@ -11,6 +11,7 @@ use crate::Vfs;
 use crate::WrapIoError;
 use crate::WriteSupportingVfs;
 
+/// A [`Vfs`] and [`WriteSupportingVfs`] implementation built upon the [`std::fs`] APIs.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct FsVfs;
 

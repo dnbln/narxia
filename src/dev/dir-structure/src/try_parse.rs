@@ -15,8 +15,14 @@ use crate::Error;
 use crate::Result;
 use crate::prelude::*;
 
+/// A type that tries to parse a value of type `T`, but doesn't fail if it can't.
+///
+/// Instead, it keeps the original [`Error`].
 pub enum TryParse<T> {
+    /// Successfully parsed a value of type `T`.
     Success(T),
+
+    /// Failed to parse a value of type `T`.
     Failure(Error),
 }
 
@@ -80,7 +86,7 @@ where
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         match self {
             Self::Success(value) => Box::pin(value.write_to_async(path, vfs)),
-            Self::Failure(error) => Box::pin(future::ready(Ok(()))),
+            Self::Failure(_error) => Box::pin(future::ready(Ok(()))),
         }
     }
 }
@@ -110,7 +116,7 @@ where
 
         let mut wr: Option<Pin<Box<<T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>>>> = match self {
             Self::Success(value) => Some(Box::pin(value.write_to_async_ref(path, vfs))),
-            Self::Failure(error) => None,
+            Self::Failure(_error) => None,
         };
 
         Box::pin(poll_fn(move |cx| match &mut wr {

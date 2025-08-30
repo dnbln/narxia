@@ -377,7 +377,7 @@ data_format_impl!(
     |v| serde_json::to_string_pretty(&v),
     |v, w| serde_json::to_writer_pretty(w, v).map_err(ToWriterError::Serde),
     serde_json::Error,
-    /// [`FromRefForWriter`] implementation for [`Json`].
+    /// [`FromRefForWriter`] implementation for [`JsonPretty`].
     JsonPrettyRefWr,
     ".json", r##"r#"{
   "name": "John",

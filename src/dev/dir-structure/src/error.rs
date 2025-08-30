@@ -20,8 +20,11 @@ pub enum Error {
     /// An error related to the directory structure.
     #[error("Unexpected number of children: expected {expected}, found {found} at {path:?}")]
     UnexpectedNumberOfChildren {
+        /// The expected number of children.
         expected: &'static str,
+        /// How many children were found.
         found: usize,
+        /// The path to the directory where this happened.
         path: PathBuf,
     },
 }
@@ -34,11 +37,15 @@ mod sealed {
     impl<T> Sealed for io::Result<T> {}
 }
 
+/// A trait for wrapping IO errors with the path where they happened, turning [`std::io::Result`]s into [`crate::Result`]s.
 pub trait WrapIoError: Sized + sealed::Sealed {
+    /// The inner type.
     type Output;
 
+    /// Wrap the IO error with the path where it happened.
     fn wrap_io_error(self, get_path: impl FnOnce() -> PathBuf) -> Result<Self::Output>;
 
+    /// Wrap the IO error with the given path.
     fn wrap_io_error_with(self, path: &Path) -> Result<Self::Output> {
         self.wrap_io_error(|| path.to_path_buf())
     }
@@ -52,4 +59,7 @@ impl<T> WrapIoError for io::Result<T> {
     }
 }
 
+/// The result type for this library.
+///
+/// See [the `Error` enum](Error) for the errors that can happen.
 pub type Result<T> = result::Result<T, Error>;

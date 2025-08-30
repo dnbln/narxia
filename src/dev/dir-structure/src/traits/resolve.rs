@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+#[doc(hidden)]
 pub const HAS_FIELD_MAX_LEN: usize = dir_structure_macros::__resolve_max_len!();
 
 /// A trait to declare that a type has a field with a specific name,
@@ -9,15 +10,25 @@ pub const HAS_FIELD_MAX_LEN: usize = dir_structure_macros::__resolve_max_len!();
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
 pub trait HasField<const NAME: [char; HAS_FIELD_MAX_LEN]> {
+    /// The type of the field.
     type Inner;
 
+    /// How to resolve the path for the field, from the path of `Self`.
     fn resolve_path(p: PathBuf) -> PathBuf;
 }
 
+/// A trait to declare that a type has fields with dynamic names,
+/// such as [`DirChildren`](crate::DirChildren), [`DirDescendants`](crate::DirDescendants), etc.
+///
+/// This is used to resolve paths with [`resolve_path`], particularly with the `"name"` and
+/// `${expr}` syntaxes.
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
 pub trait DynamicHasField {
+    /// The type of the field.
     type Inner;
+    /// How to resolve the path for the field, from the path of `Self`, given the name
+    /// passed into [the `resolve_path!` macro](crate::resolve_path).
     fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
 }
 

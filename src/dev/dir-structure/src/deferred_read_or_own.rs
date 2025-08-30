@@ -43,7 +43,9 @@ use crate::prelude::*;
 /// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.
 #[derive(Debug, Clone, Hash)]
 pub enum DeferredReadOrOwn<'a, T, Vfs = crate::FsVfs, const CHECK_ON_READ: bool = false> {
+    /// An owned value.
     Own(T),
+    /// A deferred read.
     Deferred(DeferredRead<'a, T, Vfs, CHECK_ON_READ>),
 }
 
@@ -140,16 +142,15 @@ where
             }
         }
     }
-}
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: crate::WriteSupportingVfs>
-    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
-where
-    T: ReadFrom<'a, Vfs>,
-{
-    pub fn flush_to(&mut self, path: &Path, vfs: Pin<&Vfs>) -> Result<()>
+    /// Flushes the current value to the specified path.
+    pub fn flush_to<TargetVfs: crate::WriteSupportingVfs>(
+        &self,
+        path: &Path,
+        vfs: Pin<&TargetVfs>,
+    ) -> Result<()>
     where
-        T: WriteTo<Vfs>,
+        T: WriteTo<TargetVfs>,
     {
         match self {
             DeferredReadOrOwn::Own(own) => own.write_to(path, vfs),
@@ -178,6 +179,7 @@ impl<'a, const CHECK_ON_READ: bool, T, Vfs: crate::VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
+    /// Gets the value, asynchronously. This is an async version of [`get`](Self::get).
     pub async fn get_async(&'a self) -> Result<T>
     where
         T: Clone,
@@ -188,6 +190,12 @@ where
         }
     }
 
+    /// Performs the read and stores the value. If the value is already read, it will
+    /// just return a reference to it.
+    ///
+    /// See [`DeferredReadOrOwn`] for more details.
+    ///
+    /// This is an async version of [`perform_and_store_read`](Self::perform_and_store_read).
     pub async fn perform_and_store_read_async(&'a mut self) -> Result<&'a mut T> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
@@ -199,6 +207,32 @@ where
                 };
                 Ok(own)
             }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: crate::VfsAsync + 'a>
+    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
+{
+    /// Flushes the current value to the specified path. Async version of [`flush_to`](Self::flush_to).
+    pub async fn flush_to_async<TargetVfs: crate::WriteSupportingVfsAsync + 'a, ReadFutTy>(
+        &'a self,
+        path: PathBuf,
+        vfs: Pin<&'a TargetVfs>,
+    ) -> Result<()>
+    where
+        for<'b> T: ReadFromAsync<'b, Vfs, Future = ReadFutTy>
+            + WriteToAsync<'b, TargetVfs>
+            + WriteToAsyncRef<'b, TargetVfs>
+            + Send
+            + 'b,
+        ReadFutTy: Future<Output = Result<T>> + Unpin + 'static,
+    {
+        match self {
+            DeferredReadOrOwn::Own(own) => own.write_to_async_ref(path, vfs).await,
+            DeferredReadOrOwn::Deferred(d) => d.write_to_async_ref(path, vfs).await,
         }
     }
 }
@@ -241,6 +275,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DeferredReadOrOwnWriteFutureProj)]
+#[doc(hidden)]
 pub enum DeferredReadOrOwnWriteFuture<
     'a,
     T,

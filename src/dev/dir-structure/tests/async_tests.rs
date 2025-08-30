@@ -6,7 +6,6 @@ use std::sync::atomic::Ordering;
 
 use dir_structure::DirChild;
 use dir_structure::DirChildren;
-use dir_structure::DirStructureItem;
 use dir_structure::TokioFsVfs;
 use dir_structure::Versioned;
 use dir_structure::VersionedString;
@@ -536,7 +535,8 @@ async fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    impl<'r, T, Vfs: dir_structure::VfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for WriteCounter<T>
+    impl<'r, T, Vfs: dir_structure::WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
+        for WriteCounter<T>
     where
         T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     {

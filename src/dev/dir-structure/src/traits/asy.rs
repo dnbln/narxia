@@ -5,8 +5,7 @@ use std::pin::Pin;
 
 use crate::error::Result;
 
-/// Trait for types / structures that can be
-/// read from disk asynchronously.
+/// Trait for types / structures that can be read from disk asynchronously.
 ///
 /// `async` version of [`ReadFrom`].
 #[cfg(feature = "async")]
@@ -22,6 +21,10 @@ pub trait ReadFromAsync<'a, Vfs: crate::VfsAsync + 'a>: Sized {
     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future;
 }
 
+/// Trait for types / structures that can be written to disk asynchronously.
+///
+/// The difference between this and [`WriteToAsyncRef`] is that this trait takes in
+/// owned data instead of a reference.
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsync<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> {
@@ -32,6 +35,10 @@ pub trait WriteToAsync<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> {
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future;
 }
 
+/// Trait for types / structures that can be written to disk asynchronously.
+///
+/// The difference between this and [`WriteToAsync`] is that this trait takes in
+/// a reference instead of owned data.
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsyncRef<'r, Vfs: crate::WriteSupportingVfsAsync + 'r> {
@@ -48,6 +55,7 @@ pub trait WriteToAsyncRef<'r, Vfs: crate::WriteSupportingVfsAsync + 'r> {
         'r: 'a;
 }
 
+/// Async equivalent of [`FromRefForWriter`](crate::FromRefForWriter).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait FromRefForWriterAsync<'a, Vfs: crate::WriteSupportingVfsAsync + 'a> {

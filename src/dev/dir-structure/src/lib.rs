@@ -96,6 +96,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "resolve-path", feature(adt_const_params))]
 #![cfg_attr(feature = "include_dir", feature(normalize_lexically))]
+#![deny(missing_docs)]
 
 #[cfg(feature = "async")]
 pub extern crate pin_project;
@@ -122,6 +123,7 @@ pub use dir_structure_macros::DirStructure;
 pub use dir_structure_macros::DirStructureAsync;
 
 pub mod prelude {
+    //! A prelude for the most commonly used items in this crate.
     pub use super::DirStructure;
     pub use super::ReadFrom;
     #[cfg(feature = "async")]
@@ -171,7 +173,10 @@ pub use traits::vfs::*;
 pub use try_parse::*;
 pub use versioned::*;
 
-/// A [`Filter`], [`FileFilter`], [`FolderFilter`], [`FolderRecurseFilter`] that allows all paths.
+/// A [`Filter`], [`FileFilter`], [`FolderFilter`], and [`FolderRecurseFilter`] that allows all paths.
+///
+/// This can be passed as a filter to [`DirChildren`] and [`DirDescendants`] to read all paths; custom
+/// filtering will require a new filter type.
 ///
 /// ```rust
 /// # use std::path::Path;

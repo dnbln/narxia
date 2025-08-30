@@ -81,6 +81,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project]
+#[doc(hidden)]
 pub struct CleanDirReadFuture<'a, T, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
@@ -255,6 +256,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = CleanDirRefWrWriteFutureProjOwn)]
+#[doc(hidden)]
 pub enum CleanDirRefWrWriteFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,

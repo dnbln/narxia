@@ -131,6 +131,20 @@ impl Filter for NoFilter {
     }
 }
 
+/// Creates a [`Filter`] type that only allows files / folders with a specific [extension](Path::extension).
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::Path;
+/// use dir_structure::Filter;
+///
+/// dir_structure::ext_filter!(RustFile, "rs");
+///
+/// assert!(RustFile::allows(Path::new("main.rs")));
+/// assert!(RustFile::allows(Path::new("src/a/b/mod.rs")));
+/// assert!(!RustFile::allows(Path::new("main.txt")));
+/// ```
 #[macro_export]
 macro_rules! ext_filter {
     ($vis:vis $name:ident, $Ext:literal) => {
@@ -146,6 +160,21 @@ macro_rules! ext_filter {
     };
 }
 
+/// Creates a [`Filter`] type that only allows files / folders with a specific [stem](Path::file_stem).
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::Path;
+/// use dir_structure::Filter;
+///
+/// dir_structure::stem_filter!(MainFile, "main");
+///
+/// assert!(MainFile::allows(Path::new("main.rs")));
+/// assert!(MainFile::allows(Path::new("src/a/b/main.rs")));
+/// assert!(MainFile::allows(Path::new("main.txt")));
+/// assert!(!MainFile::allows(Path::new("main.a.rs")));
+/// ```
 #[macro_export]
 macro_rules! stem_filter {
     ($vis:vis $name:ident, $base_name:literal) => {
@@ -162,6 +191,22 @@ macro_rules! stem_filter {
     };
 }
 
+/// Creates a [`Filter`] type that only allows files / folders with a specific [prefix](Path::file_prefix).
+///
+/// # Examples
+///
+/// ```rust
+/// use std::path::Path;
+/// use dir_structure::Filter;
+///
+/// dir_structure::file_prefix_filter!(LogFile, "log");
+///
+/// assert!(LogFile::allows(Path::new("log.txt")));
+/// assert!(LogFile::allows(Path::new("log")));
+/// assert!(LogFile::allows(Path::new("log.log")));
+/// assert!(LogFile::allows(Path::new("src/a/b/log.txt")));
+/// assert!(!LogFile::allows(Path::new("src/a/b/file.txt")));
+/// ```
 #[macro_export]
 macro_rules! file_prefix_filter {
     ($vis:vis $name:ident, $file_prefix:literal) => {
@@ -189,6 +234,16 @@ where
     F: Filter,
 {
     /// Creates an empty [`DirChildren`], with no children.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    /// use dir_structure::{DirChildren, NoFilter};
+    ///
+    /// let d = DirChildren::<String, NoFilter>::new();
+    /// assert!(d.is_empty());
+    /// ```
     pub fn new() -> Self {
         Self {
             self_path: PathBuf::new(),
@@ -198,6 +253,22 @@ where
     }
 
     /// Creates a [`DirChildren`] with the given path and children.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    /// use dir_structure::{DirChildren, DirChild, NoFilter};
+    ///
+    /// let d = DirChildren::<String, NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert!(!d.is_empty());
+    /// ```
     pub fn with_children_from_iter(
         self_path: impl Into<PathBuf>,
         children: impl IntoIterator<Item = DirChild<T>>,
@@ -334,6 +405,26 @@ where
         self.children.len()
     }
 
+    /// Returns true if there are no children.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert!(d.is_empty());
+    ///
+    /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert!(!d.is_empty());
+    /// ```
     pub fn is_empty(&self) -> bool {
         self.children.is_empty()
     }
@@ -427,6 +518,31 @@ where
             .find(|child| child.file_name == name.as_ref())
     }
 
+    /// Gets the child with the specified "file" name (last segment of path). Mutable version of [`get_name`][Self::get_name].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_name_mut(""), None);
+    /// assert_eq!(d.get_name_mut("any_name"), None);
+    /// assert_eq!(d.get_name_mut("aaaa"), None);
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_name_mut("file1.txt"), Some(&mut DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(d.get_name_mut("file2.txt"), Some(&mut DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(d.get_name_mut("any_name"), None);
+    /// assert_eq!(d.get_name_mut("aaaa"), None);
+    /// ```
     pub fn get_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut DirChild<T>> {
         self.children
             .iter_mut()
@@ -462,6 +578,31 @@ where
         self.get_name(name).map(|child| &child.value)
     }
 
+    /// Gets the value of the child with the specified "file" name (last segment of path). Mutable version of [`get_value_by_name`][Self::get_value_by_name].
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
+    /// assert_eq!(d.get_value_by_name_mut(""), None);
+    /// assert_eq!(d.get_value_by_name_mut("any_name"), None);
+    /// assert_eq!(d.get_value_by_name_mut("aaaa"), None);
+    ///
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// assert_eq!(d.get_value_by_name_mut("file1.txt"), Some(&mut "file1".to_owned()));
+    /// assert_eq!(d.get_value_by_name_mut("file2.txt"), Some(&mut "file2".to_owned()));
+    /// assert_eq!(d.get_value_by_name_mut("any_name"), None);
+    /// assert_eq!(d.get_value_by_name_mut("aaaa"), None);
+    /// ```
     pub fn get_value_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut T> {
         self.get_name_mut(name).map(|child| &mut child.value)
     }
@@ -612,6 +753,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
+#[doc(hidden)]
 pub enum DirChildrenReadAsyncFuture<'a, T, F, Vfs: crate::VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
@@ -806,6 +948,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
+#[doc(hidden)]
 pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsync<'a, Vfs>,
@@ -904,6 +1047,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncRefFutureProjOwn)]
+#[doc(hidden)]
 pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'r, Vfs> + 'r,
@@ -1229,6 +1373,9 @@ where
     }
 }
 
+/// An owned iterator over the children of a [`DirChildren`] structure.
+///
+/// See [`DirChildren::into_iter`] for more information.
 pub struct DirChildrenIntoIter<T>(vec::IntoIter<DirChild<T>>);
 
 impl<T> Iterator for DirChildrenIntoIter<T> {
@@ -1302,6 +1449,7 @@ macro_rules! dir_children_wrapper {
     };
 }
 
+/// A wrapper around [`DirChildren`] that adds the <'vfs, Vfs> generics.
 #[macro_export]
 macro_rules! dir_children_wrapper_with_vfs {
     ($vis:vis $name:ident $ty:ident) => {
@@ -1355,6 +1503,10 @@ macro_rules! dir_children_wrapper_with_vfs {
     };
 }
 
+/// A structure that represents a directory where only one of the children pass the filter `F`.
+///
+/// This is useful if you want to select one specific file, by the [file prefix](Path::file_prefix) /
+/// [stem](Path::file_stem), but you don't care about the extension.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DirChildSingle<T, F: Filter> {
     /// The file name of the child.
@@ -1423,25 +1575,80 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     }
 
     /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
     pub fn file_name(&self) -> &OsString {
         &self.file_name
     }
 
-    /// Gets the file name of the child (or the name of the directory; the last segment in the path).
+    /// Gets the file name of the child (or the name of the directory; the last segment in the path). Mutable version of [`file_name`][Self::file_name].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let mut d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.file_name_mut(), &mut OsString::from("file.txt"));
+    /// assert_eq!(d.value_mut(), &mut "file".to_owned());
+    /// ```
     pub fn file_name_mut(&mut self) -> &mut OsString {
         &mut self.file_name
     }
 
     /// Gets the value of the child.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value(), &"file".to_owned());
+    /// ```
     pub fn value(&self) -> &T {
         &self.value
     }
 
     /// Gets the value of the child. Mutable reference version of [`Self::value`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let mut d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// assert_eq!(d.value_mut(), &mut "file".to_owned());
+    /// ```
     pub fn value_mut(&mut self) -> &mut T {
         &mut self.value
     }
 
+    /// Converts &[`DirChildSingle`]<T, F> to [`DirChildSingle`]<&T, F>.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// let d_ref: DirChildSingle<&String, NoFilter> = d.as_ref();
+    /// assert_eq!(d_ref.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d_ref.value(), &&"file".to_owned());
+    /// ```
     pub fn as_ref(&self) -> DirChildSingle<&T, F> {
         DirChildSingle {
             file_name: self.file_name.clone(),
@@ -1450,6 +1657,51 @@ impl<T, F: Filter> DirChildSingle<T, F> {
         }
     }
 
+    /// Maps the value of the child to a new value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// let d2 = d.map(|s| s.to_uppercase());
+    /// assert_eq!(d2.value(), &"FILE".to_owned());
+    /// ```
+    pub fn map<T2, F2>(self, f: F2) -> DirChildSingle<T2, F>
+    where
+        F2: FnOnce(T) -> T2,
+    {
+        DirChildSingle {
+            file_name: self.file_name,
+            value: f(self.value),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Map the filter to another [`Filter`] type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use std::path::Path;
+    /// use dir_structure::{DirChildSingle, NoFilter};
+    ///
+    /// struct Filt;
+    ///
+    /// impl dir_structure::Filter for Filt {
+    ///     fn allows(_path: &Path) -> bool {
+    ///         true
+    ///     }
+    /// }
+    ///
+    /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// let d2: DirChildSingle<_, Filt> = d.map_filter::<Filt>();
+    /// assert_eq!(d2.file_name(), &OsString::from("file.txt"));
+    /// assert_eq!(d2.value(), &"file".to_owned());
+    /// ```
     pub fn map_filter<F2>(self) -> DirChildSingle<T, F2>
     where
         F2: Filter,
@@ -1482,9 +1734,12 @@ where
     }
 }
 
+/// A similar idea to [`DirChildSingle`], but allows for the absence of a matching entry.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DirChildSingleOpt<T, F: Filter> {
+    /// The entry is absent.
     None,
+    /// The entry is present.
     Some(DirChildSingle<T, F>),
 }
 
@@ -1508,15 +1763,60 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     }
 
     /// Returns `true` if this is a [`DirChildSingleOpt::Some`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// assert!(opt.is_some());
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// assert!(!opt.is_some());
+    /// ```
     pub fn is_some(&self) -> bool {
         matches!(self, DirChildSingleOpt::Some(_))
     }
 
     /// Returns `true` if this is a [`DirChildSingleOpt::None`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// assert!(!opt.is_none());
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// assert!(opt.is_none());
+    /// ```
     pub fn is_none(&self) -> bool {
         matches!(self, DirChildSingleOpt::None)
     }
 
+    /// Converts a &[`DirChildSingleOpt`]<T, F> into a [`DirChildSingleOpt`]<&T, F>.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let opt_ref = opt.as_ref();
+    /// assert_eq!(opt_ref, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", &"file".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let opt_ref = opt.as_ref();
+    /// assert_eq!(opt_ref, DirChildSingleOpt::None);
+    /// ```
     pub fn as_ref(&self) -> DirChildSingleOpt<&T, F> {
         match self {
             Self::Some(child) => DirChildSingleOpt::Some(child.as_ref()),
@@ -1524,6 +1824,23 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         }
     }
 
+    /// Maps the value inside the [`DirChildSingleOpt`] if it exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let opt_mapped = opt.map(|child| child.map(|v| v.to_uppercase()));
+    /// assert_eq!(opt_mapped, DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "FILE".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let opt_mapped = opt.map(|child| child.map(|v| v.to_uppercase()));
+    /// assert_eq!(opt_mapped, DirChildSingleOpt::None);
+    /// ```
     pub fn map<U>(
         self,
         f: impl FnOnce(DirChildSingle<T, F>) -> DirChildSingle<U, F>,
@@ -1534,6 +1851,32 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         }
     }
 
+    /// Returns a new [`DirChildSingleOpt`] by applying the function `f` to the value inside
+    /// the [`DirChildSingleOpt`] if it exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let opt_and_then = opt.and_then(|child| {
+    ///     DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new(child.file_name(), child.value().to_uppercase()))
+    /// });
+    /// assert_eq!(opt_and_then, DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "FILE".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let opt_and_then = opt.and_then(|child| DirChildSingleOpt::<String, NoFilter>::None);
+    /// assert_eq!(opt_and_then, DirChildSingleOpt::None);
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let opt_and_then = opt.and_then(|child| {
+    ///     DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new(child.file_name(), child.value().to_uppercase()))
+    /// });
+    /// assert_eq!(opt_and_then, DirChildSingleOpt::<_, NoFilter>::None);
+    /// ```
     pub fn and_then<U, F2: Filter>(
         self,
         f: impl FnOnce(DirChildSingle<T, F>) -> DirChildSingleOpt<U, F2>,
@@ -1544,6 +1887,32 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         }
     }
 
+    /// Returns a new [`DirChildSingleOpt`] by applying the function `f` to the value inside
+    /// the [`DirChildSingleOpt`] if it exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let opt_or_else = opt.or_else(|| {
+    ///     DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "FILE".to_owned()))
+    /// });
+    /// assert_eq!(opt_or_else, DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let opt_or_else = opt.or_else(|| {
+    ///     DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "FILE".to_owned()))
+    /// });
+    /// assert_eq!(opt_or_else, DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "FILE".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let opt_or_else = opt.or_else(|| DirChildSingleOpt::<String, NoFilter>::None);
+    /// assert_eq!(opt_or_else, DirChildSingleOpt::None);
+    /// ```
     pub fn or_else<F2: Filter>(
         self,
         f: impl FnOnce() -> DirChildSingleOpt<T, F2>,
@@ -1554,6 +1923,23 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         }
     }
 
+    /// Converts the [`DirChildSingleOpt`] into an `Option`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::DirChildSingleOpt;
+    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    ///
+    /// let opt = DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned()));
+    /// let option = opt.to_option();
+    /// assert_eq!(option, Some(DirChildSingle::<String, NoFilter>::new("file.txt", "file".to_owned())));
+    ///
+    /// let opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let option = opt.to_option();
+    /// assert_eq!(option, None);
+    /// ```
     pub fn to_option(self) -> Option<DirChildSingle<T, F>> {
         match self {
             DirChildSingleOpt::Some(child) => Some(child),
@@ -1604,6 +1990,7 @@ where
     }
 }
 
+/// A wrapper around [`DirChildren`] that forces the creation of the directory, even if there are no children to write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForceCreateDirChildren<T, F = NoFilter>
 where
@@ -1680,6 +2067,7 @@ where
 
 #[cfg(feature = "async")]
 #[pin_project]
+#[doc(hidden)]
 pub struct ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs: crate::VfsAsync>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,

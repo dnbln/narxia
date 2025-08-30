@@ -202,6 +202,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DeferredReadWriteFutureProj)]
+#[doc(hidden)]
 pub enum DeferredReadWriteFuture<
     'a,
     T,
@@ -306,6 +307,138 @@ where
             // the file / directory should already be in the given state.
 
             // If `T` has trivial `ReadFromAsync` / `WriteToAsync` implementations,
+            // this should not be a problem, but if it is, a custom `DeferredRead`
+            // implementation should be written for it.
+            return DeferredReadWriteFuture::SamePath;
+        }
+
+        DeferredReadWriteFuture::Reading {
+            inner: T::read_from_async(self.0.clone(), self.1),
+            path,
+            self_vfs: self.1,
+            target_vfs: vfs,
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DeferredReadWriteRefFutureProj)]
+#[doc(hidden)]
+pub enum DeferredReadWriteRefFuture<
+    'f,
+    T,
+    SelfVfs: crate::VfsAsync + 'f,
+    TargetVfs: crate::WriteSupportingVfsAsync + 'f,
+> where
+    T: for<'a> ReadFromAsync<'a, SelfVfs> + for<'a> WriteToAsync<'a, TargetVfs> + Send + 'static,
+    for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = Result<T>> + Unpin + 'a,
+    for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
+{
+    Poisson,
+    SamePath,
+    Reading {
+        self_vfs: Pin<&'f SelfVfs>,
+        target_vfs: Pin<&'f TargetVfs>,
+        inner: <T as ReadFromAsync<'f, SelfVfs>>::Future,
+        path: PathBuf,
+    },
+    Writing {
+        inner: <T as WriteToAsync<'f, TargetVfs>>::Future,
+    },
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'f, T, SelfVfs: crate::VfsAsync + 'f, TargetVfs: crate::WriteSupportingVfsAsync + 'f> Future
+    for DeferredReadWriteRefFuture<'f, T, SelfVfs, TargetVfs>
+where
+    T: for<'a> ReadFromAsync<'a, SelfVfs> + for<'a> WriteToAsync<'a, TargetVfs> + Send + 'static,
+    for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = Result<T>> + Unpin + 'a,
+    for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poisson);
+        match this {
+            DeferredReadWriteRefFutureProj::SamePath => Poll::Ready(Ok(())),
+            DeferredReadWriteRefFutureProj::Reading {
+                mut inner,
+                self_vfs,
+                target_vfs,
+                path,
+            } => match Pin::new(&mut inner).poll(cx) {
+                Poll::Ready(Ok(v)) => {
+                    let write_fut = v.write_to_async(path, target_vfs);
+                    self.as_mut()
+                        .project_replace(Self::Writing { inner: write_fut });
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                Poll::Pending => {
+                    self.project_replace(Self::Reading {
+                        inner,
+                        self_vfs,
+                        target_vfs,
+                        path,
+                    });
+                    Poll::Pending
+                }
+            },
+            DeferredReadWriteRefFutureProj::Writing { mut inner } => {
+                match Pin::new(&mut inner).poll(cx) {
+                    Poll::Ready(r) => Poll::Ready(r),
+                    Poll::Pending => {
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                }
+            }
+            DeferredReadWriteRefFutureProj::Poisson => {
+                panic!(
+                    "DeferredReadWriteRefFuture is in an invalid state. This is a bug in the code."
+                );
+            }
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<
+    'f,
+    const CHECK_ON_READ: bool,
+    T,
+    SelfVfs: crate::VfsAsync + 'f,
+    TargetVfs: crate::WriteSupportingVfsAsync + 'f,
+> WriteToAsyncRef<'f, TargetVfs> for DeferredRead<'f, T, SelfVfs, CHECK_ON_READ>
+where
+    for<'a> T: ReadFromAsync<'a, SelfVfs> + WriteToAsync<'a, TargetVfs> + Send + 'a,
+    for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = Result<T>> + Unpin + 'a,
+    for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
+{
+    type Future<'a>
+        = DeferredReadWriteFuture<'a, T, SelfVfs, TargetVfs>
+    where
+        Self: 'a,
+        'f: 'a;
+
+    fn write_to_async_ref<'a>(
+        self: &'a Self,
+        path: PathBuf,
+        vfs: Pin<&'a TargetVfs>,
+    ) -> Self::Future<'a>
+    where
+        'f: 'a,
+    {
+        if path == self.0 {
+            // Optimization: We were asked to write to the same path
+            // we are supposed to read from. We can just ignore it, since
+            // the file / directory should already be in the given state.
+
+            // If `T` has trivial `ReadFromAsync` / `WriteToAsyncRef` implementations,
             // this should not be a problem, but if it is, a custom `DeferredRead`
             // implementation should be written for it.
             return DeferredReadWriteFuture::SamePath;
