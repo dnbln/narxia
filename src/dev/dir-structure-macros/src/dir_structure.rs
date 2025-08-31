@@ -229,10 +229,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         has_field_impls.push(has_field_impl);
     }
 
-    #[cfg_attr(
-        all(not(feature = "async"), not(feature = "resolve-path")),
-        expect(unused_mut)
-    )]
+    #[cfg_attr(not(feature = "resolve-path"), expect(unused_mut))]
     let mut expanded = quote! {
         impl #read_impl_generics ::dir_structure::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
             fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::Result<Self>

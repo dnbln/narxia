@@ -1,3 +1,5 @@
+//! Asynchronous virtual file system traits.
+
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
@@ -217,8 +219,4 @@ where
 
 #[cfg(feature = "tokio")]
 #[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-mod tokio_fs_vfs;
-
-#[cfg(feature = "tokio")]
-#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
-pub use tokio_fs_vfs::TokioFsVfs;
+pub mod tokio_fs_vfs;

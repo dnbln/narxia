@@ -1,3 +1,5 @@
+//! Crate traits.
+
 pub mod sync;
 
 pub mod vfs;

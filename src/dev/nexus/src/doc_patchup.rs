@@ -229,10 +229,10 @@ pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
         } else if previous_r {
             let l = line
                 .trim()
-                .strip_prefix('`')
-                .expect("Expected ` prefix")
-                .strip_suffix('`')
-                .expect("Expected ` suffix");
+                .strip_prefix("<TooltipTarget>`")
+                .expect(r#"Expected the "<TooltipTarget>`" prefix"#)
+                .strip_suffix("`</TooltipTarget>")
+                .expect(r#"Expected the "`</TooltipTarget>" suffix"#);
 
             let docs = session
                 .query_symbol(l)

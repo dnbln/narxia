@@ -1,3 +1,5 @@
+//! Virtual file system traits.
+
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
@@ -61,7 +63,7 @@ impl DirEntryKind {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirEntryKind;
+    /// use dir_structure::traits::vfs::DirEntryKind;
     ///
     /// let entry = DirEntryKind::File;
     /// assert!(entry.is_file());
@@ -78,7 +80,7 @@ impl DirEntryKind {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirEntryKind;
+    /// use dir_structure::traits::vfs::DirEntryKind;
     ///
     /// let entry = DirEntryKind::File;
     /// assert!(!entry.is_dir());
@@ -110,12 +112,8 @@ pub trait DirWalker {
     fn next(&mut self) -> Option<Result<DirEntryInfo>>;
 }
 
-mod fs_vfs;
-pub use fs_vfs::FsVfs;
+pub mod fs_vfs;
 
 #[cfg(feature = "include_dir")]
 #[cfg_attr(docsrs, doc(cfg(feature = "include_dir")))]
-mod include_dir_vfs;
-#[cfg(feature = "include_dir")]
-#[cfg_attr(docsrs, doc(cfg(feature = "include_dir")))]
-pub use include_dir_vfs::IncludeDirVfs;
+pub mod include_dir_vfs;

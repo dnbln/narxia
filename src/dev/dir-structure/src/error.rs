@@ -1,3 +1,5 @@
+//! Error type, see [`Error`].
+
 use std::error;
 use std::io;
 use std::path::Path;

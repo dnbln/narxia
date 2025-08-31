@@ -15,8 +15,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Mermaid,
     mermaid: Mermaid,
     DocTooltip: ({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
+      <div className="doctooltip">{children}</div>
     ),
+    TooltipTarget: () => <></>,
     UnderConstruction: () => <Callout type={"warning"}>Under construction.</Callout>,
     img: (props) => <ImageZoom {...(props as any)} />,
     ...components,

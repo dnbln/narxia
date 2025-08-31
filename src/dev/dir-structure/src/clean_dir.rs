@@ -1,3 +1,6 @@
+//! A newtype that will clean the directory it is written to, before writing
+//! the value.
+
 #[cfg(feature = "async")]
 use std::future::Future;
 use std::marker;
@@ -13,9 +16,6 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::DirStructureItem;
-#[cfg(feature = "resolve-path")]
-use crate::DynamicHasField;
 use crate::FromRefForWriter;
 #[cfg(feature = "async")]
 use crate::FromRefForWriterAsync;
@@ -28,6 +28,9 @@ use crate::Result;
 #[cfg(feature = "async")]
 use crate::WriteToAsyncRef;
 use crate::prelude::*;
+#[cfg(feature = "resolve-path")]
+use crate::traits::resolve::DynamicHasField;
+use crate::traits::sync::DirStructureItem;
 
 /// A newtype that will clean the directory it is written to, before writing
 /// the value.

@@ -1,3 +1,10 @@
+//! A structure representing the children of a directory.
+//!
+//! See [`DirChildren`] for more details.
+//!
+//! Additionally, [`ForceCreateDirChildren`] is a variant that forces the creation of the directory
+//! structure, even without any children.
+
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::marker;
@@ -19,15 +26,15 @@ use futures_core::Stream;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::DirEntryInfo;
-use crate::DirStructureItem;
-use crate::DirWalker as _;
 #[cfg(feature = "resolve-path")]
 use crate::DynamicHasField;
 use crate::Error;
 use crate::NoFilter;
 use crate::Result;
 use crate::prelude::*;
+use crate::traits::sync::DirStructureItem;
+use crate::traits::vfs::DirEntryInfo;
+use crate::traits::vfs::DirWalker as _;
 
 /// A directory structure where we don't know the names of the folders at compile-time,
 /// and as such we cannot use the derive macro.
@@ -213,7 +220,7 @@ macro_rules! file_prefix_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::Filter for $name {
+        impl $crate::dir_children::Filter for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.file_prefix()
                     .and_then(|s| s.to_str())
@@ -1149,7 +1156,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
@@ -1168,7 +1175,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
@@ -1185,7 +1192,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let mut d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
@@ -1204,7 +1211,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.value(), &"file".to_owned());
@@ -1223,7 +1230,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let mut d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.value(), &"file".to_owned());
@@ -1240,7 +1247,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.map_file_name(|s| s.to_str().unwrap().to_uppercase()), DirChild::new("FILE.TXT", "file".to_owned()));
@@ -1267,7 +1274,7 @@ impl<T> DirChild<T> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::DirChild;
+    /// use dir_structure::dir_children::DirChild;
     /// use dir_structure::FileString;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
@@ -1486,7 +1493,7 @@ macro_rules! dir_children_wrapper_with_vfs {
 
         impl<'vfs, Vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
             type Item = $crate::DirChild<$ty<'vfs, Vfs>>;
-            type IntoIter = $crate::DirChildrenIntoIter<$ty<'vfs, Vfs>>;
+            type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>>;
 
             fn into_iter(self) -> Self::IntoIter {
                 self.0.into_iter()
@@ -1560,7 +1567,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, ReadFrom, WriteTo, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
@@ -1580,7 +1588,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
@@ -1596,7 +1605,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let mut d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name_mut(), &mut OsString::from("file.txt"));
@@ -1612,7 +1622,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.value(), &"file".to_owned());
@@ -1627,7 +1638,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let mut d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// assert_eq!(d.value_mut(), &mut "file".to_owned());
@@ -1642,7 +1654,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// let d_ref: DirChildSingle<&String, NoFilter> = d.as_ref();
@@ -1663,7 +1676,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// let d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
     /// let d2 = d.map(|s| s.to_uppercase());
@@ -1687,7 +1701,8 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// ```
     /// use std::ffi::OsString;
     /// use std::path::Path;
-    /// use dir_structure::{DirChildSingle, NoFilter};
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
     ///
     /// struct Filt;
     ///
@@ -1750,7 +1765,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
-    /// use dir_structure::{DirChildSingleOpt, ReadFrom, WriteTo, NoFilter};
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::NoFilter;
     ///
     /// let DirChildSingleOpt::Some(d) = DirChildSingleOpt::<_, NoFilter>::new("file.txt", "file".to_owned()) else {
     ///    panic!("Expected Some variant");
@@ -1767,8 +1783,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1786,8 +1802,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1805,8 +1821,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1829,8 +1845,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1857,8 +1873,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1893,8 +1909,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
@@ -1928,8 +1944,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirChildSingleOpt;
-    /// use dir_structure::DirChildSingle;
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
     ///
     /// let opt = DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned()));
@@ -2008,7 +2024,8 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use dir_structure::{ForceCreateDirChildren, DirChildren, NoFilter};
+    /// use dir_structure::dir_children::{ForceCreateDirChildren, DirChildren};
+    /// use dir_structure::NoFilter;
     ///
     /// let force_create = ForceCreateDirChildren::new(DirChildren::<String, NoFilter>::new());
     ///

@@ -1006,10 +1006,6 @@ where
 
 ---
 
-size = 48 (0x30), align = 0x8, needs Drop
-
----
-
 A directory structure where we don't know the names of the folders at compile-time,
 and as such we cannot use the derive macro.
 
@@ -1035,10 +1031,6 @@ dir_structure::dir_children
 ```rust ,ignore
 pub trait Filter
 ```
-
----
-
-Is not dyn-compatible due to having a method `allows` that is not dispatchable due to missing a receiver
 
 ---
 
@@ -1151,7 +1143,7 @@ See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.1.6/dir_s
 </DocTooltip>
 
 ## !!doctooltips DirChildren::iter-R
-`DirChildren<T, F>::iter#`
+<TooltipTarget>`DirChildren<T, F>::iter#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1196,7 +1188,7 @@ assert_eq!(i.next(), None);
 </DocTooltip>
 
 ## !!doctooltips DirChildren::iter_mut-R
-`DirChildren<T, F>::iter_mut#`
+<TooltipTarget>`DirChildren<T, F>::iter_mut#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1257,7 +1249,7 @@ assert_eq!(i.next(), None);
 </DocTooltip>
 
 ## !!doctooltips DeferredRead::perform_read-R
-`DeferredRead<'a, T, Vfs, CHECK_ON_READ>::perform_read#`
+<TooltipTarget>`DeferredRead<'a, T, Vfs, CHECK_ON_READ>::perform_read#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1359,7 +1351,7 @@ that would effectively be the same as using a [`DeferredRead`](https://docs.rs/d
 </DocTooltip>
 
 ## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
-`DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>::perform_and_store_read#`
+<TooltipTarget>`DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>::perform_and_store_read#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1428,10 +1420,6 @@ pub struct Versioned<T> {
 
 ---
 
-needs Drop
-
----
-
 A versioned value. This is a wrapper around a value that will keep track of
 how many times it has been changed. This is useful to not write the value
 to disk if it hasn't changed.
@@ -1459,7 +1447,7 @@ assert!(v.is_dirty());
 </DocTooltip>
 
 ## !!doctooltips Versioned::edit_eq_check-R
-`Versioned<T>::edit_eq_check#`
+<TooltipTarget>`Versioned<T>::edit_eq_check#`</TooltipTarget>
 
 <DocTooltip>
 

@@ -1,3 +1,7 @@
+//! A versioned value.
+//!
+//! See [`Versioned`] for more details.
+
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;

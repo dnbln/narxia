@@ -1,3 +1,5 @@
+//! `Option<T>` implementations.
+
 use std::path::Path;
 #[cfg(any(feature = "async", feature = "resolve-path"))]
 use std::path::PathBuf;
@@ -43,6 +45,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = OptionReadFromAsyncFutureOwnProj)]
+#[doc(hidden)]
 pub enum OptionReadFromAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
@@ -163,6 +166,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = OptionWriteToAsyncFutureProj)]
+#[doc(hidden)]
 pub enum OptionWriteToAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + 'static,

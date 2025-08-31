@@ -78,6 +78,9 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* custom */
+  --scrollycoding-steps: oklch(92.8% 0.006 264.531); /* var(--color-gray-900) */
 }
 
 .dark {
@@ -112,6 +115,9 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  /* custom */
+  --scrollycoding-steps: oklch(21% 0.006 285.885); /* var(--color-zinc-900) */
 }
 
 @layer base {
@@ -125,4 +131,42 @@
 
 .tooltip-trigger span {
   text-decoration: inherit;
+}
+
+div.doctooltip {
+  padding-left: 20px;
+  padding-right: 20px;
+
+  p {
+    /* word-wrap: normal; */
+    /* white-space: preserve nowrap; */
+    /* word-break: normal; */
+    /* overflow-wrap: anywhere; */
+
+    padding: 5px;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  code {
+    font-style: oblique;
+    background-color: var(--primary-foreground);
+  }
+
+  pre {
+    margin-left: -20px;
+    margin-right: -20px;
+  }
+
+  h1 {
+    font-size: 1.5em;
+  }
+
+  table {
+    min-width: 100%;
+    width: fit-content;
+    overflow-x: scroll;
+  }
 }

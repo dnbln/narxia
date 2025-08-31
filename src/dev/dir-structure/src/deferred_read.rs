@@ -1,3 +1,7 @@
+//! A wrapper that defers the reading of a file until it is actually needed.
+//!
+//! See [`DeferredRead::perform_read`] for more details.
+
 use core::fmt;
 use core::fmt::Debug;
 use std::io;

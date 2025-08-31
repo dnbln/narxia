@@ -11,13 +11,13 @@ use std::path::PathBuf;
 use std::result;
 use std::slice;
 
-use dir_structure::DirChildSingle;
-use dir_structure::DirChildSingleOpt;
 use dir_structure::DirChildren;
 use dir_structure::DirStructure;
 use dir_structure::Filter;
-use dir_structure::ForceCreateDirChildren;
 use dir_structure::Versioned;
+use dir_structure::dir_children::DirChildSingle;
+use dir_structure::dir_children::DirChildSingleOpt;
+use dir_structure::dir_children::ForceCreateDirChildren;
 use dir_structure::file_prefix_filter;
 use dir_structure::json_pretty::JsonPretty;
 use dir_structure::resolve_path;

@@ -1,3 +1,7 @@
+//! Traits for resolving paths in a directory structure.
+//!
+//! [`HasField`] is automatically derived by the `#[derive(DirStructure)]` macro.
+
 use std::path::PathBuf;
 
 #[doc(hidden)]

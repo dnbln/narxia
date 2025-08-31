@@ -1,3 +1,5 @@
+//! Asynchronous reading / writing traits.
+
 use std::future;
 use std::future::Future;
 use std::path::PathBuf;

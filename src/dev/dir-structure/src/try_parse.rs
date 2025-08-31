@@ -1,3 +1,7 @@
+//! A wrapper that tries to parse a value of type `T`, keeping the original error if it fails.
+//!
+//! See [`TryParse`] for more details.
+
 #[cfg(feature = "async")]
 use std::future;
 #[cfg(feature = "async")]

@@ -1,3 +1,7 @@
+//! A structure representing the descendants of a directory.
+//!
+//! See [`DirDescendants`] for more details.
+
 use core::fmt::Debug;
 use core::slice;
 use std::ffi::OsString;
@@ -8,13 +12,12 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::vec;
 
-use crate::DirEntryInfo;
-use crate::DirWalker;
 #[cfg(feature = "resolve-path")]
 use crate::DynamicHasField;
 use crate::NoFilter;
-use crate::ReadFrom;
-use crate::WriteTo;
+use crate::prelude::*;
+use crate::traits::vfs::DirEntryInfo;
+use crate::traits::vfs::DirWalker;
 
 /// A structure representing the descendants of a directory.
 ///

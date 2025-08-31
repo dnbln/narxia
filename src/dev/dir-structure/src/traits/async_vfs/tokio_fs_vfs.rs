@@ -1,3 +1,5 @@
+//! Tokio file system virtual file system implementation.
+
 // use std::fs as std_fs;
 use std::io;
 use std::path::PathBuf;
@@ -7,12 +9,12 @@ use std::task::Poll;
 use futures_core::Stream;
 use tokio::fs;
 
-use crate::CreateParentDirDefaultFuture;
-use crate::IoErrorWrapperFuture;
+use super::CreateParentDirDefaultFuture;
+use super::IoErrorWrapperFuture;
 use crate::Result;
 use crate::VfsAsync;
-use crate::WrapIoError;
 use crate::WriteSupportingVfsAsync;
+use crate::error::WrapIoError;
 
 /// A [`VfsAsync`] and [`WriteSupportingVfsAsync`] implementation using [`tokio::fs`].
 pub struct TokioFsVfs;
@@ -50,7 +52,7 @@ impl VfsAsync for TokioFsVfs {
     }
 
     type DirWalk<'a>
-        = DirWalker
+        = imp::DirWalker
     where
         Self: 'a;
 
@@ -68,7 +70,7 @@ impl VfsAsync for TokioFsVfs {
             Box::pin(async move {
                 fs::read_dir(path.clone())
                     .await
-                    .map(|inner| DirWalker { inner, path })
+                    .map(|inner| imp::DirWalker { inner, path })
             }),
         )
     }
@@ -134,23 +136,30 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
     }
 }
 
-pub struct DirWalker {
-    inner: fs::ReadDir,
-    path: PathBuf,
-}
+mod imp {
+    use std::ffi::OsString;
 
-impl Stream for DirWalker {
-    type Item = Result<(std::ffi::OsString, PathBuf)>;
+    use super::*;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        match self.inner.poll_next_entry(cx) {
-            Poll::Ready(Ok(Some(v))) => Poll::Ready(Some(Ok((v.file_name(), v.path())))),
-            Poll::Ready(Ok(None)) => Poll::Ready(None),
-            Poll::Ready(Err(e)) => Poll::Ready(Some(Err(e).wrap_io_error_with(&self.path))),
-            Poll::Pending => Poll::Pending,
+    /// Directory walker for asynchronous file system operations on [`tokio::fs`].
+    pub struct DirWalker {
+        pub(super) inner: fs::ReadDir,
+        pub(super) path: PathBuf,
+    }
+
+    impl Stream for DirWalker {
+        type Item = Result<(OsString, PathBuf)>;
+
+        fn poll_next(
+            mut self: Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+        ) -> Poll<Option<Self::Item>> {
+            match self.inner.poll_next_entry(cx) {
+                Poll::Ready(Ok(Some(v))) => Poll::Ready(Some(Ok((v.file_name(), v.path())))),
+                Poll::Ready(Ok(None)) => Poll::Ready(None),
+                Poll::Ready(Err(e)) => Poll::Ready(Some(Err(e).wrap_io_error_with(&self.path))),
+                Poll::Pending => Poll::Pending,
+            }
         }
     }
 }

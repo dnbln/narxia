@@ -1,3 +1,5 @@
+//! Synchronous reading / writing traits.
+
 use std::path::Path;
 use std::pin::Pin;
 

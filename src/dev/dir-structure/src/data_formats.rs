@@ -1,3 +1,5 @@
+//! Serde [`ReadFrom`](crate::traits::sync::ReadFrom) and [`WriteTo`](crate::traits::sync::WriteTo) implementations.
+
 macro_rules! data_format_impl {
     (
         $(#[$mod_attr:meta])*

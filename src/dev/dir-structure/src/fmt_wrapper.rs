@@ -1,3 +1,7 @@
+//! [`ReadFrom`] and [`WriteTo`] implementations using [`FromStr::from_str`] and [`Display::fmt`].
+//!
+//! See [`FmtWrapper`] for more details.
+
 use std::error;
 use std::fmt::Display;
 use std::marker;

@@ -1,3 +1,5 @@
+//! Implementations for standard library types.
+
 #[cfg(feature = "async")]
 use std::future;
 use std::marker;

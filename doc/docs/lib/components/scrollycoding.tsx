@@ -35,7 +35,7 @@ export function ScrollyCoding(props: unknown) {
                         key={i}
                         index={i}
                         selectOn={["click", "scroll"]}
-                        className="border-l-4 border-zinc-700 data-[selected=true]:border-blue-400 px-5 py-2 mb-24 rounded bg-zinc-900"
+                        className="border-l-4 border-zinc-700 data-[selected=true]:border-blue-400 px-5 py-2 mb-24 rounded bg-(--scrollycoding-steps)"
                     >
                         <h2 className="mt-4 text-xl">{step.title}</h2>
                         <div>{step.children}</div>

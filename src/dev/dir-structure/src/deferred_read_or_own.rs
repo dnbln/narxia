@@ -1,3 +1,7 @@
+//! A wrapper that defers the reading of a file until it is actually needed.
+//!
+//! See [`DeferredReadOrOwn`] for more details.
+
 use std::path::Path;
 #[cfg(any(feature = "resolve-path", feature = "async"))]
 use std::path::PathBuf;
