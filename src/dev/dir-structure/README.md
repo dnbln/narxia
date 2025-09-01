@@ -35,6 +35,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 [This blog post][blog post] goes a bit more in-depth about
-the more advanced features of the library.
+the more advanced features of the library. Here is a quick run-down:
+
+- Virtual file systems, so it doesn't depend on the actual file system.
+- Support for async I/O (`async` + `tokio` features). Other (custom) async runtimes can be supported by implementing `VfsAsync` and optionally `WriteSupportingVfsAsync`.
+- Support for reading and writing `serde` types with the `Json<T>`, `Toml<T>`, `Yaml<T>`, `Ron<T>` wrappers if that the corresponding features are enabled.
+- Support for `DirChildren` and `DirDescendants` to easily navigate and manipulate dynamic-layout directory structures.
+
+Optimizations:
+- Support for deferred reads via `DeferredRead` and deferred + cached reads via `DeferredReadOrOwn`.
+- Support for versioning of file contents while in-memory via `Versioned`, so if we want to later write the entire structure to disk, we will only write the modified parts.
 
 [blog post]: https://dnbln.dev/blog/dir-structure

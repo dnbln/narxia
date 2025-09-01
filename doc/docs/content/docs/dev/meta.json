@@ -3,7 +3,7 @@
   "description": "Developer guide to Narxia",
   "root": true,
   "pages": [
-    "dev",
+    "index",
     "--- Syntax ---",
     "parsing",
     "syntree",
