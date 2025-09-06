@@ -8,6 +8,7 @@ use syn::GenericParam;
 use syn::Ident;
 use syn::ImplGenerics;
 use syn::ItemStruct;
+use syn::Type;
 use syn::WherePredicate;
 use syn::parse_quote;
 
@@ -121,7 +122,7 @@ pub(super) fn expand_dir_structure_for_field(
             actual_field_ty_perform: actual_field_ty_perform.clone(),
             corresponding_field: field.clone(),
             newtype: wnt.cloned(),
-            future_handler: Box::new(move |next_variant: Option<&FutureVariant>| {
+            future_handler: Box::new(move |next_variant: Option<&FutureVariant>, _self_path_fields: &[(Ident, Type)]| {
                 next_variant.map_or_else(
                     || {
                         parse_quote! {
@@ -222,7 +223,7 @@ pub(super) fn future_impl_enum(
     let branches = write_async_ref.variants.iter().zip(write_async_ref.variants.iter().skip(1).map(Some).chain(iter::once(None)))
             .map(|(current, next)| {
                 let current_name = &current.variant.ident;
-                let e = (current.future_handler)(next);
+                let e = (current.future_handler)(next, &write_async_ref.self_path_fields);
                 let (mut_fields, other_fields): (Vec<_>, Vec<_>) = current.variant.fields.iter().filter_map(|f| f.ident.as_ref()).partition(|a| a.to_string().starts_with("__mut_"));
                 quote! {
                     #write_async_proj_name::#current_name { #(#other_fields,)* #(mut #mut_fields,)* } => #e,
@@ -263,11 +264,13 @@ pub(super) fn future_impl_enum(
 
     let where_clause_write_future = merge_where_clause(None, write_async_ref.clauses.clone());
 
+    let vis = &st.vis;
+
     Ok((
         quote! {
             #[allow(non_camel_case_types)]
             #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
-            enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
+            #vis enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
                 Poison,
                 Init {
                     #path_param_name: ::std::path::PathBuf,

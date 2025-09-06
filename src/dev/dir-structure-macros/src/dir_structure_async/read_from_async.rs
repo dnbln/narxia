@@ -47,6 +47,9 @@ pub(super) fn expand_dir_structure_for_field(
 
     let async_read_bound = if self_path {
         // self_path field, just use the path directly
+        async_read_future
+            .self_path_fields
+            .push((field_name.clone(), field_ty.clone()));
         None
     } else {
         let variant_name = format_ident!("Reading_{}", field_name);
@@ -93,6 +96,7 @@ pub(super) fn expand_dir_structure_for_field(
         async_read_future.clauses.push(parse_quote! {
             for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<#actual_field_ty_perform>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
         });
+        let path_param_name = path_param_name.clone();
         async_read_future.variants.push(FutureVariant {
             variant: parse_quote! {
                 #variant_name {
@@ -105,9 +109,17 @@ pub(super) fn expand_dir_structure_for_field(
             actual_field_ty_perform: actual_field_ty_perform.clone(),
             corresponding_field: field.clone(),
             newtype: wnt.clone(),
-            future_handler: Box::new(move |next_variant: Option<&FutureVariant>| {
+            future_handler: Box::new(move |next_variant: Option<&FutureVariant>, self_path_fields: &[(Ident, Type)]| {
                 next_variant.map_or_else(
                     || {
+                        let mut self_path_handlers = quote! {};
+
+                        for (f_name, f_ty) in self_path_fields {
+                            self_path_handlers.extend(quote! {
+                                #f_name: <#f_ty as ::std::convert::From<std::path::PathBuf>>::from(#path_param_name .clone()),
+                            });
+                        }
+
                         let value_name = format_ident!("__value");
                         let end_expr = match &wnt {
                             Some(nt) => quote! {
@@ -123,6 +135,7 @@ pub(super) fn expand_dir_structure_for_field(
                                     ::std::task::Poll::Ready(Ok(#ty_name_clone {
                                         #(#fields,)*
                                         #f_name: #end_expr,
+                                        #self_path_handlers
                                     }))
                                 }
                                 ::std::task::Poll::Ready(Err(e)) => ::std::task::Poll::Ready(Err(e)),
@@ -209,7 +222,7 @@ pub(super) fn future_impl_enum(
     let branches = read_async.variants.iter().zip(read_async.variants.iter().skip(1).map(Some).chain(iter::once(None)))
             .map(|(current, next)| {
                 let current_name = &current.variant.ident;
-                let e = (current.future_handler)(next);
+                let e = (current.future_handler)(next, &read_async.self_path_fields);
                 let (mut_fields, other_fields): (Vec<_>, Vec<_>) = current.variant.fields.iter().filter_map(|f| f.ident.as_ref()).partition(|a| a.to_string().starts_with("__mut_"));
                 quote! {
                     #read_async_proj_name::#current_name { #(#other_fields,)* #(mut #mut_fields,)* } => #e,
@@ -227,10 +240,12 @@ pub(super) fn future_impl_enum(
 
     let where_clause_read_future = merge_where_clause(None, read_async.clauses.clone());
 
+    let vis = &st.vis;
+
     Ok(quote! {
         #[allow(non_camel_case_types)]
         #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
-        enum #name<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> #where_clause_read_future {
+        #vis enum #name<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> #where_clause_read_future {
             Poison,
             Init {
                 #path_param_name: ::std::path::PathBuf,

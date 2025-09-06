@@ -3,6 +3,7 @@ use std::iter;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
+use syn::Expr;
 use syn::Token;
 use syn::braced;
 use syn::bracketed;
@@ -12,6 +13,8 @@ use syn::parse::discouraged::Speculative;
 use syn::parse_quote;
 use syn::punctuated::Pair;
 use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::token::Async;
 
 // resolve_path!([T @ path_expr].a."b".c.d.${e});
 // or
@@ -269,7 +272,7 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     let mut param_id: u32 = 0;
     let mut params = quote! {};
     let mut args = quote! {};
-    let mut read_code = None::<()>;
+    let mut read_code = None::<Box<dyn Fn(bool, &Expr) -> TokenStream>>;
 
     for segment in input.segments.pairs() {
         let (s, last) = match segment {
@@ -298,23 +301,28 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                 resolve.extend(quote! {
                     let __current = <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
                 });
-                // if last {
-                //     read_code = Some(Box::new(|asyncness: bool, vfs: &Expr| {
-                //         if asyncness {
-                //             quote! {
-                //                 <#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::parse(
-                //                     <<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::ReaderTy
-                //                         as ::dir_structure::traits::asy::ReadFrom<'_, _>>
-                //                         ::read_from_async(__current, #vfs)
-                //                 )
-                //             }
-                //         } else {
-                //             quote! {
-                //                 <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::read_from(__current)
-                //             }
-                //         }
-                //     }));
-                // }
+                if last {
+                    let current_path = current_path.clone();
+                    read_code = Some(Box::new(move |asyncness: bool, vfs: &Expr| {
+                        if asyncness {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::ReaderType
+                                        as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>
+                                            ::read_from_async(__current, #vfs).await?
+                                ))
+                            }
+                        } else {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::ReaderType
+                                        as ::dir_structure::traits::sync::ReadFrom<'_, _>>
+                                            ::read_from(&__current, #vfs)?
+                                ))
+                            }
+                        }
+                    }));
+                }
                 current_path = parse_quote! {
                     <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::Inner
                 };
@@ -330,6 +338,28 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                 resolve.extend(quote! {
                     let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #param_name);
                 });
+                if last {
+                    let current_path = current_path.clone();
+                    read_code = Some(Box::new(move |asyncness: bool, vfs: &Expr| {
+                        if asyncness {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
+                                        as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>
+                                            ::read_from_async(__current, #vfs).await?
+                                ))
+                            }
+                        } else {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
+                                        as ::dir_structure::traits::sync::ReadFrom<'_, _>>
+                                            ::read_from(&__current, #vfs)?
+                                ))
+                            }
+                        }
+                    }));
+                }
                 current_path = parse_quote! {
                     <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
@@ -342,6 +372,28 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                 resolve.extend(quote! {
                     let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #value);
                 });
+                if last {
+                    let current_path = current_path.clone();
+                    read_code = Some(Box::new(move |asyncness: bool, vfs: &Expr| {
+                        if asyncness {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
+                                        as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>
+                                            ::read_from_async(__current, #vfs).await?
+                                ))
+                            }
+                        } else {
+                            quote! {
+                                Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
+                                    <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
+                                        as ::dir_structure::traits::sync::ReadFrom<'_, _>>
+                                            ::read_from(&__current, #vfs)?
+                                ))
+                            }
+                        }
+                    }));
+                }
                 current_path = parse_quote! {
                     <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
@@ -351,25 +403,31 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
 
     let p = input.core.path;
 
-    let read_code = match input.async_vfs {
+    let reader_code = read_code.ok_or_else(|| {
+        syn::Error::new_spanned(input.core.ty, "no segments provided to load_path")
+    })?;
+
+    let (asy, read_code) = match input.async_vfs {
         LoadPathAsyncVfs::Async(vfs) => {
-            quote! {
-                <#current_path as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>::read_from_async(__current, #vfs)
-            }
+            (Some(Async(vfs.span())), reader_code(true, &vfs))
+            // quote! {
+            //     <#current_path as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>::read_from_async(__current, #vfs)
+            // }
         }
         LoadPathAsyncVfs::Sync(vfs) => {
             let vfs = vfs.unwrap_or_else(
                 || parse_quote! { ::std::pin::Pin::new(&::dir_structure::vfs::fs_vfs::FsVfs) },
             );
 
-            quote! {
-                <#current_path as ::dir_structure::traits::sync::ReadFrom<'_, _>>::read_from(&__current, #vfs)
-            }
+            (None, reader_code(false, &vfs))
+            // quote! {
+            //     <#current_path as ::dir_structure::traits::sync::ReadFrom<'_, _>>::read_from(&__current, #vfs)
+            // }
         }
     };
 
     Ok(quote! {{
-        fn __read_(__current: ::std::path::PathBuf #params) -> ::dir_structure::error::Result<#current_path>
+        #asy fn __read_(__current: ::std::path::PathBuf #params) -> ::dir_structure::error::Result<#current_path>
             #where_clause
         {
             #resolve

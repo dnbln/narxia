@@ -25,8 +25,8 @@ struct FutureVariant {
     actual_field_ty_perform: Type,
     path_expr: TokenStream,
     /// expr that yields Poll, will be used in Future::poll() implementation
-    /// it is given the next variant of the future
-    future_handler: Box<dyn Fn(Option<&FutureVariant>) -> Expr>,
+    /// it is given the next variant of the future, as well as the list of self_path fields
+    future_handler: Box<dyn Fn(Option<&FutureVariant>, &[(Ident, Type)]) -> Expr>,
 
     corresponding_field: Field,
     newtype: Option<Type>,
@@ -40,6 +40,7 @@ struct FutureEnum {
     variants: Vec<FutureVariant>,
     clauses: Vec<WherePredicate>,
     clauses_ref_vfs: bool,
+    self_path_fields: Vec<(Ident, Type)>,
 }
 
 struct DirStructureForField {
@@ -212,6 +213,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         variants: Vec::new(),
         clauses: Vec::new(),
         clauses_ref_vfs: false,
+        self_path_fields: Vec::new(),
     };
 
     let mut write_async_ref = FutureEnum {
@@ -232,6 +234,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         variants: Vec::new(),
         clauses: Vec::new(),
         clauses_ref_vfs: false,
+        self_path_fields: Vec::new(),
     };
 
     let mut write_async_owned = FutureEnum {
@@ -249,6 +252,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         variants: Vec::new(),
         clauses: Vec::new(),
         clauses_ref_vfs: false,
+        self_path_fields: Vec::new(),
     };
 
     let mut field_async_read_bounds = Vec::new();
@@ -307,6 +311,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     let write_async_ty_name = &write_async_ref.name;
 
     expanded.extend(quote! {
+        #[allow(nonstandard_style, non_snake_case)]
         #read_async_impl_enum
 
         impl #read_async_impl_generics ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs> for #name #ty_generics #where_clause_read_from_async {
@@ -325,6 +330,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             }
         }
 
+        #[allow(nonstandard_style, non_snake_case)]
         #write_async_ref_impl_enum
 
         impl #write_async_impl_generics ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async_ref {

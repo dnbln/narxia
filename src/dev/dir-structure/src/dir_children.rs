@@ -1513,6 +1513,8 @@ macro_rules! dir_children_wrapper_with_vfs {
                 <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
             }
         }
+
+        impl<'vfs, Vfs> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
     };
 }
 

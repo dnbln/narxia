@@ -138,6 +138,7 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
 
 mod imp {
     use std::ffi::OsString;
+    use std::task::Context;
 
     use super::*;
 
@@ -150,10 +151,7 @@ mod imp {
     impl Stream for DirWalker {
         type Item = Result<(OsString, PathBuf)>;
 
-        fn poll_next(
-            mut self: Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-        ) -> Poll<Option<Self::Item>> {
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             match self.inner.poll_next_entry(cx) {
                 Poll::Ready(Ok(Some(v))) => Poll::Ready(Some(Ok((v.file_name(), v.path())))),
                 Poll::Ready(Ok(None)) => Poll::Ready(None),
