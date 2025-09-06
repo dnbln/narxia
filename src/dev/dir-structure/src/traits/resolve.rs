@@ -32,7 +32,7 @@ pub trait DynamicHasField {
     /// The type of the field.
     type Inner;
     /// How to resolve the path for the field, from the path of `Self`, given the name
-    /// passed into [the `resolve_path!` macro](crate::resolve_path).
+    /// passed into [the `resolve_path!` macro](resolve_path).
     fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
 }
 
@@ -45,7 +45,7 @@ pub use dir_structure_macros::load_path;
 ///
 /// ```rust
 /// use std::path::PathBuf;
-/// use dir_structure::{DirStructure, resolve_path};
+/// use dir_structure::{DirStructure, traits::resolve::resolve_path};
 ///
 /// #[derive(DirStructure)]
 /// struct MyStruct {
