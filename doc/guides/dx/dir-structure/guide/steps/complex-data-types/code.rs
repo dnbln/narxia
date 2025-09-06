@@ -2,7 +2,7 @@
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -23,4 +23,4 @@ struct Dir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

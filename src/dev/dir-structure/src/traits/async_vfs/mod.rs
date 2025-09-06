@@ -10,7 +10,8 @@ use std::task::Poll;
 use futures_core::Stream;
 use pin_project::pin_project;
 
-use crate::Result;
+use crate::error::Error;
+use crate::error::Result;
 
 /// An asynchronous virtual file system. Writing operations are provided by the [`WriteSupportingVfsAsync` trait](self::WriteSupportingVfsAsync).
 pub trait VfsAsync: Send + Sync + Unpin {
@@ -210,7 +211,7 @@ where
             Poll::Ready(Ok(value)) => Poll::Ready(Ok(value)),
             Poll::Ready(Err(e)) => {
                 let path = self.path.clone();
-                Poll::Ready(Err(crate::Error::Io(path, e)))
+                Poll::Ready(Err(Error::Io(path, e)))
             }
             Poll::Pending => Poll::Pending,
         }

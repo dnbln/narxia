@@ -6,13 +6,14 @@ use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use dir_structure::DirChild;
-use dir_structure::DirChildren;
-use dir_structure::FsVfs;
-use dir_structure::ReadFrom;
-use dir_structure::Versioned;
-use dir_structure::VersionedString;
-use dir_structure::WriteTo;
+use dir_structure::clean_dir::CleanDir;
+use dir_structure::dir_children::DirChild;
+use dir_structure::dir_children::DirChildren;
+use dir_structure::prelude::*;
+use dir_structure::traits::vfs;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::versioned::Versioned;
+use dir_structure::versioned::VersionedString;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -203,11 +204,11 @@ fn read_numbers() {
     std::fs::write(d.join("f3"), "3").unwrap();
     #[derive(dir_structure::DirStructure)]
     struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f2: u32,
-        #[dir_structure(with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f3: u32,
     }
 
@@ -223,11 +224,11 @@ fn write_numbers() {
     let d = p.join("dir");
     #[derive(dir_structure::DirStructure)]
     struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f2: u32,
-        #[dir_structure(with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f3: u32,
     }
 
@@ -249,7 +250,7 @@ fn deferred_read() {
     #[derive(dir_structure::DirStructure)]
     struct FDir<'vfs, Vfs> {
         #[dir_structure(path = "f1.txt")]
-        f: dir_structure::DeferredRead<'vfs, String, Vfs>,
+        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs>,
     }
 
     let p = test_dir("deferred_read");
@@ -378,7 +379,7 @@ fn clean_dir_writer() {
     assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
     std::fs::write(d.join("f4"), "f4").unwrap();
 
-    dir_structure::CleanDir(Dir {
+    CleanDir(Dir {
         f1: "f1".to_owned(),
         f2: "f2".to_owned(),
         f3: "f3".to_owned(),
@@ -396,7 +397,7 @@ fn clean_dir_writer() {
 fn clean_dir_writer_newtype() {
     #[derive(dir_structure::DirStructure)]
     struct Dir {
-        #[dir_structure(with_newtype = dir_structure::CleanDir<Subdir>)]
+        #[dir_structure(with_newtype = CleanDir<Subdir>)]
         subdir: Subdir,
     }
 
@@ -432,7 +433,7 @@ fn clean_dir_writer_newtype() {
     assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
     std::fs::write(d.join("subdir/f4"), "f4").unwrap();
 
-    dir_structure::CleanDir(Dir {
+    CleanDir(Dir {
         subdir: Subdir {
             f1: "f1".to_owned(),
             f2: "f2".to_owned(),
@@ -491,8 +492,8 @@ fn versioned_doesnt_call_write_if_not_changed() {
         inner: T,
     }
 
-    impl<'a, Vfs: dir_structure::Vfs, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
-        fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::Result<Self> {
+    impl<'a, Vfs: vfs::Vfs, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
+        fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::error::Result<Self> {
             Ok(Self {
                 count: AtomicUsize::new(0),
                 inner: T::read_from(path, vfs)?,
@@ -500,8 +501,8 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    impl<Vfs: dir_structure::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
-        fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<()> {
+    impl<Vfs: vfs::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
+        fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<()> {
             self.count.fetch_add(1, Ordering::SeqCst);
             self.inner.write_to(path, vfs)
         }

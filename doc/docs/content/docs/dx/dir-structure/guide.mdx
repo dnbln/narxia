@@ -36,7 +36,7 @@ mindmap
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -50,7 +50,7 @@ struct Dir {
 // !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -71,7 +71,7 @@ mindmap
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -88,7 +88,7 @@ let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 // !mark
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -111,7 +111,7 @@ mindmap
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -132,7 +132,7 @@ struct Dir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -160,7 +160,7 @@ mindmap
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
 // !tooltip[/Json/] Json
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper, data_formats::json::Json};
 use serde::{Serialize, Deserialize};
 
 // !tooltip[/DirStructure/] DirStructure
@@ -195,7 +195,7 @@ struct Obj {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -217,7 +217,7 @@ mindmap
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -233,7 +233,7 @@ struct Dir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -255,7 +255,7 @@ mindmap
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -279,7 +279,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -309,7 +309,7 @@ mindmap
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -334,7 +334,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -367,7 +367,7 @@ use std::path::Path;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/Filter/] Filter
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -402,7 +402,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -437,7 +437,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -465,7 +465,7 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -496,7 +496,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredRead/] DeferredRead
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredRead};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -539,7 +539,7 @@ dir.subdirs.iter().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -569,7 +569,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -617,7 +617,7 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -651,7 +651,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 
 
 // !tooltip[/DirStructure/] DirStructure
@@ -701,7 +701,7 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will not write anything to disk, since nothing has changed
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -738,7 +738,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -788,7 +788,7 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will write the changed values to disk
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error
 
 ```
 
@@ -855,7 +855,7 @@ dir_structure::traits::sync::DirStructureItem
 pub trait DirStructureItem
 pub fn read(path: impl AsRef<Path>) -> Result<Self>
 where
-    Self: ReadFrom<'static, crate::FsVfs> + Sized,
+    Self: ReadFrom<'static, fs_vfs::FsVfs> + Sized,
 ```
 
 ---
@@ -876,7 +876,7 @@ dir_structure::traits::sync::DirStructureItem
 pub trait DirStructureItem
 pub fn write(&self, path: impl AsRef<Path>) -> Result<()>
 where
-    Self: WriteTo<crate::FsVfs>,
+    Self: WriteTo<fs_vfs::FsVfs>,
 ```
 
 ---
@@ -912,9 +912,9 @@ For example: u8, i8, i16, u16, all integer types... bool etc.
 
 ```rust ,ignore
 use std::path::Path;
-use dir_structure::DirStructureItem;
 
-use dir_structure::FmtWrapper;
+use dir_structure::traits::sync::DirStructureItem;
+use dir_structure::fmt_wrapper::FmtWrapper;
 
 #[derive(dir_structure::DirStructure, PartialEq, Debug)]
 struct Dir {
@@ -1006,6 +1006,10 @@ where
 
 ---
 
+size = 48 (0x30), align = 0x8, needs Drop
+
+---
+
 A directory structure where we don't know the names of the folders at compile-time,
 and as such we cannot use the derive macro.
 
@@ -1034,6 +1038,10 @@ pub trait Filter
 
 ---
 
+Is not dyn-compatible due to having a method `allows` that is not dispatchable due to missing a receiver
+
+---
+
 A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.1.6/dir_structure/dir_children/struct.DirChildren.html) structure.
 
 This is used to filter out children that we don't want to
@@ -1049,7 +1057,7 @@ For example, for a [`Filter`](https://docs.rs/dir_structure/0.1.6/dir_structure/
 use std::path::Path;
 use std::path::PathBuf;
 
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
 
 pub struct TextFileFilter;
 
@@ -1106,7 +1114,7 @@ Creates a [`Filter`](https://docs.rs/dir_structure/0.1.6/dir_structure/dir_child
 
 ```rust ,ignore
 use std::path::Path;
-use dir_structure::Filter;
+use dir_structure::dir_children::Filter;
 
 dir_structure::ext_filter!(RustFile, "rs");
 
@@ -1125,7 +1133,7 @@ dir_structure::deferred_read
 ```
 
 ```rust ,ignore
-pub struct DeferredRead<'a, T, Vfs = crate::FsVfs, const CHECK_ON_READ: bool = {const}>(pub PathBuf, Pin<&'a Vfs>, PhantomData<T>)
+pub struct DeferredRead<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}>(pub PathBuf, Pin<&'a Vfs>, PhantomData<T>)
 ```
 
 ---
@@ -1167,7 +1175,7 @@ Returns an iterator over the children.
 
 ```rust ,ignore
 use std::path::{Path, PathBuf};
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
 
 let d = DirChildren::<String, dir_structure::NoFilter>::new();
 let mut i = d.iter();
@@ -1212,7 +1220,7 @@ Returns a mutable iterator over the children.
 
 ```rust ,ignore
 use std::path::{Path, PathBuf};
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
 
 let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
     PathBuf::new(),
@@ -1231,7 +1239,7 @@ Modifying the children is also possible:
 
 ```rust ,ignore
 use std::path::{Path, PathBuf};
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
 
 let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
     PathBuf::new(),
@@ -1262,7 +1270,7 @@ impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredRead<'a, T, Vfs, CHECK_ON_RE
 pub fn perform_read(&self) -> Result<T>
 where
     // Bounds from impl:
-    Vfs: crate::Vfs,
+    Vfs: vfs::Vfs,
     T: ReadFrom<'a, Vfs>,
 ```
 
@@ -1273,15 +1281,15 @@ Performs the read and returns the value.
 If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.1.6/dir_structure/deferred_read/struct.DeferredRead.html) was created, then the
 new value will be read from disk and returned.
 
-For a cached version see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.6/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html).
+For a cached version see [`DeferredReadOrOwn`](crate::DeferredReadOrOwn).
 
 # Examples
 
 ```rust ,ignore
 use std::path::Path;
 use std::pin::Pin;
-use dir_structure::DirStructureItem;
-use dir_structure::DeferredRead;
+use dir_structure::traits::sync::DirStructureItem;
+use dir_structure::deferred_read::DeferredRead;
 
 #[derive(dir_structure::DirStructure)]
 struct Dir<'vfs, Vfs> {
@@ -1315,7 +1323,7 @@ dir_structure::deferred_read_or_own
 ```
 
 ```rust ,ignore
-pub enum DeferredReadOrOwn<'a, T, Vfs = crate::FsVfs, const CHECK_ON_READ: bool = {const}> {
+pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}> {
     Own( /* … */ ),
     Deferred( /* … */ ),
 }
@@ -1364,7 +1372,7 @@ impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredReadOrOwn<'a, T, Vfs, CHECK_
 pub fn perform_and_store_read(&mut self) -> Result<&mut T>
 where
     // Bounds from impl:
-    Vfs: crate::Vfs,
+    Vfs: vfs::Vfs,
     T: ReadFrom<'a, Vfs>,
 ```
 
@@ -1380,11 +1388,11 @@ See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.1.6/dir_structure/defe
 ```rust ,ignore
 use std::path::Path;
 use std::pin::Pin;
-use dir_structure::DirStructureItem;
-use dir_structure::DeferredRead;
-use dir_structure::DeferredReadOrOwn;
-use dir_structure::ReadFrom;
-use dir_structure::FsVfs;
+use dir_structure::traits::sync::DirStructureItem;
+use dir_structure::deferred_read::DeferredRead;
+use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+use dir_structure::prelude::*;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let d = Path::new("dir");
@@ -1420,6 +1428,10 @@ pub struct Versioned<T> {
 
 ---
 
+needs Drop
+
+---
+
 A versioned value. This is a wrapper around a value that will keep track of
 how many times it has been changed. This is useful to not write the value
 to disk if it hasn't changed.
@@ -1435,7 +1447,7 @@ method to edit the value, and it will increment the version if the value has cha
 # Example
 
 ```rust ,ignore
-use dir_structure::VersionedString;
+use dir_structure::versioned::VersionedString;
 
 let mut v = VersionedString::new("value".to_owned(), "path");
 assert!(v.is_clean());
@@ -1470,7 +1482,7 @@ if the value has changed.
 # Example
 
 ```rust ,ignore
-use dir_structure::VersionedString;
+use dir_structure::versioned::VersionedString;
 
 let mut v = VersionedString::new("value".to_owned(), "path");
 

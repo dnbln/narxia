@@ -129,37 +129,6 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     let name = &st.ident;
     let path_param_name = format_ident!("__dir_structure_path");
     let vfs_param_name = format_ident!("__vfs");
-    let mut generics_for_read_write_impl = st.generics.clone();
-    if !generics_for_read_write_impl.params.iter().any(|p| match p {
-        syn::GenericParam::Lifetime(lt) => lt.lifetime.ident == "vfs",
-        syn::GenericParam::Const(_) | syn::GenericParam::Type(_) => false,
-    }) {
-        generics_for_read_write_impl
-            .params
-            .insert(0, parse_quote! { 'vfs });
-    }
-    if let Some(v) = generics_for_read_write_impl
-        .params
-        .iter_mut()
-        .find_map(|p| match p {
-            syn::GenericParam::Lifetime(_) | syn::GenericParam::Const(_) => None,
-            syn::GenericParam::Type(type_param) => {
-                (type_param.ident == "Vfs").then_some(type_param)
-            }
-        })
-    {
-        let bounds = &v.bounds;
-        if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::Vfs + 'static };
-        } else {
-            v.bounds.push(parse_quote! { ::dir_structure::Vfs });
-            v.bounds.push(parse_quote! { 'static });
-        }
-    } else {
-        generics_for_read_write_impl
-            .params
-            .push(parse_quote! { Vfs: ::dir_structure::Vfs + 'static });
-    }
 
     let mut generics_for_read_write_async_impl = st.generics.clone();
     if !generics_for_read_write_async_impl
@@ -188,15 +157,15 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::VfsAsync + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::async_vfs::VfsAsync + 'static };
         } else {
-            v.bounds.push(parse_quote! { ::dir_structure::VfsAsync });
+            v.bounds.push(parse_quote! { ::dir_structure::traits::async_vfs::VfsAsync });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
         read_async_impl_generics
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::VfsAsync + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static });
     }
 
     let (read_async_impl_generics, _, _) = read_async_impl_generics.split_for_impl();
@@ -214,16 +183,16 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::WriteSupportingVfsAsync + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static };
         } else {
             v.bounds
-                .push(parse_quote! { ::dir_structure::WriteSupportingVfsAsync });
+                .push(parse_quote! { ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
         write_async_impl_generics
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::WriteSupportingVfsAsync + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static });
     }
 
     let (write_async_impl_generics, _, _) = write_async_impl_generics.split_for_impl();
@@ -342,7 +311,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     expanded.extend(quote! {
         #read_async_impl_enum
 
-        impl #read_async_impl_generics ::dir_structure::ReadFromAsync<'vfs, Vfs> for #name #ty_generics #where_clause_read_from_async {
+        impl #read_async_impl_generics ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs> for #name #ty_generics #where_clause_read_from_async {
             type Future = #read_async_ty_name<'vfs, Vfs>
             where
                 Self: 'vfs;
@@ -360,7 +329,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
 
         #write_async_ref_impl_enum
 
-        impl #write_async_impl_generics ::dir_structure::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async_ref {
+        impl #write_async_impl_generics ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async_ref {
             type Future<'a> =  #write_async_ty_name<#vfs_lifetime_header 'a, Vfs>
             where
                 Self: 'a,

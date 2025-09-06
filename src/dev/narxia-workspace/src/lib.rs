@@ -3,13 +3,14 @@ pub extern crate dir_structure;
 use std::path::Path;
 use std::path::PathBuf;
 
-use dir_structure::DeferredReadOrOwn;
-use dir_structure::DirDescendants;
 use dir_structure::DirStructure;
-use dir_structure::FileFilter;
-use dir_structure::FolderFilter;
-use dir_structure::FolderRecurseFilter;
-use dir_structure::Versioned;
+use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+use dir_structure::dir_children::DirChildren;
+use dir_structure::dir_descendants::DirDescendants;
+use dir_structure::dir_descendants::FileFilter;
+use dir_structure::dir_descendants::FolderFilter;
+use dir_structure::dir_descendants::FolderRecurseFilter;
+use dir_structure::versioned::Versioned;
 
 pub fn ws_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -52,16 +53,16 @@ pub struct CargoConfig<'vfs, Vfs> {
 #[derive(DirStructure, Clone, Debug)]
 pub struct NextestConfig<'vfs, Vfs> {
     #[dir_structure(path = self)]
-    pub config: DeferredReadOrOwn<'vfs, dir_structure::Versioned<String>, Vfs, true>,
+    pub config: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs, true>,
 
     pub self_path: PathBuf,
 }
 
 #[derive(DirStructure, Clone, Debug)]
 pub struct SrcDir<'vfs, Vfs> {
-    pub compiler: dir_structure::DirChildren<Crate<'vfs, Vfs>>,
+    pub compiler: DirChildren<Crate<'vfs, Vfs>>,
     // pub lib: dir_structure::DirChildren<Crate<'vfs, Vfs>>,
-    pub dev: dir_structure::DirChildren<Crate<'vfs, Vfs>>,
+    pub dev: DirChildren<Crate<'vfs, Vfs>>,
 }
 
 #[derive(DirStructure, Clone, Debug)]
@@ -77,7 +78,7 @@ pub struct Crate<'vfs, Vfs> {
 #[derive(DirStructure, Clone, Debug)]
 pub struct RustSourceFile<'vfs, Vfs> {
     #[dir_structure(path = self)]
-    pub file: DeferredReadOrOwn<'vfs, dir_structure::Versioned<String>, Vfs, true>,
+    pub file: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs, true>,
 
     pub self_path: PathBuf,
 }
@@ -105,7 +106,7 @@ impl FileFilter for RustFileFilter {
 #[derive(DirStructure, Clone, Debug)]
 pub struct DocDir<'vfs, Vfs> {
     pub docs: DocDirDocsSite<'vfs, Vfs>,
-    pub guides: dir_structure::DirChildren<()>,
+    pub guides: DirChildren<()>,
 }
 
 #[derive(DirStructure, Clone, Debug)]
@@ -147,25 +148,27 @@ pub struct DocSourceFile<'vfs, Vfs> {
 #[macro_export]
 macro_rules! resolve_ws_path {
     ($($id:tt)*) => {
-        $crate::dir_structure::resolve_path!([$crate::ws_root() as $crate::Workspace<'_, $crate::dir_structure::FsVfs>].$($id)*)
+        $crate::dir_structure::traits::resolve::resolve_path!([$crate::ws_root() as $crate::Workspace<'_, $crate::dir_structure::traits::vfs::fs_vfs::FsVfs>].$($id)*)
     };
 }
 
 #[macro_export]
 macro_rules! display_ws_path {
     ($($id:tt)*) => {
-        $crate::dir_structure::resolve_path!([::std::path::PathBuf::new() as $crate::Workspace<'_, $crate::dir_structure::FsVfs>].$($id)*).display()
+        $crate::dir_structure::traits::resolve::resolve_path!([::std::path::PathBuf::new() as $crate::Workspace<'_, $crate::dir_structure::traits::vfs::fs_vfs::FsVfs>].$($id)*).display()
     };
 }
 
 pub mod parser_tests {
     use std::path::PathBuf;
 
-    use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
-    use dir_structure::DirStructureItem;
-    use dir_structure::FileString;
-    use dir_structure::FsVfs;
+    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::std_types::FileString;
+    use dir_structure::traits::resolve::load_path;
+    use dir_structure::traits::resolve::resolve_path;
+    use dir_structure::traits::sync::DirStructureItem;
+    use dir_structure::traits::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 
@@ -187,35 +190,38 @@ pub mod parser_tests {
 
     impl<'vfs, Vfs> ParserTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
+            resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
+            resolve_path!([ParserTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 
     dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder);
 
-    pub fn collect_parser_tests() -> dir_structure::Result<ParserTestsFolder<'static, FsVfs>> {
+    pub fn collect_parser_tests() -> dir_structure::error::Result<ParserTestsFolder<'static, FsVfs>>
+    {
         ParserTestsFolder::<FsVfs>::read(parser_tests_dir())
     }
 
     pub fn load_parser_test(
         test: &str,
-    ) -> dir_structure::Result<ParserTestSingleFolder<'static, FsVfs>> {
-        dir_structure::load_path!([parser_tests_dir() as ParserTestsFolder<'static, FsVfs>].${test})
+    ) -> dir_structure::error::Result<ParserTestSingleFolder<'static, FsVfs>> {
+        load_path!([parser_tests_dir() as ParserTestsFolder<'static, FsVfs>].${test})
     }
 }
 
 pub mod name_resolution_tests {
     use std::path::PathBuf;
 
-    use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
-    use dir_structure::DirStructureItem;
-    use dir_structure::FileString;
-    use dir_structure::FsVfs;
+    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::std_types::FileString;
+    use dir_structure::traits::resolve::load_path;
+    use dir_structure::traits::resolve::resolve_path;
+    use dir_structure::traits::sync::DirStructureItem;
+    use dir_structure::traits::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 
@@ -234,36 +240,38 @@ pub mod name_resolution_tests {
 
     impl<'vfs, Vfs> NameResolutionTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
+            resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
+            resolve_path!([NameResolutionTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 
     dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
 
     pub fn collect_name_resolution_tests()
-    -> dir_structure::Result<NameResolutionTestsFolder<'static, FsVfs>> {
+    -> dir_structure::error::Result<NameResolutionTestsFolder<'static, FsVfs>> {
         NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir())
     }
 
     pub fn load_name_resolution_test(
         test: &str,
-    ) -> dir_structure::Result<NameResolutionTestSingleFolder<'static, FsVfs>> {
-        dir_structure::load_path!([name_resolution_tests_dir() as NameResolutionTestsFolder<'static, FsVfs>].${test})
+    ) -> dir_structure::error::Result<NameResolutionTestSingleFolder<'static, FsVfs>> {
+        load_path!([name_resolution_tests_dir() as NameResolutionTestsFolder<'static, FsVfs>].${test})
     }
 }
 
 pub mod ssa_tests {
     use std::path::PathBuf;
 
-    use dir_structure::DeferredReadOrOwn;
     use dir_structure::DirStructure;
-    use dir_structure::DirStructureItem;
-    use dir_structure::FileString;
-    use dir_structure::FsVfs;
+    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::std_types::FileString;
+    use dir_structure::traits::resolve::load_path;
+    use dir_structure::traits::resolve::resolve_path;
+    use dir_structure::traits::sync::DirStructureItem;
+    use dir_structure::traits::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 
@@ -282,21 +290,23 @@ pub mod ssa_tests {
 
     impl<'vfs, Vfs> SsaTestSingleFolder<'vfs, Vfs> {
         pub fn input_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
+            resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].input)
         }
 
         pub fn output_file_path(&self) -> PathBuf {
-            dir_structure::resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
+            resolve_path!([SsaTestSingleFolder<'vfs, Vfs> @ self.self_path.clone()].output)
         }
     }
 
     dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder);
 
-    pub fn collect_ssa_tests() -> dir_structure::Result<SsaTestsFolder<'static, FsVfs>> {
+    pub fn collect_ssa_tests() -> dir_structure::error::Result<SsaTestsFolder<'static, FsVfs>> {
         SsaTestsFolder::<FsVfs>::read(ssa_tests_dir())
     }
 
-    pub fn load_ssa_test(test: &str) -> dir_structure::Result<SsaTestSingleFolder<'static, FsVfs>> {
-        dir_structure::load_path!([ssa_tests_dir() as SsaTestsFolder<'static, FsVfs>].${test})
+    pub fn load_ssa_test(
+        test: &str,
+    ) -> dir_structure::error::Result<SsaTestSingleFolder<'static, FsVfs>> {
+        load_path!([ssa_tests_dir() as SsaTestsFolder<'static, FsVfs>].${test})
     }
 }

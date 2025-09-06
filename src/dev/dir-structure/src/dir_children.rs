@@ -26,13 +26,20 @@ use futures_core::Stream;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-#[cfg(feature = "resolve-path")]
-use crate::DynamicHasField;
-use crate::Error;
 use crate::NoFilter;
-use crate::Result;
+use crate::error::Error;
+use crate::error::Result;
 use crate::prelude::*;
+#[cfg(feature = "async")]
+use crate::traits::asy::ReadFromAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::VfsAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
+#[cfg(feature = "resolve-path")]
+use crate::traits::resolve::DynamicHasField;
 use crate::traits::sync::DirStructureItem;
+use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker as _;
 
@@ -90,7 +97,7 @@ where
 /// use std::path::Path;
 /// use std::path::PathBuf;
 ///
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+/// use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
 ///
 /// pub struct TextFileFilter;
 ///
@@ -144,7 +151,7 @@ impl Filter for NoFilter {
 ///
 /// ```rust
 /// use std::path::Path;
-/// use dir_structure::Filter;
+/// use dir_structure::dir_children::Filter;
 ///
 /// dir_structure::ext_filter!(RustFile, "rs");
 ///
@@ -158,7 +165,7 @@ macro_rules! ext_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::Filter for $name {
+        impl $crate::dir_children::Filter for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.extension()
                     .map_or(false, |s| s == $Ext)
@@ -173,7 +180,7 @@ macro_rules! ext_filter {
 ///
 /// ```rust
 /// use std::path::Path;
-/// use dir_structure::Filter;
+/// use dir_structure::dir_children::Filter;
 ///
 /// dir_structure::stem_filter!(MainFile, "main");
 ///
@@ -188,7 +195,7 @@ macro_rules! stem_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::Filter for $name {
+        impl $crate::dir_children::Filter for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.file_stem()
                     .and_then(|s| s.to_str())
@@ -204,7 +211,7 @@ macro_rules! stem_filter {
 ///
 /// ```rust
 /// use std::path::Path;
-/// use dir_structure::Filter;
+/// use dir_structure::dir_children::Filter;
 ///
 /// dir_structure::file_prefix_filter!(LogFile, "log");
 ///
@@ -246,7 +253,7 @@ where
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::{DirChildren, NoFilter};
+    /// use dir_structure::{dir_children::DirChildren, NoFilter};
     ///
     /// let d = DirChildren::<String, NoFilter>::new();
     /// assert!(d.is_empty());
@@ -265,7 +272,7 @@ where
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::{DirChildren, DirChild, NoFilter};
+    /// use dir_structure::{dir_children::{DirChildren, DirChild}, NoFilter};
     ///
     /// let d = DirChildren::<String, NoFilter>::with_children_from_iter(
     ///     PathBuf::new(),
@@ -302,19 +309,19 @@ where
     /// use std::path::Path;
     /// use std::path::PathBuf;
     /// use std::pin::Pin;
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild, ReadFrom, WriteTo};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}, prelude::*};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct NewType(String);
     ///
-    /// impl<'vfs, Vfs: dir_structure::Vfs> ReadFrom<'vfs, Vfs> for NewType {
-    ///     fn read_from(path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<Self> {
+    /// impl<'vfs, Vfs: dir_structure::traits::vfs::Vfs> ReadFrom<'vfs, Vfs> for NewType {
+    ///     fn read_from(path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<Self> {
     ///         String::read_from(path, vfs).map(Self)
     ///     }
     /// }
     ///
-    /// impl<Vfs: dir_structure::WriteSupportingVfs> WriteTo<Vfs> for NewType {
-    ///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::Result<()> {
+    /// impl<Vfs: dir_structure::traits::vfs::WriteSupportingVfs> WriteTo<Vfs> for NewType {
+    ///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<()> {
     ///         self.0.write_to(path, vfs)
     ///     }
     /// }
@@ -364,7 +371,7 @@ where
     ///
     /// ```rust
     /// use std::path::Path;
-    /// use dir_structure::{Filter, DirChildren};
+    /// use dir_structure::dir_children::{Filter, DirChildren};
     ///
     /// struct NewFilter;
     ///
@@ -394,7 +401,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.len(), 0);
@@ -418,7 +425,7 @@ where
     ///
     /// ```
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert!(d.is_empty());
@@ -442,7 +449,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get(0), None);
@@ -471,7 +478,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get_mut(0), None);
@@ -500,7 +507,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get_name(""), None);
@@ -531,7 +538,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get_name_mut(""), None);
@@ -562,7 +569,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get_value_by_name(""), None);
@@ -591,7 +598,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.get_value_by_name_mut(""), None);
@@ -620,7 +627,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// let mut i = d.iter();
@@ -648,7 +655,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
     ///     PathBuf::new(),
@@ -667,7 +674,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
     ///     PathBuf::new(),
@@ -696,7 +703,7 @@ where
     ///
     /// ```rust
     /// use std::path::{Path, PathBuf};
-    /// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DirChild};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
     ///
     /// d.push("file1.txt", "file1".to_owned());
@@ -720,7 +727,7 @@ where
     }
 }
 
-impl<'a, T, F, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildren<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -761,7 +768,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenReadAsyncFutureProjOwn)]
 #[doc(hidden)]
-pub enum DirChildrenReadAsyncFuture<'a, T, F, Vfs: crate::VfsAsync + 'a>
+pub enum DirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     F: Filter + Send + 'static,
@@ -793,7 +800,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync> Future for DirChildrenReadAsyncFuture<'a, T, F, Vfs>
+impl<'a, T, F, Vfs: VfsAsync> Future for DirChildrenReadAsyncFuture<'a, T, F, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     F: Filter + Send + 'static,
@@ -907,7 +914,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for DirChildren<T, F>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     F: Filter + Send + 'static,
@@ -921,7 +928,7 @@ where
     }
 }
 
-impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildren<T, F>
+impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildren<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -938,8 +945,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for DirChildren<T, F>
+impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for DirChildren<T, F>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + 'static,
@@ -956,7 +962,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncFutureProjOwn)]
 #[doc(hidden)]
-pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
+pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsync<'a, Vfs>,
     <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
@@ -973,7 +979,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> Future
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs>,
@@ -1024,7 +1030,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
+impl<'r, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
     for DirChildren<T, F>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
@@ -1055,7 +1061,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = DirChildrenWriteAsyncRefFutureProjOwn)]
 #[doc(hidden)]
-pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'static>
+pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'r, Vfs> + 'r,
     <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
@@ -1073,7 +1079,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, 'f, T, Vfs: crate::WriteSupportingVfsAsync + 'static> Future
+impl<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'r, Vfs>,
@@ -1275,7 +1281,7 @@ impl<T> DirChild<T> {
     /// ```rust
     /// use std::ffi::OsString;
     /// use dir_structure::dir_children::DirChild;
-    /// use dir_structure::FileString;
+    /// use dir_structure::std_types::FileString;
     ///
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt", FileString("file".to_owned())));
@@ -1414,14 +1420,14 @@ impl<T> DoubleEndedIterator for DirChildrenIntoIter<T> {
 #[macro_export]
 macro_rules! dir_children_wrapper {
     ($vis:vis $name:ident $ty:ty) => {
-        $vis struct $name(pub $crate::DirChildren<$ty>);
+        $vis struct $name(pub $crate::dir_children::DirChildren<$ty>);
 
-        impl<'vfs, Vfs: $crate::Vfs + 'static> $crate::ReadFrom<'vfs, Vfs> for $name {
+        impl<'vfs, Vfs: $crate::traits::vfs::Vfs + 'static> $crate::ReadFrom<'vfs, Vfs> for $name {
             fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::Result<Self>
             where
                 Self: Sized,
             {
-                Ok(Self(<$crate::DirChildren<$ty<'vfs, Vfs>>>::read_from(path, vfs)?))
+                Ok(Self(<$crate::DirChildren<$ty>>::read_from(path, vfs)?))
             }
         }
 
@@ -1460,25 +1466,25 @@ macro_rules! dir_children_wrapper {
 #[macro_export]
 macro_rules! dir_children_wrapper_with_vfs {
     ($vis:vis $name:ident $ty:ident) => {
-        $vis struct $name<'vfs, Vfs>(pub $crate::DirChildren<$ty<'vfs, Vfs>>);
+        $vis struct $name<'vfs, Vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>);
 
-        impl<'vfs, Vfs: $crate::Vfs + 'static> $crate::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
-            fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::Result<Self>
+        impl<'vfs, Vfs: $crate::traits::vfs::Vfs + 'static> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<Self>
             where
                 Self: Sized,
             {
-                Ok(Self(<$crate::DirChildren<$ty<'vfs, Vfs>>>::read_from(path, vfs)?))
+                Ok(Self(<$crate::dir_children::DirChildren<$ty<'vfs, Vfs>>>::read_from(path, vfs)?))
             }
         }
 
-        impl<'vfs, Vfs: $crate::WriteSupportingVfs + 'static> $crate::WriteTo<Vfs> for $name<'vfs, Vfs> {
-            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::Result<()> {
+        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs + 'static> $crate::traits::sync::WriteTo<Vfs> for $name<'vfs, Vfs> {
+            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::error::Result<()> {
                 self.0.write_to(path, vfs)
             }
         }
 
         impl<'vfs, Vfs> std::ops::Deref for $name<'vfs, Vfs> {
-            type Target = $crate::DirChildren<$ty<'vfs, Vfs>>;
+            type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
@@ -1492,7 +1498,7 @@ macro_rules! dir_children_wrapper_with_vfs {
         }
 
         impl<'vfs, Vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
-            type Item = $crate::DirChild<$ty<'vfs, Vfs>>;
+            type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>>;
             type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>>;
 
             fn into_iter(self) -> Self::IntoIter {
@@ -1500,11 +1506,11 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs> $crate::DynamicHasField for $name<'vfs, Vfs> where $crate::DirChildren<$ty<'vfs, Vfs>>: $crate::DynamicHasField {
-            type Inner = <$crate::DirChildren<$ty<'vfs, Vfs>> as $crate::DynamicHasField>::Inner;
+        impl<'vfs, Vfs> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>: $crate::traits::resolve::DynamicHasField {
+            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>> as $crate::traits::resolve::DynamicHasField>::Inner;
 
             fn resolve_path(p: PathBuf, field: &str) -> PathBuf {
-                <$crate::DirChildren<$ty<'vfs, Vfs>> as $crate::DynamicHasField>::resolve_path(p, field)
+                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
             }
         }
     };
@@ -1523,7 +1529,7 @@ pub struct DirChildSingle<T, F: Filter> {
     _phantom: PhantomData<F>,
 }
 
-impl<'a, T, F, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for DirChildSingle<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildSingle<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -1550,7 +1556,7 @@ where
     }
 }
 
-impl<T, F: Filter, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingle<T, F>
+impl<T, F: Filter, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingle<T, F>
 where
     T: WriteTo<Vfs>,
 {
@@ -1706,7 +1712,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     ///
     /// struct Filt;
     ///
-    /// impl dir_structure::Filter for Filt {
+    /// impl dir_structure::dir_children::Filter for Filt {
     ///     fn allows(_path: &Path) -> bool {
     ///         true
     ///     }
@@ -1964,7 +1970,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     }
 }
 
-impl<'a, T, F, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -1993,7 +1999,7 @@ where
     }
 }
 
-impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingleOpt<T, F>
+impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingleOpt<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -2056,7 +2062,7 @@ where
     }
 }
 
-impl<'a, T, F, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -2070,7 +2076,7 @@ where
     }
 }
 
-impl<T, F, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for ForceCreateDirChildren<T, F>
+impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for ForceCreateDirChildren<T, F>
 where
     T: WriteTo<Vfs>,
     F: Filter,
@@ -2085,7 +2091,7 @@ where
 #[cfg(feature = "async")]
 #[pin_project]
 #[doc(hidden)]
-pub struct ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs: crate::VfsAsync>
+pub struct ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     F: Filter + Send + 'static,
@@ -2097,7 +2103,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync> Future for ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs>
+impl<'a, T, F, Vfs: VfsAsync> Future for ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + Sync + 'static,
@@ -2118,7 +2124,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for ForceCreateDirChildren<T, F>
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter + Send + Sync + 'static,
@@ -2135,7 +2141,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for ForceCreateDirChildren<T, F>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,

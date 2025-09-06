@@ -5,8 +5,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use crate::Error;
-use crate::Result;
+use crate::error::Error;
+use crate::error::Result;
 
 /// A virtual file system. Writing operations are provided by the [`WriteSupportingVfs` trait](self::WriteSupportingVfs).
 pub trait Vfs {

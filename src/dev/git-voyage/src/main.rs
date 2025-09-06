@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::process;
 
 use clap::Parser;
-use dir_structure::DirStructureItem;
+use dir_structure::traits::sync::DirStructureItem;
 use git_voyage::Extension;
 use git_voyage::Guide;
 use git_voyage::StepRef;

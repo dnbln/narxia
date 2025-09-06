@@ -15,9 +15,14 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use std::task::ready;
 
-use crate::Error;
-use crate::Result;
+use crate::error::Error;
+use crate::error::Result;
 use crate::prelude::*;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::VfsAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
+use crate::traits::vfs;
 
 /// A type that tries to parse a value of type `T`, but doesn't fail if it can't.
 ///
@@ -32,7 +37,7 @@ pub enum TryParse<T> {
 
 impl<'vfs, Vfs, T> ReadFrom<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: crate::Vfs,
+    Vfs: vfs::Vfs,
     T: ReadFrom<'vfs, Vfs>,
 {
     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
@@ -45,7 +50,7 @@ where
 
 impl<'vfs, Vfs, T> WriteTo<Vfs> for TryParse<T>
 where
-    Vfs: crate::WriteSupportingVfs,
+    Vfs: vfs::WriteSupportingVfs,
     T: WriteTo<Vfs>,
 {
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
@@ -60,10 +65,10 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'vfs, Vfs, T> ReadFromAsync<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: crate::VfsAsync + 'vfs,
+    Vfs: VfsAsync + 'vfs,
     T: ReadFromAsync<'vfs, Vfs> + Send + 'vfs,
 {
-    type Future = Pin<Box<dyn Future<Output = crate::Result<Self>> + Send + 'vfs>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'vfs>>;
 
     fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         let mut read_fut = Box::pin(T::read_from_async(path, vfs));
@@ -81,11 +86,11 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'vfs, Vfs, T> WriteToAsync<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: crate::WriteSupportingVfsAsync + 'vfs,
+    Vfs: WriteSupportingVfsAsync + 'vfs,
     T: WriteToAsync<'vfs, Vfs> + Send + 'vfs,
-    <T as WriteToAsync<'vfs, Vfs>>::Future: Future<Output = crate::Result<()>> + Unpin,
+    <T as WriteToAsync<'vfs, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
 {
-    type Future = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + 'vfs>>;
+    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'vfs>>;
 
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         match self {
@@ -99,13 +104,13 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'vfs, Vfs, T> WriteToAsyncRef<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: crate::WriteSupportingVfsAsync + 'static,
+    Vfs: WriteSupportingVfsAsync + 'static,
     T: WriteToAsyncRef<'vfs, Vfs> + Send + 'vfs,
     for<'a> <T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>:
-        Future<Output = crate::Result<()>> + Send + Sync + Unpin + 'a,
+        Future<Output = Result<()>> + Send + Sync + Unpin + 'a,
 {
     type Future<'a>
-        = Pin<Box<dyn Future<Output = crate::Result<()>> + Send + Sync + 'a>>
+        = Pin<Box<dyn Future<Output = Result<()>> + Send + Sync + 'a>>
     where
         Self: 'a,
         'vfs: 'a,

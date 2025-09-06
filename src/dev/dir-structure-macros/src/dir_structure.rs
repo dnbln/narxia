@@ -62,7 +62,7 @@ fn expand_dir_structure_for_field(
         let value_name = format_ident!("__value");
         let end_expr = match &with_newtype {
             Some(nt) => quote! {
-                <#nt as ::dir_structure::NewtypeToInner>::into_inner(#value_name)
+                <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(#value_name)
             },
             None => quote! {
                 #value_name
@@ -71,7 +71,7 @@ fn expand_dir_structure_for_field(
 
         quote! {{
             let __translated_path = #actual_path_expr;
-            let #value_name = <#actual_field_ty_perform as ::dir_structure::ReadFrom<Vfs>>::read_from(&__translated_path, #vfs_param_name)?;
+            let #value_name = <#actual_field_ty_perform as ::dir_structure::traits::sync::ReadFrom<Vfs>>::read_from(&__translated_path, #vfs_param_name)?;
             #end_expr
         }}
     };
@@ -82,13 +82,13 @@ fn expand_dir_structure_for_field(
     } else {
         let writer = match &with_newtype {
             Some(nt) => {
-                quote! { &<#nt as ::dir_structure::FromRefForWriter<'_, Vfs>>::from_ref_for_writer(&self.#field_name) }
+                quote! { &<#nt as ::dir_structure::traits::sync::FromRefForWriter<'_, Vfs>>::from_ref_for_writer(&self.#field_name) }
             }
             None => quote! { &self.#field_name },
         };
         quote! {
             let __translated_path = #actual_path_expr;
-            ::dir_structure::WriteTo::write_to(#writer, &__translated_path, #vfs_param_name)?;
+            ::dir_structure::traits::sync::WriteTo::write_to(#writer, &__translated_path, #vfs_param_name)?;
         }
     };
 
@@ -119,7 +119,7 @@ fn expand_dir_structure_for_field(
             .unwrap();
 
         quote! {
-            impl #impl_generics ::dir_structure::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
+            impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
                 type Inner = #actual_field_ty_perform;
 
                 fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
@@ -165,15 +165,15 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::Vfs + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs + 'static };
         } else {
-            v.bounds.push(parse_quote! { ::dir_structure::Vfs });
+            v.bounds.push(parse_quote! { ::dir_structure::traits::vfs::Vfs });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
         generics_for_read_impl
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::Vfs + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::Vfs + 'static });
     }
     let (read_impl_generics, _, _) = generics_for_read_impl.split_for_impl();
 
@@ -190,16 +190,16 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::WriteSupportingVfs + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs + 'static };
         } else {
             v.bounds
-                .push(parse_quote! { ::dir_structure::WriteSupportingVfs });
+                .push(parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
         generics_for_write_impl
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::WriteSupportingVfs + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::WriteSupportingVfs + 'static });
     }
 
     let (write_impl_generics, _, _) = generics_for_write_impl.split_for_impl();
@@ -231,8 +231,8 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     #[cfg_attr(not(feature = "resolve-path"), expect(unused_mut))]
     let mut expanded = quote! {
-        impl #read_impl_generics ::dir_structure::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
-            fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::Result<Self>
+        impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
+            fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self>
             where
                 Self: Sized,
             {
@@ -241,13 +241,13 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
         }
-        impl #write_impl_generics ::dir_structure::WriteTo<Vfs> for #name #ty_generics #where_clause {
-            fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&Vfs>) -> ::dir_structure::Result<()> {
+        impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<Vfs> for #name #ty_generics #where_clause {
+            fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&Vfs>) -> ::dir_structure::error::Result<()> {
                 #(#field_write_impls)*
                 Ok(())
             }
         }
-        impl #impl_generics ::dir_structure::DirStructure for #name #ty_generics #where_clause {}
+        impl #impl_generics ::dir_structure::traits::sync::DirStructure for #name #ty_generics #where_clause {}
     };
 
     #[cfg(feature = "resolve-path")]

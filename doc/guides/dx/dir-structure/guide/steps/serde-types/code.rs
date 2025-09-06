@@ -4,7 +4,7 @@
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
 // !tooltip[/Json/] Json
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper, data_formats::json::Json};
 use serde::{Serialize, Deserialize};
 
 // !tooltip[/DirStructure/] DirStructure
@@ -39,4 +39,4 @@ struct Obj {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

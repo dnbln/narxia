@@ -11,9 +11,9 @@ use tokio::fs;
 
 use super::CreateParentDirDefaultFuture;
 use super::IoErrorWrapperFuture;
-use crate::Result;
-use crate::VfsAsync;
-use crate::WriteSupportingVfsAsync;
+use crate::error::Result;
+use crate::traits::async_vfs::VfsAsync;
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
 use crate::error::WrapIoError;
 
 /// A [`VfsAsync`] and [`WriteSupportingVfsAsync`] implementation using [`tokio::fs`].

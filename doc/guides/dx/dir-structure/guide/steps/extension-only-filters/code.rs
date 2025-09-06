@@ -4,7 +4,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -32,4 +32,4 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

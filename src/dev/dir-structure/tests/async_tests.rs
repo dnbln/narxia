@@ -4,12 +4,14 @@ use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use dir_structure::DirChild;
-use dir_structure::DirChildren;
-use dir_structure::TokioFsVfs;
-use dir_structure::Versioned;
-use dir_structure::VersionedString;
+use dir_structure::dir_children::DirChild;
+use dir_structure::dir_children::DirChildren;
 use dir_structure::prelude::*;
+use dir_structure::traits::async_vfs::VfsAsync;
+use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
+use dir_structure::traits::async_vfs::tokio_fs_vfs::TokioFsVfs;
+use dir_structure::versioned::Versioned;
+use dir_structure::versioned::VersionedString;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -210,11 +212,11 @@ async fn read_numbers() {
     std::fs::write(d.join("f3"), "3").unwrap();
     #[derive(dir_structure::DirStructureAsync)]
     struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f2: u32,
-        #[dir_structure(with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f3: u32,
     }
 
@@ -232,11 +234,11 @@ async fn write_numbers() {
     let d = p.join("dir");
     #[derive(dir_structure::DirStructureAsync)]
     struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f2: u32,
-        #[dir_structure(with_newtype = dir_structure::FmtWrapper<u32>)]
+        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
         f3: u32,
     }
 
@@ -259,7 +261,7 @@ async fn deferred_read() {
     #[derive(dir_structure::DirStructureAsync)]
     struct Dir<'vfs, Vfs> {
         #[dir_structure(path = "f1.txt")]
-        f: dir_structure::DeferredRead<'vfs, String, Vfs>,
+        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs>,
     }
 
     let p = test_dir("deferred_read");
@@ -513,17 +515,16 @@ async fn versioned_works() {
 
 #[tokio::test]
 async fn versioned_doesnt_call_write_if_not_changed() {
-    eprintln!("Running versioned_doesnt_call_write_if_not_changed test");
     struct WriteCounter<T> {
         count: AtomicUsize,
         inner: T,
     }
 
-    impl<'vfs, T, Vfs: dir_structure::VfsAsync + 'vfs> ReadFromAsync<'vfs, Vfs> for WriteCounter<T>
+    impl<'vfs, T, Vfs: VfsAsync + 'vfs> ReadFromAsync<'vfs, Vfs> for WriteCounter<T>
     where
         T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
     {
-        type Future = Pin<Box<dyn Future<Output = dir_structure::Result<Self>> + Send + 'vfs>>;
+        type Future = Pin<Box<dyn Future<Output = dir_structure::error::Result<Self>> + Send + 'vfs>>;
 
         fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
             Box::pin(async move {
@@ -535,13 +536,12 @@ async fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    impl<'r, T, Vfs: dir_structure::WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
-        for WriteCounter<T>
+    impl<'r, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for WriteCounter<T>
     where
         T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     {
         type Future<'a>
-            = Pin<Box<dyn Future<Output = dir_structure::Result<()>> + Send + 'a>>
+            = Pin<Box<dyn Future<Output = dir_structure::error::Result<()>> + Send + 'a>>
         where
             Self: 'a,
             'r: 'a,

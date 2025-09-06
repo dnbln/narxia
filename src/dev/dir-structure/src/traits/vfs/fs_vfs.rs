@@ -10,10 +10,10 @@ use std::pin::Pin;
 use super::DirEntryInfo;
 use super::DirEntryKind;
 use super::DirWalker;
-use crate::Result;
-use crate::Vfs;
-use crate::WriteSupportingVfs;
+use crate::error::Result;
 use crate::error::WrapIoError;
+use crate::traits::vfs::Vfs;
+use crate::traits::vfs::WriteSupportingVfs;
 
 /// A [`Vfs`] and [`WriteSupportingVfs`] implementation built upon the [`std::fs`] APIs.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]

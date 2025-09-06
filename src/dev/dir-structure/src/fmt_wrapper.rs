@@ -11,14 +11,19 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
 
-use crate::Error;
-use crate::FileString;
-use crate::FromRefForWriter;
-#[cfg(feature = "async")]
-use crate::FromRefForWriterAsync;
-use crate::NewtypeToInner;
-use crate::Result;
+use crate::error::Error;
+use crate::error::Result;
 use crate::prelude::*;
+use crate::std_types::FileString;
+#[cfg(feature = "async")]
+use crate::traits::asy::FromRefForWriterAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::VfsAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
+use crate::traits::sync::FromRefForWriter;
+use crate::traits::sync::NewtypeToInner;
+use crate::traits::vfs;
 
 /// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
 /// for serialization / deserialization.
@@ -29,9 +34,9 @@ use crate::prelude::*;
 ///
 /// ```rust
 /// use std::path::Path;
-/// use dir_structure::DirStructureItem;
 ///
-/// use dir_structure::FmtWrapper;
+/// use dir_structure::traits::sync::DirStructureItem;
+/// use dir_structure::fmt_wrapper::FmtWrapper;
 ///
 /// #[derive(dir_structure::DirStructure, PartialEq, Debug)]
 /// struct Dir {
@@ -68,7 +73,7 @@ impl<T> NewtypeToInner for FmtWrapper<T> {
     }
 }
 
-impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + 'a,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
@@ -87,7 +92,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + Send + 'static,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
@@ -105,7 +110,7 @@ where
     }
 }
 
-impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapper<T>
+impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapper<T>
 where
     T: Display,
 {
@@ -116,7 +121,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + Send + Sync + 'static,
 {
@@ -128,7 +133,7 @@ where
     }
 }
 
-impl<'a, T, Vfs: crate::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: vfs::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + 'a,
     Vfs: 'a,
@@ -143,8 +148,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs>
-    for FmtWrapper<T>
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FmtWrapper<T>
 where
     T: Display + Send + 'a,
 {
@@ -160,7 +164,7 @@ where
 /// implementation to write the value.
 pub struct FmtWrapperRefWr<'a, T: ?Sized, Vfs>(pub &'a T, marker::PhantomData<Vfs>);
 
-impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapperRefWr<'_, T, Vfs>
+impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapperRefWr<'_, T, Vfs>
 where
     T: Display + ?Sized,
 {
@@ -171,7 +175,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for FmtWrapperRefWr<'a, T, Vfs>
 where
     T: Display + Send + 'a,

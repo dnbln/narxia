@@ -147,36 +147,36 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
                     .try_into()
                     .unwrap();
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::HasField<{ [#(#name_array),*] }>
+                    #current_path: ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::Inner
                 };
             }
             ResolveSingleSegment::DynamicStringExpr(expr) => {
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::DynamicHasField
+                    #current_path: ::dir_structure::traits::resolve::DynamicHasField
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #expr);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #expr);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
             }
             ResolveSingleSegment::StringLit(lit_str) => {
                 let value = lit_str.value();
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::DynamicHasField
+                    #current_path: ::dir_structure::traits::resolve::DynamicHasField
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #value);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #value);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
             }
         }
@@ -282,36 +282,36 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                     .try_into()
                     .unwrap();
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::HasField<{ [#(#name_array),*] }>
+                    #current_path: ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::HasField<{ [#(#name_array),*] }>>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::Inner
                 };
             }
             ResolveSingleSegment::DynamicStringExpr(expr) => {
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::DynamicHasField
+                    #current_path: ::dir_structure::traits::resolve::DynamicHasField
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #expr);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #expr);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
             }
             ResolveSingleSegment::StringLit(lit_str) => {
                 let value = lit_str.value();
                 where_clause.predicates.push(parse_quote! {
-                    #current_path: ::dir_structure::DynamicHasField
+                    #current_path: ::dir_structure::traits::resolve::DynamicHasField
                 });
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::DynamicHasField>::resolve_path(__current, #value);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #value);
                 });
                 current_path = parse_quote! {
-                    <#current_path as ::dir_structure::DynamicHasField>::Inner
+                    <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
                 };
             }
         }
@@ -322,15 +322,15 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     let read_code = match input.async_vfs {
         LoadPathAsyncVfs::Async(vfs) => {
             quote! {
-                <#current_path as ::dir_structure::ReadFromAsync<'_, _>>::read_from(&__current, #vfs)
+                <#current_path as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>::read_from_async(__current, #vfs)
             }
         }
         LoadPathAsyncVfs::Sync(vfs) => {
             let vfs = vfs
-                .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::FsVfs) });
+                .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::traits::vfs::fs_vfs::FsVfs) });
 
             quote! {
-                <#current_path as ::dir_structure::ReadFrom<'_, _>>::read_from(&__current, #vfs)
+                <#current_path as ::dir_structure::traits::sync::ReadFrom<'_, _>>::read_from(&__current, #vfs)
             }
         }
     };

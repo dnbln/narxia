@@ -1,7 +1,7 @@
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
-use dir_structure::{DirStructure, DirStructureItem};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -15,4 +15,4 @@ struct Dir {
 // !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

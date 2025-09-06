@@ -5,7 +5,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredRead/] DeferredRead
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredRead};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -48,4 +48,4 @@ dir.subdirs.iter().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

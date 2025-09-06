@@ -17,7 +17,7 @@ struct Dir {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    use dir_structure::DirStructureItem;
+    use dir_structure::traits::sync::DirStructureItem;
     let path = std::path::Path::new("my_dir");
     // to read a `Dir` instance
     let dir = Dir::read(path)?;

@@ -12,10 +12,12 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::vec;
 
-#[cfg(feature = "resolve-path")]
-use crate::DynamicHasField;
 use crate::NoFilter;
+use crate::error::Result;
 use crate::prelude::*;
+#[cfg(feature = "resolve-path")]
+use crate::traits::resolve::DynamicHasField;
+use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker;
 
@@ -69,7 +71,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::{DirDescendants, DirDescendant, NoFilter};
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
     ///
     /// let descendants = DirDescendants::<(), NoFilter>::new(vec![]);
     /// let mut i = descendants.iter();
@@ -93,7 +95,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::{DirDescendants, DirDescendant, NoFilter};
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
     ///
     /// let mut descendants = DirDescendants::<(), NoFilter>::new(vec![]);
     /// let mut i = descendants.iter_mut();
@@ -227,12 +229,12 @@ impl<'a, T> ExactSizeIterator for DirDescendantsIntoIter<T> {
 
 impl<
     'vfs,
-    Vfs: crate::Vfs,
+    Vfs: vfs::Vfs,
     T: ReadFrom<'vfs, Vfs>,
     F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
 > ReadFrom<'vfs, Vfs> for DirDescendants<T, F>
 {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self, crate::Error> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
         let mut descendants = Vec::new();
 
         if path.is_dir() {
@@ -290,12 +292,12 @@ impl<
 
 impl<
     'vfs,
-    Vfs: crate::WriteSupportingVfs,
+    Vfs: vfs::WriteSupportingVfs,
     T: WriteTo<Vfs> + 'vfs,
     F: FileFilter + FolderRecurseFilter + FolderFilter + 'vfs,
 > WriteTo<Vfs> for DirDescendants<T, F>
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<(), crate::Error> {
+    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
         for descendant in &self.descendants {
             descendant
                 .value
@@ -374,7 +376,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -394,7 +396,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -414,7 +416,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -434,7 +436,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -453,7 +455,7 @@ impl<T> DirDescendant<T> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -473,7 +475,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -493,7 +495,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",
@@ -513,7 +515,7 @@ impl<T> DirDescendant<T> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let mut descendant = DirDescendant::new(
     ///     "child",
@@ -533,7 +535,7 @@ impl<T> DirDescendant<T> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let mut descendant = DirDescendant::new(
     ///     "child",
@@ -553,7 +555,7 @@ impl<T> DirDescendant<T> {
     /// # Examples
     ///
     /// ```
-    /// use dir_structure::DirDescendant;
+    /// use dir_structure::dir_descendants::DirDescendant;
     ///
     /// let descendant = DirDescendant::new(
     ///     "child",

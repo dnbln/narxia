@@ -11,16 +11,16 @@ use std::path::PathBuf;
 use std::result;
 use std::slice;
 
-use dir_structure::DirChildren;
 use dir_structure::DirStructure;
-use dir_structure::Filter;
-use dir_structure::Versioned;
+use dir_structure::data_formats::json_pretty::JsonPretty;
 use dir_structure::dir_children::DirChildSingle;
 use dir_structure::dir_children::DirChildSingleOpt;
+use dir_structure::dir_children::DirChildren;
+use dir_structure::dir_children::Filter;
 use dir_structure::dir_children::ForceCreateDirChildren;
 use dir_structure::file_prefix_filter;
-use dir_structure::json_pretty::JsonPretty;
-use dir_structure::resolve_path;
+use dir_structure::traits::resolve::resolve_path;
+use dir_structure::versioned::Versioned;
 use git2::RebaseOperationType;
 use git2::Repository;
 use git2::build::CheckoutBuilder;
@@ -34,7 +34,7 @@ pub enum Error {
     #[error("git error: {0}")]
     GitError(#[from] git2::Error),
     #[error("dir-structure error: {0}")]
-    DirStructureError(#[from] dir_structure::Error),
+    DirStructureError(#[from] dir_structure::error::Error),
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
     #[error("Failed to parse step reference: {0}")]
@@ -62,7 +62,7 @@ impl Guide {
         Self {
             steps: Versioned::new_dirty(
                 JsonPretty(Steps { steps: vec![] }),
-                dir_structure::resolve_path!([Guide @ dir.clone()].steps),
+                resolve_path!([Guide @ dir.clone()].steps),
             ),
             step_dirs: ForceCreateDirChildren::new(DirChildren::new()),
             code_header: Some(Versioned::new_dirty(
@@ -208,7 +208,7 @@ End of the guide.
             code: DirChildSingle::new(format!("code{code_extension}"), code),
             code_header: None,
             code_footer: None,
-            self_path: dir_structure::resolve_path!([Guide @ self.self_path.clone()].step_dirs.${&step.0}),
+            self_path: resolve_path!([Guide @ self.self_path.clone()].step_dirs.${&step.0}),
         };
         self.step_dirs.push(step.0.clone(), step_dir);
     }

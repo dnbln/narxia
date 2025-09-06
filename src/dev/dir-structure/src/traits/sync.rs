@@ -4,6 +4,8 @@ use std::path::Path;
 use std::pin::Pin;
 
 use crate::error::Result;
+use crate::traits::vfs::fs_vfs;
+use crate::traits::vfs::{self};
 
 /// The main trait. This is implemented for
 /// all directory structures by the derive macro.
@@ -19,18 +21,18 @@ pub trait DirStructureItem {
     /// disk, from the specified path.
     fn read(path: impl AsRef<Path>) -> Result<Self>
     where
-        Self: ReadFrom<'static, crate::FsVfs> + Sized,
+        Self: ReadFrom<'static, fs_vfs::FsVfs> + Sized,
     {
-        Self::read_from(path.as_ref(), Pin::new(&crate::FsVfs))
+        Self::read_from(path.as_ref(), Pin::new(&fs_vfs::FsVfs))
     }
 
     /// Uses the [`WriteTo`] implementation to write the structure
     /// to disk at the specified path.
     fn write(&self, path: impl AsRef<Path>) -> Result<()>
     where
-        Self: WriteTo<crate::FsVfs>,
+        Self: WriteTo<fs_vfs::FsVfs>,
     {
-        self.write_to(path.as_ref(), Pin::new(&crate::FsVfs))
+        self.write_to(path.as_ref(), Pin::new(&fs_vfs::FsVfs))
     }
 }
 
@@ -39,7 +41,7 @@ impl<T> DirStructureItem for T {}
 
 /// Trait for types / structures that can be
 /// read from disk, either from a file or a directory.
-pub trait ReadFrom<'a, Vfs: crate::Vfs>: Sized + 'a {
+pub trait ReadFrom<'a, Vfs: vfs::Vfs>: Sized + 'a {
     /// Reads the structure from the specified path, which
     /// can be either a file or a directory.
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>;
@@ -53,7 +55,7 @@ pub trait ReadFrom<'a, Vfs: crate::Vfs>: Sized + 'a {
 /// not necessary (unless used empty children
 /// directories, in which case no directories will
 /// really be created).
-pub trait WriteTo<Vfs: crate::WriteSupportingVfs> {
+pub trait WriteTo<Vfs: vfs::WriteSupportingVfs> {
     /// Writes the structure to the specified path.
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()>;
 }
@@ -68,7 +70,7 @@ pub trait WriteTo<Vfs: crate::WriteSupportingVfs> {
 /// only cast what they have to write to those reference types
 /// (via the function below), and then call the [`WriteTo::write_to`]
 /// method on that reference.
-pub trait FromRefForWriter<'a, Vfs: crate::WriteSupportingVfs + 'a> {
+pub trait FromRefForWriter<'a, Vfs: vfs::WriteSupportingVfs + 'a> {
     /// The inner type to cast.
     type Inner: ?Sized;
     /// The reference type to cast to.
@@ -92,13 +94,13 @@ pub trait NewtypeToInner {
     fn into_inner(self) -> Self::Inner;
 }
 
-impl<'a, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for () {
+impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for () {
     fn read_from(_path: &Path, _vfs: Pin<&'a Vfs>) -> Result<Self> {
         Ok(())
     }
 }
 
-impl<Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for () {
+impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for () {
     fn write_to(&self, _path: &Path, _vfs: Pin<&Vfs>) -> Result<()> {
         Ok(())
     }

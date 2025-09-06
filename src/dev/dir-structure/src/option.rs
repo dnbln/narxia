@@ -12,21 +12,21 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
+use crate::error::Result;
+use crate::prelude::*;
 #[cfg(feature = "resolve-path")]
-use crate::DynamicHasField;
+use crate::traits::resolve::DynamicHasField;
 #[cfg(feature = "resolve-path")]
-use crate::HAS_FIELD_MAX_LEN;
+use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
-use crate::HasField;
-use crate::ReadFrom;
+use crate::traits::resolve::HasField;
+use crate::traits::vfs;
 #[cfg(feature = "async")]
-use crate::ReadFromAsync;
-use crate::Result;
-use crate::WriteTo;
+use crate::traits::async_vfs::VfsAsync;
 #[cfg(feature = "async")]
-use crate::WriteToAsync;
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
 
-impl<'a, T, Vfs: crate::Vfs> ReadFrom<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for Option<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -46,7 +46,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = OptionReadFromAsyncFutureOwnProj)]
 #[doc(hidden)]
-pub enum OptionReadFromAsyncFuture<'a, T, Vfs: crate::VfsAsync + 'a>
+pub enum OptionReadFromAsyncFuture<'a, T, Vfs: VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     Vfs::ExistsFuture<'a>: Future<Output = Result<bool>>,
@@ -67,7 +67,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> Future for OptionReadFromAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: VfsAsync + 'a> Future for OptionReadFromAsyncFuture<'a, T, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     T::Future: Future<Output = Result<T>> + Unpin,
@@ -131,7 +131,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::VfsAsync + 'a> ReadFromAsync<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for Option<T>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     T::Future: Future<Output = Result<T>> + Unpin + 'a,
@@ -150,7 +150,7 @@ where
     }
 }
 
-impl<T, Vfs: crate::WriteSupportingVfs> WriteTo<Vfs> for Option<T>
+impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for Option<T>
 where
     T: WriteTo<Vfs>,
 {
@@ -167,7 +167,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project = OptionWriteToAsyncFutureProj)]
 #[doc(hidden)]
-pub enum OptionWriteToAsyncFuture<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'a>
+pub enum OptionWriteToAsyncFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
@@ -180,7 +180,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: WriteSupportingVfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
@@ -197,7 +197,7 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: crate::WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Option<T>
 where
     T: WriteToAsync<'a, Vfs> + Send + 'static,
 {

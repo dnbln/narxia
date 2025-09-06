@@ -77,27 +77,27 @@ pub(super) fn expand_dir_structure_for_field(
         let async_read_bound = match &wnt {
             Some(nt) => Some(vec![
                 parse_quote! {
-                    for<'trivial> #nt: ::dir_structure::ReadFromAsync<'vfs, Vfs>
+                    for<'trivial> #nt: ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>
                 },
                 parse_quote! {
-                    for<'trivial> #nt: ::dir_structure::NewtypeToInner<Inner=#field_ty>
+                    for<'trivial> #nt: ::dir_structure::traits::sync::NewtypeToInner<Inner=#field_ty>
                 },
             ]),
             None => Some(vec![parse_quote! {
-                for<'trivial> #actual_field_ty_perform: ::dir_structure::ReadFromAsync<'vfs, Vfs>
+                for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>
             }]),
         };
         async_read_future.clauses.push(parse_quote! {
-            for<'trivial> #actual_field_ty_perform: ::dir_structure::ReadFromAsync<'vfs, Vfs>
+            for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>
         });
         async_read_future.clauses.push(parse_quote! {
-            for<'trivial> <#actual_field_ty_perform as ::dir_structure::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::Result<#actual_field_ty_perform>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
+            for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<#actual_field_ty_perform>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
         });
         async_read_future.variants.push(FutureVariant {
             variant: parse_quote! {
                 #variant_name {
                     #(#enum_variants,)*
-                    __mut_future: <#actual_field_ty_perform as ::dir_structure::ReadFromAsync<'vfs, Vfs>>::Future,
+                    __mut_future: <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future,
                 }
             },
             path_expr: actual_path_expr_move.clone(),
@@ -111,7 +111,7 @@ pub(super) fn expand_dir_structure_for_field(
                         let value_name = format_ident!("__value");
                         let end_expr = match &wnt {
                             Some(nt) => quote! {
-                                <#nt as ::dir_structure::NewtypeToInner>::into_inner(#value_name)
+                                <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(#value_name)
                             },
                             None => quote! {
                                 #value_name
@@ -146,7 +146,7 @@ pub(super) fn expand_dir_structure_for_field(
                         let value_name = format_ident!("__value");
                         let end_expr = match &wnt {
                             Some(nt) => quote! {
-                                <#nt as ::dir_structure::NewtypeToInner>::into_inner(#value_name)
+                                <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(#value_name)
                             },
                             None => quote! {
                                 #value_name
@@ -157,7 +157,7 @@ pub(super) fn expand_dir_structure_for_field(
                             match ::std::pin::Pin::new(&mut __mut_future).poll(cx) {
                                 ::std::task::Poll::Ready(Ok(#value_name)) => {
                                     let __translated_path = #path_expr;
-                                    let __mut_future = <#perform as ::dir_structure::ReadFromAsync<'vfs, Vfs>>::read_from_async(__translated_path, #vfs_name);
+                                    let __mut_future = <#perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::read_from_async(__translated_path, #vfs_name);
                                     self.project_replace(Self::#variant_name {
                                         #(#std_fields,)*
                                         #(#fields,)*
@@ -230,7 +230,7 @@ pub(super) fn future_impl_enum(
     Ok(quote! {
         #[allow(non_camel_case_types)]
         #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
-        enum #name<'vfs, Vfs: ::dir_structure::VfsAsync + 'static> #where_clause_read_future {
+        enum #name<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> #where_clause_read_future {
             Poison,
             Init {
                 #path_param_name: ::std::path::PathBuf,
@@ -240,8 +240,8 @@ pub(super) fn future_impl_enum(
         }
 
 
-        impl<'vfs, Vfs: ::dir_structure::VfsAsync + 'static> ::std::future::Future for #name<'vfs, Vfs> #where_clause_read_future {
-            type Output = ::dir_structure::Result<#ty_name #ty_generics>;
+        impl<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> ::std::future::Future for #name<'vfs, Vfs> #where_clause_read_future {
+            type Output = ::dir_structure::error::Result<#ty_name #ty_generics>;
 
             fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
                 let this = self.as_mut().project_replace(Self::Poison);
@@ -250,7 +250,7 @@ pub(super) fn future_impl_enum(
                         panic!("Future was polled after completion");
                     }
                     #read_async_proj_name::Init { #path_param_name, #vfs_param_name } => {
-                        let __mut_future = <#first_ty as ::dir_structure::ReadFromAsync<'vfs, Vfs>>::read_from_async(#first_path, #vfs_param_name);
+                        let __mut_future = <#first_ty as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::read_from_async(#first_path, #vfs_param_name);
                         self.project_replace(Self::#first_name {
                             #path_param_name,
                             #vfs_param_name,

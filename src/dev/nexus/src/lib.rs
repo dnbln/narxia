@@ -26,7 +26,12 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use dir_structure::FsVfs;
+use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+use dir_structure::prelude::*;
+use dir_structure::std_types::FileString;
+use dir_structure::traits::sync::DirStructure;
+use dir_structure::traits::sync::DirStructureItem;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use doc_patchup::PerformEndError;
 use git_voyage::Guide;
 use git_voyage::StepRef;
@@ -38,10 +43,6 @@ use miette::bail;
 use narxia_workspace::Crate;
 use narxia_workspace::RustSourceFile;
 use narxia_workspace::dir_structure;
-use narxia_workspace::dir_structure::DeferredReadOrOwn;
-use narxia_workspace::dir_structure::DirStructure;
-use narxia_workspace::dir_structure::DirStructureItem;
-use narxia_workspace::dir_structure::FileString;
 use narxia_workspace::display_ws_path;
 use narxia_workspace::name_resolution_tests;
 use narxia_workspace::name_resolution_tests::NameResolutionTestSingleFolder;
@@ -374,7 +375,7 @@ async fn render_guide(
     Ok(())
 }
 
-trait GenericTestDirType: DirStructure + dir_structure::WriteTo<dir_structure::FsVfs> {
+trait GenericTestDirType: DirStructure + WriteTo<FsVfs> {
     fn path_to_write_to(&self) -> &Path;
     fn from_name_and_code(name: &str, code: String) -> Self;
 }

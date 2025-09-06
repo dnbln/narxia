@@ -6,7 +6,7 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
@@ -56,4 +56,4 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will write the changed values to disk
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::Error
+// !tail dir_structure::error::Error

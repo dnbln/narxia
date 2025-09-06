@@ -37,7 +37,7 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
-/// use dir_structure::{DirStructure, DirStructureItem};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -51,7 +51,7 @@
 /// let path = "dir";
 /// // !tooltip[/read/] DirStructureItem::read#
 /// let dir = Dir::read(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -73,7 +73,7 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
-/// use dir_structure::{DirStructure, DirStructureItem};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -90,7 +90,7 @@
 /// // !tooltip[/write/] DirStructureItem::write#
 /// // !mark
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -114,7 +114,7 @@
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/FmtWrapper/] FmtWrapper
-/// use dir_structure::{DirStructure, DirStructureItem, FmtWrapper};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -135,7 +135,7 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -163,7 +163,7 @@
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/FmtWrapper/] FmtWrapper
 // !tooltip[/Json/] Json
-use dir_structure::{DirStructure, DirStructureItem, FmtWrapper, json::Json};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper, data_formats::json::Json};
 use serde::{Serialize, Deserialize};
 
 // !tooltip[/DirStructure/] DirStructure
@@ -198,7 +198,7 @@ let path = "dir";
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-Ok::<_, dir_structure::Error>(())
+Ok::<_, dir_structure::error::Error>(())
 
 ```
 "##########)]
@@ -222,7 +222,7 @@ Ok::<_, dir_structure::Error>(())
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
-/// use dir_structure::{DirStructure, DirStructureItem};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -238,7 +238,7 @@ Ok::<_, dir_structure::Error>(())
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -261,7 +261,7 @@ Ok::<_, dir_structure::Error>(())
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
-/// use dir_structure::{DirStructure, DirStructureItem};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -285,7 +285,7 @@ Ok::<_, dir_structure::Error>(())
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -316,7 +316,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -341,7 +341,7 @@ Ok::<_, dir_structure::Error>(())
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -374,7 +374,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/Filter/] Filter
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, Filter};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -409,7 +409,7 @@ Ok::<_, dir_structure::Error>(())
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -445,7 +445,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -473,7 +473,7 @@ Ok::<_, dir_structure::Error>(())
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -505,7 +505,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredRead/] DeferredRead
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredRead};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -548,7 +548,7 @@ Ok::<_, dir_structure::Error>(())
 /// 
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -579,7 +579,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -627,7 +627,7 @@ Ok::<_, dir_structure::Error>(())
 /// 
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -662,7 +662,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 /// // !tooltip[/Versioned/] Versioned
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 /// 
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -712,7 +712,7 @@ Ok::<_, dir_structure::Error>(())
 /// // This will not write anything to disk, since nothing has changed
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 
@@ -750,7 +750,7 @@ Ok::<_, dir_structure::Error>(())
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 /// // !tooltip[/Versioned/] Versioned
-/// use dir_structure::{DirStructure, DirStructureItem, DirChildren, DeferredReadOrOwn, Versioned};
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
@@ -800,7 +800,7 @@ Ok::<_, dir_structure::Error>(())
 /// // This will write the changed values to disk
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::Error>(())
+/// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
 /// 

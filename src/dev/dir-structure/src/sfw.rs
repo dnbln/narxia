@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
-use crate::Result;
+use crate::error::Result;
 use crate::error::WrapIoError;
 
 pub struct StreamingFileWriter {

@@ -68,20 +68,20 @@ pub(super) fn expand_dir_structure_for_field(
             Some(nt) => {
                 let bound = vec![
                     parse_quote! {
-                        for<'trivial> #nt: ::dir_structure::FromRefForWriterAsync<'fut, Vfs, Inner = #field_ty>
+                        for<'trivial> #nt: ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs, Inner = #field_ty>
                     },
                     parse_quote! {
-                        for<'trivial> <#nt as ::dir_structure::FromRefForWriterAsync<'fut, Vfs>>::Wr: ::dir_structure::WriteToAsync<'fut, Vfs>
+                        for<'trivial> <#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs>>::Wr: ::dir_structure::traits::asy::WriteToAsync<'fut, Vfs>
                     },
                     parse_quote! {
-                        for<'trivial> <<#nt as ::dir_structure::FromRefForWriterAsync<'fut, Vfs>>::Wr as ::dir_structure::WriteToAsync<'fut, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
+                        for<'trivial> <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'fut, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
                     },
                 ];
                 async_write_ref_future.clauses.extend(bound.clone());
 
                 (
                     quote! {
-                        <<#nt as ::dir_structure::FromRefForWriterAsync<'fut, Vfs>>::Wr as ::dir_structure::WriteToAsync<'fut, Vfs>>::Future
+                        <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'fut, Vfs>>::Future
                     },
                     bound,
                 )
@@ -90,10 +90,10 @@ pub(super) fn expand_dir_structure_for_field(
                 async_write_ref_future.clauses_ref_vfs = true;
                 let bound = vec![
                     parse_quote! {
-                        for<'trivial> #actual_field_ty_perform: ::dir_structure::WriteToAsyncRef<'vfs, Vfs>
+                        for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>
                     },
                     parse_quote! {
-                        for<'trivial> <#actual_field_ty_perform as ::dir_structure::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>: ::std::future::Future<Output = ::dir_structure::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
+                        for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
                     },
                 ];
                 async_write_ref_future.clauses.extend(bound.clone());
@@ -103,7 +103,7 @@ pub(super) fn expand_dir_structure_for_field(
 
                 (
                     quote! {
-                        <#actual_field_ty_perform as ::dir_structure::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>
+                        <#actual_field_ty_perform as ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>
                     },
                     bound,
                 )
@@ -149,12 +149,12 @@ pub(super) fn expand_dir_structure_for_field(
                             Some(nt) => {
                                 quote! {{
                                     let __translated_path = #path_expr;
-                                    <<#nt as ::dir_structure::FromRefForWriterAsync<'_, Vfs>>::Wr as ::dir_structure::WriteToAsync<'_, Vfs>>::write_to_async(<#nt as ::dir_structure::FromRefForWriterAsync<'_, Vfs>>::from_ref_for_writer_async(&__this.#f_name), __translated_path, #vfs_name)
+                                    <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'_, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'_, Vfs>>::write_to_async(<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'_, Vfs>>::from_ref_for_writer_async(&__this.#f_name), __translated_path, #vfs_name)
                                 }}
                             }
                             None => quote! {{
                                 let __translated_path = #path_expr;
-                                <#perform as ::dir_structure::WriteToAsyncRef<'_, Vfs>>::write_to_async_ref(&__this.#f_name, __translated_path, #vfs_name)
+                                <#perform as ::dir_structure::traits::asy::WriteToAsyncRef<'_, Vfs>>::write_to_async_ref(&__this.#f_name, __translated_path, #vfs_name)
                             }},
                         };
 
@@ -246,12 +246,12 @@ pub(super) fn future_impl_enum(
         Some(nt) => {
             quote! {{
                 let __translated_path = #first_path;
-                <<#nt as ::dir_structure::FromRefForWriterAsync<'_, Vfs>>::Wr as ::dir_structure::WriteToAsync<'_, Vfs>>::write_to_async(<#nt as ::dir_structure::FromRefForWriterAsync<'_, Vfs>>::from_ref_for_writer_async(&__this.#first_name), __translated_path, #vfs_param_name)
+                <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'_, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'_, Vfs>>::write_to_async(<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'_, Vfs>>::from_ref_for_writer_async(&__this.#first_name), __translated_path, #vfs_param_name)
             }}
         }
         None => quote! {{
             let __translated_path = #first_path;
-            <#first_ty as ::dir_structure::WriteToAsyncRef<'_, Vfs>>::write_to_async_ref(&__this.#first_name, __translated_path, #vfs_param_name)
+            <#first_ty as ::dir_structure::traits::asy::WriteToAsyncRef<'_, Vfs>>::write_to_async_ref(&__this.#first_name, __translated_path, #vfs_param_name)
         }},
     };
 
@@ -267,7 +267,7 @@ pub(super) fn future_impl_enum(
         quote! {
             #[allow(non_camel_case_types)]
             #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
-            enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
+            enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
                 Poison,
                 Init {
                     #path_param_name: ::std::path::PathBuf,
@@ -277,8 +277,8 @@ pub(super) fn future_impl_enum(
                 #(#variants),*
             }
 
-            impl<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::WriteSupportingVfsAsync + 'static> ::std::future::Future for #name<#vfs_lifetime_header 'fut, Vfs> #where_clause_write_future {
-                type Output = ::dir_structure::Result<()>;
+            impl<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> ::std::future::Future for #name<#vfs_lifetime_header 'fut, Vfs> #where_clause_write_future {
+                type Output = ::dir_structure::error::Result<()>;
 
                 fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
                     let this = self.as_mut().project_replace(Self::Poison);
