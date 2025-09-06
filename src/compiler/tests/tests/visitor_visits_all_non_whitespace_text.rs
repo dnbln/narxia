@@ -15,8 +15,8 @@
 
 use std::fmt::Write as _;
 
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use dir_structure::traits::sync::NewtypeToInner;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
 use miette::bail;
