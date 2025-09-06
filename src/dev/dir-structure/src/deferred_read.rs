@@ -401,6 +401,7 @@ where
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(r) => Poll::Ready(r),
                     Poll::Pending => {
+                        self.as_mut().project_replace(Self::Writing { inner });
                         cx.waker().wake_by_ref();
                         Poll::Pending
                     }

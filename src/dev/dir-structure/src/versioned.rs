@@ -202,13 +202,8 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let projection = self.project();
-        let res = <T::Future as Future>::poll(projection.inner, cx);
-        match res {
-            Poll::Ready(res) => {
-                Poll::Ready(res.map(|value| Versioned::new(value, projection.path.to_path_buf())))
-            }
-            Poll::Pending => Poll::Pending,
-        }
+        <T::Future as Future>::poll(projection.inner, cx)
+            .map_ok(|value| Versioned::new(value, projection.path.to_path_buf()))
     }
 }
 

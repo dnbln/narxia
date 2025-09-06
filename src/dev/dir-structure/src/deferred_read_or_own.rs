@@ -322,13 +322,19 @@ where
             DeferredReadOrOwnWriteFutureProj::Own { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(v) => Poll::Ready(v),
-                    Poll::Pending => Poll::Pending,
+                    Poll::Pending => {
+                        self.project_replace(Self::Own { inner });
+                        Poll::Pending
+                    }
                 }
             }
             DeferredReadOrOwnWriteFutureProj::Deferred { mut inner } => {
                 match Pin::new(&mut inner).poll(cx) {
                     Poll::Ready(v) => Poll::Ready(v),
-                    Poll::Pending => Poll::Pending,
+                    Poll::Pending => {
+                        self.project_replace(Self::Deferred { inner });
+                        Poll::Pending
+                    }
                 }
             }
             DeferredReadOrOwnWriteFutureProj::Poisson => {
