@@ -283,6 +283,7 @@ impl BuildCmd {
 
         let mut critical_diagnostics = String::new();
         let mut low_level_diagnostics = String::new();
+        let mut success = false;
 
         for message in cargo_metadata::Message::parse_stream(io::BufReader::new(stdout)) {
             let message = message.into_diagnostic()?;
@@ -380,7 +381,9 @@ impl BuildCmd {
                     }
                 }
                 cargo_metadata::Message::BuildScriptExecuted(build_script) => {}
-                cargo_metadata::Message::BuildFinished(build_finished) => {}
+                cargo_metadata::Message::BuildFinished(build_finished) => {
+                    success = build_finished.success;
+                }
                 cargo_metadata::Message::TextLine(_) => {}
                 _ => todo!(),
             }
@@ -403,6 +406,7 @@ impl BuildCmd {
             stderr,
             status,
             target_artifact,
+            success,
         })
     }
 }
@@ -558,6 +562,7 @@ impl Drop for ItemWrapper {
 pub struct BuildCmdOutput {
     pub stderr: String,
     pub status: process::ExitStatus,
+    pub success: bool,
     pub target_artifact: Option<TargetArtifactInfo>,
 }
 

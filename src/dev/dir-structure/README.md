@@ -35,7 +35,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 [This blog post][blog post] goes a bit more in-depth about
-the more advanced features of the library. Here is a quick run-down:
+the more advanced features of the library; see also [the guides in the narxia DX documentation](https://nrx.dnbln.dev/docs/dx/dir-structure).
+
+Here is a quick run-down:
 
 - Virtual file systems, so it doesn't depend on the actual file system.
 - Support for async I/O (`async` + `tokio` features). Other (custom) async runtimes can be supported by implementing `VfsAsync` and optionally `WriteSupportingVfsAsync`.
@@ -44,6 +46,7 @@ the more advanced features of the library. Here is a quick run-down:
 
 Optimizations:
 - Support for deferred reads via `DeferredRead` and deferred + cached reads via `DeferredReadOrOwn`.
-- Support for versioning of file contents while in-memory via `Versioned`, so if we want to later write the entire structure to disk, we will only write the modified parts.
+- Support for versioning of file contents while in-memory via `Versioned` / `VersionedHash`, so if we want to later write the entire structure to disk,
+  we will only write the modified parts.
 
 [blog post]: https://dnbln.dev/blog/dir-structure

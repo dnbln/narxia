@@ -1,3 +1,68 @@
+# 0.2.0
+
+Released: TODO
+
+## Virtual file system support
+
+The library now supports virtual file systems via the `Vfs` and `VfsAsync` traits, or their write-supporting variants
+`WriteSupportingVfs` and `WriteSupportingVfsAsync`. This allows you to use the library with in-memory file systems,
+or other custom file systems.
+
+`dir_structure::vfs::fs_vfs::FsVfs` is the default implementation for the local file system, with
+`dir_structure::vfs::tokio_fs_vfs::TokioFsVfs` providing opt-in async support via Tokio (gated behind the `tokio` feature).
+
+## `DirStructureAsync` derive macro for async support
+
+Now you can derive `DirStructureAsync` for your structs to derive the asynchronous
+interfaces `ReadFromAsync` / `WriteToAsyncRef` for your own structures.
+
+## `VersionedHash`
+
+A new wrapper type `VersionedHash<T, H>` has been added, which is similar to
+`Versioned<T>`, but instead of tracking changes by comparing the value of `T` before and after edits,
+or checking if `DerefMut::deref_mut` has been used, it tracks changes by hashing the value of `T` using the hasher `H`
+(implementing `std::hash::Hasher`), and comparing the hash when the value has been first read and when it is written.
+
+`VersionedHash<T, H>::reset` can be used, analogously to `Versioned<T>::reset`, to reset the hash to the current hash of
+the inner value of type `T`, which will mark the value as clean. Similarly to `Versioned<T>::reset`, this is an unsafe API,
+as it allows you to reset the version without updating the files on the file system, which might lead to data loss if used
+incorrectly.
+
+## `load_path` macro (nightly-only)
+
+A new macro `load_path!` has been added, which allows you to load a specific part of a directory structure, without
+having to load the entire structure in-memory:
+
+```rust
+#[derive(DirStructure)]
+struct MyStruct {
+    #[dir_structure(path = "my_field.txt")]
+    my_field: String,
+    #[dir_structure(path = "my_field2.d")]
+    my_field2: MyStruct2,
+}
+#[derive(DirStructure)]
+struct MyStruct2 {
+    #[dir_structure(path = "my_field3.txt")]
+    my_field3: String,
+}
+assert_eq!(
+    load_path!([MyStruct @ "/path/to/dir"].my_field).unwrap(),
+    std::fs::read_to_string("/path/to/dir/my_field.txt").unwrap()
+);
+assert_eq!(
+    load_path!(["/path/to/dir" as MyStruct].my_field2.my_field3).unwrap(),
+    std::fs::read_to_string("/path/to/dir/my_field2.d/my_field3.txt").unwrap(),
+);
+
+assert_eq!(
+    load_path!(["/path/to/dir" as MyStruct].my_field2).unwrap(),
+    MyStruct2 {
+        my_field3: std::fs::read_to_string("/path/to/dir/my_field2.d/my_field3.txt").unwrap(),
+    },
+);
+```
+
 # 0.1.6
 
 Released: 2025-08-07

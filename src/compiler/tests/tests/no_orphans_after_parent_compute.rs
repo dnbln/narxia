@@ -1,7 +1,7 @@
 //! This test checks that there are no orphan hir_ids after the parent
 //! of each hir_id is computed, except for the root module.
 
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use hir::hir_map::HirMap;
 use hir::visitor::HirVisitor;
 use hir::HirIdNewtype;

@@ -31,7 +31,7 @@ use dir_structure::prelude::*;
 use dir_structure::std_types::FileString;
 use dir_structure::traits::sync::DirStructure;
 use dir_structure::traits::sync::DirStructureItem;
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use doc_patchup::PerformEndError;
 use git_voyage::Guide;
 use git_voyage::StepRef;
@@ -1103,7 +1103,7 @@ fn build_compiler(
         })
         .run(Some(&mut item), build_progress)?;
 
-    let executable = if output.status.success() {
+    let executable = if output.status.success() && output.success {
         let last_artifact = output.target_artifact.unwrap();
         if last_artifact.was_fresh {
             item.done("Compiler was fresh");
@@ -1603,7 +1603,7 @@ fn build_docs(item: &mut Item, cname: &str) -> NexusR {
     Ok(())
 }
 
-async fn create_doc_extract_session<'a>(child: &'a mut Option<Child>) -> NexusR<SessionWrapper> {
+async fn create_doc_extract_session(child: &mut Option<Child>) -> NexusR<SessionWrapper> {
     let (c, sess) = SessionWrapper::attempt_to_connect_daemon_or_spawn_child(ws_root()).await?;
     *child = c;
     Ok(sess)

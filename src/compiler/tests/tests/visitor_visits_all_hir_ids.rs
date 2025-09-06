@@ -2,7 +2,7 @@
 //!
 //! This is useful to ensure that the visitor is not missing any HIR nodes.
 
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use miette::bail;
 use narxia_driver::HirDbg;
 use narxia_hir::visitor::HirVisitor;

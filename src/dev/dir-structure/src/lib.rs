@@ -148,6 +148,8 @@ pub mod std_types;
 pub mod traits;
 pub mod try_parse;
 pub mod versioned;
+pub mod versioned_hash;
+pub mod vfs;
 
 #[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
 mod sfw;

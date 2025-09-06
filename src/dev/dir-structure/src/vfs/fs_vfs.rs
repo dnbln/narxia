@@ -7,11 +7,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use super::DirEntryInfo;
-use super::DirEntryKind;
-use super::DirWalker;
 use crate::error::Result;
 use crate::error::WrapIoError;
+use crate::traits::vfs::DirEntryInfo;
+use crate::traits::vfs::DirEntryKind;
+use crate::traits::vfs::DirWalker;
 use crate::traits::vfs::Vfs;
 use crate::traits::vfs::WriteSupportingVfs;
 

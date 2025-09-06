@@ -118,16 +118,37 @@ fn expand_dir_structure_for_field(
             .try_into()
             .unwrap();
 
-        quote! {
+        let mut has_field_impl = quote! {
             impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
-                type Inner = #actual_field_ty_perform;
+                type Inner = #field_ty;
 
                 fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
                     #path_pusher_for_has_field
                     #path_param_name
                 }
             }
+        };
+
+        match &with_newtype {
+            Some(nt) => {
+                has_field_impl.extend(quote! {
+                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
+                        type ReaderType = #nt;
+
+                        fn parse(read: Self::ReaderType) -> Self::Inner {
+                            <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(read)
+                        }
+                    }
+                });
+            }
+            None => {
+                has_field_impl.extend(quote! {
+                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldNoNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {}
+                });
+            }
         }
+
+        has_field_impl
     };
     Ok(DirStructureForField {
         read_code: quote! {

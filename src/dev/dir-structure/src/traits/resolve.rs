@@ -21,6 +21,31 @@ pub trait HasField<const NAME: [char; HAS_FIELD_MAX_LEN]> {
     fn resolve_path(p: PathBuf) -> PathBuf;
 }
 
+/// A trait for types that may or may not have a newtype wrapper around their field type for reading / writing.
+pub trait HasFieldMaybeNewtype<const NAME: [char; HAS_FIELD_MAX_LEN]>: HasField<NAME> {
+    /// The reader type, which may be a newtype wrapper around [`HasField::Inner`], or the [`HasField::Inner`] itself if no newtype is
+    /// supplied to the `#[derive(DirStructure)]` macro.
+    type ReaderType;
+    /// Parses the read type into the inner type.
+    fn parse(read: Self::ReaderType) -> Self::Inner;
+}
+
+/// A trait to declare that a type has a field with a specific name, and it's not wrapped in a newtype.
+///
+/// This allows it to be used within the `first..last-1` segments of the `load_path!` macro, where newtypes are not supported.
+pub trait HasFieldNoNewtype<const NAME: [char; HAS_FIELD_MAX_LEN]>: HasField<NAME> {}
+
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], S, T> HasFieldMaybeNewtype<NAME> for S
+where
+    S: HasFieldNoNewtype<NAME, Inner = T>,
+{
+    type ReaderType = T;
+
+    fn parse(read: Self::ReaderType) -> Self::Inner {
+        read
+    }
+}
+
 /// A trait to declare that a type has fields with dynamic names,
 /// such as [`DirChildren`](crate::DirChildren), [`DirDescendants`](crate::DirDescendants), etc.
 ///
@@ -34,6 +59,29 @@ pub trait DynamicHasField {
     /// How to resolve the path for the field, from the path of `Self`, given the name
     /// passed into [the `resolve_path!` macro](resolve_path).
     fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
+}
+
+/// [`DynamicHasField`] for types that do not have a newtype wrapper around their field type.
+pub trait DynamicHasFieldNoNewtype: DynamicHasField {}
+
+/// [`DynamicHasField`] for types that may or may not have a newtype wrapper around their field type.
+pub trait DynamicHasFieldMaybeNewtype: DynamicHasField {
+    /// The reader type, which may be a newtype wrapper around [`DynamicHasField::Inner`], or the [`DynamicHasField::Inner`] itself if no newtype is
+    /// supplied to the `#[derive(DirStructure)]` macro.
+    type ReaderType;
+    /// Parses the read type into the inner type.
+    fn parse(read: Self::ReaderType) -> Self::Inner;
+}
+
+impl<S, T> DynamicHasFieldMaybeNewtype for S
+where
+    S: DynamicHasFieldNoNewtype<Inner = T>,
+{
+    type ReaderType = T;
+
+    fn parse(read: Self::ReaderType) -> Self::Inner {
+        read
+    }
 }
 
 #[cfg(feature = "resolve-path")]

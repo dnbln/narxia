@@ -9,10 +9,10 @@ use std::task::Poll;
 use futures_core::Stream;
 use tokio::fs;
 
-use super::CreateParentDirDefaultFuture;
-use super::IoErrorWrapperFuture;
 use crate::error::Result;
 use crate::error::WrapIoError;
+use crate::traits::async_vfs::CreateParentDirDefaultFuture;
+use crate::traits::async_vfs::IoErrorWrapperFuture;
 use crate::traits::async_vfs::VfsAsync;
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
 

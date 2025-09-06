@@ -9,9 +9,9 @@ use dir_structure::dir_children::DirChildren;
 use dir_structure::prelude::*;
 use dir_structure::traits::async_vfs::VfsAsync;
 use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
-use dir_structure::traits::async_vfs::tokio_fs_vfs::TokioFsVfs;
 use dir_structure::versioned::Versioned;
 use dir_structure::versioned::VersionedString;
+use dir_structure::vfs::tokio_fs_vfs::TokioFsVfs;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))

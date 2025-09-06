@@ -111,9 +111,3 @@ pub trait DirWalker {
     /// Returns the next directory entry.
     fn next(&mut self) -> Option<Result<DirEntryInfo>>;
 }
-
-pub mod fs_vfs;
-
-#[cfg(feature = "include_dir")]
-#[cfg_attr(docsrs, doc(cfg(feature = "include_dir")))]
-pub mod include_dir_vfs;

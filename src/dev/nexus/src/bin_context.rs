@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::Weak;
 
 use dir_structure::traits::sync::DirStructureItem;
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use miette::IntoDiagnostic;
 use narxia_workspace::Workspace;
 use narxia_workspace::ws_root;

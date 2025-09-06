@@ -11,9 +11,9 @@ use dir_structure::dir_children::DirChild;
 use dir_structure::dir_children::DirChildren;
 use dir_structure::prelude::*;
 use dir_structure::traits::vfs;
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use dir_structure::versioned::Versioned;
 use dir_structure::versioned::VersionedString;
+use dir_structure::vfs::fs_vfs::FsVfs;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))

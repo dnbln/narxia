@@ -1,3 +1,5 @@
+//! A [`Vfs`] implementation for an [`include_dir::Dir`] directory.
+
 use core::fmt;
 use std::error;
 use std::io;
@@ -9,11 +11,12 @@ use include_dir::Dir;
 #[cfg(doc)]
 use include_dir::include_dir;
 
-use crate::DirEntryInfo;
-use crate::DirEntryKind;
-use crate::Error;
-use crate::Result;
-use crate::Vfs;
+use crate::error::Error;
+use crate::error::Result;
+use crate::traits::vfs::DirEntryInfo;
+use crate::traits::vfs::DirEntryKind;
+use crate::traits::vfs::DirWalker;
+use crate::traits::vfs::Vfs;
 
 /// A [`Vfs`] implementation with an [`include_dir::Dir`] directory.
 pub struct IncludeDirVfs {
@@ -111,9 +114,10 @@ impl Vfs for IncludeDirVfs {
     }
 }
 
+/// The [`DirWalker`] implementation for [`IncludeDirVfs`].
 pub struct IncludeDirWalker(Dir<'static>, usize);
 
-impl super::DirWalker for IncludeDirWalker {
+impl DirWalker for IncludeDirWalker {
     fn next(&mut self) -> Option<Result<DirEntryInfo>> {
         self.0
             .dirs()

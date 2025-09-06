@@ -28,7 +28,7 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
-use crate::traits::vfs::fs_vfs;
+use crate::vfs::fs_vfs;
 
 /// A wrapper that defers the reading of a file until it is actually needed,
 /// but can also store the value.
@@ -81,7 +81,7 @@ where
     /// use dir_structure::deferred_read::DeferredRead;
     /// use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
     /// use dir_structure::prelude::*;
-    /// use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    /// use dir_structure::vfs::fs_vfs::FsVfs;
     ///
     /// fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let d = Path::new("dir");
@@ -122,7 +122,7 @@ where
     /// use dir_structure::deferred_read::DeferredRead;
     /// use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
     /// use dir_structure::prelude::*;
-    /// use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    /// use dir_structure::vfs::fs_vfs::FsVfs;
     ///
     /// fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let d = Path::new("dir");

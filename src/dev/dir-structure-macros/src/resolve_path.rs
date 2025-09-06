@@ -1,6 +1,7 @@
 use std::iter;
 
 use proc_macro2::TokenStream;
+use quote::format_ident;
 use quote::quote;
 use syn::Token;
 use syn::braced;
@@ -9,6 +10,7 @@ use syn::parenthesized;
 use syn::parse::Parse;
 use syn::parse::discouraged::Speculative;
 use syn::parse_quote;
+use syn::punctuated::Pair;
 use syn::punctuated::Punctuated;
 
 // resolve_path!([T @ path_expr].a."b".c.d.${e});
@@ -264,9 +266,18 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     };
 
     let mut resolve = quote! {};
+    let mut param_id: u32 = 0;
+    let mut params = quote! {};
+    let mut args = quote! {};
+    let mut read_code = None::<()>;
 
-    for segment in &input.segments {
-        match segment {
+    for segment in input.segments.pairs() {
+        let (s, last) = match segment {
+            Pair::Punctuated(s, _) => (s, false),
+            Pair::End(s) => (s, true),
+        };
+
+        match s {
             ResolveSingleSegment::Ident(ident) => {
                 let name = ident.to_string();
                 let name = name.chars().collect::<Vec<_>>();
@@ -287,6 +298,23 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                 resolve.extend(quote! {
                     let __current = <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::resolve_path(__current);
                 });
+                // if last {
+                //     read_code = Some(Box::new(|asyncness: bool, vfs: &Expr| {
+                //         if asyncness {
+                //             quote! {
+                //                 <#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::parse(
+                //                     <<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::ReaderTy
+                //                         as ::dir_structure::traits::asy::ReadFrom<'_, _>>
+                //                         ::read_from_async(__current, #vfs)
+                //                 )
+                //             }
+                //         } else {
+                //             quote! {
+                //                 <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::read_from(__current)
+                //             }
+                //         }
+                //     }));
+                // }
                 current_path = parse_quote! {
                     <#current_path as ::dir_structure::traits::resolve::HasField<{ [#(#name_array),*] }>>::Inner
                 };
@@ -295,8 +323,12 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                 where_clause.predicates.push(parse_quote! {
                     #current_path: ::dir_structure::traits::resolve::DynamicHasField
                 });
+                let param_name = format_ident!("__arg{}", param_id);
+                params.extend(quote! { , #param_name: &str });
+                args.extend(quote! { , #expr });
+                param_id += 1;
                 resolve.extend(quote! {
-                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #expr);
+                    let __current = <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::resolve_path(__current, #param_name);
                 });
                 current_path = parse_quote! {
                     <#current_path as ::dir_structure::traits::resolve::DynamicHasField>::Inner
@@ -326,8 +358,9 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
             }
         }
         LoadPathAsyncVfs::Sync(vfs) => {
-            let vfs = vfs
-                .unwrap_or_else(|| parse_quote! { ::std::pin::Pin::new(&::dir_structure::traits::vfs::fs_vfs::FsVfs) });
+            let vfs = vfs.unwrap_or_else(
+                || parse_quote! { ::std::pin::Pin::new(&::dir_structure::vfs::fs_vfs::FsVfs) },
+            );
 
             quote! {
                 <#current_path as ::dir_structure::traits::sync::ReadFrom<'_, _>>::read_from(&__current, #vfs)
@@ -336,8 +369,13 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     };
 
     Ok(quote! {{
+        fn __read_(__current: ::std::path::PathBuf #params) -> ::dir_structure::error::Result<#current_path>
+            #where_clause
+        {
+            #resolve
+            #read_code
+        }
         let __current: ::std::path::PathBuf = ::std::path::PathBuf::from(#p);
-        #resolve
-        #read_code
+        __read_(__current #args)
     }})
 }

@@ -148,14 +148,14 @@ pub struct DocSourceFile<'vfs, Vfs> {
 #[macro_export]
 macro_rules! resolve_ws_path {
     ($($id:tt)*) => {
-        $crate::dir_structure::traits::resolve::resolve_path!([$crate::ws_root() as $crate::Workspace<'_, $crate::dir_structure::traits::vfs::fs_vfs::FsVfs>].$($id)*)
+        $crate::dir_structure::traits::resolve::resolve_path!([$crate::ws_root() as $crate::Workspace<'_, $crate::dir_structure::vfs::fs_vfs::FsVfs>].$($id)*)
     };
 }
 
 #[macro_export]
 macro_rules! display_ws_path {
     ($($id:tt)*) => {
-        $crate::dir_structure::traits::resolve::resolve_path!([::std::path::PathBuf::new() as $crate::Workspace<'_, $crate::dir_structure::traits::vfs::fs_vfs::FsVfs>].$($id)*).display()
+        $crate::dir_structure::traits::resolve::resolve_path!([::std::path::PathBuf::new() as $crate::Workspace<'_, $crate::dir_structure::vfs::fs_vfs::FsVfs>].$($id)*).display()
     };
 }
 
@@ -169,7 +169,7 @@ pub mod parser_tests {
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 
@@ -220,7 +220,7 @@ pub mod name_resolution_tests {
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 
@@ -270,7 +270,7 @@ pub mod ssa_tests {
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
 
     use crate::ws_root;
 

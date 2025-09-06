@@ -69,8 +69,6 @@ fn expand_dir_structure_for_field(
         )
     })?;
 
-    let field_ty = &field.ty;
-
     let DirStructureCoreInfo {
         newtype_ty: with_newtype,
         self_path,
@@ -82,7 +80,6 @@ fn expand_dir_structure_for_field(
         PathSpec::Path(p) => quote! { #path_param_name.join(#p) },
         PathSpec::SelfPath => quote! { #path_param_name.clone() },
     };
-    let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
 
     let async_read_bound = read_from_async::expand_dir_structure_for_field(
         (impl_generics, ty_name, ty_generics, where_clause),

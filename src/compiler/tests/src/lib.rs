@@ -3,7 +3,7 @@
 pub extern crate narxia_workspace;
 
 pub mod parser_tests {
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
     use miette::bail;
     use miette::IntoDiagnostic;
     use narxia_driver::DriverCtx;
@@ -40,7 +40,7 @@ pub mod parser_tests {
 }
 
 pub mod name_resolution_tests {
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_data_structures::FxBTreeMap;
     use narxia_driver::DriverCtx;
@@ -83,7 +83,7 @@ pub mod name_resolution_tests {
 }
 
 pub mod ssa_tests {
-    use dir_structure::traits::vfs::fs_vfs::FsVfs;
+    use dir_structure::vfs::fs_vfs::FsVfs;
     use miette::IntoDiagnostic;
     use narxia_driver::DriverCtx;
     use narxia_hir_typechk::sema;

@@ -4,8 +4,8 @@ use std::path::Path;
 use std::pin::Pin;
 
 use crate::error::Result;
-use crate::traits::vfs::fs_vfs;
-use crate::traits::vfs::{self};
+use crate::traits::vfs;
+use crate::vfs::fs_vfs;
 
 /// The main trait. This is implemented for
 /// all directory structures by the derive macro.

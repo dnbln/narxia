@@ -14,7 +14,7 @@
 // the syntree_correctness test, to prove that our model of the syntree
 // matches what the parser produces.
 
-use dir_structure::traits::vfs::fs_vfs::FsVfs;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use miette::bail;
 use miette::IntoDiagnostic;
 use narxia_syn::syntax_kind::SyntaxKind;
