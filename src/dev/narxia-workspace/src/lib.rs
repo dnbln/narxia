@@ -164,6 +164,7 @@ pub mod parser_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::error::Result;
     use dir_structure::std_types::FileString;
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
@@ -200,14 +201,11 @@ pub mod parser_tests {
 
     dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder);
 
-    pub fn collect_parser_tests() -> dir_structure::error::Result<ParserTestsFolder<'static, FsVfs>>
-    {
+    pub fn collect_parser_tests() -> Result<ParserTestsFolder<'static, FsVfs>> {
         ParserTestsFolder::<FsVfs>::read(parser_tests_dir())
     }
 
-    pub fn load_parser_test(
-        test: &str,
-    ) -> dir_structure::error::Result<ParserTestSingleFolder<'static, FsVfs>> {
+    pub fn load_parser_test(test: &str) -> Result<ParserTestSingleFolder<'static, FsVfs>> {
         load_path!([parser_tests_dir() as ParserTestsFolder<'static, FsVfs>].${test})
     }
 }
@@ -217,6 +215,7 @@ pub mod name_resolution_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::error::Result;
     use dir_structure::std_types::FileString;
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
@@ -250,14 +249,13 @@ pub mod name_resolution_tests {
 
     dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder);
 
-    pub fn collect_name_resolution_tests()
-    -> dir_structure::error::Result<NameResolutionTestsFolder<'static, FsVfs>> {
+    pub fn collect_name_resolution_tests() -> Result<NameResolutionTestsFolder<'static, FsVfs>> {
         NameResolutionTestsFolder::<FsVfs>::read(name_resolution_tests_dir())
     }
 
     pub fn load_name_resolution_test(
         test: &str,
-    ) -> dir_structure::error::Result<NameResolutionTestSingleFolder<'static, FsVfs>> {
+    ) -> Result<NameResolutionTestSingleFolder<'static, FsVfs>> {
         load_path!([name_resolution_tests_dir() as NameResolutionTestsFolder<'static, FsVfs>].${test})
     }
 }
@@ -267,6 +265,7 @@ pub mod ssa_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure::error::Result;
     use dir_structure::std_types::FileString;
     use dir_structure::traits::resolve::load_path;
     use dir_structure::traits::resolve::resolve_path;
@@ -300,13 +299,11 @@ pub mod ssa_tests {
 
     dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder);
 
-    pub fn collect_ssa_tests() -> dir_structure::error::Result<SsaTestsFolder<'static, FsVfs>> {
+    pub fn collect_ssa_tests() -> Result<SsaTestsFolder<'static, FsVfs>> {
         SsaTestsFolder::<FsVfs>::read(ssa_tests_dir())
     }
 
-    pub fn load_ssa_test(
-        test: &str,
-    ) -> dir_structure::error::Result<SsaTestSingleFolder<'static, FsVfs>> {
+    pub fn load_ssa_test(test: &str) -> Result<SsaTestSingleFolder<'static, FsVfs>> {
         load_path!([ssa_tests_dir() as SsaTestsFolder<'static, FsVfs>].${test})
     }
 }

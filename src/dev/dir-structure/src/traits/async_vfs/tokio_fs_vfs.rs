@@ -12,9 +12,9 @@ use tokio::fs;
 use super::CreateParentDirDefaultFuture;
 use super::IoErrorWrapperFuture;
 use crate::error::Result;
+use crate::error::WrapIoError;
 use crate::traits::async_vfs::VfsAsync;
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
-use crate::error::WrapIoError;
 
 /// A [`VfsAsync`] and [`WriteSupportingVfsAsync`] implementation using [`tokio::fs`].
 pub struct TokioFsVfs;

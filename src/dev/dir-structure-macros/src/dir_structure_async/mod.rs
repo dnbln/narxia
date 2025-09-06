@@ -159,7 +159,8 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         if bounds.is_empty() {
             v.bounds = parse_quote! { ::dir_structure::traits::async_vfs::VfsAsync + 'static };
         } else {
-            v.bounds.push(parse_quote! { ::dir_structure::traits::async_vfs::VfsAsync });
+            v.bounds
+                .push(parse_quote! { ::dir_structure::traits::async_vfs::VfsAsync });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {

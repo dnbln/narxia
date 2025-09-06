@@ -167,7 +167,8 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         if bounds.is_empty() {
             v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs + 'static };
         } else {
-            v.bounds.push(parse_quote! { ::dir_structure::traits::vfs::Vfs });
+            v.bounds
+                .push(parse_quote! { ::dir_structure::traits::vfs::Vfs });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {

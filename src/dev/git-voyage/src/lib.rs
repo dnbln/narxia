@@ -18,6 +18,7 @@ use dir_structure::dir_children::DirChildSingleOpt;
 use dir_structure::dir_children::DirChildren;
 use dir_structure::dir_children::Filter;
 use dir_structure::dir_children::ForceCreateDirChildren;
+use dir_structure::error::Error as DirStructureError;
 use dir_structure::file_prefix_filter;
 use dir_structure::traits::resolve::resolve_path;
 use dir_structure::versioned::Versioned;
@@ -34,7 +35,7 @@ pub enum Error {
     #[error("git error: {0}")]
     GitError(#[from] git2::Error),
     #[error("dir-structure error: {0}")]
-    DirStructureError(#[from] dir_structure::error::Error),
+    DirStructureError(#[from] DirStructureError),
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
     #[error("Failed to parse step reference: {0}")]

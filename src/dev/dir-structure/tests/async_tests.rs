@@ -524,7 +524,8 @@ async fn versioned_doesnt_call_write_if_not_changed() {
     where
         T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
     {
-        type Future = Pin<Box<dyn Future<Output = dir_structure::error::Result<Self>> + Send + 'vfs>>;
+        type Future =
+            Pin<Box<dyn Future<Output = dir_structure::error::Result<Self>> + Send + 'vfs>>;
 
         fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
             Box::pin(async move {

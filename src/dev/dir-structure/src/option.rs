@@ -14,6 +14,10 @@ use pin_project::pin_project;
 
 use crate::error::Result;
 use crate::prelude::*;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::VfsAsync;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::DynamicHasField;
 #[cfg(feature = "resolve-path")]
@@ -21,10 +25,6 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
-#[cfg(feature = "async")]
-use crate::traits::async_vfs::VfsAsync;
-#[cfg(feature = "async")]
-use crate::traits::async_vfs::WriteSupportingVfsAsync;
 
 impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for Option<T>
 where
