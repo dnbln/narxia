@@ -14,10 +14,6 @@ export default function HomePage() {
             User documentation
           </Link>.
         </p>
-        <div style={{ height: '2000px' }} />
-        <p>
-          (This is just a placeholder page for now.)
-        </p>
       </div>
     </main>
   );
