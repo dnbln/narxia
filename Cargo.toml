@@ -47,8 +47,8 @@ narxia-syn = { path = "src/compiler/narxia-syn" }
 narxia-syn-db = { path = "src/compiler/narxia-syn-db" }
 
 doc-extract = { path = "src/dev/doc-extract" }
-dir-structure-macros = { path = "src/dev/dir-structure-macros", version = "=0.1.6" }
-dir-structure = { path = "src/dev/dir-structure", version = "0.1.6" }
+dir-structure-macros = { path = "src/dev/dir-structure-macros", version = "=0.2.0-rc.1" }
+dir-structure = { path = "src/dev/dir-structure", version = "0.2.0-rc.1" }
 git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 

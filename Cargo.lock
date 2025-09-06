@@ -682,7 +682,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure"
-version = "0.1.6"
+version = "0.2.0-rc.1"
 dependencies = [
  "dir-structure-macros",
  "futures-core",
@@ -699,7 +699,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-macros"
-version = "0.1.6"
+version = "0.2.0-rc.1"
 dependencies = [
  "proc-macro2",
  "quote",
