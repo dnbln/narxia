@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use dir_structure::FsVfs;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;

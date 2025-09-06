@@ -13,7 +13,7 @@
 // - Compare: The parser will compare the pretty-printed version of the parse tree with the
 //   contents of the `output.txt` file. If they don't match, the test fails.
 
-use dir_structure::FsVfs;
+use dir_structure::traits::vfs::fs_vfs::FsVfs;
 use miette::bail;
 use miette::Context;
 use miette::IntoDiagnostic;
