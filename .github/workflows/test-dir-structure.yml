@@ -64,8 +64,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: sudo apt update && sudo apt install clang ninja-build openssl libssl-dev
+    #   - name: Install dependencies
+    #     run: sudo apt update && sudo apt install openssl libssl-dev
       - name: Install rust
         run: rustup install nightly && rustup default nightly
       - name: Rust cache
