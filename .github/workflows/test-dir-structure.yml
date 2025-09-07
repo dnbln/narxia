@@ -72,7 +72,5 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ matrix.feature-combos == '--all-features' }}
-      - name: Build dir-structure
-        run: cargo build -p dir-structure --no-default-features ${{ matrix.feature-combos }}
       - name: Run tests
         run: cargo test -p dir-structure --no-default-features ${{ matrix.feature-combos }} -- --test-threads=1
