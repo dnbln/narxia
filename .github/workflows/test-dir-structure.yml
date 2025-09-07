@@ -31,34 +31,35 @@ jobs:
     strategy:
       matrix:
         feature-combos: [
-            "default",
-            "async",
-            "tokio",
-            "image",
-            "image,image-format-png",
-            "image,image-format-jpeg",
-            "async,image",
-            "tokio,image",
-            "tokio,image,image-format-png",
-            "tokio,image,image-format-jpeg",
-            "resolve-path",
-            "async,resolve-path",
-            "tokio,resolve-path",
-            "async,tokio,resolve-path",
-            "json",
-            "async,json",
-            "tokio,json",
-            "toml",
-            "async,toml",
-            "tokio,toml",
-            "yaml",
-            "async,yaml",
-            "tokio,yaml",
-            "ron",
-            "async,ron",
-            "tokio,ron",
-            "include_dir",
-            "async,include_dir",
+            "--features default",
+            "--features async",
+            "--features tokio",
+            "--features image",
+            "--features image,image-format-png",
+            "--features image,image-format-jpeg",
+            "--features async,image",
+            "--features tokio,image",
+            "--features tokio,image,image-format-png",
+            "--features tokio,image,image-format-jpeg",
+            "--features resolve-path",
+            "--features async,resolve-path",
+            "--features tokio,resolve-path",
+            "--features async,tokio,resolve-path",
+            "--features json",
+            "--features async,json",
+            "--features tokio,json",
+            "--features toml",
+            "--features async,toml",
+            "--features tokio,toml",
+            "--features yaml",
+            "--features async,yaml",
+            "--features tokio,yaml",
+            "--features ron",
+            "--features async,ron",
+            "--features tokio,ron",
+            "--features include_dir",
+            "--features async,include_dir",
+            "--all-features",
         ]
 
     steps:
@@ -69,7 +70,9 @@ jobs:
         run: rustup install nightly && rustup default nightly
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ matrix.feature-combos == '--all-features' }}
       - name: Build dir-structure
-        run: cargo build -p dir-structure --no-default-features --features "${{ matrix.feature-combos }}"
+        run: cargo build -p dir-structure --no-default-features ${{ matrix.feature-combos }}
       - name: Run tests
-        run: cargo test -p dir-structure --no-default-features --features "${{ matrix.feature-combos }}" -- --test-threads=1
+        run: cargo test -p dir-structure --no-default-features ${{ matrix.feature-combos }} -- --test-threads=1
