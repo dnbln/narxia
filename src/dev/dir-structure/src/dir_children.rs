@@ -475,6 +475,7 @@ where
     }
 
     /// Gets a mutable reference to the child at the specified index.
+    /// This is a mutable version of [`get`][Self::get].
     ///
     /// # Examples
     ///
@@ -534,7 +535,8 @@ where
             .find(|child| child.file_name == name.as_ref())
     }
 
-    /// Gets the child with the specified "file" name (last segment of path). Mutable version of [`get_name`][Self::get_name].
+    /// Gets the child with the specified "file" name (last segment of path).
+    /// This is a mutable version of [`get_name`][Self::get_name].
     ///
     /// # Examples
     ///
@@ -594,7 +596,8 @@ where
         self.get_name(name).map(|child| &child.value)
     }
 
-    /// Gets the value of the child with the specified "file" name (last segment of path). Mutable version of [`get_value_by_name`][Self::get_value_by_name].
+    /// Gets the value of the child with the specified "file" name (last segment of path).
+    /// This is a mutable version of [`get_value_by_name`][Self::get_value_by_name].
     ///
     /// # Examples
     ///

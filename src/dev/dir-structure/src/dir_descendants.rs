@@ -250,6 +250,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the descendant with the given name, or `None` if not found.
+    /// This is a mutable version of [`get_by_name`](Self::get_by_name).
     ///
     /// # Examples
     ///
@@ -292,6 +293,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the value of the descendant with the given name, or `None` if not found.
+    /// This is a mutable version of [`get_value_by_name`](Self::get_value_by_name).
     ///
     /// # Examples
     ///
@@ -334,6 +336,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the descendant with the given path, or `None` if not found.
+    /// This is a mutable version of [`get_by_path`](Self::get_by_path).
     ///
     /// # Examples
     ///
@@ -376,6 +379,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the value of the descendant with the given path, or `None` if not found.
+    /// This is a mutable version of [`get_value_by_path`](Self::get_value_by_path).
     ///
     /// # Examples
     ///
@@ -419,6 +423,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the descendant with the given path relative to the ascendant, or `None` if not found.
+    /// This is a mutable version of [`get_by_relative_path`](Self::get_by_relative_path).
     ///
     /// # Examples
     ///
@@ -465,6 +470,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 
     /// Returns a mutable reference to the value of the descendant with the given path relative to the ascendant, or `None` if not found.
+    /// This is a mutable version of [`get_value_by_relative_path`](Self::get_value_by_relative_path).
     ///
     /// # Examples
     ///
