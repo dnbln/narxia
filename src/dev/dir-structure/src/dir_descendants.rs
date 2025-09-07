@@ -554,6 +554,33 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
         }
     }
 
+    /// Appends a descendant to the end of the list.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![]);
+    /// assert!(descendants.is_empty());
+    ///
+    /// descendants.push(DirDescendant::new("child1", "child1", "child1", "value1".to_string()));
+    /// assert_eq!(descendants.len(), 1);
+    /// let mut i = descendants.iter();
+    /// assert_eq!(i.next(), Some(&DirDescendant::new("child1", "child1", "child1", "value1".to_string())));
+    /// assert_eq!(i.next(), None);
+    ///
+    /// descendants.push(DirDescendant::new("child2", "child2", "child2", "value2".to_string()));
+    /// assert_eq!(descendants.len(), 2);
+    /// let mut i = descendants.iter();
+    /// assert_eq!(i.next(), Some(&DirDescendant::new("child1", "child1", "child1", "value1".to_string())));
+    /// assert_eq!(i.next(), Some(&DirDescendant::new("child2", "child2", "child2", "value2".to_string())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn push(&mut self, descendant: DirDescendant<T>) {
+        self.descendants.push(descendant);
+    }
+
     /// Retains only the descendants specified by the predicate.
     ///
     /// # Examples

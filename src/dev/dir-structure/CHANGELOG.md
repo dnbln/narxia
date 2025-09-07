@@ -60,6 +60,7 @@ for child in &mut children {
 ```
 
 The `DirDescendants` struct has been expanded with the following methods:
+- `push`: Add a new `DirDescendant` to the end of the list.
 - `retain`: Retain only the descendants that satisfy a given predicate.
 - `drain`: Remove and return a range of descendants as an iterator.
 - `extract_if`: Remove and return descendants that satisfy a given predicate as an iterator.
