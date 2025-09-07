@@ -131,8 +131,17 @@ pub mod prelude {
     pub use crate::traits::asy::WriteToAsync;
     #[cfg(feature = "async")]
     pub use crate::traits::asy::WriteToAsyncRef;
+    #[cfg(feature = "async")]
+    pub use crate::traits::async_vfs::VfsAsync;
+    #[cfg(feature = "async")]
+    pub use crate::traits::async_vfs::VfsAsyncExt;
+    #[cfg(feature = "async")]
+    pub use crate::traits::async_vfs::WriteSupportingVfsAsyncExt;
     pub use crate::traits::sync::ReadFrom;
     pub use crate::traits::sync::WriteTo;
+    pub use crate::traits::vfs::Vfs;
+    pub use crate::traits::vfs::VfsExt;
+    pub use crate::traits::vfs::WriteSupportingVfsExt;
 }
 
 pub mod clean_dir;
@@ -143,6 +152,9 @@ pub mod dir_children;
 pub mod dir_descendants;
 pub mod error;
 pub mod fmt_wrapper;
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub mod image;
 pub mod option;
 pub mod std_types;
 pub mod traits;
@@ -150,9 +162,6 @@ pub mod try_parse;
 pub mod versioned;
 pub mod versioned_hash;
 pub mod vfs;
-
-#[cfg(any(feature = "json", feature = "toml", feature = "yaml", feature = "ron"))]
-mod sfw;
 
 /// A [`Filter`], [`FileFilter`], [`FolderFilter`], and [`FolderRecurseFilter`] that allows all paths.
 ///

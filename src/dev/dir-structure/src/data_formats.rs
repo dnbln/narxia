@@ -114,7 +114,9 @@ and write them back to disk."##
 
             use crate::traits::sync::FromRefForWriter;
             use crate::traits::vfs;
+            #[cfg(feature = "async")]
             use crate::traits::async_vfs::VfsAsync;
+            #[cfg(feature = "async")]
             use crate::traits::async_vfs::WriteSupportingVfsAsync;
             #[cfg(feature = "async")]
             use crate::traits::asy::FromRefForWriterAsync;
@@ -293,8 +295,9 @@ and write them back to disk."##
                 T: serde::Serialize + 'a,
             {
                 fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
-                    let mut f = crate::sfw::StreamingFileWriter::new(path)?;
-                    $to_str_ty(self.0).to_writer(&mut f)
+                    vfs.create_parent_dir(path)?;
+
+                    $to_str_ty(self.0).to_writer(&mut vfs.open_write(path)?)
                         .map_err(|e| match e {
                             ToWriterError::Io(e) => Error::Io(path.to_path_buf(), e),
                             ToWriterError::Serde(e) => Error::Serde(path.to_path_buf(), e.into()),

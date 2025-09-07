@@ -13,31 +13,60 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["async"]
+default = []
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
 ron = ["dep:serde", "dep:ron"]
-async = ["dep:pin-project", "dep:futures-core", "dir-structure-macros/async"]
+async = ["dep:pin-project", "dep:futures", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
 include_dir = ["dep:include_dir"]
 resolve-path = ["dir-structure-macros/resolve-path"]
+image = ["dep:image", "tokio/rt"]
+image-format-png = ["image/png"]
+image-format-gif = ["image/gif"]
+image-format-jpeg = ["image/jpeg"]
+image-format-webp = ["image/webp"]
+image-format-tiff = ["image/tiff"]
+image-format-tga = ["image/tga"]
+image-format-bmp = ["image/bmp"]
+image-format-ico = ["image/ico"]
+image-format-hdr = ["image/hdr"]
+image-format-exr = ["image/exr"]
+image-format-pnm = ["image/pnm"]
+image-format-ff = ["image/ff"]
+image-format-avif = ["image/avif"]
+image-format-qoi = ["image/qoi"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 
 [dependencies]
 dir-structure-macros.workspace = true
-futures-core = { version = "0.3", optional = true, default-features = false }
+futures = { version = "0.3", optional = true, default-features = false, features = [
+    "io-compat",
+] }
 thiserror.workspace = true
-pin-project = {workspace = true, optional = true }
+pin-project = { workspace = true, optional = true }
 ron = { version = "0.8", optional = true, default-features = false }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "std"] }
-serde_json = { version = "1.0", optional = true, default-features = false, features = ["std"] }
+serde = { version = "1.0", optional = true, default-features = false, features = [
+    "derive",
+    "std",
+] }
+serde_json = { version = "1.0", optional = true, default-features = false, features = [
+    "std",
+] }
 serde_yaml = { version = "0.9", optional = true, default-features = false }
-toml = { version = "0.8", optional = true, default-features = false, features = ["display", "parse"] }
-tokio = { version = "1", optional = true, default-features = false, features = ["fs"] }
+toml = { version = "0.8", optional = true, default-features = false, features = [
+    "display",
+    "parse",
+] }
+tokio = { version = "1", optional = true, default-features = false, features = [
+    "fs",
+    "io-util",
+] }
 include_dir = { version = "0.6", optional = true, default-features = false }
+image = { version = "0.25", optional = true, default-features = false }
 
 [[test]]
 name = "async_tests"

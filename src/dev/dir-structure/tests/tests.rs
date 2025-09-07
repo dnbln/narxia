@@ -40,13 +40,16 @@ fn write_simple() {
 
     let p = test_dir("write_simple");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            },
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
@@ -66,13 +69,16 @@ fn write_simple_with_subdir() {
 
     let p = test_dir("write_simple_with_subdir");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            },
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(
@@ -100,15 +106,18 @@ fn write_simple_nested() {
 
     let p = test_dir("write_simple_nested");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        subdir: Subdir {
-            f2: "f2".to_owned(),
-        },
-        f3: "f3".to_owned(),
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                f1: "f1".to_owned(),
+                subdir: Subdir {
+                    f2: "f2".to_owned(),
+                },
+                f3: "f3".to_owned(),
+            },
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(
@@ -135,7 +144,7 @@ fn read_simple() {
         f3: String,
     }
 
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -159,7 +168,7 @@ fn read_simple_with_subdir() {
         f3: String,
     }
 
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -188,7 +197,7 @@ fn read_simple_nested() {
         f2: String,
     }
 
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.subdir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -212,7 +221,7 @@ fn read_numbers() {
         f3: u32,
     }
 
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.f1, 1);
     assert_eq!(dir.f2, 2);
     assert_eq!(dir.f3, 3);
@@ -232,13 +241,16 @@ fn write_numbers() {
         f3: u32,
     }
 
-    Dir {
-        f1: 1,
-        f2: 2,
-        f3: 3,
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                f1: 1,
+                f2: 2,
+                f3: 3,
+            },
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "2");
@@ -256,7 +268,7 @@ fn deferred_read() {
     let p = test_dir("deferred_read");
     let d = p.join("dir");
     std::fs::create_dir_all(&d).unwrap();
-    let r = FDir::read_from(&d, Pin::new(&FsVfs));
+    let r = FsVfs.read_typed::<FDir<_>>(&d);
     assert!(r.is_ok());
     let dir = r.unwrap();
     assert!(dir.f.perform_read().is_err());
@@ -278,7 +290,7 @@ fn read_all_directory_files() {
     std::fs::write(subdir.join("f1.txt"), "f1").unwrap();
     std::fs::write(subdir.join("f2.txt"), "f2").unwrap();
     std::fs::write(subdir.join("f3"), "f3").unwrap();
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.subdir.len(), 3);
     assert_eq!(dir.subdir.get_name("f1.txt").unwrap().value(), "f1");
     assert_eq!(dir.subdir.get_name("f2.txt").unwrap().value(), "f2");
@@ -295,18 +307,21 @@ fn write_subdirectory_children() {
     let p = test_dir("write_subdirectory_children");
     let d = p.join("dir");
     let subdir = d.join("subdir");
-    Dir {
-        subdir: DirChildren::with_children_from_iter(
-            subdir.clone(),
-            [
-                DirChild::new("f1.txt", "f1".to_owned()),
-                DirChild::new("f2.txt", "f2".to_owned()),
-                DirChild::new("f3", "f3".to_owned()),
-            ],
-        ),
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                subdir: DirChildren::with_children_from_iter(
+                    subdir.clone(),
+                    [
+                        DirChild::new("f1.txt", "f1".to_owned()),
+                        DirChild::new("f2.txt", "f2".to_owned()),
+                        DirChild::new("f3", "f3".to_owned()),
+                    ],
+                ),
+            },
+        )
+        .unwrap();
     let mut len = 0;
     for file in subdir.read_dir().unwrap() {
         let file = file.unwrap();
@@ -348,7 +363,7 @@ fn parse_dirs_inner_with_self_path() {
     let subdir = d.join("subdir");
     std::fs::create_dir_all(&subdir).unwrap();
     std::fs::write(subdir.join("f.txt"), "f").unwrap();
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(dir.subdirs.len(), 1);
     assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
 }
@@ -366,26 +381,32 @@ fn clean_dir_writer() {
 
     let p = test_dir("clean_dir_writer");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            },
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
     assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
     std::fs::write(d.join("f4"), "f4").unwrap();
 
-    CleanDir(Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    })
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &CleanDir(Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            }),
+        )
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
@@ -412,15 +433,18 @@ fn clean_dir_writer_newtype() {
 
     let p = test_dir("clean_dir_writer_newtype");
     let d = p.join("dir");
-    Dir {
-        subdir: Subdir {
-            f1: "f1".to_owned(),
-            f2: "f2".to_owned(),
-            f3: "f3".to_owned(),
-        },
-    }
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &Dir {
+                subdir: Subdir {
+                    f1: "f1".to_owned(),
+                    f2: "f2".to_owned(),
+                    f3: "f3".to_owned(),
+                },
+            },
+        )
+        .unwrap();
 
     assert_eq!(
         std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(),
@@ -433,15 +457,18 @@ fn clean_dir_writer_newtype() {
     assert_eq!(std::fs::read_to_string(d.join("subdir/f3")).unwrap(), "f3");
     std::fs::write(d.join("subdir/f4"), "f4").unwrap();
 
-    CleanDir(Dir {
-        subdir: Subdir {
-            f1: "f1".to_owned(),
-            f2: "f2".to_owned(),
-            f3: "f3".to_owned(),
-        },
-    })
-    .write_to(&d, Pin::new(&FsVfs))
-    .unwrap();
+    FsVfs
+        .write_typed(
+            &d,
+            &CleanDir(Dir {
+                subdir: Subdir {
+                    f1: "f1".to_owned(),
+                    f2: "f2".to_owned(),
+                    f3: "f3".to_owned(),
+                },
+            }),
+        )
+        .unwrap();
 
     assert_eq!(
         std::fs::read_to_string(d.join("subdir/f1.txt")).unwrap(),
@@ -469,18 +496,18 @@ fn versioned_works() {
     std::fs::create_dir_all(&d).unwrap();
     std::fs::write(d.join("f1.txt"), "f1").unwrap();
 
-    let dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
     assert_eq!(*dir.f1, "f1");
 
-    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
+    FsVfs.write_typed(&d, &dir).unwrap();
 
-    let mut dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let mut dir = FsVfs.read_typed::<Dir>(&d).unwrap();
 
     assert_eq!(*dir.f1, "f1");
 
     *dir.f1 = "f2".to_owned();
 
-    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
+    FsVfs.write_typed(&d, &dir).unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
 }
@@ -496,7 +523,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::error::Result<Self> {
             Ok(Self {
                 count: AtomicUsize::new(0),
-                inner: T::read_from(path, vfs)?,
+                inner: vfs.read_typed_pinned(path)?,
             })
         }
     }
@@ -527,19 +554,19 @@ fn versioned_doesnt_call_write_if_not_changed() {
         ),
     };
 
-    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
+    FsVfs.write_typed(&d, &dir).unwrap();
 
-    let mut dir = Dir::read_from(&d, Pin::new(&FsVfs)).unwrap();
+    let mut dir = FsVfs.read_typed::<Dir>(&d).unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 
-    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
+    FsVfs.write_typed(&d, &dir).unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 
     dir.f1.inner = "f2".to_owned();
 
-    dir.write_to(&d, Pin::new(&FsVfs)).unwrap();
+    FsVfs.write_typed(&d, &dir).unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f2");
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 1);

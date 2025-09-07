@@ -41,7 +41,7 @@ impl<T> DirStructureItem for T {}
 
 /// Trait for types / structures that can be
 /// read from disk, either from a file or a directory.
-pub trait ReadFrom<'a, Vfs: vfs::Vfs>: Sized + 'a {
+pub trait ReadFrom<'a, Vfs: vfs::Vfs + ?Sized>: Sized + 'a {
     /// Reads the structure from the specified path, which
     /// can be either a file or a directory.
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>;
@@ -55,7 +55,7 @@ pub trait ReadFrom<'a, Vfs: vfs::Vfs>: Sized + 'a {
 /// not necessary (unless used empty children
 /// directories, in which case no directories will
 /// really be created).
-pub trait WriteTo<Vfs: vfs::WriteSupportingVfs> {
+pub trait WriteTo<Vfs: vfs::WriteSupportingVfs + ?Sized> {
     /// Writes the structure to the specified path.
     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()>;
 }
@@ -70,7 +70,7 @@ pub trait WriteTo<Vfs: vfs::WriteSupportingVfs> {
 /// only cast what they have to write to those reference types
 /// (via the function below), and then call the [`WriteTo::write_to`]
 /// method on that reference.
-pub trait FromRefForWriter<'a, Vfs: vfs::WriteSupportingVfs + 'a> {
+pub trait FromRefForWriter<'a, Vfs: vfs::WriteSupportingVfs + ?Sized + 'a> {
     /// The inner type to cast.
     type Inner: ?Sized;
     /// The reference type to cast to.

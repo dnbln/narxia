@@ -35,6 +35,10 @@
             tree
           ];
 
+          env = {
+            PKG_CONFIG_PATH="${pkgs.openssl.dev}/lib/pkgconfig";
+          };
+
           shellHook = ''
             ln -sf $(rustc --print=sysroot) ./.direnv/rust
             DIR="$\{0:a:h}"

@@ -62,6 +62,21 @@ fn get_dir_or_root(root: Dir<'static>, path: &Path) -> Result<Dir<'static>> {
 
 impl Vfs for IncludeDirVfs {
     type DirWalk = IncludeDirWalker;
+    type RFile = io::Cursor<&'static [u8]>;
+
+    fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
+        let p = norm(path)?;
+        if self.dir.get_dir(&p).is_some() {
+            return Err(Error::Io(p, io::ErrorKind::IsADirectory.into()));
+        }
+
+        let file = self
+            .dir
+            .get_file(&p)
+            .ok_or(Error::Io(p.clone(), io::ErrorKind::NotFound.into()))?;
+
+        Ok(io::Cursor::new(file.contents()))
+    }
 
     fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>> {
         let p = norm(path)?;

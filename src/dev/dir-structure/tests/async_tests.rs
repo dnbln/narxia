@@ -39,14 +39,17 @@ async fn write_simple() {
 
     let p = test_dir("write_simple");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    }
-    .write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
-    .await
-    .unwrap();
+    TokioFsVfs
+        .write_typed_async_ref(
+            d.clone(),
+            &Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
@@ -66,14 +69,17 @@ async fn write_simple_with_subdir() {
 
     let p = test_dir("write_simple_with_subdir");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        f2: "f2".to_owned(),
-        f3: "f3".to_owned(),
-    }
-    .write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
-    .await
-    .unwrap();
+    TokioFsVfs
+        .write_typed_async_ref(
+            d.clone(),
+            &Dir {
+                f1: "f1".to_owned(),
+                f2: "f2".to_owned(),
+                f3: "f3".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(
@@ -101,16 +107,19 @@ async fn write_simple_nested() {
 
     let p = test_dir("write_simple_nested");
     let d = p.join("dir");
-    Dir {
-        f1: "f1".to_owned(),
-        subdir: Subdir {
-            f2: "f2".to_owned(),
-        },
-        f3: "f3".to_owned(),
-    }
-    .write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
-    .await
-    .unwrap();
+    TokioFsVfs
+        .write_typed_async_ref(
+            d.clone(),
+            &Dir {
+                f1: "f1".to_owned(),
+                subdir: Subdir {
+                    f2: "f2".to_owned(),
+                },
+                f3: "f3".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
     assert_eq!(
@@ -137,9 +146,7 @@ async fn read_simple() {
         f3: String,
     }
 
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -163,9 +170,7 @@ async fn read_simple_with_subdir() {
         f3: String,
     }
 
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -194,9 +199,7 @@ async fn read_simple_nested() {
         f2: String,
     }
 
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.f1, "f1");
     assert_eq!(dir.subdir.f2, "f2");
     assert_eq!(dir.f3, "f3");
@@ -220,9 +223,7 @@ async fn read_numbers() {
         f3: u32,
     }
 
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.f1, 1);
     assert_eq!(dir.f2, 2);
     assert_eq!(dir.f3, 3);
@@ -242,14 +243,17 @@ async fn write_numbers() {
         f3: u32,
     }
 
-    Dir {
-        f1: 1,
-        f2: 2,
-        f3: 3,
-    }
-    .write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
-    .await
-    .unwrap();
+    TokioFsVfs
+        .write_typed_async_ref(
+            d.clone(),
+            &Dir {
+                f1: 1,
+                f2: 2,
+                f3: 3,
+            },
+        )
+        .await
+        .unwrap();
 
     assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "1");
     assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "2");
@@ -267,7 +271,7 @@ async fn deferred_read() {
     let p = test_dir("deferred_read");
     let d = p.join("dir");
     std::fs::create_dir_all(d.clone()).unwrap();
-    let r = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs)).await;
+    let r = TokioFsVfs.read_typed_async::<Dir<_>>(d.clone()).await;
     assert!(r.is_ok());
     let dir = r.unwrap();
     assert!(dir.f.perform_read_async().await.is_err());
@@ -289,9 +293,7 @@ async fn read_all_directory_files() {
     std::fs::write(subdir.join("f1.txt"), "f1").unwrap();
     std::fs::write(subdir.join("f2.txt"), "f2").unwrap();
     std::fs::write(subdir.join("f3"), "f3").unwrap();
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.subdir.len(), 3);
     assert_eq!(dir.subdir.get_name("f1.txt").unwrap().value(), "f1");
     assert_eq!(dir.subdir.get_name("f2.txt").unwrap().value(), "f2");
@@ -308,19 +310,22 @@ async fn write_subdirectory_children() {
     let p = test_dir("write_subdirectory_children");
     let d = p.join("dir");
     let subdir = d.join("subdir");
-    Dir {
-        subdir: DirChildren::with_children_from_iter(
-            subdir.clone(),
-            [
-                DirChild::new("f1.txt", "f1".to_owned()),
-                DirChild::new("f2.txt", "f2".to_owned()),
-                DirChild::new("f3", "f3".to_owned()),
-            ],
-        ),
-    }
-    .write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
-    .await
-    .unwrap();
+    TokioFsVfs
+        .write_typed_async_ref(
+            d.clone(),
+            &Dir {
+                subdir: DirChildren::with_children_from_iter(
+                    subdir.clone(),
+                    [
+                        DirChild::new("f1.txt", "f1".to_owned()),
+                        DirChild::new("f2.txt", "f2".to_owned()),
+                        DirChild::new("f3", "f3".to_owned()),
+                    ],
+                ),
+            },
+        )
+        .await
+        .unwrap();
     let mut len = 0;
     for file in subdir.read_dir().unwrap() {
         let file = file.unwrap();
@@ -362,9 +367,7 @@ async fn parse_dirs_inner_with_self_path() {
     let subdir = d.join("subdir");
     std::fs::create_dir_all(&subdir).unwrap();
     std::fs::write(subdir.join("f.txt"), "f").unwrap();
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(dir.subdirs.len(), 1);
     assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
 }
@@ -489,24 +492,22 @@ async fn versioned_works() {
     std::fs::create_dir_all(d.clone()).unwrap();
     std::fs::write(d.join("f1.txt"), "f1").unwrap();
 
-    let dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
     assert_eq!(*dir.f1, "f1");
 
-    dir.write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
+    TokioFsVfs
+        .write_typed_async_ref(d.clone(), &dir)
         .await
         .unwrap();
 
-    let mut dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let mut dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
 
     assert_eq!(*dir.f1, "f1");
 
     *dir.f1 = "f2".to_owned();
 
-    dir.write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
+    TokioFsVfs
+        .write_typed_async_ref(d.clone(), &dir)
         .await
         .unwrap();
 
@@ -531,7 +532,7 @@ async fn versioned_doesnt_call_write_if_not_changed() {
             Box::pin(async move {
                 Ok(Self {
                     count: AtomicUsize::new(0),
-                    inner: T::read_from_async(path, vfs).await?,
+                    inner: vfs.read_typed_async_pinned::<T>(path).await?,
                 })
             })
         }
@@ -578,19 +579,19 @@ async fn versioned_doesnt_call_write_if_not_changed() {
 
     eprintln!("Writing initial state");
 
-    dir.write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
+    TokioFsVfs
+        .write_typed_async_ref(d.clone(), &dir)
         .await
         .unwrap();
 
     eprintln!("Initial write done");
 
-    let mut dir = Dir::read_from_async(d.clone(), Pin::new(&TokioFsVfs))
-        .await
-        .unwrap();
+    let mut dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 
-    dir.write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
+    TokioFsVfs
+        .write_typed_async_ref(d.clone(), &dir)
         .await
         .unwrap();
 
@@ -598,7 +599,8 @@ async fn versioned_doesnt_call_write_if_not_changed() {
 
     dir.f1.inner = "f2".to_owned();
 
-    dir.write_to_async_ref(d.clone(), Pin::new(&TokioFsVfs))
+    TokioFsVfs
+        .write_typed_async_ref(d.clone(), &dir)
         .await
         .unwrap();
 

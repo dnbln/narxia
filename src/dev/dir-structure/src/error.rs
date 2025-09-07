@@ -15,6 +15,9 @@ pub enum Error {
     /// Parse error.
     #[error("Parse error at {0:?}: {1}")]
     Parse(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
+    /// Write error.
+    #[error("Write error at {0:?}: {1}")]
+    Write(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
     /// Serde error.
     #[error("Serde error at {0:?}: {1}")]
     Serde(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),

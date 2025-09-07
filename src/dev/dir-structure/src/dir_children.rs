@@ -22,7 +22,7 @@ use std::task::Poll;
 use std::vec;
 
 #[cfg(feature = "async")]
-use futures_core::Stream;
+use futures::Stream;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 

@@ -13,12 +13,9 @@ use std::marker;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
-#[cfg(feature = "async")]
 use std::path::PathBuf;
-#[cfg(feature = "async")]
 use std::pin::Pin;
 
-#[cfg(feature = "async")]
 use crate::error::Result;
 use crate::prelude::*;
 #[cfg(feature = "async")]

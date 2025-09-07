@@ -3,6 +3,7 @@
 //! Main item is the [`FsVfs`] struct.
 
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -21,6 +22,14 @@ pub struct FsVfs;
 
 impl Vfs for FsVfs {
     type DirWalk = imp::FsDirWalker;
+
+    type RFile = io::BufReader<fs::File>;
+
+    fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
+        fs::File::open(path)
+            .map(io::BufReader::new)
+            .wrap_io_error_with(path)
+    }
 
     fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>> {
         fs::read(path).wrap_io_error_with(path)
@@ -42,6 +51,12 @@ impl Vfs for FsVfs {
 }
 
 impl WriteSupportingVfs for FsVfs {
+    type WFile = fs::File;
+
+    fn open_write(self: Pin<&Self>, path: &Path) -> Result<Self::WFile> {
+        fs::File::create(path).wrap_io_error_with(path)
+    }
+
     fn write(self: Pin<&Self>, path: &Path, data: &[u8]) -> Result<()> {
         fs::write(path, data).wrap_io_error_with(path)
     }

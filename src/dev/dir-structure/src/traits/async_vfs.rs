@@ -7,14 +7,26 @@ use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
 
-use futures_core::Stream;
+use futures::AsyncWrite;
+use futures::Stream;
+use futures::io::AsyncBufRead;
+use futures::io::AsyncSeek;
 use pin_project::pin_project;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::prelude::*;
 
 /// An asynchronous virtual file system. Writing operations are provided by the [`WriteSupportingVfsAsync` trait](self::WriteSupportingVfsAsync).
 pub trait VfsAsync: Send + Sync + Unpin {
+    /// The type of the file returned by the [`open_read` method](VfsAsync::open_read).
+    type RFile: AsyncBufRead + Send + Unpin;
+    /// The future returned by the [`open_read` method](VfsAsync::open_read).
+    type OpenReadFuture: Future<Output = Result<Self::RFile>> + Send + Unpin;
+
+    /// Opens a file for reading, at the specified path.
+    fn open_read(self: Pin<&Self>, path: PathBuf) -> Self::OpenReadFuture;
+
     /// The future returned by the [`read` method](VfsAsync::read).
     type ReadFuture<'a>: Future<Output = Result<Vec<u8>>> + Send + Unpin + 'a
     where
@@ -51,8 +63,59 @@ pub trait VfsAsync: Send + Sync + Unpin {
     fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a>;
 }
 
+/// Marks that the [`RFile`](VfsAsync::RFile) type of this [`VfsAsync`] also implements
+/// [`AsyncSeek`](futures::io::AsyncSeek), allowing it to be used in contexts that require seeking, such as image decoding.
+///
+/// This trait is automatically implemented for any [`VfsAsync`] whose [`RFile`](VfsAsync::RFile) implements
+/// [`AsyncSeek`](futures::io::AsyncSeek).
+pub trait VfsAsyncWithSeekRead: VfsAsync
+where
+    Self::RFile: AsyncSeek + Send + Unpin,
+{
+}
+
+impl<T: VfsAsync> VfsAsyncWithSeekRead for T where T::RFile: AsyncSeek + Send + Unpin {}
+
+/// Extension trait for [`VfsAsync`] that provides additional convenience methods.
+pub trait VfsAsyncExt: VfsAsync {
+    /// Reads a file / directory at the specified path, and parses it into the specified type using its
+    /// [`ReadFromAsync`] implementation.
+    ///
+    /// This method takes `self` as a pinned reference, to ensure that the `VfsAsync` implementation
+    /// is not moved while the read operation is in progress.
+    fn read_typed_async_pinned<'a, T: ReadFromAsync<'a, Self>>(
+        self: Pin<&'a Self>,
+        path: impl Into<PathBuf>,
+    ) -> T::Future {
+        T::read_from_async(path.into(), self)
+    }
+
+    /// Reads a file / directory at the specified path, and parses it into the specified type using its
+    /// [`ReadFromAsync`] implementation.
+    ///
+    /// This method takes `self` as a regular reference, and pins it internally.
+    fn read_typed_async<'a, T: ReadFromAsync<'a, Self>>(
+        &'a self,
+        path: impl Into<PathBuf>,
+    ) -> T::Future {
+        Pin::new(self).read_typed_async_pinned::<T>(path)
+    }
+}
+
+// Blanket impl.
+impl<V: VfsAsync + ?Sized> VfsAsyncExt for V {}
+
 /// A virtual file system that supports writing operations.
 pub trait WriteSupportingVfsAsync: VfsAsync {
+    /// The type of the file returned by the [`open_write` method](WriteSupportingVfsAsync::open_write).
+    type WFile: AsyncWrite + Send + Unpin;
+
+    /// The future type returned by the [`open_write` method](WriteSupportingVfsAsync::open_write).
+    type OpenWriteFuture: Future<Output = Result<Self::WFile>> + Send + Unpin;
+
+    /// Opens a file for writing, at the specified path.
+    fn open_write(self: Pin<&Self>, path: PathBuf) -> Self::OpenWriteFuture;
+
     /// The future type returned by the [`write` method](WriteSupportingVfsAsync::write).
     type WriteFuture<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
     where
@@ -94,6 +157,80 @@ pub trait WriteSupportingVfsAsync: VfsAsync {
     fn create_parent_dir<'a>(self: Pin<&'a Self>, path: PathBuf)
     -> Self::CreateParentDirFuture<'a>;
 }
+
+/// Marks that the [`WFile`](WriteSupportingVfsAsync::WFile) type of this [`WriteSupportingVfsAsync`] also implements
+/// [`AsyncSeek`](futures::io::AsyncSeek), allowing it to be used in
+/// contexts that require seeking.
+pub trait VfsAsyncWithSeekWrite: WriteSupportingVfsAsync
+where
+    Self::WFile: AsyncSeek + Send + Unpin,
+{
+}
+
+impl<T: WriteSupportingVfsAsync> VfsAsyncWithSeekWrite for T where T::WFile: AsyncSeek + Send + Unpin
+{}
+
+/// Extension trait for [`WriteSupportingVfsAsync`] that provides additional convenience methods.
+pub trait WriteSupportingVfsAsyncExt: WriteSupportingVfsAsync {
+    /// Writes a file / directory at the specified path, using the specified data type's
+    /// [`WriteToAsync`] implementation.
+    ///
+    /// This method takes `self` as a pinned reference, to ensure that the `VfsAsync` implementation
+    /// is not moved while the write operation is in progress.
+    fn write_typed_async_ref_pinned<'r, 'a: 'r, T: WriteToAsyncRef<'a, Self>>(
+        self: Pin<&'r Self>,
+        path: impl Into<PathBuf>,
+        value: &'r T,
+    ) -> T::Future<'r> {
+        T::write_to_async_ref(value, path.into(), self)
+    }
+
+    /// Writes a file / directory at the specified path, using the specified data type's
+    /// [`WriteToAsync`] implementation.
+    ///
+    /// This method takes `self` as a regular reference, and pins it internally.
+    fn write_typed_async_ref<'r, 'a: 'r, T: WriteToAsyncRef<'a, Self>>(
+        &'r self,
+        path: impl Into<PathBuf>,
+        data: &'r T,
+    ) -> T::Future<'r>
+    where
+        Self: Unpin,
+    {
+        Pin::new(self).write_typed_async_ref_pinned(path, data)
+    }
+
+    /// Writes a file / directory at the specified path, using the specified data type's
+    /// [`WriteToAsync`] implementation.
+    ///
+    /// This method takes `self` as a pinned reference, to ensure that the `VfsAsync` implementation
+    /// is not moved while the write operation is in progress.
+    fn write_typed_async_pinned<'a, T: WriteToAsync<'a, Self>>(
+        self: Pin<&'a Self>,
+        path: impl Into<PathBuf>,
+        value: T,
+    ) -> T::Future {
+        value.write_to_async(path.into(), self)
+    }
+
+    /// Writes a file / directory at the specified path, using the specified data type's
+    /// [`WriteToAsync`] implementation.
+    ///
+    /// This method takes `self` as a regular reference, and pins it internally.
+    fn write_typed_async<'a, T: WriteToAsync<'a, Self>>(
+        &'a self,
+        path: impl Into<PathBuf>,
+        value: T,
+    ) -> T::Future
+    where
+        Self: Unpin,
+    {
+        Pin::new(self).write_typed_async_pinned(path, value)
+    }
+}
+
+// Blanket impl.
+impl<V: WriteSupportingVfsAsync + ?Sized> WriteSupportingVfsAsyncExt for V {}
 
 #[pin_project(project_replace = CreateParentDirDefaultFutureProjOwn)]
 #[doc(hidden)]
