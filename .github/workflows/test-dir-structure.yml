@@ -61,6 +61,7 @@ jobs:
             "--features async,include_dir",
             "--all-features",
         ]
+        cmd: [ "build", "test" ]
 
     steps:
       - uses: actions/checkout@v4
@@ -72,5 +73,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           save-if: ${{ matrix.feature-combos == '--all-features' }}
+      - name: Build dir-structure
+        run: cargo build -p dir-structure --no-default-features ${{ matrix.feature-combos }}
+        if: matrix.cmd == 'build'
+
       - name: Run tests
         run: cargo test -p dir-structure --no-default-features ${{ matrix.feature-combos }} -- --test-threads=1
+        if: matrix.cmd == 'test'
