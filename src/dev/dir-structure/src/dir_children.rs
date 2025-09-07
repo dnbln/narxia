@@ -9,6 +9,7 @@ use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::marker;
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::ops::RangeBounds;
@@ -825,7 +826,7 @@ where
 /// An iterator that drains the children of a [`DirChildren`].
 ///
 /// See [`DirChildren::drain`].
-pub struct DirChildrenDrain<'a, T>(std::vec::Drain<'a, DirChild<T>>);
+pub struct DirChildrenDrain<'a, T>(vec::Drain<'a, DirChild<T>>);
 
 impl<T> Iterator for DirChildrenDrain<'_, T> {
     type Item = DirChild<T>;
@@ -1586,7 +1587,7 @@ impl<T> DoubleEndedIterator for DirChildrenIntoIter<T> {
 ///
 /// See [`DirChildren::extract_if`] for more information.
 pub struct DirChildrenExtractIf<'a, T, F: FnMut(&mut DirChild<T>) -> bool>(
-    std::vec::ExtractIf<'a, DirChild<T>, F>,
+    vec::ExtractIf<'a, DirChild<T>, F>,
 );
 
 impl<'a, T, F: FnMut(&mut DirChild<T>) -> bool> Iterator for DirChildrenExtractIf<'a, T, F> {
@@ -2212,26 +2213,26 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     }
 
     /// Takes the value out of the [`DirChildSingleOpt`] if the predicate `pred` returns `true`.
-    /// 
+    ///
     /// If the predicate returns `false`, or if the [`DirChildSingleOpt`] is `None`, this returns `None`.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// ```
     /// use dir_structure::dir_children::DirChildSingleOpt;
     /// use dir_structure::dir_children::DirChildSingle;
     /// use dir_structure::NoFilter;
-    /// 
+    ///
     /// let mut opt = DirChildSingleOpt::<String, NoFilter>::Some(DirChildSingle::new("file.txt", "file".to_owned()));
     /// let taken = opt.take_if(|child| child.value() == "file");
     /// assert_eq!(taken, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned())));
     /// assert_eq!(opt, DirChildSingleOpt::None);
-    /// 
+    ///
     /// let mut opt = DirChildSingleOpt::<String, NoFilter>::Some(DirChildSingle::new("file.txt", "file".to_owned()));
     /// let taken = opt.take_if(|child| child.value() == "other");
     /// assert_eq!(taken, DirChildSingleOpt::None);
     /// assert_eq!(opt, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned())));
-    /// 
+    ///
     /// let mut opt = DirChildSingleOpt::<String, NoFilter>::None;
     /// let taken = opt.take_if(|child| child.value() == "file");
     /// assert_eq!(taken, DirChildSingleOpt::None);
@@ -2243,7 +2244,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     ) -> DirChildSingleOpt<T, F> {
         match self {
             DirChildSingleOpt::Some(child) if pred(child) => {
-                std::mem::replace(self, DirChildSingleOpt::None)
+                mem::replace(self, DirChildSingleOpt::None)
             }
             _ => DirChildSingleOpt::None,
         }
