@@ -552,6 +552,89 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
             _phantom: marker::PhantomData,
         }
     }
+
+    /// Retains only the descendants specified by the predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", "value1".to_string()),
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    ///     DirDescendant::new("child3", "child3", "child3", "value3".to_string()),
+    /// ]);
+    ///
+    /// descendants.retain(|d| d.name() == "child2");
+    /// assert_eq!(descendants.len(), 1);
+    /// assert_eq!(descendants.get(0).unwrap().name(), "child2");
+    /// ```
+    pub fn retain(&mut self, f: impl FnMut(&DirDescendant<T>) -> bool) {
+        self.descendants.retain(f);
+    }
+
+    /// Drains the descendants in the specified range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", "value1".to_string()),
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    ///     DirDescendant::new("child3", "child3", "child3", "value3".to_string()),
+    /// ]);
+    ///
+    /// let drained: Vec<_> = descendants.drain(0..2).collect();
+    /// assert_eq!(drained, vec![
+    ///     DirDescendant::new("child1", "child1", "child1", "value1".to_string()),
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    /// ]);
+    /// assert_eq!(descendants.len(), 1);
+    /// assert_eq!(descendants.get(0).unwrap().name(), "child3");
+    /// ```
+    pub fn drain(
+        &mut self,
+        range: impl std::ops::RangeBounds<usize>,
+    ) -> DirDescendantsDrain<'_, T> {
+        DirDescendantsDrain(self.descendants.drain(range))
+    }
+
+    /// Extracts the descendants in the specified range that satisfy the predicate.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", "value1".to_string()),
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    ///     DirDescendant::new("child3", "child3", "child3", "value3".to_string()),
+    ///     DirDescendant::new("child4", "child4", "child4", "value4".to_string()),
+    /// ]);
+    /// 
+    /// let extracted: Vec<_> = descendants.extract_if(1..4, |d| d.name() == "child2" || d.name() == "child4").collect();
+    /// assert_eq!(extracted, vec![
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    ///     DirDescendant::new("child4", "child4", "child4", "value4".to_string()),
+    /// ]);
+    /// assert_eq!(descendants.len(), 2);
+    /// assert_eq!(descendants.get(0).unwrap().name(), "child1");
+    /// assert_eq!(descendants.get(1).unwrap().name(), "child3");
+    /// ```
+    pub fn extract_if<'a, Fi>(
+        &'a mut self,
+        range: impl std::ops::RangeBounds<usize>,
+        f: Fi,
+    ) -> DirDescendantsExtractIf<'a, T, Fi>
+    where
+        Fi: FnMut(&mut DirDescendant<T>) -> bool,
+    {
+        DirDescendantsExtractIf(self.descendants.extract_if(range, f))
+    }
 }
 
 impl<'a, T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator
@@ -663,6 +746,54 @@ impl<'a, T> DoubleEndedIterator for DirDescendantsIntoIter<T> {
 impl<'a, T> ExactSizeIterator for DirDescendantsIntoIter<T> {
     fn len(&self) -> usize {
         self.0.len()
+    }
+}
+
+/// An iterator that drains the owned descendants.
+///
+/// See [`DirDescendants::drain`].
+pub struct DirDescendantsDrain<'a, T>(std::vec::Drain<'a, DirDescendant<T>>);
+
+impl<T> Iterator for DirDescendantsDrain<'_, T> {
+    type Item = DirDescendant<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<T> DoubleEndedIterator for DirDescendantsDrain<'_, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+}
+
+impl<T> ExactSizeIterator for DirDescendantsDrain<'_, T> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// An iterator that extracts the owned descendants that satisfy the predicate.
+/// 
+/// See [`DirDescendants::extract_if`].
+pub struct DirDescendantsExtractIf<'a, T, F: FnMut(&mut DirDescendant<T>) -> bool>(
+    std::vec::ExtractIf<'a, DirDescendant<T>, F>,
+);
+
+impl<T, F: FnMut(&mut DirDescendant<T>) -> bool> Iterator for DirDescendantsExtractIf<'_, T, F> {
+    type Item = DirDescendant<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 

@@ -11,6 +11,7 @@ use std::marker;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::ops::RangeBounds;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -725,6 +726,129 @@ where
             value,
         });
     }
+
+    /// Retains only the children specified by the predicate.
+    ///
+    /// The predicate is a closure that takes a reference to a `DirChild<T>`
+    /// and returns `true` if the child should be kept, or `false` if it should be removed.
+    ///
+    /// # Examples
+    ////
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///     ],
+    /// );
+    /// d.retain(|child| child.file_name() != "file1.txt");
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn retain(&mut self, f: impl FnMut(&DirChild<T>) -> bool) {
+        self.children.retain(f);
+    }
+
+    /// Drains the children in the specified range, returning an iterator over the removed children.
+    /// The range is specified using the standard Rust range syntax.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///         DirChild::new("file3.txt", "file3".to_owned()),
+    ///     ],
+    /// );
+    /// let drained: Vec<_> = d.drain(0..1).collect();
+    /// assert_eq!(drained, vec![DirChild::new("file1.txt", "file1".to_owned())]);
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file3.txt", "file3".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn drain(&mut self, range: impl RangeBounds<usize>) -> DirChildrenDrain<'_, T> {
+        DirChildrenDrain(self.children.drain(range))
+    }
+
+    /// Extracts the children in the specified range that satisfy the given predicate,
+    /// returning an iterator over the removed children.
+    ///
+    /// The range is specified using the standard Rust range syntax.
+    /// The predicate is a closure that takes a mutable reference to a `DirChild<T>`
+    /// and returns `true` if the child should be removed, or `false` if it should be kept.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::path::{Path, PathBuf};
+    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
+    /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
+    ///     PathBuf::new(),
+    ///     vec![
+    ///         DirChild::new("file1.txt", "file1".to_owned()),
+    ///         DirChild::new("file2.txt", "file2".to_owned()),
+    ///         DirChild::new("file3.txt", "file3".to_owned()),
+    ///         DirChild::new("file4.txt", "file4".to_owned()),
+    ///     ],
+    /// );
+    /// let extracted: Vec<_> = d.extract_if(1..3, |child| child.file_name() == "file2.txt").collect();
+    /// assert_eq!(extracted, vec![DirChild::new("file2.txt", "file2".to_owned())]);
+    ///
+    /// let mut i = d.iter();
+    /// assert_eq!(i.next(), Some(&DirChild::new("file1.txt", "file1".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file3.txt", "file3".to_owned())));
+    /// assert_eq!(i.next(), Some(&DirChild::new("file4.txt", "file4".to_owned())));
+    /// assert_eq!(i.next(), None);
+    /// ```
+    pub fn extract_if<'a, Fi>(
+        &'a mut self,
+        range: impl RangeBounds<usize>,
+        filter: Fi,
+    ) -> DirChildrenExtractIf<'a, T, Fi>
+    where
+        Fi: FnMut(&mut DirChild<T>) -> bool,
+    {
+        DirChildrenExtractIf(self.children.extract_if(range, filter))
+    }
+}
+
+/// An iterator that drains the children of a [`DirChildren`].
+///
+/// See [`DirChildren::drain`].
+pub struct DirChildrenDrain<'a, T>(std::vec::Drain<'a, DirChild<T>>);
+
+impl<T> Iterator for DirChildrenDrain<'_, T> {
+    type Item = DirChild<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+impl<T> ExactSizeIterator for DirChildrenDrain<'_, T> {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<T> DoubleEndedIterator for DirChildrenDrain<'_, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
 }
 
 impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildren<T, F>
@@ -1404,6 +1528,30 @@ where
     }
 }
 
+impl<'a, T, F> IntoIterator for &'a DirChildren<T, F>
+where
+    F: Filter,
+{
+    type Item = &'a DirChild<T>;
+    type IntoIter = DirChildrenIter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T, F> IntoIterator for &'a mut DirChildren<T, F>
+where
+    F: Filter,
+{
+    type Item = &'a mut DirChild<T>;
+    type IntoIter = DirChildrenIterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter_mut()
+    }
+}
+
 /// An owned iterator over the children of a [`DirChildren`] structure.
 ///
 /// See [`DirChildren::into_iter`] for more information.
@@ -1430,6 +1578,26 @@ impl<T> ExactSizeIterator for DirChildrenIntoIter<T> {
 impl<T> DoubleEndedIterator for DirChildrenIntoIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
+    }
+}
+
+/// An iterator that extracts children from a [`DirChildren`] structure
+/// that satisfy a given predicate.
+///
+/// See [`DirChildren::extract_if`] for more information.
+pub struct DirChildrenExtractIf<'a, T, F: FnMut(&mut DirChild<T>) -> bool>(
+    std::vec::ExtractIf<'a, DirChild<T>, F>,
+);
+
+impl<'a, T, F: FnMut(&mut DirChild<T>) -> bool> Iterator for DirChildrenExtractIf<'a, T, F> {
+    type Item = DirChild<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 
@@ -1696,6 +1864,30 @@ impl<T, F: Filter> DirChildSingle<T, F> {
         }
     }
 
+    /// Converts &mut [`DirChildSingle`]<T, F> to [`DirChildSingle`]<&mut T, F>.
+    ///
+    /// This clones the [`OsString`] and [`PathBuf`] used for the name and path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use dir_structure::NoFilter;
+    /// use dir_structure::dir_children::DirChildSingle;
+    ///
+    /// let mut d = DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned());
+    /// let mut d_mut: DirChildSingle<&mut String, NoFilter> = d.as_mut();
+    /// d_mut.value_mut().push_str("_modified");
+    /// assert_eq!(d.value(), &"file_modified".to_owned());
+    /// ```
+    pub fn as_mut(&mut self) -> DirChildSingle<&mut T, F> {
+        DirChildSingle {
+            file_name: self.file_name.clone(),
+            value: &mut self.value,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Maps the value of the child to a new value.
     ///
     /// # Examples
@@ -1866,6 +2058,36 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         }
     }
 
+    /// Converts a &mut [`DirChildSingleOpt`]<T, F> into a [`DirChildSingleOpt`]<&mut T, F>.
+    ///
+    /// This clones the internal [`OsString`] and [`PathBuf`]` used for the name and path.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
+    ///
+    /// use dir_structure::NoFilter;
+    ///
+    /// let mut opt = DirChildSingleOpt::Some(DirChildSingle::<_, NoFilter>::new("file.txt", "file".to_owned()));
+    /// let mut opt_mut = opt.as_mut();
+    /// if let DirChildSingleOpt::Some(child) = &mut opt_mut {
+    ///     child.value_mut().push_str("_modified");
+    /// }
+    /// assert_eq!(opt, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file_modified".to_owned())));
+    ///
+    /// let mut opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let mut opt_mut = opt.as_mut();
+    /// assert_eq!(opt_mut, DirChildSingleOpt::None);
+    /// ```
+    pub fn as_mut(&mut self) -> DirChildSingleOpt<&mut T, F> {
+        match self {
+            Self::Some(child) => DirChildSingleOpt::Some(child.as_mut()),
+            Self::None => DirChildSingleOpt::None,
+        }
+    }
+
     /// Maps the value inside the [`DirChildSingleOpt`] if it exists.
     ///
     /// # Examples
@@ -1986,6 +2208,44 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
         match self {
             DirChildSingleOpt::Some(child) => Some(child),
             DirChildSingleOpt::None => None,
+        }
+    }
+
+    /// Takes the value out of the [`DirChildSingleOpt`] if the predicate `pred` returns `true`.
+    /// 
+    /// If the predicate returns `false`, or if the [`DirChildSingleOpt`] is `None`, this returns `None`.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use dir_structure::dir_children::DirChildSingleOpt;
+    /// use dir_structure::dir_children::DirChildSingle;
+    /// use dir_structure::NoFilter;
+    /// 
+    /// let mut opt = DirChildSingleOpt::<String, NoFilter>::Some(DirChildSingle::new("file.txt", "file".to_owned()));
+    /// let taken = opt.take_if(|child| child.value() == "file");
+    /// assert_eq!(taken, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned())));
+    /// assert_eq!(opt, DirChildSingleOpt::None);
+    /// 
+    /// let mut opt = DirChildSingleOpt::<String, NoFilter>::Some(DirChildSingle::new("file.txt", "file".to_owned()));
+    /// let taken = opt.take_if(|child| child.value() == "other");
+    /// assert_eq!(taken, DirChildSingleOpt::None);
+    /// assert_eq!(opt, DirChildSingleOpt::Some(DirChildSingle::new("file.txt", "file".to_owned())));
+    /// 
+    /// let mut opt = DirChildSingleOpt::<String, NoFilter>::None;
+    /// let taken = opt.take_if(|child| child.value() == "file");
+    /// assert_eq!(taken, DirChildSingleOpt::None);
+    /// assert_eq!(opt, DirChildSingleOpt::None);
+    /// ```
+    pub fn take_if(
+        &mut self,
+        pred: impl FnOnce(&DirChildSingle<T, F>) -> bool,
+    ) -> DirChildSingleOpt<T, F> {
+        match self {
+            DirChildSingleOpt::Some(child) if pred(child) => {
+                std::mem::replace(self, DirChildSingleOpt::None)
+            }
+            _ => DirChildSingleOpt::None,
         }
     }
 }

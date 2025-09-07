@@ -38,8 +38,41 @@ Expanded the `DirDescendants` struct with new functions:
 
 Implemented `ReadFromAsync`, `WriteToAsync` and `WriteToAsyncRef` for `DirDescendants`.
 
+The `DirChildren` struct has been expanded with the following methods:
+- `retain`: Retain only the children that satisfy a given predicate.
+- `drain`: Remove and return a range of children as an iterator.
+- `extract_if`: Remove and return children that satisfy a given predicate as an iterator.
+
+Additionally, `&DirChildren` and `&mut DirChildren` now implement `IntoIterator`, allowing you to iterate over references to the children:
+
+```rust
+use dir_structure::DirChildren;
+
+let mut children = DirChildren::new();
+
+for child in &children {
+    // child is of type &DirChild<T>
+}
+
+for child in &mut children {
+    // child is of type &mut DirChild<T>
+}
+```
+
+The `DirDescendants` struct has been expanded with the following methods:
+- `retain`: Retain only the descendants that satisfy a given predicate.
+- `drain`: Remove and return a range of descendants as an iterator.
+- `extract_if`: Remove and return descendants that satisfy a given predicate as an iterator.
+
 For `DirDescendant`, the following method has been added:
 - `DirDescendant::as_ref` and `DirDescendant::as_mut`: Make a clone of the name and paths, return a `DirDescendant<&T>` or `DirDescendant<&mut T>` with references to the original value.
+
+For `DirChildSingle`, the following method has been added:
+- `DirChildSingle::as_mut`: Make a clone of the name and path, return a `DirChildSingle<&mut T>` with a mutable reference to the original value.
+
+For `DirChildSingleOpt`, the following method has been added:
+- `DirChildSingleOpt::as_mut`: Make a clone of the name and path, return a `DirChildSingleOpt<&mut T>` with a mutable reference to the original value.
+- `DirChildSingleOpt::take_if`: Take the child if it satisfies a given predicate, replacing it with `None` in the `DirChildSingleOpt`, or returning `DirChildSingleOpt::None` otherwise.
 
 `DirChild` and `DirDescendant` now implement `Deref` and `DerefMut` to their inner values, allowing you to use them as if they were the inner values directly.
 
