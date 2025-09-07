@@ -1,0 +1,74 @@
+name: Test
+
+on:
+  push:
+    branches: ["trunk"]
+    paths:
+      - 'src/dev/dir-structure/**'
+      - 'src/dev/dir-structure-macros/**'
+      - 'doc/docs/content/docs/dev/dir-structure/*.doctests'
+      - '.github/workflows/test-dir-structure.yml'
+  pull_request:
+    branches: ["trunk"]
+    paths:
+      - 'src/dev/dir-structure/**'
+      - 'src/dev/dir-structure-macros/**'
+      - 'doc/docs/content/docs/dev/dir-structure/*.doctests'
+      - '.github/workflows/test-dir-structure.yml'
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  NEXUS_GROUP_BEGIN: "::group::{group}"
+  NEXUS_GROUP_END: "::endgroup::"
+  CC: clang
+  CXX: clang++
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature-combos: [
+            "default",
+            "async",
+            "tokio",
+            "image",
+            "image,image-format-png",
+            "image,image-format-jpeg",
+            "async,image",
+            "tokio,image",
+            "tokio,image,image-format-png",
+            "tokio,image,image-format-jpeg",
+            "resolve-path",
+            "async,resolve-path",
+            "tokio,resolve-path",
+            "async,tokio,resolve-path",
+            "json",
+            "async,json",
+            "tokio,json",
+            "toml",
+            "async,toml",
+            "tokio,toml",
+            "yaml",
+            "async,yaml",
+            "tokio,yaml",
+            "ron",
+            "async,ron",
+            "tokio,ron",
+            "include_dir",
+            "async,include_dir",
+        ]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt update && sudo apt install clang ninja-build openssl libssl-dev
+      - name: Install rust
+        run: rustup install nightly && rustup default nightly
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Build dir-structure
+        run: cargo build -p dir-structure --no-default-features --features "${{ matrix.feature-combos }}"
+      - name: Run tests
+        run: cargo test -p dir-structure --no-default-features --features "${{ matrix.feature-combos }}" -- --test-threads=1
