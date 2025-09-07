@@ -2,8 +2,16 @@ name: Check Documentation Patched
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["trunk"]
+    paths:
+      - 'doc/guides/**'
+      - '.github/workflows/check-docs-patched.yml'
   pull_request:
     branches: ["trunk"]
+    paths:
+      - 'doc/guides/**'
+      - '.github/workflows/check-docs-patched.yml'
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,4 +34,4 @@ jobs:
           run: cargo build -p nexus
         - name: Check if documentation is patched
           run: cargo nexus build-sys doc-patchup-rustdocs --check
-          timeout-minutes: 10
+          timeout-minutes: 3
