@@ -1,6 +1,5 @@
 //! Asynchronous virtual file system traits.
 
-use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -16,6 +15,7 @@ use pin_project::pin_project;
 use crate::error::Error;
 use crate::error::Result;
 use crate::prelude::*;
+use crate::traits::vfs::DirEntryInfo;
 
 /// An asynchronous virtual file system. Writing operations are provided by the [`WriteSupportingVfsAsync` trait](self::WriteSupportingVfsAsync).
 pub trait VfsAsync: Send + Sync + Unpin {
@@ -52,7 +52,7 @@ pub trait VfsAsync: Send + Sync + Unpin {
     fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a>;
 
     /// The stream type returned by the [`DirWalkFuture`](VfsAsync::DirWalkFuture).
-    type DirWalk<'a>: Stream<Item = Result<(OsString, PathBuf)>> + Send + 'a
+    type DirWalk<'a>: Stream<Item = Result<DirEntryInfo>> + Send + 'a
     where
         Self: 'a;
     /// The future type returned by the [`walk_dir` method](VfsAsync::walk_dir).

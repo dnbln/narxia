@@ -1,6 +1,6 @@
 //! Tokio file system virtual file system implementation.
 
-// use std::fs as std_fs;
+use std::fs as std_fs;
 use std::io;
 use std::io::SeekFrom;
 use std::path::PathBuf;
@@ -190,7 +190,11 @@ impl VfsAsync for TokioFsVfs {
             Box::pin(async move {
                 fs::read_dir(path.clone())
                     .await
-                    .map(|inner| imp::DirWalker { inner, path })
+                    .map(|inner| imp::DirWalker {
+                        inner,
+                        path,
+                        current_kind_future: None,
+                    })
             }),
         )
     }
@@ -276,6 +280,7 @@ mod imp {
     use std::ffi::OsString;
     use std::task::Context;
 
+    use futures::FutureExt;
     #[cfg(feature = "image")]
     use tokio::task;
 
@@ -288,6 +293,8 @@ mod imp {
     use crate::image::ImgFormat;
     #[cfg(feature = "image")]
     use crate::prelude::*;
+    use crate::traits::vfs::DirEntryInfo;
+    use crate::traits::vfs::DirEntryKind;
     #[cfg(feature = "image")]
     use crate::traits::vfs::WriteSupportingVfs as _;
     #[cfg(feature = "image")]
@@ -297,14 +304,48 @@ mod imp {
     pub struct DirWalker {
         pub(super) inner: fs::ReadDir,
         pub(super) path: PathBuf,
+
+        pub(super) current_kind_future: Option<(
+            OsString,
+            PathBuf,
+            Pin<Box<dyn Future<Output = io::Result<std_fs::FileType>> + Send>>,
+        )>,
     }
 
     impl Stream for DirWalker {
-        type Item = Result<(OsString, PathBuf)>;
+        type Item = Result<DirEntryInfo>;
 
         fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            if let Some((name, path, fut)) = self.current_kind_future.as_mut() {
+                match fut.poll_unpin(cx) {
+                    Poll::Ready(Ok(kind)) => {
+                        let name = name.clone();
+                        let path = path.clone();
+                        self.current_kind_future = None;
+                        let kind = if kind.is_dir() {
+                            DirEntryKind::Directory
+                        } else {
+                            DirEntryKind::File
+                        };
+                        return Poll::Ready(Some(Ok(DirEntryInfo { name, path, kind })));
+                    }
+                    Poll::Ready(Err(e)) => {
+                        let path = self.path.clone();
+                        self.current_kind_future = None;
+                        return Poll::Ready(Some(Err(e).wrap_io_error_with(&path)));
+                    }
+                    Poll::Pending => return Poll::Pending,
+                }
+            }
             match self.inner.poll_next_entry(cx) {
-                Poll::Ready(Ok(Some(v))) => Poll::Ready(Some(Ok((v.file_name(), v.path())))),
+                Poll::Ready(Ok(Some(v))) => {
+                    let name = v.file_name();
+                    let path = v.path();
+                    let fut = Box::pin(async move { v.file_type().await });
+                    self.current_kind_future = Some((name, path, fut));
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
                 Poll::Ready(Ok(None)) => Poll::Ready(None),
                 Poll::Ready(Err(e)) => Poll::Ready(Some(Err(e).wrap_io_error_with(&self.path))),
                 Poll::Pending => Poll::Pending,

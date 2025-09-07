@@ -841,7 +841,11 @@ where
                 use std::task::Poll;
 
                 match entries.as_mut().poll_next(cx) {
-                    Poll::Ready(Some(Ok((name, path_child)))) => {
+                    Poll::Ready(Some(Ok(DirEntryInfo {
+                        name,
+                        path: path_child,
+                        kind: _,
+                    }))) => {
                         if !F::allows(&path_child) {
                             return Poll::Ready(Ok(DirChildren {
                                 self_path: path,
@@ -1295,6 +1299,20 @@ impl<T> DirChild<T> {
             file_name: self.file_name,
             value,
         }
+    }
+}
+
+impl<T> Deref for DirChild<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> DerefMut for DirChild<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
     }
 }
 

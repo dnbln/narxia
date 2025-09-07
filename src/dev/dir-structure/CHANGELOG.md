@@ -1,3 +1,48 @@
+# Unreleased
+
+## Image support
+
+Support for image files has been added via the `image` feature flag. This allows you to read and write
+various image formats such as PNG, JPEG, BMP, GIF, and TIFF using the `image` crate.
+
+Support for individual formats can be enabled via the following feature flags:
+- `image-format-png`
+- `image-format-gif`
+- `image-format-jpeg`
+- `image-format-webp`
+- `image-format-tiff`
+- `image-format-tga`
+- `image-format-bmp`
+- `image-format-ico`
+- `image-format-hdr`
+- `image-format-exr`
+- `image-format-pnm`
+- `image-format-ff`
+- `image-format-avif`
+- `image-format-qoi`
+
+## New APIs
+
+Expanded the `DirDescendants` struct with new functions:
+- `len`: Get the number of `DirDescendant` entries.
+- `is_empty`: Check if there are no `DirDescendant` entries.
+- `get` and `get_mut`: Get a reference to a `DirDescendant` by its index.
+- `get_by_name` and `get_by_name_mut`: Get a reference to a `DirDescendant` by its name.
+- `get_value_by_name` and `get_value_by_name_mut`: Get a reference or mutable reference to the value in a `DirDescendant` by its name.
+- `get_by_path` and `get_by_path_mut`: Get a reference to a `DirDescendant` by its full path.
+- `get_value_by_path` and `get_value_by_path_mut`: Get a reference or mutable reference to the value in a `DirDescendant` by its full path.
+- `get_by_relative_path` and `get_by_relative_path_mut`: Get a reference to a `DirDescendant` by its path relative to the `DirDescendants` root.
+- `get_value_by_relative_path` and `get_value_by_relative_path_mut`: Get a reference or mutable reference to the value in a `DirDescendant` by its path relative to the `DirDescendants` root.
+- `map`: Create a new `DirDescendants` by applying a function to each value.
+- `map_filter`: Create a new `DirDescendants` by changing the filter type.
+
+Implemented `ReadFromAsync`, `WriteToAsync` and `WriteToAsyncRef` for `DirDescendants`.
+
+For `DirDescendant`, the following method has been added:
+- `DirDescendant::as_ref` and `DirDescendant::as_mut`: Make a clone of the name and paths, return a `DirDescendant<&T>` or `DirDescendant<&mut T>` with references to the original value.
+
+`DirChild` and `DirDescendant` now implement `Deref` and `DerefMut` to their inner values, allowing you to use them as if they were the inner values directly.
+
 # `0.2.0-rc.1`
 
 Released: 2025-09-06

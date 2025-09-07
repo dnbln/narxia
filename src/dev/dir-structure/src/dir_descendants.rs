@@ -4,17 +4,28 @@
 
 use core::fmt::Debug;
 use core::slice;
+use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fmt;
 use std::marker;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::vec;
 
+#[cfg(feature = "async")]
+use futures::future::BoxFuture;
+#[cfg(feature = "async")]
+#[cfg(feature = "async")]
+use pin_project::pin_project;
+
 use crate::NoFilter;
 use crate::error::Result;
 use crate::prelude::*;
+#[cfg(feature = "async")]
+use crate::traits::async_vfs::WriteSupportingVfsAsync;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::DynamicHasField;
 use crate::traits::vfs;
@@ -59,11 +70,65 @@ impl<T: Clone, F: FolderFilter + FolderRecurseFilter + FileFilter> Clone for Dir
 
 impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F> {
     /// Create a new [`DirDescendants`] instance from a list of [`DirDescendant`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![]);
+    /// assert!(descendants.is_empty());
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![
+    ///   DirDescendant::new("child1", "child1", "child1", ()),
+    ///   DirDescendant::new("child2", "child2", "child2", ()),
+    /// ]);
+    /// assert_eq!(descendants.len(), 2);
+    /// ```
     pub fn new(descendants: Vec<DirDescendant<T>>) -> Self {
         Self {
             descendants,
             _phantom: marker::PhantomData,
         }
+    }
+
+    /// Returns the number of descendants.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![]);
+    /// assert_eq!(descendants.len(), 0);
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![
+    ///   DirDescendant::new("child1", "child1", "child1", ()),
+    ///   DirDescendant::new("child2", "child2", "child2", ()),
+    /// ]);
+    /// assert_eq!(descendants.len(), 2);
+    /// ```
+    pub fn len(&self) -> usize {
+        self.descendants.len()
+    }
+
+    /// Returns whether there are no descendants.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![]);
+    /// assert_eq!(descendants.is_empty(), true);
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![
+    ///   DirDescendant::new("child1", "child1", "child1", ()),
+    ///   DirDescendant::new("child2", "child2", "child2", ()),
+    /// ]);
+    /// assert_eq!(descendants.is_empty(), false);
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.descendants.is_empty()
     }
 
     /// Returns an iterator over the descendants.
@@ -112,6 +177,377 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// ```
     pub fn iter_mut(&mut self) -> DirDescendantsIterMut<'_, T> {
         DirDescendantsIterMut(self.descendants.iter_mut())
+    }
+
+    /// Returns the descendant at the given index, or `None` if out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<(), NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", ()),
+    ///     DirDescendant::new("child2", "child2", "child2", ()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.len(), 2);
+    /// assert_eq!(descendants.get(0), Some(&DirDescendant::new("child1", "child1", "child1", ())));
+    /// assert_eq!(descendants.get(1), Some(&DirDescendant::new("child2", "child2", "child2", ())));
+    /// assert_eq!(descendants.get(2), None);
+    /// assert_eq!(descendants.get(100), None);
+    /// ```
+    pub fn get(&self, index: usize) -> Option<&DirDescendant<T>> {
+        self.descendants.get(index)
+    }
+
+    /// Returns a mutable reference to the descendant at the given index, or `None` if out of bounds.
+    /// This is a mutable version of [`get`](Self::get).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<(), NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", ()),
+    ///     DirDescendant::new("child2", "child2", "child2", ()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.len(), 2);
+    /// assert_eq!(descendants.get_mut(0), Some(&mut DirDescendant::new("child1", "child1", "child1", ())));
+    /// assert_eq!(descendants.get_mut(1), Some(&mut DirDescendant::new("child2", "child2", "child2", ())));
+    /// assert_eq!(descendants.get_mut(2), None);
+    /// assert_eq!(descendants.get_mut(100), None);
+    /// ```
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirDescendant<T>> {
+        self.descendants.get_mut(index)
+    }
+
+    /// Returns the descendant with the given name, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_name("child1"), Some(&DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_name("child2"), Some(&DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_name("child3"), None);
+    /// assert_eq!(descendants.get_by_name("nonexistent"), None);
+    /// ```
+    pub fn get_by_name(&self, name: impl AsRef<OsStr>) -> Option<&DirDescendant<T>> {
+        self.iter().find(|d| d.name == name.as_ref())
+    }
+
+    /// Returns a mutable reference to the descendant with the given name, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_name_mut("child1"), Some(&mut DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_name_mut("child2"), Some(&mut DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_name_mut("child3"), None);
+    /// assert_eq!(descendants.get_by_name_mut("nonexistent"), None);
+    /// ```
+    pub fn get_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut DirDescendant<T>> {
+        self.iter_mut().find(|d| d.name == name.as_ref())
+    }
+
+    /// Returns the value of the descendant with the given name, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_name("child1"), Some(&"value1".into()));
+    /// assert_eq!(descendants.get_value_by_name("child2"), Some(&"value2".into()));
+    /// assert_eq!(descendants.get_value_by_name("child3"), None);
+    /// assert_eq!(descendants.get_value_by_name("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
+        self.get_by_name(name).map(|d| &d.value)
+    }
+
+    /// Returns a mutable reference to the value of the descendant with the given name, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_name_mut("child1"), Some(&mut "value1".into()));
+    /// assert_eq!(descendants.get_value_by_name_mut("child2"), Some(&mut "value2".into()));
+    /// assert_eq!(descendants.get_value_by_name_mut("child3"), None);
+    /// assert_eq!(descendants.get_value_by_name_mut("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut T> {
+        self.get_by_name_mut(name).map(|d| &mut d.value)
+    }
+
+    /// Returns the descendant with the given path, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_path("root/a/b/child1"), Some(&DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_path("root/a/b/child2"), Some(&DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_path("root/a/b/child3"), None);
+    /// assert_eq!(descendants.get_by_path("nonexistent"), None);
+    /// ```
+    pub fn get_by_path(&self, path: impl AsRef<Path>) -> Option<&DirDescendant<T>> {
+        self.iter().find(|d| d.path == path.as_ref())
+    }
+
+    /// Returns a mutable reference to the descendant with the given path, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_path_mut("root/a/b/child1"), Some(&mut DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_path_mut("root/a/b/child2"), Some(&mut DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_path_mut("root/a/b/child3"), None);
+    /// assert_eq!(descendants.get_by_path_mut("nonexistent"), None);
+    /// ```
+    pub fn get_by_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut DirDescendant<T>> {
+        self.iter_mut().find(|d| d.path == path.as_ref())
+    }
+
+    /// Returns the value of the descendant with the given path, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_path("root/a/b/child1"), Some(&"value1".into()));
+    /// assert_eq!(descendants.get_value_by_path("root/a/b/child2"), Some(&"value2".into()));
+    /// assert_eq!(descendants.get_value_by_path("root/a/b/child3"), None);
+    /// assert_eq!(descendants.get_value_by_path("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_path(&self, path: impl AsRef<Path>) -> Option<&T> {
+        self.get_by_path(path).map(|d| &d.value)
+    }
+
+    /// Returns a mutable reference to the value of the descendant with the given path, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_path_mut("root/a/b/child1"), Some(&mut "value1".into()));
+    /// assert_eq!(descendants.get_value_by_path_mut("root/a/b/child2"), Some(&mut "value2".into()));
+    /// assert_eq!(descendants.get_value_by_path_mut("root/a/b/child3"), None);
+    /// assert_eq!(descendants.get_value_by_path_mut("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut T> {
+        self.get_by_path_mut(path).map(|d| &mut d.value)
+    }
+
+    /// Returns the descendant with the given path relative to the ascendant, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_relative_path("a/b/child1"), Some(&DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_relative_path("a/b/child2"), Some(&DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_relative_path("a/b/child3"), None);
+    /// assert_eq!(descendants.get_by_relative_path("nonexistent"), None);
+    /// ```
+    pub fn get_by_relative_path(&self, path: impl AsRef<Path>) -> Option<&DirDescendant<T>> {
+        self.iter()
+            .find(|d| d.path_relative_to_ascendant == path.as_ref())
+    }
+
+    /// Returns a mutable reference to the descendant with the given path relative to the ascendant, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_by_relative_path_mut("a/b/child1"), Some(&mut DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into())));
+    /// assert_eq!(descendants.get_by_relative_path_mut("a/b/child2"), Some(&mut DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into())));
+    /// assert_eq!(descendants.get_by_relative_path_mut("a/b/child3"), None);
+    /// assert_eq!(descendants.get_by_relative_path_mut("nonexistent"), None);
+    /// ```
+    pub fn get_by_relative_path_mut(
+        &mut self,
+        path: impl AsRef<Path>,
+    ) -> Option<&mut DirDescendant<T>> {
+        self.iter_mut()
+            .find(|d| d.path_relative_to_ascendant == path.as_ref())
+    }
+
+    /// Returns the value of the descendant with the given path relative to the ascendant, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_relative_path("a/b/child1"), Some(&"value1".into()));
+    /// assert_eq!(descendants.get_value_by_relative_path("a/b/child2"), Some(&"value2".into()));
+    /// assert_eq!(descendants.get_value_by_relative_path("a/b/child3"), None);
+    /// assert_eq!(descendants.get_value_by_relative_path("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_relative_path(&self, path: impl AsRef<Path>) -> Option<&T> {
+        self.get_by_relative_path(path).map(|d| &d.value)
+    }
+
+    /// Returns a mutable reference to the value of the descendant with the given path relative to the ascendant, or `None` if not found.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let mut descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".into()),
+    ///     DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2".into()),
+    /// ]);
+    ///
+    /// assert_eq!(descendants.get_value_by_relative_path_mut("a/b/child1"), Some(&mut "value1".into()));
+    /// assert_eq!(descendants.get_value_by_relative_path_mut("a/b/child2"), Some(&mut "value2".into()));
+    /// assert_eq!(descendants.get_value_by_relative_path_mut("a/b/child3"), None);
+    /// assert_eq!(descendants.get_value_by_relative_path_mut("nonexistent"), None);
+    /// ```
+    pub fn get_value_by_relative_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut T> {
+        self.get_by_relative_path_mut(path).map(|d| &mut d.value)
+    }
+
+    /// Maps the descendants to another type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant}, NoFilter};
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///   DirDescendant::new("child1", "root/a/b/child1", "a/b/child1", "value1".to_string()),
+    ///   DirDescendant::new("child2", "root/a/b/child2", "a/b/child2", "value2abc1000".to_string()),
+    /// ]);
+    ///
+    /// let mapped = descendants.map(|s| s.len());
+    /// assert_eq!(mapped.len(), 2);
+    /// assert_eq!(mapped.get(0).unwrap().value(), &6); // "value1".len() == 6
+    /// assert_eq!(mapped.get(1).unwrap().value(), &13); // "value2abc1000".len() == 13
+    /// assert_eq!(mapped.get(2), None);
+    /// assert_eq!(mapped.get(100), None);
+    /// ```
+    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> DirDescendants<U, F> {
+        DirDescendants {
+            descendants: self
+                .descendants
+                .into_iter()
+                .map(move |d| DirDescendant {
+                    name: d.name,
+                    path: d.path,
+                    path_relative_to_ascendant: d.path_relative_to_ascendant,
+                    value: f(d.value),
+                })
+                .collect(),
+            _phantom: marker::PhantomData,
+        }
+    }
+
+    /// Maps the filter type to another type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::{dir_descendants::{DirDescendants, DirDescendant, FileFilter, FolderFilter, FolderRecurseFilter}, NoFilter};
+    ///
+    /// struct MyFilter;
+    ///
+    /// impl FileFilter for MyFilter {
+    ///     fn allows(_file: &std::path::Path) -> bool { true }
+    /// }
+    /// impl FolderFilter for MyFilter {
+    ///     fn allows(_folder: &std::path::Path) -> bool { true }
+    /// }
+    /// impl FolderRecurseFilter for MyFilter {
+    ///     fn allows(_folder: &std::path::Path) -> bool { true }
+    /// }
+    ///
+    /// let descendants = DirDescendants::<String, NoFilter>::new(vec![
+    ///     DirDescendant::new("child1", "child1", "child1", "value1".to_string()),
+    ///     DirDescendant::new("child2", "child2", "child2", "value2".to_string()),
+    /// ]);
+    /// let descendants_with_my_filter: DirDescendants<String, MyFilter> = descendants.map_filter::<MyFilter>();
+    /// ```
+    pub fn map_filter<F2: FolderFilter + FolderRecurseFilter + FileFilter>(
+        self,
+    ) -> DirDescendants<T, F2> {
+        DirDescendants {
+            descendants: self.descendants,
+            _phantom: marker::PhantomData,
+        }
     }
 }
 
@@ -290,6 +726,83 @@ impl<
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<
+    'vfs,
+    Vfs: VfsAsync + 'static,
+    T: ReadFromAsync<'vfs, Vfs> + Send + 'static,
+    F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
+> ReadFromAsync<'vfs, Vfs> for DirDescendants<T, F>
+{
+    type Future
+        = BoxFuture<'vfs, Result<Self>>
+    where
+        Self: 'vfs;
+    fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+        Box::pin(async move {
+            let mut descendants = Vec::new();
+
+            if path.is_dir() {
+                use std::pin::pin;
+
+                use futures::StreamExt;
+
+                let mut walker = pin!(vfs.walk_dir(path.clone()).await?);
+                while let Some(entry) = walker.next().await {
+                    let DirEntryInfo {
+                        name,
+                        path: entry_path,
+                        kind,
+                    } = entry?;
+
+                    if kind.is_dir() {
+                        if <F as FolderRecurseFilter>::allows(&entry_path) {
+                            let sub_descendants =
+                                DirDescendants::<T, F>::read_from_async(entry_path.clone(), vfs)
+                                    .await?;
+                            descendants.extend(sub_descendants.descendants.into_iter().map(
+                                |mut it| {
+                                    let mut p = PathBuf::from(name.clone());
+                                    p.push(&it.path_relative_to_ascendant);
+                                    it.path_relative_to_ascendant = p;
+                                    it
+                                },
+                            ));
+                        }
+
+                        if <F as FolderFilter>::allows(&entry_path) {
+                            let value = T::read_from_async(entry_path.clone(), vfs).await?;
+                            descendants.push(DirDescendant {
+                                name,
+                                path_relative_to_ascendant: entry_path
+                                    .strip_prefix(&path)
+                                    .unwrap()
+                                    .to_path_buf(),
+                                path: entry_path,
+                                value,
+                            });
+                        }
+                    } else if kind.is_file() && <F as FileFilter>::allows(&entry_path) {
+                        let value = T::read_from_async(entry_path.clone(), vfs).await?;
+                        descendants.push(DirDescendant {
+                            name,
+                            path_relative_to_ascendant: entry_path
+                                .strip_prefix(&path)
+                                .unwrap()
+                                .to_path_buf(),
+                            path: entry_path,
+                            value,
+                        });
+                    }
+                }
+            }
+
+            Ok(DirDescendants::new(descendants))
+        })
+    }
+}
+
 impl<
     'vfs,
     Vfs: vfs::WriteSupportingVfs,
@@ -304,6 +817,153 @@ impl<
                 .write_to(&path.join(&descendant.path_relative_to_ascendant), vfs)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<
+    'vfs,
+    Vfs: WriteSupportingVfsAsync + 'vfs,
+    T: WriteToAsync<'vfs, Vfs> + Send + 'vfs,
+    F: FileFilter + FolderRecurseFilter + FolderFilter + Send + 'vfs,
+> WriteToAsync<'vfs, Vfs> for DirDescendants<T, F>
+{
+    type Future = BoxFuture<'vfs, Result<()>>;
+
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+        Box::pin(async move {
+            for descendant in self {
+                descendant
+                    .value
+                    .write_to_async(path.join(&descendant.path_relative_to_ascendant), vfs)
+                    .await?;
+            }
+            Ok(())
+        })
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = DirDescendantsWriteRefFutureProj)]
+#[doc(hidden)]
+pub enum DirDescendantsWriteRefFuture<
+    'a,
+    'vfs: 'a,
+    Vfs: WriteSupportingVfsAsync + 'vfs,
+    T: WriteToAsyncRef<'vfs, Vfs> + 'vfs,
+> where
+    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+{
+    Poison,
+    Writing {
+        vfs: Pin<&'a Vfs>,
+        path: PathBuf,
+        iter: DirDescendantsIter<'a, T>,
+        future: T::Future<'a>,
+    },
+    NoElems,
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, 'vfs: 'a, Vfs: WriteSupportingVfsAsync + 'vfs, T: WriteToAsyncRef<'vfs, Vfs> + 'vfs> Future
+    for DirDescendantsWriteRefFuture<'a, 'vfs, Vfs, T>
+where
+    for<'r> T::Future<'r>: Future<Output = Result<()>> + Unpin + 'r,
+{
+    type Output = Result<()>;
+
+    fn poll(
+        mut self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+        match this {
+            DirDescendantsWriteRefFutureProj::Poison => {
+                panic!("polled after completion")
+            }
+            DirDescendantsWriteRefFutureProj::Writing {
+                vfs,
+                path,
+                mut iter,
+                mut future,
+            } => match Pin::new(&mut future).poll(cx) {
+                std::task::Poll::Ready(Ok(())) => {
+                    let next = iter.next();
+                    if let Some(descendant) = next {
+                        let future = descendant.value.write_to_async_ref(
+                            path.join(&descendant.path_relative_to_ascendant),
+                            vfs,
+                        );
+                        self.as_mut()
+                            .project_replace(DirDescendantsWriteRefFuture::Writing {
+                                vfs,
+                                path,
+                                iter,
+                                future,
+                            });
+                        cx.waker().wake_by_ref();
+                        std::task::Poll::Pending
+                    } else {
+                        std::task::Poll::Ready(Ok(()))
+                    }
+                }
+                std::task::Poll::Ready(Err(e)) => std::task::Poll::Ready(Err(e)),
+                std::task::Poll::Pending => {
+                    self.as_mut()
+                        .project_replace(DirDescendantsWriteRefFuture::Writing {
+                            vfs,
+                            path,
+                            iter,
+                            future,
+                        });
+                    std::task::Poll::Pending
+                }
+            },
+            DirDescendantsWriteRefFutureProj::NoElems => std::task::Poll::Ready(Ok(())),
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<
+    'vfs,
+    Vfs: WriteSupportingVfsAsync + 'static,
+    T: WriteToAsyncRef<'vfs, Vfs> + Sync + 'static,
+    F: FileFilter + FolderRecurseFilter + FolderFilter + Sync + 'vfs,
+> WriteToAsyncRef<'vfs, Vfs> for DirDescendants<T, F>
+where
+    for<'r> T::Future<'r>: Future<Output = Result<()>> + Unpin + 'r,
+{
+    type Future<'r>
+        = DirDescendantsWriteRefFuture<'r, 'vfs, Vfs, T>
+    where
+        'vfs: 'r,
+        Self: 'r,
+        Vfs: 'r,
+        T: 'r;
+
+    fn write_to_async_ref<'r>(&'r self, path: PathBuf, vfs: Pin<&'r Vfs>) -> Self::Future<'r>
+    where
+        'vfs: 'r,
+    {
+        let mut iter = self.iter();
+        if let Some(first) = iter.next() {
+            let future = first
+                .value
+                .write_to_async_ref(path.join(&first.path_relative_to_ascendant), vfs);
+            DirDescendantsWriteRefFuture::Writing {
+                vfs,
+                iter,
+                future,
+                path,
+            }
+        } else {
+            DirDescendantsWriteRefFuture::NoElems
+        }
     }
 }
 
@@ -356,6 +1016,25 @@ pub struct DirDescendant<T> {
 
 impl<T> DirDescendant<T> {
     /// Create a new directory descendant from its parts.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    /// use std::path::PathBuf;
+    /// use dir_structure::dir_descendants::DirDescendant;
+    ///
+    /// let descendant = DirDescendant::new(
+    ///     "child",
+    ///     "root/a/b/child",
+    ///     "a/b/child",
+    ///     String::from("child_value"),
+    /// );
+    /// assert_eq!(descendant.name(), &OsString::from("child"));
+    /// assert_eq!(descendant.path(), &PathBuf::from("root/a/b/child"));
+    /// assert_eq!(descendant.path_relative_to_ascendant(), &PathBuf::from("a/b/child"));
+    /// assert_eq!(descendant.value(), &String::from("child_value"));
+    /// ```
     pub fn new(
         name: impl Into<OsString>,
         path: impl Into<PathBuf>,
@@ -550,6 +1229,62 @@ impl<T> DirDescendant<T> {
         &mut self.value
     }
 
+    /// Clones the directory name and paths, but makes the value a reference to the original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::dir_descendants::DirDescendant;
+    ///
+    /// let descendant = DirDescendant::new(
+    ///     "child",
+    ///     "root/a/b/child",
+    ///     "a/b/child",
+    ///     String::from("child_value"),
+    /// );
+    ///
+    /// let ref_descendant = descendant.as_ref();
+    /// assert_eq!(ref_descendant.name(), descendant.name());
+    /// assert_eq!(ref_descendant.path(), descendant.path());
+    /// assert_eq!(ref_descendant.path_relative_to_ascendant(), descendant.path_relative_to_ascendant());
+    /// assert_eq!(ref_descendant.value(), &descendant.value());
+    /// ```
+    pub fn as_ref(&self) -> DirDescendant<&T> {
+        DirDescendant::new(
+            self.name.clone(),
+            self.path.clone(),
+            self.path_relative_to_ascendant.clone(),
+            &self.value,
+        )
+    }
+
+    /// Clones the directory name and paths, but makes the value a mutable reference to the original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dir_structure::dir_descendants::DirDescendant;
+    ///
+    /// let mut descendant = DirDescendant::new(
+    ///    "child",
+    ///   "root/a/b/child",
+    ///  "a/b/child",
+    ///   String::from("child_value"),
+    /// );
+    ///
+    /// let mut mut_ref_descendant = descendant.as_mut();
+    /// mut_ref_descendant.value_mut().push_str("_new");
+    /// assert_eq!(descendant.value(), &String::from("child_value_new"));
+    /// ```
+    pub fn as_mut(&mut self) -> DirDescendant<&mut T> {
+        DirDescendant::new(
+            self.name.clone(),
+            self.path.clone(),
+            self.path_relative_to_ascendant.clone(),
+            &mut self.value,
+        )
+    }
+
     /// Maps the value of the directory descendant.
     ///
     /// # Examples
@@ -576,6 +1311,20 @@ impl<T> DirDescendant<T> {
             self.path_relative_to_ascendant,
             f(self.value),
         )
+    }
+}
+
+impl<T> Deref for DirDescendant<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> DerefMut for DirDescendant<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
     }
 }
 
