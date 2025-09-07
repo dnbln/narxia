@@ -13,11 +13,14 @@ use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+#[cfg(feature = "async")]
+use std::task::Context;
+#[cfg(feature = "async")]
+use std::task::Poll;
 use std::vec;
 
 #[cfg(feature = "async")]
 use futures::future::BoxFuture;
-#[cfg(feature = "async")]
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
@@ -875,10 +878,7 @@ where
 {
     type Output = Result<()>;
 
-    fn poll(
-        mut self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
         match this {
             DirDescendantsWriteRefFutureProj::Poison => {
@@ -890,7 +890,7 @@ where
                 mut iter,
                 mut future,
             } => match Pin::new(&mut future).poll(cx) {
-                std::task::Poll::Ready(Ok(())) => {
+                Poll::Ready(Ok(())) => {
                     let next = iter.next();
                     if let Some(descendant) = next {
                         let future = descendant.value.write_to_async_ref(
@@ -905,13 +905,13 @@ where
                                 future,
                             });
                         cx.waker().wake_by_ref();
-                        std::task::Poll::Pending
+                        Poll::Pending
                     } else {
-                        std::task::Poll::Ready(Ok(()))
+                        Poll::Ready(Ok(()))
                     }
                 }
-                std::task::Poll::Ready(Err(e)) => std::task::Poll::Ready(Err(e)),
-                std::task::Poll::Pending => {
+                Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                Poll::Pending => {
                     self.as_mut()
                         .project_replace(DirDescendantsWriteRefFuture::Writing {
                             vfs,
@@ -919,10 +919,10 @@ where
                             iter,
                             future,
                         });
-                    std::task::Poll::Pending
+                    Poll::Pending
                 }
             },
-            DirDescendantsWriteRefFutureProj::NoElems => std::task::Poll::Ready(Ok(())),
+            DirDescendantsWriteRefFutureProj::NoElems => Poll::Ready(Ok(())),
         }
     }
 }
