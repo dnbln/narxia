@@ -1,4 +1,4 @@
-name: Test
+name: Dir-Structure Tests
 
 on:
   push:
@@ -25,7 +25,8 @@ env:
   CXX: clang++
 
 jobs:
-  build:
+  test:
+    name: Test dir-structure
     runs-on: ubuntu-latest
     strategy:
       matrix:
