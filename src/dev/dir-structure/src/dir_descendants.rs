@@ -1351,6 +1351,7 @@ impl<T> DirDescendant<T> {
     }
 
     /// Get a mutable reference to the name of the directory descendant.
+    /// This is a mutable version of [`DirDescendant::name`].
     ///
     /// # Examples
     ///
@@ -1372,6 +1373,7 @@ impl<T> DirDescendant<T> {
     }
 
     /// Get a mutable reference to the value of the directory descendant.
+    /// This is a mutable version of [`DirDescendant::value`].
     ///
     /// # Examples
     ///

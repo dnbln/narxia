@@ -1,6 +1,7 @@
 /target
 /nexusbuild
 /.idea
+/.vscode
 /out.ll
 .DS_Store
 /.direnv
