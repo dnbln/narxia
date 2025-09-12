@@ -1,4 +1,4 @@
-# Unreleased
+# `v0.2.0-rc.2`
 
 ## Image support
 
@@ -76,6 +76,14 @@ For `DirChildSingleOpt`, the following method has been added:
 - `DirChildSingleOpt::take_if`: Take the child if it satisfies a given predicate, replacing it with `None` in the `DirChildSingleOpt`, or returning `DirChildSingleOpt::None` otherwise.
 
 `DirChild` and `DirDescendant` now implement `Deref` and `DerefMut` to their inner values, allowing you to use them as if they were the inner values directly.
+
+`CleanDir` now implements `WriteToAsyncRef`, allowing you to write the directory structure asynchronously, without having to clone it (like previously with only the `WriteToAsync` impl).
+
+## `assert_eq` support for all library types
+
+[assert_eq] support has been added for all types in the library, allowing you to use the `assert_eq::assert_eq!` macro to compare directory structures and their components.
+
+[assert_eq]: https://crates.io/crates/assert_eq
 
 # `0.2.0-rc.1`
 
