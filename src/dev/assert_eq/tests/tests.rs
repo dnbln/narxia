@@ -240,7 +240,9 @@ fn slice_of_struct_eq() {
 }
 
 #[test]
-#[should_panic(expected = "assertion `left == right` failed: at [0] → .b\n  left: \"hello\"\n right: \"world\"")]
+#[should_panic(
+    expected = "assertion `left == right` failed: at [0] → .b\n  left: \"hello\"\n right: \"world\""
+)]
 fn slice_of_struct_diff() {
     #[derive(AssertEq, Debug)]
     struct S {
@@ -277,7 +279,6 @@ fn slice_of_struct_diff_2() {
     assert_eq::assert_eq!(a, b);
 }
 
-
 #[test]
 fn generics() {
     #[derive(assert_eq::AssertEq)]
@@ -311,7 +312,9 @@ fn generics_nested() {
 }
 
 #[test]
-#[should_panic(expected = "assertion `left == right` failed: at .b → [Some] → .0\n  left: 2\n right: 3")]
+#[should_panic(
+    expected = "assertion `left == right` failed: at .b → [Some] → .0\n  left: 2\n right: 3"
+)]
 fn generics_nested_fail() {
     #[derive(assert_eq::AssertEq, Debug)]
     struct FmtWrapper<T>(T);

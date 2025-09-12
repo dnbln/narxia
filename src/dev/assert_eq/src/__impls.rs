@@ -1,3 +1,5 @@
+#![allow(clippy::absolute_paths)]
+
 use super::*;
 
 macro_rules! impls {
@@ -302,7 +304,7 @@ where
 
 impl<T> AssertEq<Cow<'_, T>> for Cow<'_, T>
 where
-    T: AssertEq<T> + Debug + Clone + ?Sized,
+    T: AssertEq<T> + Debug + Clone,
 {
     fn assert_eq(&self, other: &Cow<'_, T>, path: &mut AssertPath) {
         match (self, other) {

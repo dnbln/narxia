@@ -140,7 +140,8 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for
 where
     T: Display + Send + Sync + 'a,
 {
-    type Future<'b> = <FileString as WriteToAsync<'b, Vfs>>::Future
+    type Future<'b>
+        = <FileString as WriteToAsync<'b, Vfs>>::Future
     where
         Self: 'b,
         'a: 'b,

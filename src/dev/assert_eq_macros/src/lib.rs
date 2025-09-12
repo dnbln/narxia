@@ -203,7 +203,7 @@ fn expand_assert_eq_enum(
                     other_names: &other_names,
                     field_configs: &field_configs,
                 }.generate();
-                
+
                 Ok(quote::quote! {
                     (#self_pattern, #other_pattern) => {
                         let mut __g = path.__guard(concat!("[", stringify!(#variant_name), "]"));

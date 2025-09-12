@@ -1,5 +1,6 @@
-use super::*;
 use dir_structure::fmt_wrapper::FmtWrapper;
+
+use super::*;
 
 read_test!(
     read_numbers,

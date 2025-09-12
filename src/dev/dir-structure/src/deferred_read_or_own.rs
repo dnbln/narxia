@@ -2,6 +2,7 @@
 //!
 //! See [`DeferredReadOrOwn`] for more details.
 
+use std::fmt;
 use std::path::Path;
 #[cfg(any(feature = "resolve-path", feature = "async"))]
 use std::path::PathBuf;
@@ -60,12 +61,12 @@ pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool
     Deferred(DeferredRead<'a, T, Vfs, CHECK_ON_READ>),
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs> std::fmt::Debug
+impl<'a, const CHECK_ON_READ: bool, T, Vfs> fmt::Debug
     for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
-    T: std::fmt::Debug,
+    T: fmt::Debug,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DeferredReadOrOwn::Own(own) => f.debug_tuple("Own").field(own).finish(),
             DeferredReadOrOwn::Deferred(d) => f.debug_tuple("Deferred").field(d).finish(),

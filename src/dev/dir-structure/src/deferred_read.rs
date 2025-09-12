@@ -43,10 +43,8 @@ use crate::vfs::fs_vfs;
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DeferredRead<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = false>(
     pub PathBuf,
-    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
-    Pin<&'a Vfs>,
-    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
-    marker::PhantomData<T>,
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))] Pin<&'a Vfs>,
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))] marker::PhantomData<T>,
 );
 
 impl<'a, const CHECK_ON_READ: bool, T, Vfs> Debug for DeferredRead<'a, T, Vfs, CHECK_ON_READ>

@@ -67,8 +67,8 @@ macro_rules! write_test {
     };
 }
 
-mod simple;
 mod fmt_wrapper;
+mod simple;
 
 #[test]
 fn deferred_read() {
