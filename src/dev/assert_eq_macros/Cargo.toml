@@ -1,0 +1,21 @@
+[package]
+name = "assert_eq_macros"
+version = "0.1.0"
+publish = true
+edition.workspace = true
+homepage.workspace = true
+repository = "https://github.com/dnbln/narxia/tree/trunk/src/dev/assert_eq_macros"
+description = "proc-macros for assert_eq"
+keywords = ["assert_eq", "testing", "debugging"]
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote.workspace = true
+syn.workspace = true
+proc-macro2.workspace = true
+
+[lints]
+workspace = true

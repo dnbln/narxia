@@ -129,6 +129,7 @@ and write them back to disk."##
             $(#[$main_ty_attrs])*
             #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Hash)]
             #[serde(transparent)]
+            #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
             pub struct $main_ty<T>(#[serde(bound = "")] pub T)
             where
                 T: 'static + serde::Serialize + for<'d> serde::Deserialize<'d>;

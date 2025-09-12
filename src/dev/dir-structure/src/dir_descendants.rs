@@ -50,6 +50,8 @@ use crate::traits::vfs::DirWalker;
 ///
 /// \* note that [`FolderFilter`] and [`FolderRecurseFilter`] may both allow the same path, in which case we will both recurse
 /// into the folder, and attempt to parse it as a `T`.
+#[derive(PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirDescendants<T, F: FolderFilter + FolderRecurseFilter + FileFilter = NoFilter> {
     descendants: Vec<DirDescendant<T>>,
     _phantom: marker::PhantomData<F>,
@@ -1169,6 +1171,7 @@ impl FileFilter for NoFilter {
 ///
 /// It also stores the path relative to the "root."
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirDescendant<T> {
     name: OsString,
     path: PathBuf,

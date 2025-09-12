@@ -29,6 +29,7 @@ use crate::traits::vfs;
 
 /// A newtype around a `Vec<u8>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct FileBytes(pub Vec<u8>);
 
 impl FileBytes {
@@ -129,6 +130,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileB
 
 /// A newtype around a [`String`].
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct FileString(pub String);
 
 impl FileString {

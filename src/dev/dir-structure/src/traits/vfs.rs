@@ -153,6 +153,7 @@ impl<T: WriteSupportingVfs> VfsWithSeekWrite for T where T::WFile: Seek {}
 
 /// The type of a directory entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub enum DirEntryKind {
     /// A regular file.
     File,
@@ -198,6 +199,7 @@ impl DirEntryKind {
 
 /// Information about a directory entry.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirEntryInfo {
     /// The name of the entry.
     pub name: OsString,

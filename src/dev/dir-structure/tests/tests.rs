@@ -27,235 +27,48 @@ fn test_dir(name: &str) -> PathBuf {
     p
 }
 
-#[test]
-fn write_simple() {
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        #[dir_structure(path = "f2.txt")]
-        f2: String,
-        f3: String,
-    }
+macro_rules! read_test {
+    ($name:ident, {$($it:item)*}, $(($setup_path:expr => $setup_expr:expr)),*; t: $read_ty:ty, $end_expr:expr) => {
+        #[tokio::test]
+        async fn $name() {
+            $($it)*
 
-    let p = test_dir("write_simple");
-    let d = p.join("dir");
-    FsVfs
-        .write_typed(
-            &d,
-            &Dir {
-                f1: "f1".to_owned(),
-                f2: "f2".to_owned(),
-                f3: "f3".to_owned(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
-    assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "f2");
-    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
+            let p = test_dir(stringify!($name));
+            let d = p.join("dir");
+            std::fs::create_dir_all(d.clone()).unwrap();
+            $(
+                let setup_path = d.join($setup_path);
+                if let Some(parent) = setup_path.parent() {
+                    std::fs::create_dir_all(parent).unwrap();
+                }
+                std::fs::write(setup_path, $setup_expr).unwrap();
+            )*
+            let dir = FsVfs.read_typed::<$read_ty>(&d).unwrap();
+            assert_eq::assert_eq!(dir, $end_expr);
+        }
+    };
 }
 
-#[test]
-fn write_simple_with_subdir() {
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        #[dir_structure(path = "subdir/f2.txt")]
-        f2: String,
-        f3: String,
-    }
+macro_rules! write_test {
+    ($name:ident, {$($it:item)*}, $(($check_path:expr => $check_expr:expr)),*; t: $write_ty:ty, $write_expr:expr) => {
+        #[tokio::test]
+        async fn $name() {
+            $($it)*
 
-    let p = test_dir("write_simple_with_subdir");
-    let d = p.join("dir");
-    FsVfs
-        .write_typed(
-            &d,
-            &Dir {
-                f1: "f1".to_owned(),
-                f2: "f2".to_owned(),
-                f3: "f3".to_owned(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
-    assert_eq!(
-        std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(),
-        "f2"
-    );
-    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
+            let p = test_dir(stringify!($name));
+            let d = p.join("dir");
+            FsVfs.write_typed(&d, &$write_expr).unwrap();
+            $(
+                let check_path = d.join($check_path);
+                let content = std::fs::read(check_path).unwrap();
+                assert_eq::assert_eq!(content, $check_expr);
+            )*
+        }
+    };
 }
 
-#[test]
-fn write_simple_nested() {
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        subdir: Subdir,
-        f3: String,
-    }
-
-    #[derive(dir_structure::DirStructure)]
-    struct Subdir {
-        #[dir_structure(path = "f2.txt")]
-        f2: String,
-    }
-
-    let p = test_dir("write_simple_nested");
-    let d = p.join("dir");
-    FsVfs
-        .write_typed(
-            &d,
-            &Dir {
-                f1: "f1".to_owned(),
-                subdir: Subdir {
-                    f2: "f2".to_owned(),
-                },
-                f3: "f3".to_owned(),
-            },
-        )
-        .unwrap();
-
-    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "f1");
-    assert_eq!(
-        std::fs::read_to_string(d.join("subdir/f2.txt")).unwrap(),
-        "f2"
-    );
-    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "f3");
-}
-
-#[test]
-fn read_simple() {
-    let p = test_dir("read_simple");
-    let d = p.join("dir");
-    std::fs::create_dir_all(&d).unwrap();
-    std::fs::write(d.join("f1.txt"), "f1").unwrap();
-    std::fs::write(d.join("f2.txt"), "f2").unwrap();
-    std::fs::write(d.join("f3"), "f3").unwrap();
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        #[dir_structure(path = "f2.txt")]
-        f2: String,
-        f3: String,
-    }
-
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
-    assert_eq!(dir.f1, "f1");
-    assert_eq!(dir.f2, "f2");
-    assert_eq!(dir.f3, "f3");
-}
-
-#[test]
-fn read_simple_with_subdir() {
-    let p = test_dir("read_simple_with_subdir");
-    let d = p.join("dir");
-    std::fs::create_dir_all(&d).unwrap();
-    std::fs::write(d.join("f1.txt"), "f1").unwrap();
-    std::fs::create_dir_all(d.join("subdir")).unwrap();
-    std::fs::write(d.join("subdir/f2.txt"), "f2").unwrap();
-    std::fs::write(d.join("f3"), "f3").unwrap();
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        #[dir_structure(path = "subdir/f2.txt")]
-        f2: String,
-        f3: String,
-    }
-
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
-    assert_eq!(dir.f1, "f1");
-    assert_eq!(dir.f2, "f2");
-    assert_eq!(dir.f3, "f3");
-}
-
-#[test]
-fn read_simple_nested() {
-    let p = test_dir("read_simple_nested");
-    let d = p.join("dir");
-    std::fs::create_dir_all(&d).unwrap();
-    std::fs::write(d.join("f1.txt"), "f1").unwrap();
-    std::fs::create_dir_all(d.join("subdir")).unwrap();
-    std::fs::write(d.join("subdir/f2.txt"), "f2").unwrap();
-    std::fs::write(d.join("f3"), "f3").unwrap();
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt")]
-        f1: String,
-        subdir: Subdir,
-        f3: String,
-    }
-
-    #[derive(dir_structure::DirStructure)]
-    struct Subdir {
-        #[dir_structure(path = "f2.txt")]
-        f2: String,
-    }
-
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
-    assert_eq!(dir.f1, "f1");
-    assert_eq!(dir.subdir.f2, "f2");
-    assert_eq!(dir.f3, "f3");
-}
-
-#[test]
-fn read_numbers() {
-    let p = test_dir("read_numbers");
-    let d = p.join("dir");
-    std::fs::create_dir_all(&d).unwrap();
-    std::fs::write(d.join("f1.txt"), "1").unwrap();
-    std::fs::write(d.join("f2.txt"), "2").unwrap();
-    std::fs::write(d.join("f3"), "3").unwrap();
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f2: u32,
-        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f3: u32,
-    }
-
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
-    assert_eq!(dir.f1, 1);
-    assert_eq!(dir.f2, 2);
-    assert_eq!(dir.f3, 3);
-}
-
-#[test]
-fn write_numbers() {
-    let p = test_dir("write_numbers");
-    let d = p.join("dir");
-    #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        #[dir_structure(path = "f1.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f1: u32,
-        #[dir_structure(path = "f2.txt", with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f2: u32,
-        #[dir_structure(with_newtype = dir_structure::fmt_wrapper::FmtWrapper<u32>)]
-        f3: u32,
-    }
-
-    FsVfs
-        .write_typed(
-            &d,
-            &Dir {
-                f1: 1,
-                f2: 2,
-                f3: 3,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(std::fs::read_to_string(d.join("f1.txt")).unwrap(), "1");
-    assert_eq!(std::fs::read_to_string(d.join("f2.txt")).unwrap(), "2");
-    assert_eq!(std::fs::read_to_string(d.join("f3")).unwrap(), "3");
-}
+mod simple;
+mod fmt_wrapper;
 
 #[test]
 fn deferred_read() {

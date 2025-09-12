@@ -7,6 +7,7 @@
 
 use std::ffi::OsStr;
 use std::ffi::OsString;
+use std::fmt;
 use std::marker;
 use std::marker::PhantomData;
 use std::mem;
@@ -58,6 +59,7 @@ use crate::traits::vfs::DirWalker as _;
 /// The [`WriteTo`] implementation will directly write the children to the directory it
 /// is passed, with no regards to the path stored in `self_path`.
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirChildren<T, F: Filter = NoFilter> {
     /// The path to the root directory.
     ///
@@ -67,6 +69,7 @@ pub struct DirChildren<T, F: Filter = NoFilter> {
     /// The children of the root directory.
     pub children: Vec<DirChild<T>>,
 
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
     filter: marker::PhantomData<F>,
 }
 
@@ -1280,6 +1283,7 @@ where
 
 /// A single child of a [`DirChildren`] structure.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirChild<T> {
     /// The file name of the child.
     file_name: OsString,
@@ -1712,12 +1716,14 @@ macro_rules! dir_children_wrapper_with_vfs {
 ///
 /// This is useful if you want to select one specific file, by the [file prefix](Path::file_prefix) /
 /// [stem](Path::file_stem), but you don't care about the extension.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirChildSingle<T, F: Filter> {
     /// The file name of the child.
     file_name: OsString,
     /// The parsed value of the child.
     value: T,
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
     _phantom: PhantomData<F>,
 }
 
@@ -1951,6 +1957,19 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     }
 }
 
+impl<T, F> fmt::Debug for DirChildSingle<T, F>
+where
+    F: Filter,
+    T: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DirChildSingle")
+            .field("file_name", &self.file_name)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
 impl<T, F> Deref for DirChildSingle<T, F>
 where
     F: Filter,
@@ -1972,12 +1991,30 @@ where
 }
 
 /// A similar idea to [`DirChildSingle`], but allows for the absence of a matching entry.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub enum DirChildSingleOpt<T, F: Filter> {
     /// The entry is absent.
     None,
     /// The entry is present.
     Some(DirChildSingle<T, F>),
+}
+
+#[cfg(feature = "assert_eq")]
+impl<T, F: Filter> assert_eq::AssertEq for DirChildSingleOpt<T, F>
+where
+    T: assert_eq::AssertEq + fmt::Debug,
+{
+    fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath) {
+        match (self, other) {
+            (DirChildSingleOpt::None, DirChildSingleOpt::None) => {}
+            (DirChildSingleOpt::Some(a), DirChildSingleOpt::Some(b)) => {
+                let __g = &mut *path.__guard("[Some]");
+                a.assert_eq(b, &mut *__g.__guard(".0"));
+            }
+            (a, b) => panic!("DirChildSingleOpt not equal: {:?} != {:?}", a, b),
+        }
+    }
 }
 
 impl<T, F: Filter> DirChildSingleOpt<T, F> {
@@ -2254,6 +2291,22 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     }
 }
 
+impl<T, F> fmt::Debug for DirChildSingleOpt<T, F>
+where
+    T: fmt::Debug,
+    F: Filter,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DirChildSingleOpt::Some(child) => f
+                .debug_tuple("DirChildSingleOpt::Some")
+                .field(child)
+                .finish(),
+            DirChildSingleOpt::None => write!(f, "DirChildSingleOpt::None"),
+        }
+    }
+}
+
 impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
 where
     T: ReadFrom<'a, Vfs>,
@@ -2298,6 +2351,7 @@ where
 
 /// A wrapper around [`DirChildren`] that forces the creation of the directory, even if there are no children to write.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct ForceCreateDirChildren<T, F = NoFilter>
 where
     F: Filter,

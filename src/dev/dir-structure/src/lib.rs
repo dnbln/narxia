@@ -186,4 +186,5 @@ pub mod vfs;
 /// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../../..")));
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct NoFilter;

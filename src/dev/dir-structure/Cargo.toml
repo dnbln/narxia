@@ -4,7 +4,7 @@ version = "0.2.0-rc.1"
 edition.workspace = true
 license = "MIT OR Apache-2.0"
 description = "Simple crate to create and model directory structures."
-repository = "https://github.com/dnbln/narxia/tree/trunk/dev/dir-structure"
+repository = "https://github.com/dnbln/narxia/tree/trunk/src/dev/dir-structure"
 
 [package.metadata.docs.rs]
 all-features = true
@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["async", "assert_eq"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
@@ -37,6 +37,7 @@ image-format-pnm = ["image", "image/pnm"]
 image-format-ff = ["image", "image/ff"]
 image-format-avif = ["image", "image/avif"]
 image-format-qoi = ["image", "image/qoi"]
+assert_eq = ["dep:assert_eq"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -67,11 +68,17 @@ tokio = { version = "1", optional = true, default-features = false, features = [
 ] }
 include_dir = { version = "0.6", optional = true, default-features = false }
 image = { version = "0.25", optional = true, default-features = false }
+assert_eq = { workspace = true, optional = true }
 
 [[test]]
 name = "async_tests"
 path = "tests/async_tests.rs"
-required-features = ["async", "tokio"]
+required-features = ["async", "tokio", "assert_eq"]
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+required-features = ["assert_eq"]
 
 [lints]
 workspace = true

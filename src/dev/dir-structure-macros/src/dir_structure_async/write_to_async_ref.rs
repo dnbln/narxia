@@ -69,13 +69,13 @@ pub(super) fn expand_dir_structure_for_field(
             Some(nt) => {
                 let bound = vec![
                     parse_quote! {
-                        for<'trivial> #nt: ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs, Inner = #field_ty>
+                        for<'trivial, 'f> #nt: ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs, Inner = #field_ty>
                     },
                     parse_quote! {
-                        for<'trivial> <#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs>>::Wr: ::dir_structure::traits::asy::WriteToAsync<'fut, Vfs>
+                        for<'trivial, 'f> <#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs>>::Wr: ::dir_structure::traits::asy::WriteToAsync<'f, Vfs>
                     },
                     parse_quote! {
-                        for<'trivial> <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'fut, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'fut, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
+                        for<'trivial, 'f> <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'f, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'f
                     },
                 ];
                 async_write_ref_future.clauses.extend(bound.clone());

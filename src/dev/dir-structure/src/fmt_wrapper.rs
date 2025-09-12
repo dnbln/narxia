@@ -63,6 +63,7 @@ use crate::traits::vfs;
 ///     Ok(())
 /// }
 /// ```
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct FmtWrapper<T>(pub T);
 
 impl<T> NewtypeToInner for FmtWrapper<T> {
@@ -128,6 +129,27 @@ where
     type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+        let s = self.0.to_string();
+        FileString::new(s).write_to_async(path, vfs)
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for FmtWrapper<T>
+where
+    T: Display + Send + Sync + 'a,
+{
+    type Future<'b> = <FileString as WriteToAsync<'b, Vfs>>::Future
+    where
+        Self: 'b,
+        'a: 'b,
+        Vfs: 'b;
+
+    fn write_to_async_ref<'b>(&'b self, path: PathBuf, vfs: Pin<&'b Vfs>) -> Self::Future<'b>
+    where
+        'a: 'b,
+    {
         let s = self.0.to_string();
         FileString::new(s).write_to_async(path, vfs)
     }

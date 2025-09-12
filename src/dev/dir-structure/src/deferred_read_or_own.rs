@@ -51,12 +51,26 @@ use crate::vfs::fs_vfs;
 ///
 /// If you never call [`DeferredReadOrOwn::perform_and_store_read`], and only ever call [`DeferredReadOrOwn::get`],
 /// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.
-#[derive(Debug, Clone, Hash)]
+#[derive(Clone, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = false> {
     /// An owned value.
     Own(T),
     /// A deferred read.
     Deferred(DeferredRead<'a, T, Vfs, CHECK_ON_READ>),
+}
+
+impl<'a, const CHECK_ON_READ: bool, T, Vfs> std::fmt::Debug
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
+where
+    T: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DeferredReadOrOwn::Own(own) => f.debug_tuple("Own").field(own).finish(),
+            DeferredReadOrOwn::Deferred(d) => f.debug_tuple("Deferred").field(d).finish(),
+        }
+    }
 }
 
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs> DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>

@@ -45,6 +45,7 @@ use crate::traits::vfs;
 /// assert!(vh.is_dirty());
 /// assert!(!vh.is_clean());
 /// ```
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct VersionedHash<T: Hash, H: Hasher + Default = DefaultHasher> {
     value: T,
     hash: u64,

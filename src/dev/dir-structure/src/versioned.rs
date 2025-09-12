@@ -54,6 +54,7 @@ use crate::traits::vfs;
 /// assert!(v.is_dirty());
 /// ```
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct Versioned<T> {
     value: T,
     version: usize,

@@ -70,6 +70,7 @@ use crate::traits::vfs;
 /// }
 /// ```
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct CleanDir<T>(pub T);
 
 impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for CleanDir<T>
@@ -156,6 +157,129 @@ where
     }
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+#[pin_project(project_replace = CleanDirWriteRefFutureProjOwn)]
+#[doc(hidden)]
+pub enum CleanDirWriteRefFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
+where
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'a,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
+{
+    Poison,
+    ExistsCheck(
+        <Vfs as VfsAsync>::ExistsFuture<'f>,
+        PathBuf,
+        Pin<&'f Vfs>,
+        &'f T,
+    ),
+    RemoveDirAll(
+        <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>,
+        PathBuf,
+        Pin<&'f Vfs>,
+        &'f T,
+    ),
+    Inner(<T as WriteToAsyncRef<'a, Vfs>>::Future<'f>),
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
+    for CleanDirWriteRefFuture<'a, 'f, T, Vfs>
+where
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
+{
+    type Output = Result<()>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let this = self.as_mut().project_replace(Self::Poison);
+        match this {
+            CleanDirWriteRefFutureProjOwn::Poison => {
+                panic!("polled after completion")
+            }
+            CleanDirWriteRefFutureProjOwn::ExistsCheck(mut fut, path, vfs, item) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(exists)) => {
+                        if exists {
+                            let fut = vfs.remove_dir_all(path.clone());
+                            self.project_replace(Self::RemoveDirAll(fut, path.clone(), vfs, item));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        } else {
+                            let fut = item.write_to_async_ref(path, vfs);
+                            self.project_replace(Self::Inner(fut));
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        }
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::ExistsCheck(fut, path, vfs, item));
+                        Poll::Pending
+                    }
+                }
+            }
+            CleanDirWriteRefFutureProjOwn::RemoveDirAll(mut fut, path, vfs, item) => {
+                match Pin::new(&mut fut).poll(cx) {
+                    Poll::Ready(Ok(())) => {
+                        let fut = item.write_to_async_ref(path.clone(), vfs);
+                        self.project_replace(Self::Inner(fut));
+                        cx.waker().wake_by_ref();
+                        Poll::Pending
+                    }
+                    Poll::Ready(Err(e)) => Poll::Ready(Err(e)),
+                    Poll::Pending => {
+                        self.project_replace(Self::RemoveDirAll(fut, path, vfs, item));
+                        Poll::Pending
+                    }
+                }
+            }
+            CleanDirWriteRefFutureProjOwn::Inner(mut fut) => match Pin::new(&mut fut).poll(cx) {
+                Poll::Ready(v) => Poll::Ready(v),
+                Poll::Pending => {
+                    self.project_replace(Self::Inner(fut));
+                    Poll::Pending
+                }
+            },
+        }
+    }
+}
+
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for CleanDir<T>
+where
+    T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
+    for<'f> <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+        Future<Output = Result<()>> + Unpin + 'f,
+{
+    type Future<'b>
+        = CleanDirWriteRefFuture<'a, 'b, T, Vfs>
+    where
+        Self: 'b,
+        'a: 'b,
+        Vfs: 'b;
+
+    fn write_to_async_ref<'b>(&'b self, path: PathBuf, vfs: Pin<&'b Vfs>) -> Self::Future<'b>
+    where
+        'a: 'b,
+    {
+        let exists_future = vfs.exists(path.clone());
+        CleanDirWriteRefFuture::<'a, 'b, T, Vfs>::ExistsCheck(exists_future, path, vfs, &self.0)
+    }
+}
+
 impl<'a, T, Vfs: vfs::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for CleanDir<T>
 where
     T: WriteTo<Vfs> + 'a,
@@ -224,7 +348,7 @@ where
 }
 
 /// [`WriteTo`] impl for [`CleanDir`]
-pub struct CleanDirRefWr<'a, T: ?Sized, Vfs: 'a>(&'a T, marker::PhantomData<Vfs>);
+pub struct CleanDirRefWr<'a, T: ?Sized + 'a, Vfs: 'a>(&'a T, marker::PhantomData<Vfs>);
 
 impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for CleanDirRefWr<'_, T, Vfs>
 where
@@ -250,7 +374,7 @@ where
     for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
         Future<Output = Result<()>> + Unpin + 'f,
 {
-    type Future = CleanDirRefWrWriteFuture<'a, T, Vfs>;
+    type Future = CleanDirRefWrWriteFuture<'a, 'a, T, Vfs>;
 
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         let exists_future = vfs.exists(path.clone());
@@ -262,43 +386,46 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = CleanDirRefWrWriteFutureProjOwn)]
 #[doc(hidden)]
-pub enum CleanDirRefWrWriteFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'a>
+pub enum CleanDirRefWrWriteFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+    T::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
         Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
 {
     Poison,
     ExistsCheck(
-        <Vfs as VfsAsync>::ExistsFuture<'a>,
+        <Vfs as VfsAsync>::ExistsFuture<'f>,
         PathBuf,
         Pin<&'a Vfs>,
-        &'a T,
+        &'f T,
     ),
     RemoveDirAll(
-        <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'a>,
+        <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>,
         PathBuf,
-        Pin<&'a Vfs>,
-        &'a T,
+        Pin<&'f Vfs>,
+        &'f T,
     ),
     Write(
-        <T as WriteToAsyncRef<'a, Vfs>>::Future<'a>,
+        <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>,
         PathBuf,
-        Pin<&'a Vfs>,
+        Pin<&'f Vfs>,
     ),
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: WriteSupportingVfsAsync + 'a> Future for CleanDirRefWrWriteFuture<'a, T, Vfs>
+impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
+    for CleanDirRefWrWriteFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
-    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
-    for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
+    T::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,
+    <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
         Future<Output = Result<()>> + Unpin + 'f,
+    'a: 'f,
 {
     type Output = Result<()>;
 

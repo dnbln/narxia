@@ -268,6 +268,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-png")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-png")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Png,
     image::ImageFormat::Png,
     /// A writer for PNG images.
@@ -279,6 +280,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-jpeg")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-jpeg")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Jpeg,
     image::ImageFormat::Jpeg,
     /// A writer for JPEG images.
@@ -290,6 +292,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-gif")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-gif")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Gif,
     image::ImageFormat::Gif,
     /// A writer for GIF images.
@@ -301,6 +304,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-webp")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-webp")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     WebP,
     image::ImageFormat::WebP,
     /// A writer for WebP images.
@@ -312,6 +316,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-pnm")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-pnm")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Pnm,
     image::ImageFormat::Pnm,
     /// A writer for PNM images.
@@ -323,6 +328,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-tiff")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-tiff")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Tiff,
     image::ImageFormat::Tiff,
     /// A writer for TIFF images.
@@ -334,6 +340,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-tga")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-tga")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Tga,
     image::ImageFormat::Tga,
     /// A writer for TGA images.
@@ -355,6 +362,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-bmp")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-bmp")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Bmp,
     image::ImageFormat::Bmp,
     /// A writer for BMP images.
@@ -366,6 +374,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-ico")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-ico")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Ico,
     image::ImageFormat::Ico,
     /// A writer for ICO images.
@@ -377,6 +386,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-hdr")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-hdr")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Hdr,
     image::ImageFormat::Hdr,
     /// A writer for HDR images.
@@ -388,6 +398,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-exr")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-exr")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     OpenExr,
     image::ImageFormat::OpenExr,
     /// A writer for OpenEXR images.
@@ -399,6 +410,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-ff")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-ff")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Farbfeld,
     image::ImageFormat::Farbfeld,
     /// A writer for Farbfeld images.
@@ -410,6 +422,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-avif")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-avif")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Avif,
     image::ImageFormat::Avif,
     /// A writer for AVIF images.
@@ -421,6 +434,7 @@ img_format!(
     cfg
     #[cfg(feature = "image-format-qoi")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-qoi")))]
+    #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
     Qoi,
     image::ImageFormat::Qoi,
     /// A writer for QOI images.

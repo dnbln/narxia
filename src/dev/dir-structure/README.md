@@ -41,7 +41,7 @@ Here is a quick run-down:
 
 - Virtual file systems, so it doesn't depend on the actual file system.
 - Support for async I/O (`async` + `tokio` features). Other (custom) async runtimes can be supported by implementing `VfsAsync` and optionally `WriteSupportingVfsAsync`.
-- Support for reading and writing `serde` types with the `Json<T>`, `Toml<T>`, `Yaml<T>`, `Ron<T>` wrappers if that the corresponding features are enabled.
+- Support for reading and writing `serde` types with the `Json<T>`, `Toml<T>`, `Yaml<T>`, `Ron<T>` wrappers if the corresponding features are enabled.
 - Support for `DirChildren` and `DirDescendants` to easily navigate and manipulate dynamic-layout directory structures.
 
 Optimizations:

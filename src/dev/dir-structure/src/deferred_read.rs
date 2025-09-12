@@ -40,9 +40,12 @@ use crate::vfs::fs_vfs;
 ///
 /// See the [`DeferredRead::perform_read`] method for more details.
 #[derive(Clone, Hash)]
+#[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DeferredRead<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = false>(
     pub PathBuf,
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
     Pin<&'a Vfs>,
+    #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
     marker::PhantomData<T>,
 );
 
@@ -82,22 +85,6 @@ where
         Ok(Self(path.to_path_buf(), vfs, marker::PhantomData))
     }
 }
-
-// #[cfg(feature = "async")]
-// #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-// impl<'a, T, Vfs: crate::VfsAsync> ReadFromAsync<'a, Vfs> for DeferredRead<'a, T, false, Vfs>
-// where
-//     T: Send + ReadFromAsync<'a, Vfs> + 'static,
-// {
-//     type Future
-//         = future::Ready<Result<Self>>
-//     where
-//         Self: 'a;
-
-//     fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-//         future::ready(Ok(Self(path, vfs, marker::PhantomData)))
-//     }
-// }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
