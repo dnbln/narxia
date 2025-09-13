@@ -243,7 +243,13 @@ where
     T: AssertEq + Debug,
     E: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Result<T, E>, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &Result<T, E>,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         match (self, other) {
             (Ok(a), Ok(b)) => a.assert_eq(b, &mut *path.__guard("[Ok]"), init_left, init_right),
             (Err(a), Err(b)) => a.assert_eq(b, &mut *path.__guard("[Err]"), init_left, init_right),
@@ -263,8 +269,20 @@ impl<T> AssertEq<Vec<T>> for Vec<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        AssertEq::assert_eq(self.as_slice(), other.as_slice(), path, init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Vec<T>,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        AssertEq::assert_eq(
+            self.as_slice(),
+            other.as_slice(),
+            path,
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -272,7 +290,13 @@ impl<T> AssertEq<[T]> for Vec<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &[T], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &[T],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self.as_slice(), other, path, init_left, init_right);
     }
 }
@@ -281,7 +305,13 @@ impl<T> AssertEq<&[T]> for Vec<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &&[T], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &&[T],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self.as_slice(), *other, path, init_left, init_right);
     }
 }
@@ -290,7 +320,13 @@ impl<T> AssertEq<Vec<T>> for [T]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &Vec<T>,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self, other.as_slice(), path, init_left, init_right);
     }
 }
@@ -299,8 +335,20 @@ impl<T, const N: usize> AssertEq<Vec<T>> for [T; N]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        AssertEq::assert_eq(self.as_slice(), other.as_slice(), path, init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Vec<T>,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        AssertEq::assert_eq(
+            self.as_slice(),
+            other.as_slice(),
+            path,
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -308,8 +356,20 @@ impl<T, const N: usize> AssertEq<[T; N]> for Vec<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &[T; N], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        AssertEq::assert_eq(self.as_slice(), other.as_slice(), path, init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &[T; N],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        AssertEq::assert_eq(
+            self.as_slice(),
+            other.as_slice(),
+            path,
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -317,7 +377,13 @@ impl<T, const N: usize> AssertEq<&[T; N]> for Vec<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &&[T; N], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &&[T; N],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self.as_slice(), *other, path, init_left, init_right);
     }
 }
@@ -326,7 +392,13 @@ impl<T, const N: usize> AssertEq<[T]> for [T; N]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &[T], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &[T],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self.as_slice(), other, path, init_left, init_right);
     }
 }
@@ -335,7 +407,13 @@ impl<T, const N: usize> AssertEq<[T; N]> for [T]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &[T; N], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &[T; N],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self, other.as_slice(), path, init_left, init_right);
     }
 }
@@ -344,7 +422,13 @@ impl<T, const N: usize> AssertEq<&[T; N]> for [T; N]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &&[T; N], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &&[T; N],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(self, *other, path, init_left, init_right);
     }
 }
@@ -353,7 +437,13 @@ impl<T, const N: usize> AssertEq<[T; N]> for &[T; N]
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &[T; N], path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &[T; N],
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         AssertEq::assert_eq(*self, other, path, init_left, init_right);
     }
 }
@@ -362,7 +452,13 @@ impl<T> AssertEq for core::ops::Bound<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         match (self, other) {
             (Self::Included(a), Self::Included(b)) => {
                 a.assert_eq(b, &mut *path.__guard("[Included]"), init_left, init_right)
@@ -387,10 +483,25 @@ impl<T> AssertEq for core::ops::Range<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        self.start
-            .assert_eq(&other.start, &mut *path.__guard(".start"), init_left, init_right);
-        self.end.assert_eq(&other.end, &mut *path.__guard(".end"), init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        self.start.assert_eq(
+            &other.start,
+            &mut *path.__guard(".start"),
+            init_left,
+            init_right,
+        );
+        self.end.assert_eq(
+            &other.end,
+            &mut *path.__guard(".end"),
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -398,11 +509,25 @@ impl<T> AssertEq for core::ops::RangeInclusive<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        self.start()
-            .assert_eq(other.start(), &mut *path.__guard(".start"), init_left, init_right);
-        self.end()
-            .assert_eq(other.end(), &mut *path.__guard(".end"), init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        self.start().assert_eq(
+            other.start(),
+            &mut *path.__guard(".start"),
+            init_left,
+            init_right,
+        );
+        self.end().assert_eq(
+            other.end(),
+            &mut *path.__guard(".end"),
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -410,9 +535,19 @@ impl<T> AssertEq for core::ops::RangeFrom<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        self.start
-            .assert_eq(&other.start, &mut *path.__guard(".start"), init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        self.start.assert_eq(
+            &other.start,
+            &mut *path.__guard(".start"),
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -420,8 +555,19 @@ impl<T> AssertEq for core::ops::RangeTo<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        self.end.assert_eq(&other.end, &mut *path.__guard(".end"), init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        self.end.assert_eq(
+            &other.end,
+            &mut *path.__guard(".end"),
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -429,8 +575,19 @@ impl<T> AssertEq for core::ops::RangeToInclusive<T>
 where
     T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
-        self.end.assert_eq(&other.end, &mut *path.__guard(".end"), init_left, init_right);
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
+        self.end.assert_eq(
+            &other.end,
+            &mut *path.__guard(".end"),
+            init_left,
+            init_right,
+        );
     }
 }
 
@@ -438,26 +595,54 @@ impl<T> AssertEq for Cow<'_, T>
 where
     T: AssertEq + Debug + Clone,
 {
-    fn assert_eq(&self, other: &Self, path: &mut AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         match (self, other) {
             (Cow::Borrowed(a), Cow::Borrowed(b)) => {
                 (**a).assert_eq(b, &mut *path.__guard("[Borrowed]"), init_left, init_right)
             }
-            (Cow::Owned(a), Cow::Owned(b)) => a.assert_eq(b, &mut *path.__guard("[Owned]"), init_left, init_right),
-            (Cow::Borrowed(a), Cow::Owned(b)) => {
-                (**a).assert_eq(b, &mut *path.__guard("[Borrowed->Owned]"), init_left, init_right)
+            (Cow::Owned(a), Cow::Owned(b)) => {
+                a.assert_eq(b, &mut *path.__guard("[Owned]"), init_left, init_right)
             }
-            (Cow::Owned(a), Cow::Borrowed(b)) => {
-                (*a).assert_eq(b, &mut *path.__guard("[Owned->Borrowed]"), init_left, init_right)
-            }
+            (Cow::Borrowed(a), Cow::Owned(b)) => (**a).assert_eq(
+                b,
+                &mut *path.__guard("[Borrowed->Owned]"),
+                init_left,
+                init_right,
+            ),
+            (Cow::Owned(a), Cow::Borrowed(b)) => (*a).assert_eq(
+                b,
+                &mut *path.__guard("[Owned->Borrowed]"),
+                init_left,
+                init_right,
+            ),
         }
     }
 }
 
 impl<T> AssertEq for core::marker::PhantomData<T> {
-    fn assert_eq(&self, _other: &Self, _path: &mut AssertPath, _init_left: &impl fmt::Display, _init_right: &impl fmt::Display) {}
+    fn assert_eq(
+        &self,
+        _other: &Self,
+        _path: &mut AssertPath,
+        _init_left: &impl fmt::Display,
+        _init_right: &impl fmt::Display,
+    ) {
+    }
 }
 
 impl AssertEq<()> for () {
-    fn assert_eq(&self, _other: &(), _path: &mut AssertPath, _init_left: &impl fmt::Display, _init_right: &impl fmt::Display) {}
+    fn assert_eq(
+        &self,
+        _other: &(),
+        _path: &mut AssertPath,
+        _init_left: &impl fmt::Display,
+        _init_right: &impl fmt::Display,
+    ) {
+    }
 }

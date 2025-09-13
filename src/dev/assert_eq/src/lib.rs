@@ -239,7 +239,13 @@ mod __impls;
 #[macro_export]
 macro_rules! assert_eq {
     ($a:expr, $b:expr) => {
-        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new(), &format_args!("{:?}", &$a), &format_args!("{:?}", &$b));
+        $crate::AssertEq::assert_eq(
+            &$a,
+            &$b,
+            &mut $crate::AssertPath::new(),
+            &format_args!("{:?}", &$a),
+            &format_args!("{:?}", &$b),
+        );
     };
 }
 
@@ -248,7 +254,13 @@ macro_rules! assert_eq {
 macro_rules! debug_assert_eq {
     ($a:expr, $b:expr) => {
         #[cfg(debug_assertions)]
-        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new(), &format_args!("{:?}", &$a), &format_args!("{:?}", &$b));
+        $crate::AssertEq::assert_eq(
+            &$a,
+            &$b,
+            &mut $crate::AssertPath::new(),
+            &format_args!("{:?}", &$a),
+            &format_args!("{:?}", &$b),
+        );
     };
 }
 

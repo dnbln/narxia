@@ -30,7 +30,9 @@ fn option_none_eq() {
 }
 
 #[test]
-#[should_panic(expected = "assertion `left == right` failed: at <root>: left and right are different kinds of Option:\n  left: Some(1)\n right: None;\nassert_eq! called initially on:\n  left: Some(1)\n right: None")]
+#[should_panic(
+    expected = "assertion `left == right` failed: at <root>: left and right are different kinds of Option:\n  left: Some(1)\n right: None;\nassert_eq! called initially on:\n  left: Some(1)\n right: None"
+)]
 fn option_eq_fail() {
     let a = Some(1);
     let b = None;
