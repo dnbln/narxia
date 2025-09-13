@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["git"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
@@ -21,6 +21,7 @@ ron = ["dep:serde", "dep:ron"]
 async = ["dep:pin-project", "dep:futures", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
 include_dir = ["dep:include_dir"]
+git = ["dep:git2"]
 resolve-path = ["dir-structure-macros/resolve-path"]
 image = ["dep:image", "tokio/rt"]
 image-format-png = ["image", "image/png"]
@@ -69,6 +70,7 @@ tokio = { version = "1", optional = true, default-features = false, features = [
 include_dir = { version = "0.6", optional = true, default-features = false }
 image = { version = "0.25", optional = true, default-features = false }
 assert_eq = { workspace = true, optional = true }
+git2 = { workspace = true, optional = true }
 
 [[test]]
 name = "async_tests"

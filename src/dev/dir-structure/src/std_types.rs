@@ -39,7 +39,7 @@ impl FileBytes {
     }
 }
 
-impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for FileBytes {
+impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FileBytes {
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
@@ -57,8 +57,8 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileBytes {
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FileBytes {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for FileBytes {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -83,9 +83,13 @@ impl NewtypeToInner for FileBytes {
     }
 }
 
-impl<'a, Vfs: vfs::WriteSupportingVfs + 'a> FromRefForWriter<'a, Vfs> for FileBytes {
+impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs> + 'vfs> FromRefForWriter<'a, 'vfs, Vfs>
+    for FileBytes
+where
+    'vfs: 'a,
+{
     type Inner = [u8];
-    type Wr = FileBytesRefWr<'a, Vfs>;
+    type Wr = FileBytesRefWr<'a, 'vfs, Vfs>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
         FileBytesRefWr(value, marker::PhantomData)
@@ -94,9 +98,11 @@ impl<'a, Vfs: vfs::WriteSupportingVfs + 'a> FromRefForWriter<'a, Vfs> for FileBy
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileBytes {
+impl<'a, 'vfs, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, 'vfs, Vfs>
+    for FileBytes
+{
     type Inner = [u8];
-    type Wr = FileBytesRefWr<'a, Vfs>;
+    type Wr = FileBytesRefWr<'a, 'vfs, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FileBytesRefWr(value, marker::PhantomData)
@@ -104,10 +110,16 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> 
 }
 
 /// The [`WriteTo`] wrapper around a reference to a `[u8]`.
-pub struct FileBytesRefWr<'a, Vfs: 'a>(&'a [u8], marker::PhantomData<Vfs>);
+pub struct FileBytesRefWr<'a, 'vfs, Vfs: 'vfs>(&'a [u8], marker::PhantomData<&'vfs Vfs>)
+where
+    'vfs: 'a;
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FileBytesRefWr<'_, Vfs> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs>
+    for FileBytesRefWr<'a, 'vfs, Vfs>
+where
+    'vfs: 'a,
+{
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         vfs.create_parent_dir(path)?;
         vfs.write(path, self.0)?;
         Ok(())
@@ -116,10 +128,12 @@ impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FileBytesRefWr<'_, Vfs> {
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileBytesRefWr<'a, Vfs> {
+impl<'a, 'vfs, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for FileBytesRefWr<'a, 'vfs, Vfs>
+{
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         Box::pin(async move {
             vfs.create_parent_dir(path.clone()).await?;
             vfs.write(path, self.0).await?;
@@ -160,7 +174,7 @@ impl NewtypeToInner for FileString {
     }
 }
 
-impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for FileString {
+impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FileString {
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
@@ -197,8 +211,8 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileString {
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FileString {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for FileString {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -217,9 +231,13 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileS
     }
 }
 
-impl<'a, Vfs: vfs::WriteSupportingVfs + 'a> FromRefForWriter<'a, Vfs> for FileString {
+impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs> + 'vfs> FromRefForWriter<'a, 'vfs, Vfs>
+    for FileString
+where
+    'vfs: 'a,
+{
     type Inner = str;
-    type Wr = FileStrWr<'a, Vfs>;
+    type Wr = FileStrWr<'a, 'vfs, Vfs>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
         FileStrWr(value, marker::PhantomData)
@@ -238,10 +256,15 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> 
 }
 
 /// The [`WriteTo`] wrapper around a reference to a [`str`].
-pub struct FileStrWr<'a, Vfs: 'a>(&'a str, marker::PhantomData<Vfs>);
+pub struct FileStrWr<'a, 'vfs, Vfs: 'vfs>(&'a str, marker::PhantomData<&'vfs Vfs>)
+where
+    'vfs: 'a;
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FileStrWr<'_, Vfs> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FileStrWr<'a, 'vfs, Vfs>
+where
+    'vfs: 'a,
+{
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         FileBytes::from_ref_for_writer(self.0.as_bytes()).write_to(path, vfs)
     }
 }
@@ -258,7 +281,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileS
 
 // Impls for std types.
 
-impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for String {
+impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for String {
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
@@ -277,8 +300,8 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for String {
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for String {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for String {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileString::from_ref_for_writer(self).write_to(path, vfs)
     }
 }
@@ -315,7 +338,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for St
     }
 }
 
-impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for Vec<u8> {
+impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Vec<u8> {
     fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
@@ -357,8 +380,8 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for Vec<u8> {
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for Vec<u8> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for Vec<u8> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileBytes::from_ref_for_writer(self).write_to(path, vfs)
     }
 }
@@ -376,14 +399,14 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Vec<u
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for str {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for str {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileStrWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for &str {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for &str {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileStrWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
@@ -398,14 +421,14 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a s
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for [u8] {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for [u8] {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileBytesRefWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for &[u8] {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for &[u8] {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         FileBytesRefWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
@@ -420,7 +443,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a [
     }
 }
 
-impl<'a, T: 'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for marker::PhantomData<T> {
+impl<'a, T: 'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for marker::PhantomData<T> {
     fn read_from(_path: &Path, _vfs: Pin<&'a Vfs>) -> Result<Self>
     where
         Self: Sized,
@@ -429,8 +452,8 @@ impl<'a, T: 'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for marker::PhantomData<T> {
     }
 }
 
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for marker::PhantomData<T> {
-    fn write_to(&self, _path: &Path, _vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, T, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for marker::PhantomData<T> {
+    fn write_to(&self, _path: &Path, _vfs: Pin<&'a Vfs>) -> Result<()> {
         Ok(())
     }
 }

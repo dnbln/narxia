@@ -186,20 +186,28 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs<'vfs> + 'static };
         } else {
             v.bounds
-                .push(parse_quote! { ::dir_structure::traits::vfs::Vfs });
+                .push(parse_quote! { ::dir_structure::traits::vfs::Vfs<'vfs> });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
         generics_for_read_impl
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::Vfs + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::Vfs<'vfs> + 'static });
     }
     let (read_impl_generics, _, _) = generics_for_read_impl.split_for_impl();
 
     let mut generics_for_write_impl = fork;
+    if !generics_for_write_impl.params.iter().any(|p| match p {
+        syn::GenericParam::Lifetime(lt) => lt.lifetime.ident == "vfs",
+        syn::GenericParam::Const(_) | syn::GenericParam::Type(_) => false,
+    }) {
+        generics_for_write_impl
+            .params
+            .insert(0, parse_quote! { 'vfs });
+    }
     if let Some(v) = generics_for_write_impl
         .params
         .iter_mut()
@@ -212,16 +220,17 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs + 'static };
+            v.bounds =
+                parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'static };
         } else {
             v.bounds
-                .push(parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs });
+                .push(parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> });
             v.bounds.push(parse_quote! { 'static });
         }
     } else {
-        generics_for_write_impl
-            .params
-            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::WriteSupportingVfs + 'static });
+        generics_for_write_impl.params.push(
+            parse_quote! { Vfs: ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'static },
+        );
     }
 
     let (write_impl_generics, _, _) = generics_for_write_impl.split_for_impl();
@@ -263,8 +272,8 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
         }
-        impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<Vfs> for #name #ty_generics #where_clause {
-            fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&Vfs>) -> ::dir_structure::error::Result<()> {
+        impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_clause {
+            fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<()> {
                 #(#field_write_impls)*
                 Ok(())
             }

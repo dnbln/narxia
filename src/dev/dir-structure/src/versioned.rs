@@ -171,7 +171,7 @@ impl<T> Versioned<T> {
     }
 }
 
-impl<'a, Vfs: vfs::Vfs, T> ReadFrom<'a, Vfs> for Versioned<T>
+impl<'a, Vfs: vfs::Vfs<'a>, T> ReadFrom<'a, Vfs> for Versioned<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -223,8 +223,8 @@ impl<'a, Vfs: VfsAsync + 'static, T: ReadFromAsync<'a, Vfs> + Send + 'static> Re
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for Versioned<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs> for Versioned<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         if self.path == path && self.is_clean() {
             return Ok(());
         }

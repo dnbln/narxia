@@ -14,11 +14,14 @@ use crate::error::WrapIoError as _;
 use crate::prelude::*;
 
 /// A virtual file system. Writing operations are provided by the [`WriteSupportingVfs` trait](self::WriteSupportingVfs).
-pub trait Vfs {
+pub trait Vfs<'vfs>: 'vfs {
     /// The type of the directory walker returned by the [`walk_dir` method](Vfs::walk_dir).
-    type DirWalk: DirWalker;
+    type DirWalk<'a>: DirWalker<'a>
+    where
+        'vfs: 'a,
+        Self: 'a;
     /// The type of the file returned by the [`open_read` method](Vfs::open_read).
-    type RFile: BufRead;
+    type RFile: BufRead + 'vfs;
 
     /// Opens a file for reading, at the specified path.
     fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile>;
@@ -34,18 +37,20 @@ pub trait Vfs {
     /// Checks if a file exists at the specified path.
     fn exists(self: Pin<&Self>, path: &Path) -> Result<bool>;
     /// Walks a directory at the specified path, returning a stream of directory entries.
-    fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk>;
+    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Path) -> Result<Self::DirWalk<'b>>
+    where
+        'vfs: 'b;
 }
 
 /// Extension trait for [`Vfs`] that provides additional convenience methods.
-pub trait VfsExt: Vfs {
+pub trait VfsExt<'vfs>: Vfs<'vfs> {
     /// Reads a file / directory at the specified path, and parses it into the specified type using its
     /// [`ReadFrom`] implementation.
     ///
     /// This method takes `self` as a pinned reference, to ensure that the `Vfs` implementation
     /// is not moved while the read operation is in progress.
-    fn read_typed_pinned<'a, T: ReadFrom<'a, Self>>(
-        self: Pin<&'a Self>,
+    fn read_typed_pinned<T: ReadFrom<'vfs, Self>>(
+        self: Pin<&'vfs Self>,
         path: impl AsRef<Path>,
     ) -> Result<T> {
         T::read_from(path.as_ref(), self)
@@ -55,7 +60,7 @@ pub trait VfsExt: Vfs {
     /// [`ReadFrom`] implementation.
     ///
     /// This method takes `self` as a regular reference, and pins it internally.
-    fn read_typed<'a, T: ReadFrom<'a, Self>>(&'a self, path: impl AsRef<Path>) -> Result<T>
+    fn read_typed<T: ReadFrom<'vfs, Self>>(&'vfs self, path: impl AsRef<Path>) -> Result<T>
     where
         Self: Unpin,
     {
@@ -64,24 +69,24 @@ pub trait VfsExt: Vfs {
 }
 
 // Blanket impl.
-impl<V: Vfs + ?Sized> VfsExt for V {}
+impl<'vfs, V: Vfs<'vfs> + ?Sized> VfsExt<'vfs> for V {}
 
 /// Marks that the [`RFile`](Vfs::RFile) type of this [`Vfs`] also implements [`Seek`](std::io::Seek),
 /// allowing it to be used in contexts that require seeking, such as image decoding.
 ///
 /// This trait is automatically implemented for any [`Vfs`] whose [`RFile`](Vfs::RFile) implements [`Seek`](std::io::Seek).
-pub trait VfsWithSeekRead: Vfs
+pub trait VfsWithSeekRead<'vfs>: Vfs<'vfs>
 where
     Self::RFile: Seek,
 {
 }
 
-impl<T: Vfs> VfsWithSeekRead for T where T::RFile: Seek {}
+impl<'vfs, T: Vfs<'vfs>> VfsWithSeekRead<'vfs> for T where T::RFile: Seek {}
 
 /// A virtual file system that supports writing operations.
-pub trait WriteSupportingVfs: Vfs {
+pub trait WriteSupportingVfs<'vfs>: Vfs<'vfs> {
     /// The type of the file returned by the [`open_write` method](WriteSupportingVfs::open_write).
-    type WFile: Write;
+    type WFile: Write + 'vfs;
 
     /// Opens a file for writing, at the specified path.
     fn open_write(self: Pin<&Self>, path: &Path) -> Result<Self::WFile>;
@@ -110,14 +115,14 @@ pub trait WriteSupportingVfs: Vfs {
 }
 
 /// Extension trait for [`WriteSupportingVfs`] that provides additional convenience methods.
-pub trait WriteSupportingVfsExt: WriteSupportingVfs {
+pub trait WriteSupportingVfsExt<'vfs>: WriteSupportingVfs<'vfs> {
     /// Writes a file / directory at the specified path, using the specified data type's
     /// [`WriteTo`] implementation.
     ///
     /// This method takes `self` as a pinned reference, to ensure that the `Vfs` implementation
     /// is not moved while the write operation is in progress.
-    fn write_typed_pinned<'a, T: WriteTo<Self>>(
-        self: Pin<&'a Self>,
+    fn write_typed_pinned<T: WriteTo<'vfs, Self>>(
+        self: Pin<&'vfs Self>,
         path: impl AsRef<Path>,
         value: &T,
     ) -> Result<()> {
@@ -128,7 +133,11 @@ pub trait WriteSupportingVfsExt: WriteSupportingVfs {
     /// [`WriteTo`] implementation.
     ///
     /// This method takes `self` as a regular reference, and pins it internally.
-    fn write_typed<'a, T: WriteTo<Self>>(&'a self, path: impl AsRef<Path>, value: &T) -> Result<()>
+    fn write_typed<T: WriteTo<'vfs, Self>>(
+        &'vfs self,
+        path: impl AsRef<Path>,
+        value: &T,
+    ) -> Result<()>
     where
         Self: Unpin,
     {
@@ -137,19 +146,19 @@ pub trait WriteSupportingVfsExt: WriteSupportingVfs {
 }
 
 // Blanket impl.
-impl<Vfs: WriteSupportingVfs + ?Sized> WriteSupportingVfsExt for Vfs {}
+impl<'vfs, Vfs: WriteSupportingVfs<'vfs> + ?Sized> WriteSupportingVfsExt<'vfs> for Vfs {}
 
 /// Marks that the [`WFile`](WriteSupportingVfs::WFile) type of this [`WriteSupportingVfs`] also implements [`Seek`](std::io::Seek),
 /// allowing it to be used in contexts that require seeking.
 ///
 /// This trait is automatically implemented for any [`WriteSupportingVfs`] whose [`WFile`](WriteSupportingVfs::WFile) implements [`Seek`](std::io::Seek).
-pub trait VfsWithSeekWrite: WriteSupportingVfs
+pub trait VfsWithSeekWrite<'vfs>: WriteSupportingVfs<'vfs>
 where
     Self::WFile: Seek,
 {
 }
 
-impl<T: WriteSupportingVfs> VfsWithSeekWrite for T where T::WFile: Seek {}
+impl<'vfs, T: WriteSupportingVfs<'vfs>> VfsWithSeekWrite<'vfs> for T where T::WFile: Seek {}
 
 /// The type of a directory entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -212,7 +221,7 @@ pub struct DirEntryInfo {
 /// A trait for walking a directory.
 ///
 /// Behaves similarly to an [`Iterator`] over Result<[`DirEntryInfo`]>.
-pub trait DirWalker {
+pub trait DirWalker<'vfs>: 'vfs {
     /// Returns the next directory entry.
     fn next(&mut self) -> Option<Result<DirEntryInfo>>;
 }

@@ -74,7 +74,7 @@ impl<T> NewtypeToInner for FmtWrapper<T> {
     }
 }
 
-impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + 'a,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
@@ -111,11 +111,11 @@ where
     }
 }
 
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapper<T>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FmtWrapper<T>
 where
     T: Display,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -156,10 +156,12 @@ where
     }
 }
 
-impl<'a, T, Vfs: vfs::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for FmtWrapper<T>
+impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> FromRefForWriter<'a, 'vfs, Vfs>
+    for FmtWrapper<T>
 where
     T: Display + 'a,
-    Vfs: 'a,
+    Vfs: 'vfs,
+    'vfs: 'a,
 {
     type Inner = T;
     type Wr = FmtWrapperRefWr<'a, T, Vfs>;
@@ -187,11 +189,11 @@ where
 /// implementation to write the value.
 pub struct FmtWrapperRefWr<'a, T: ?Sized, Vfs>(pub &'a T, marker::PhantomData<Vfs>);
 
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for FmtWrapperRefWr<'_, T, Vfs>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FmtWrapperRefWr<'_, T, Vfs>
 where
     T: Display + ?Sized,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         FileString::new(self.0.to_string()).write_to(path, vfs)
     }
 }

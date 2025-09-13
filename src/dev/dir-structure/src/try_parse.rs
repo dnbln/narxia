@@ -37,7 +37,7 @@ pub enum TryParse<T> {
 
 impl<'vfs, Vfs, T> ReadFrom<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: vfs::Vfs,
+    Vfs: vfs::Vfs<'vfs>,
     T: ReadFrom<'vfs, Vfs>,
 {
     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
@@ -48,12 +48,12 @@ where
     }
 }
 
-impl<'vfs, Vfs, T> WriteTo<Vfs> for TryParse<T>
+impl<'vfs, Vfs, T> WriteTo<'vfs, Vfs> for TryParse<T>
 where
-    Vfs: vfs::WriteSupportingVfs,
-    T: WriteTo<Vfs>,
+    Vfs: vfs::WriteSupportingVfs<'vfs>,
+    T: WriteTo<'vfs, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         match self {
             Self::Success(value) => value.write_to(path, vfs),
             Self::Failure(_error) => Ok(()),

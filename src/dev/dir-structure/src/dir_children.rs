@@ -858,7 +858,7 @@ impl<T> DoubleEndedIterator for DirChildrenDrain<'_, T> {
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildren<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -1063,12 +1063,12 @@ where
     }
 }
 
-impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildren<T, F>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'a, Vfs>,
     F: Filter,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         for child in &self.children {
             let child_path = path.join(&child.file_name);
             child.value.write_to(&child_path, vfs)?;
@@ -1662,7 +1662,7 @@ macro_rules! dir_children_wrapper_with_vfs {
     ($vis:vis $name:ident $ty:ident) => {
         $vis struct $name<'vfs, Vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>);
 
-        impl<'vfs, Vfs: $crate::traits::vfs::Vfs + 'static> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs> + 'static> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
             fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<Self>
             where
                 Self: Sized,
@@ -1671,8 +1671,8 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs + 'static> $crate::traits::sync::WriteTo<Vfs> for $name<'vfs, Vfs> {
-            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::error::Result<()> {
+        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs> + 'static> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<()> {
                 self.0.write_to(path, vfs)
             }
         }
@@ -1727,7 +1727,7 @@ pub struct DirChildSingle<T, F: Filter> {
     _phantom: PhantomData<F>,
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildSingle<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingle<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -1754,11 +1754,11 @@ where
     }
 }
 
-impl<T, F: Filter, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingle<T, F>
+impl<'a, T, F: Filter, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildSingle<T, F>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'a, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         let child_path = path.join(&self.file_name);
         self.value.write_to(&child_path, vfs)
     }
@@ -2307,7 +2307,7 @@ where
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -2336,12 +2336,12 @@ where
     }
 }
 
-impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for DirChildSingleOpt<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildSingleOpt<T, F>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'a, Vfs>,
     F: Filter,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         match self {
             DirChildSingleOpt::Some(child) => child.write_to(path, vfs),
             DirChildSingleOpt::None => Ok(()),
@@ -2400,7 +2400,7 @@ where
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F>
 where
     T: ReadFrom<'a, Vfs>,
     F: Filter + 'a,
@@ -2414,12 +2414,12 @@ where
     }
 }
 
-impl<T, F, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for ForceCreateDirChildren<T, F>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'a, Vfs>,
     F: Filter,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         vfs.create_dir_all(path)?;
 
         self.children.write_to(path, vfs)

@@ -74,7 +74,8 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs> DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>>
+    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -169,13 +170,13 @@ where
     }
 
     /// Flushes the current value to the specified path.
-    pub fn flush_to<TargetVfs: vfs::WriteSupportingVfs>(
+    pub fn flush_to<'t, TargetVfs: vfs::WriteSupportingVfs<'t>>(
         &self,
         path: &Path,
-        vfs: Pin<&TargetVfs>,
+        vfs: Pin<&'t TargetVfs>,
     ) -> Result<()>
     where
-        T: WriteTo<TargetVfs>,
+        T: WriteTo<'t, TargetVfs>,
     {
         match self {
             DeferredReadOrOwn::Own(own) => own.write_to(path, vfs),
@@ -184,7 +185,7 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs>
     for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
@@ -284,12 +285,18 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, SelfVfs: vfs::Vfs, TargetVfs: vfs::WriteSupportingVfs>
-    WriteTo<TargetVfs> for DeferredReadOrOwn<'a, T, SelfVfs, CHECK_ON_READ>
+impl<
+    'a,
+    't,
+    const CHECK_ON_READ: bool,
+    T,
+    SelfVfs: vfs::Vfs<'a>,
+    TargetVfs: vfs::WriteSupportingVfs<'t>,
+> WriteTo<'t, TargetVfs> for DeferredReadOrOwn<'a, T, SelfVfs, CHECK_ON_READ>
 where
-    T: ReadFrom<'a, SelfVfs> + WriteTo<TargetVfs>,
+    T: ReadFrom<'a, SelfVfs> + WriteTo<'t, TargetVfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&TargetVfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'t TargetVfs>) -> Result<()> {
         match self {
             DeferredReadOrOwn::Own(own) => own.write_to(path, vfs),
             DeferredReadOrOwn::Deferred(d) => d.write_to(path, vfs),

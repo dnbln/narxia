@@ -832,7 +832,7 @@ impl<T, F: FnMut(&mut DirDescendant<T>) -> bool> Iterator for DirDescendantsExtr
 
 impl<
     'vfs,
-    Vfs: vfs::Vfs,
+    Vfs: vfs::Vfs<'vfs>,
     T: ReadFrom<'vfs, Vfs>,
     F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
 > ReadFrom<'vfs, Vfs> for DirDescendants<T, F>
@@ -972,12 +972,12 @@ impl<
 
 impl<
     'vfs,
-    Vfs: vfs::WriteSupportingVfs,
-    T: WriteTo<Vfs> + 'vfs,
+    Vfs: vfs::WriteSupportingVfs<'vfs>,
+    T: WriteTo<'vfs, Vfs> + 'vfs,
     F: FileFilter + FolderRecurseFilter + FolderFilter + 'vfs,
-> WriteTo<Vfs> for DirDescendants<T, F>
+> WriteTo<'vfs, Vfs> for DirDescendants<T, F>
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         for descendant in &self.descendants {
             descendant
                 .value

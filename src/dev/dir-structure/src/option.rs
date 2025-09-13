@@ -26,7 +26,7 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
 
-impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Option<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -150,11 +150,11 @@ where
     }
 }
 
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for Option<T>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for Option<T>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'vfs, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         if let Some(v) = self {
             v.write_to(path, vfs)
         } else {

@@ -28,9 +28,9 @@ pub trait DirStructureItem {
 
     /// Uses the [`WriteTo`] implementation to write the structure
     /// to disk at the specified path.
-    fn write(&self, path: impl AsRef<Path>) -> Result<()>
+    fn write<'a, 'vfs: 'a>(&'a self, path: impl AsRef<Path>) -> Result<()>
     where
-        Self: WriteTo<fs_vfs::FsVfs>,
+        Self: WriteTo<'vfs, fs_vfs::FsVfs>,
     {
         self.write_to(path.as_ref(), Pin::new(&fs_vfs::FsVfs))
     }
@@ -41,10 +41,10 @@ impl<T> DirStructureItem for T {}
 
 /// Trait for types / structures that can be
 /// read from disk, either from a file or a directory.
-pub trait ReadFrom<'a, Vfs: vfs::Vfs + ?Sized>: Sized + 'a {
+pub trait ReadFrom<'vfs, Vfs: vfs::Vfs<'vfs> + ?Sized>: Sized + 'vfs {
     /// Reads the structure from the specified path, which
     /// can be either a file or a directory.
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>;
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self>;
 }
 
 /// Trait for types / structures that can be
@@ -55,9 +55,9 @@ pub trait ReadFrom<'a, Vfs: vfs::Vfs + ?Sized>: Sized + 'a {
 /// not necessary (unless used empty children
 /// directories, in which case no directories will
 /// really be created).
-pub trait WriteTo<Vfs: vfs::WriteSupportingVfs + ?Sized> {
+pub trait WriteTo<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs> + ?Sized> {
     /// Writes the structure to the specified path.
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()>;
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()>;
 }
 
 /// Trait to use when using the `with_newtype` attribute.
@@ -70,11 +70,13 @@ pub trait WriteTo<Vfs: vfs::WriteSupportingVfs + ?Sized> {
 /// only cast what they have to write to those reference types
 /// (via the function below), and then call the [`WriteTo::write_to`]
 /// method on that reference.
-pub trait FromRefForWriter<'a, Vfs: vfs::WriteSupportingVfs + ?Sized + 'a> {
+pub trait FromRefForWriter<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs> + ?Sized + 'vfs>:
+    'a
+{
     /// The inner type to cast.
     type Inner: ?Sized;
     /// The reference type to cast to.
-    type Wr: WriteTo<Vfs> + 'a;
+    type Wr: WriteTo<'vfs, Vfs>;
 
     /// Casts the reference to the inner type to a [`WriteTo`]
     /// reference type.
@@ -94,14 +96,14 @@ pub trait NewtypeToInner {
     fn into_inner(self) -> Self::Inner;
 }
 
-impl<'a, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for () {
+impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for () {
     fn read_from(_path: &Path, _vfs: Pin<&'a Vfs>) -> Result<Self> {
         Ok(())
     }
 }
 
-impl<Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for () {
-    fn write_to(&self, _path: &Path, _vfs: Pin<&Vfs>) -> Result<()> {
+impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for () {
+    fn write_to(&self, _path: &Path, _vfs: Pin<&'vfs Vfs>) -> Result<()> {
         Ok(())
     }
 }

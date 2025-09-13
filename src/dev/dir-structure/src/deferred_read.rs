@@ -64,7 +64,7 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs>
     for DeferredRead<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
@@ -107,7 +107,7 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs> DeferredRead<'a, T, Vfs, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>> DeferredRead<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -172,12 +172,18 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, SelfVfs: vfs::Vfs, TargetVfs: vfs::WriteSupportingVfs>
-    WriteTo<TargetVfs> for DeferredRead<'a, T, SelfVfs, CHECK_ON_READ>
+impl<
+    'a,
+    't,
+    const CHECK_ON_READ: bool,
+    T,
+    SelfVfs: vfs::Vfs<'a>,
+    TargetVfs: vfs::WriteSupportingVfs<'t>,
+> WriteTo<'t, TargetVfs> for DeferredRead<'a, T, SelfVfs, CHECK_ON_READ>
 where
-    T: ReadFrom<'a, SelfVfs> + WriteTo<TargetVfs>,
+    T: ReadFrom<'a, SelfVfs> + WriteTo<'t, TargetVfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&TargetVfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'t TargetVfs>) -> Result<()> {
         if path == self.0 {
             // Optimization: We were asked to write to the same path
             // we are supposed to read from. We can just ignore it, since

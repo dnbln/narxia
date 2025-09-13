@@ -191,7 +191,7 @@ and write them back to disk."##
                 }
             }
 
-            impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for $main_ty<T>
+            impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
@@ -223,11 +223,11 @@ and write them back to disk."##
                 }
             }
 
-            impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for $main_ty<T>
+            impl<'a, T, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
-                fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+                fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
                     Self::from_ref_for_writer(&self.0).write_to(path, vfs)
                 }
             }
@@ -260,12 +260,13 @@ and write them back to disk."##
                 }
             }
 
-            impl<'a, T, Vfs: vfs::WriteSupportingVfs + 'a> FromRefForWriter<'a, Vfs> for $main_ty<T>
+            impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs> + 'vfs> FromRefForWriter<'a, 'vfs, Vfs> for $main_ty<T>
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
+                'vfs: 'a,
             {
                 type Inner = T;
-                type Wr = $writer_ty<'a, T, Vfs>;
+                type Wr = $writer_ty<'a, 'vfs, T, Vfs>;
 
                 fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
                     $writer_ty(value, marker::PhantomData)
@@ -287,15 +288,17 @@ and write them back to disk."##
             }
 
             $(#[$writer_ty_attrs])*
-            pub struct $writer_ty<'a, T, Vfs>(&'a T, marker::PhantomData<Vfs>)
-            where
-                T: serde::Serialize + 'a;
-
-            impl<'a, T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for $writer_ty<'a, T, Vfs>
+            pub struct $writer_ty<'a, 'vfs, T, Vfs: 'vfs>(&'a T, marker::PhantomData<&'vfs Vfs>)
             where
                 T: serde::Serialize + 'a,
+                'vfs: 'a;
+
+            impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for $writer_ty<'a, 'vfs, T, Vfs>
+            where
+                T: serde::Serialize + 'a,
+                'vfs: 'a,
             {
-                fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+                fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
                     vfs.create_parent_dir(path)?;
 
                     $to_str_ty(self.0).to_writer(&mut vfs.open_write(path)?)

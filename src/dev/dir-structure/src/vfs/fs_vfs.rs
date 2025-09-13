@@ -20,8 +20,12 @@ use crate::traits::vfs::WriteSupportingVfs;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub struct FsVfs;
 
-impl Vfs for FsVfs {
-    type DirWalk = imp::FsDirWalker;
+impl<'a> Vfs<'a> for FsVfs {
+    type DirWalk<'b>
+        = imp::FsDirWalker
+    where
+        'a: 'b,
+        Self: 'b;
 
     type RFile = io::BufReader<fs::File>;
 
@@ -43,14 +47,17 @@ impl Vfs for FsVfs {
         Ok(path.exists())
     }
 
-    fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk> {
+    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Path) -> Result<Self::DirWalk<'b>>
+    where
+        'a: 'b,
+    {
         fs::read_dir(path)
             .wrap_io_error_with(path)
             .map(|read_dir| imp::FsDirWalker(read_dir, path.to_path_buf()))
     }
 }
 
-impl WriteSupportingVfs for FsVfs {
+impl<'a> WriteSupportingVfs<'a> for FsVfs {
     type WFile = fs::File;
 
     fn open_write(self: Pin<&Self>, path: &Path) -> Result<Self::WFile> {
@@ -80,7 +87,7 @@ mod imp {
     /// The [`DirWalker`] implementation for the file system.
     pub struct FsDirWalker(pub(super) fs::ReadDir, pub(super) PathBuf);
 
-    impl DirWalker for FsDirWalker {
+    impl<'a> DirWalker<'a> for FsDirWalker {
         fn next(&mut self) -> Option<Result<DirEntryInfo>> {
             self.0.next().map(|entry| {
                 entry

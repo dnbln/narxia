@@ -10,7 +10,7 @@ keywords = ["git", "tutorial", "markdown"]
 license.workspace = true
 
 [dependencies]
-git2 = { version = "0.20" }
+git2.workspace = true
 clap = { version = "4", features = ["derive"] }
 
 [lints]

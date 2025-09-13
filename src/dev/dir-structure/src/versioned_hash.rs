@@ -209,7 +209,7 @@ impl<T: Hash, H: Hasher + Default> DerefMut for VersionedHash<T, H> {
     }
 }
 
-impl<'a, T, H, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for VersionedHash<T, H>
 where
     T: ReadFrom<'a, Vfs> + Hash + 'a,
     H: Hasher + Default + 'a,
@@ -228,12 +228,12 @@ where
     }
 }
 
-impl<T, H, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for VersionedHash<T, H>
 where
-    T: WriteTo<Vfs> + Hash,
+    T: WriteTo<'a, Vfs> + Hash,
     H: Hasher + Default,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         if self.path == path && self.is_clean() {
             return Ok(());
         }

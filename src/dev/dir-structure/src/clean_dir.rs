@@ -73,7 +73,7 @@ use crate::traits::vfs;
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct CleanDir<T>(pub T);
 
-impl<'a, T, Vfs: vfs::Vfs> ReadFrom<'a, Vfs> for CleanDir<T>
+impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for CleanDir<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -128,11 +128,11 @@ where
     }
 }
 
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for CleanDir<T>
+impl<'a, T, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for CleanDir<T>
 where
-    T: WriteTo<Vfs>,
+    T: WriteTo<'a, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -280,13 +280,15 @@ where
     }
 }
 
-impl<'a, T, Vfs: vfs::WriteSupportingVfs> FromRefForWriter<'a, Vfs> for CleanDir<T>
+impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> FromRefForWriter<'a, 'vfs, Vfs>
+    for CleanDir<T>
 where
-    T: WriteTo<Vfs> + 'a,
-    Vfs: 'a,
+    T: WriteTo<'vfs, Vfs> + 'a,
+    Vfs: 'vfs,
+    'vfs: 'a,
 {
     type Inner = T;
-    type Wr = CleanDirRefWr<'a, T, Vfs>;
+    type Wr = CleanDirRefWr<'a, 'vfs, T, Vfs>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
         CleanDirRefWr(value, marker::PhantomData)
@@ -348,13 +350,20 @@ where
 }
 
 /// [`WriteTo`] impl for [`CleanDir`]
-pub struct CleanDirRefWr<'a, T: ?Sized + 'a, Vfs: 'a>(&'a T, marker::PhantomData<Vfs>);
-
-impl<T, Vfs: vfs::WriteSupportingVfs> WriteTo<Vfs> for CleanDirRefWr<'_, T, Vfs>
+pub struct CleanDirRefWr<'a, 'vfs, T: ?Sized + 'a, Vfs: 'vfs>(
+    &'a T,
+    marker::PhantomData<&'vfs Vfs>,
+)
 where
-    T: ?Sized + WriteTo<Vfs>,
+    'vfs: 'a;
+
+impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs>
+    for CleanDirRefWr<'a, 'vfs, T, Vfs>
+where
+    T: ?Sized + WriteTo<'vfs, Vfs>,
+    'vfs: 'a,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         if vfs.exists(path)? {
             vfs.remove_dir_all(path)?;
         } else {

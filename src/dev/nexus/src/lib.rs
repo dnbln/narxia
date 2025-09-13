@@ -375,12 +375,12 @@ async fn render_guide(
     Ok(())
 }
 
-trait GenericTestDirType: DirStructure + WriteTo<FsVfs> {
+trait GenericTestDirType<'vfs>: DirStructure + WriteTo<'vfs, FsVfs> {
     fn path_to_write_to(&self) -> &Path;
     fn from_name_and_code(name: &str, code: String) -> Self;
 }
 
-impl GenericTestDirType for ParserTestSingleFolder<'_, FsVfs> {
+impl<'vfs> GenericTestDirType<'vfs> for ParserTestSingleFolder<'vfs, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }
@@ -394,7 +394,7 @@ impl GenericTestDirType for ParserTestSingleFolder<'_, FsVfs> {
     }
 }
 
-impl GenericTestDirType for NameResolutionTestSingleFolder<'_, FsVfs> {
+impl<'vfs> GenericTestDirType<'vfs> for NameResolutionTestSingleFolder<'vfs, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }
@@ -408,7 +408,7 @@ impl GenericTestDirType for NameResolutionTestSingleFolder<'_, FsVfs> {
     }
 }
 
-impl GenericTestDirType for SsaTestSingleFolder<'_, FsVfs> {
+impl<'vfs> GenericTestDirType<'vfs> for SsaTestSingleFolder<'vfs, FsVfs> {
     fn path_to_write_to(&self) -> &Path {
         &self.self_path
     }
@@ -422,7 +422,7 @@ impl GenericTestDirType for SsaTestSingleFolder<'_, FsVfs> {
     }
 }
 
-fn collect_tests_from_source<T: GenericTestDirType>(
+fn collect_tests_from_source<T: GenericTestDirType<'static>>(
     krate: &mut Crate<FsVfs>,
     comment_header: &str,
     item: &mut Item,
@@ -448,7 +448,7 @@ fn collect_tests_from_source<T: GenericTestDirType>(
     Ok(())
 }
 
-fn collect_tests_from_source_file<T: GenericTestDirType>(
+fn collect_tests_from_source_file<T: GenericTestDirType<'static>>(
     file: &mut RustSourceFile<FsVfs>,
     file_repo: &Path,
     prefix: &str,

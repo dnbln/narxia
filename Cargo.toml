@@ -66,6 +66,7 @@ dashmap = "6.1.0"
 drop_bomb = "0.1.5"
 human-panic = "2.0.0"
 humantime = "2.1.0"
+git2 = { version = "0.20", default-features = false }
 libc = "0.2"
 libtest-mimic = "0.8.1"
 llvm-sys = { version = "201.0.0", default-features = false }
