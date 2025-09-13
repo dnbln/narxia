@@ -280,7 +280,7 @@ and write them back to disk."##
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
             {
                 type Inner = T;
-                type Wr = $writer_ty<'a, T, Vfs>;
+                type Wr = $writer_ty<'a, 'a, T, Vfs>;
 
                 fn from_ref_for_writer_async(value: &'a <Self as FromRefForWriterAsync<'a, Vfs>>::Inner) -> Self::Wr {
                     $writer_ty(value, marker::PhantomData)
@@ -313,7 +313,7 @@ and write them back to disk."##
 
             #[cfg(feature = "async")]
             #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-            impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for $writer_ty<'a, T, Vfs>
+            impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for $writer_ty<'a, 'a, T, Vfs>
             where
                 T: serde::Serialize + Send + Sync + 'a,
             {

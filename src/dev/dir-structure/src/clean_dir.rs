@@ -305,7 +305,7 @@ where
         Future<Output = Result<()>> + Unpin + 'f,
 {
     type Inner = T;
-    type Wr = CleanDirRefWr<'a, T, Vfs>;
+    type Wr = CleanDirRefWr<'a, 'a, T, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         CleanDirRefWr(value, marker::PhantomData)
@@ -376,7 +376,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for CleanDirRefWr<'a, T, Vfs>
+    for CleanDirRefWr<'a, 'a, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
     for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin + 'f,

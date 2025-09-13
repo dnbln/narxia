@@ -98,11 +98,9 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, 'vfs, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, 'vfs, Vfs>
-    for FileBytes
-{
+impl<'a, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileBytes {
     type Inner = [u8];
-    type Wr = FileBytesRefWr<'a, 'vfs, Vfs>;
+    type Wr = FileBytesRefWr<'a, 'a, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FileBytesRefWr(value, marker::PhantomData)
@@ -128,12 +126,12 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, 'vfs, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for FileBytesRefWr<'a, 'vfs, Vfs>
+impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for FileBytesRefWr<'a, 'a, Vfs>
 {
     type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
             vfs.create_parent_dir(path.clone()).await?;
             vfs.write(path, self.0).await?;
@@ -248,7 +246,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for FileString {
     type Inner = str;
-    type Wr = FileStrWr<'a, Vfs>;
+    type Wr = FileStrWr<'a, 'a, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FileStrWr(value, marker::PhantomData)
@@ -271,8 +269,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileStrWr<'a, Vfs> {
-    type Future = <FileBytesRefWr<'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
+impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileStrWr<'a, 'a, Vfs> {
+    type Future = <FileBytesRefWr<'a, 'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
 
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         FileBytes::from_ref_for_writer_async(self.0.as_bytes()).write_to_async(path, vfs)
@@ -389,7 +387,7 @@ impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for Vec<u8> {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Vec<u8> {
-    type Future = <FileBytesRefWr<'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
+    type Future = <FileBytesRefWr<'a, 'a, Vfs> as WriteToAsync<'a, Vfs>>::Future;
 
     fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
         Box::pin(async move {
