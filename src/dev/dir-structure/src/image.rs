@@ -1,5 +1,22 @@
 //! Implementations of [`ReadFrom`] and [`WriteTo`] for image files.
 
+#[cfg(any(
+    feature = "image-format-png",
+    feature = "image-format-jpeg",
+    feature = "image-format-gif",
+    feature = "image-format-webp",
+    feature = "image-format-pnm",
+    feature = "image-format-tiff",
+    feature = "image-format-tga",
+    feature = "image-format-bmp",
+    feature = "image-format-ico",
+    feature = "image-format-hdr",
+    feature = "image-format-exr",
+    feature = "image-format-ff",
+    feature = "image-format-avif",
+    feature = "image-format-qoi",
+))]
+use std::fmt;
 use std::io::Seek;
 #[cfg(any(
     feature = "image-format-png",
@@ -22,23 +39,6 @@ use std::path::Path;
 #[cfg(feature = "async")]
 use std::path::PathBuf;
 use std::pin::Pin;
-#[cfg(any(
-    feature = "image-format-png",
-    feature = "image-format-jpeg",
-    feature = "image-format-gif",
-    feature = "image-format-webp",
-    feature = "image-format-pnm",
-    feature = "image-format-tiff",
-    feature = "image-format-tga",
-    feature = "image-format-bmp",
-    feature = "image-format-ico",
-    feature = "image-format-hdr",
-    feature = "image-format-exr",
-    feature = "image-format-ff",
-    feature = "image-format-avif",
-    feature = "image-format-qoi",
-))]
-use std::fmt;
 
 #[cfg(feature = "async")]
 use futures::AsyncSeek;
