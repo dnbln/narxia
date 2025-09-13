@@ -75,35 +75,37 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
             .walk(git2::TreeWalkMode::PreOrder, |root, entry| {
                 // We don't actually care about the callback, we just want the iterator.
                 let root_path = PathBuf::from(root);
-                if !path.starts_with(&root_path) || !root_path.starts_with(path) {
+                if !path.starts_with(&root_path) {
                     return git2::TreeWalkResult::Skip;
                 }
+                let entry_path = match entry.name() {
+                    Some(name) => {
+                        let mut ep = PathBuf::from(root);
+                        ep.push(name);
+                        ep
+                    }
+                    None => {
+                        // not valid UTF-8 in file name, skip
+                        return git2::TreeWalkResult::Skip;
+                    }
+                };
                 if root_path == path {
-                    let entry_path = match entry.name() {
-                        Some(name) => PathBuf::from(name),
+                    let name = match entry_path.file_name() {
+                        Some(f) => f.to_os_string(),
                         None => {
-                            // not valid UTF-8 in file name, skip
+                            // no last component, skip
                             return git2::TreeWalkResult::Skip;
                         }
                     };
-                    let name = entry_path
-                        .file_name()
-                        .expect("file name is not valid")
-                        .to_os_string();
                     let kind = match entry.kind() {
                         Some(git2::ObjectType::Blob) => vfs::DirEntryKind::File,
                         Some(git2::ObjectType::Tree) => vfs::DirEntryKind::Directory,
-                        Some(ot) => {
+                        Some(_ot) => {
                             // unsupported git object type, skip
-                            eprintln!(
-                                "Unsupported git object type for entry {:?}: {:?}",
-                                entry_path, ot
-                            );
                             return git2::TreeWalkResult::Skip;
                         }
                         None => {
                             // unknown git object type, skip
-                            eprintln!("Unknown git object type for entry {:?}", entry_path);
                             return git2::TreeWalkResult::Skip;
                         }
                     };
@@ -112,6 +114,8 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
                         kind,
                         path: entry_path,
                     });
+                    git2::TreeWalkResult::Ok
+                } else if path.starts_with(&entry_path) {
                     git2::TreeWalkResult::Ok
                 } else {
                     git2::TreeWalkResult::Skip
@@ -161,5 +165,145 @@ impl Read for GitRFile<'_> {
         buf[..to_read].copy_from_slice(&remaining[..to_read]);
         self.offset += to_read;
         Ok(to_read)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io::Read;
+    use std::path::Path;
+    use std::pin::Pin;
+
+    use crate::prelude::Vfs;
+    use crate::traits::vfs;
+    use crate::traits::vfs::DirWalker;
+    use crate::vfs::git_vfs::GitVfs;
+
+    fn open_narxia_repo() -> git2::Repository {
+        git2::Repository::open_from_env().expect("Failed to open git repository")
+    }
+
+    #[test]
+    fn test_read() {
+        let repo = open_narxia_repo();
+        let tree = repo
+            .head()
+            .expect("Failed to get HEAD")
+            .peel_to_tree()
+            .expect("Failed to get tree");
+        let vfs = GitVfs { repo: &repo, tree };
+        let vfs = Pin::new(&vfs);
+
+        let content = vfs
+            .read_string(Path::new("README.md"))
+            .expect("Failed to read README.md");
+        assert_eq!(content, include_str!("../../../../../README.md"));
+    }
+
+    #[test]
+    fn test_exists() {
+        let repo = open_narxia_repo();
+        let tree = repo
+            .head()
+            .expect("Failed to get HEAD")
+            .peel_to_tree()
+            .expect("Failed to get tree");
+        let vfs = GitVfs { repo: &repo, tree };
+        let vfs = Pin::new(&vfs);
+
+        assert!(
+            vfs.exists(Path::new("README.md"))
+                .expect("Failed to check existence")
+        );
+        assert!(
+            !vfs.exists(Path::new("NON_EXISTENT_FILE"))
+                .expect("Failed to check existence")
+        );
+    }
+
+    #[test]
+    fn test_open_read() {
+        let repo = open_narxia_repo();
+        let tree = repo
+            .head()
+            .expect("Failed to get HEAD")
+            .peel_to_tree()
+            .expect("Failed to get tree");
+        let vfs = GitVfs { repo: &repo, tree };
+        let vfs = Pin::new(&vfs);
+
+        let mut file = vfs
+            .open_read(Path::new("README.md"))
+            .expect("Failed to open README.md");
+        let mut content = String::new();
+        file.read_to_string(&mut content)
+            .expect("Failed to read README.md");
+        assert_eq!(content, include_str!("../../../../../README.md"));
+    }
+
+    #[test]
+    fn test_walk_dir() {
+        let repo = open_narxia_repo();
+        let tree = repo
+            .head()
+            .expect("Failed to get HEAD")
+            .peel_to_tree()
+            .expect("Failed to get tree");
+        let vfs = GitVfs { repo: &repo, tree };
+        let vfs = Pin::new(&vfs);
+        let mut walker = vfs.walk_dir(Path::new("src")).expect("Failed to walk dir");
+        let mut entries = Vec::new();
+        while let Some(entry) = walker.next() {
+            entries.push(entry.expect("error while walking dir"));
+        }
+
+        entries.sort_by_key(|e| e.name.clone());
+
+        assert_eq!(
+            entries,
+            vec![
+                vfs::DirEntryInfo {
+                    name: "compiler".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("src/compiler").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "dev".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("src/dev").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "lib".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("src/lib").into(),
+                },
+            ]
+        );
+
+        let mut walker = vfs
+            .walk_dir(Path::new("src/dev/narxia-workspace"))
+            .expect("Failed to walk dir");
+        let mut entries = Vec::new();
+        while let Some(entry) = walker.next() {
+            entries.push(entry.expect("error while walking dir"));
+        }
+
+        entries.sort_by_key(|e| e.name.clone());
+
+        assert_eq!(
+            entries,
+            vec![
+                vfs::DirEntryInfo {
+                    name: "Cargo.toml".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("src/dev/narxia-workspace/Cargo.toml").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "src".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("src/dev/narxia-workspace/src").into(),
+                },
+            ]
+        );
     }
 }

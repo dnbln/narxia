@@ -299,7 +299,7 @@ img_format!(
 );
 
 img_format!(
-    /// An image in GIF format.\
+    /// An image in GIF format.
     cfg
     #[cfg(feature = "image-format-gif")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image-format-gif")))]
@@ -440,6 +440,7 @@ img_format!(
 );
 
 #[cfg(test)]
+#[allow(dead_code)]
 mod tests {
     use std::io::Seek;
 
