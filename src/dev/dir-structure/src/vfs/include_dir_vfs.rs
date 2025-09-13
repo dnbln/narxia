@@ -60,8 +60,12 @@ fn get_dir_or_root(root: Dir<'static>, path: &Path) -> Result<Dir<'static>> {
         .ok_or(Error::Io(p, io::ErrorKind::NotFound.into()))
 }
 
-impl Vfs for IncludeDirVfs {
-    type DirWalk = IncludeDirWalker;
+impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
+    type DirWalk<'a>
+        = IncludeDirWalker
+    where
+        'vfs: 'a,
+        Self: 'a;
     type RFile = io::Cursor<&'static [u8]>;
 
     fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
@@ -123,7 +127,10 @@ impl Vfs for IncludeDirVfs {
             .map_or_else(|_| self.dir.get_file(&path).is_some(), |_| true))
     }
 
-    fn walk_dir(self: Pin<&Self>, path: &Path) -> Result<Self::DirWalk> {
+    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Path) -> Result<Self::DirWalk<'b>>
+    where
+        'vfs: 'b,
+    {
         let path = norm(path)?;
         Ok(IncludeDirWalker(get_dir_or_root(self.dir, &path)?, 0))
     }
@@ -132,7 +139,7 @@ impl Vfs for IncludeDirVfs {
 /// The [`DirWalker`] implementation for [`IncludeDirVfs`].
 pub struct IncludeDirWalker(Dir<'static>, usize);
 
-impl DirWalker for IncludeDirWalker {
+impl<'a> DirWalker<'a> for IncludeDirWalker {
     fn next(&mut self) -> Option<Result<DirEntryInfo>> {
         self.0
             .dirs()
