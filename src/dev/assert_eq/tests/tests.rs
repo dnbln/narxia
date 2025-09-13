@@ -207,6 +207,16 @@ fn slice_diff() {
 }
 
 #[test]
+#[should_panic(
+    expected = "assertion `left == right` failed: at <root>, lengths differ between\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]\n  left: 3\n right: 4"
+)]
+fn slice_different_lengths() {
+    let a = &[1, 2, 3][..];
+    let b = &[1, 2, 3, 4][..];
+    assert_eq::assert_eq!(a, b);
+}
+
+#[test]
 fn slice_of_str_eq() {
     let a = &["a", "b", "c"];
     let b = &["a", "b", "c"];

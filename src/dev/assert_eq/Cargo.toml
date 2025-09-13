@@ -10,7 +10,9 @@ keywords = ["assert_eq", "testing", "debugging"]
 license.workspace = true
 
 [features]
+default = ["std"]
 nightly = []
+std = []
 
 [dependencies]
 assert_eq_macros.workspace = true

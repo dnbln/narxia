@@ -8,7 +8,7 @@ macro_rules! impls {
         impl AssertEq<$a> for $b {
             #[track_caller]
             fn assert_eq(&self, other: &$a, path: &mut AssertPath) {
-                std::assert_eq!(self, other, "at {path:?}");
+                core::assert_eq!(self, other, "at {path:?}");
             }
         }
     };
@@ -18,7 +18,7 @@ macro_rules! impls {
         impl AssertEq<$a> for $a {
             #[track_caller]
             fn assert_eq(&self, other: &$a, path: &mut AssertPath) {
-                std::assert_eq!(self, other, "at {path:?}");
+                core::assert_eq!(self, other, "at {path:?}");
             }
         }
     };
@@ -37,37 +37,82 @@ impls!(i128);
 impls!(usize);
 impls!(isize);
 impls!(bool);
-impls!(String);
+impls!(alloc::string::String);
 impls!(str);
 impls!(&'_ str);
 impls!(f32);
 impls!(f64);
-impls!(std::ffi::OsString);
-impls!(std::ffi::OsStr);
-impls!(std::path::PathBuf);
-impls!(std::path::Path);
-impls!(std::net::Ipv4Addr);
-impls!(std::net::Ipv6Addr);
-impls!(std::net::IpAddr);
-impls!(std::net::SocketAddrV4);
-impls!(std::net::SocketAddrV6);
-impls!(std::net::SocketAddr);
-impls!(std::time::Duration);
-impls!(std::time::SystemTime);
-impls!(std::time::Instant);
 impls!(
-    #[cfg(feature = "nightly")]
+    #[cfg(feature = "std")]
+    std::ffi::OsString
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::ffi::OsStr
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::path::PathBuf
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::path::Path
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::Ipv4Addr
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::Ipv6Addr
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::IpAddr
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::SocketAddrV4
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::SocketAddrV6
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::net::SocketAddr
+);
+impls!(core::time::Duration);
+impls!(
+    #[cfg(feature = "std")]
+    std::time::SystemTime
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::time::Instant
+);
+impls!(
+    #[cfg(all(feature = "nightly", feature = "std"))]
     std::ascii::Char
 );
-impls!(std::backtrace::BacktraceStatus);
+impls!(
+    #[cfg(feature = "std")]
+    std::backtrace::BacktraceStatus
+);
 impls!(
     #[cfg(feature = "nightly")]
     std::collections::TryReserveErrorKind
 );
-impls!(std::collections::TryReserveError);
-impls!(std::convert::Infallible);
-impls!(std::env::VarError);
-impls!(std::ffi::FromBytesWithNulError);
+impls!(alloc::collections::TryReserveError);
+impls!(core::convert::Infallible);
+impls!(
+    #[cfg(feature = "std")]
+    std::env::VarError
+);
+impls!(
+    #[cfg(feature = "std")]
+    std::ffi::FromBytesWithNulError
+);
 
 impl<T, U> AssertEq<[U]> for [T]
 where
@@ -75,7 +120,7 @@ where
     U: Debug,
 {
     fn assert_eq(&self, other: &[U], path: &mut AssertPath) {
-        std::assert_eq!(
+        core::assert_eq!(
             self.len(),
             other.len(),
             "at {path:?}, lengths differ between\n  left: {:?}\n right: {:?}",
@@ -83,25 +128,34 @@ where
             other
         );
         for (i, (a, b)) in self.iter().zip(other.iter()).enumerate() {
-            a.assert_eq(b, &mut *path.__guard(format!("[{i}]")));
+            a.assert_eq(b, &mut *path.__guard(alloc::format!("[{i}]")));
         }
     }
 }
 
-impl<T, const N: usize> AssertEq<[T; N]> for [T; N]
+impl<T, U> AssertEq<&[U]> for &[T]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq<U> + Debug,
+    U: Debug,
 {
-    fn assert_eq(&self, other: &[T; N], path: &mut AssertPath) {
-        for (i, (a, b)) in self.iter().zip(other.iter()).enumerate() {
-            a.assert_eq(b, &mut *path.__guard(format!("[{i}]")));
-        }
+    fn assert_eq(&self, other: &&[U], path: &mut AssertPath) {
+        (*self).assert_eq(*other, path);
+    }
+}
+
+impl<T, U, const N: usize> AssertEq<[U; N]> for [T; N]
+where
+    T: AssertEq<U> + Debug,
+    U: Debug,
+{
+    fn assert_eq(&self, other: &[U; N], path: &mut AssertPath) {
+        self.as_slice().assert_eq(other.as_slice(), path);
     }
 }
 
 impl<T> AssertEq<Option<T>> for Option<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &Option<T>, path: &mut AssertPath) {
         match (self, other) {
@@ -118,8 +172,8 @@ where
 
 impl<T, E> AssertEq<Result<T, E>> for Result<T, E>
 where
-    T: AssertEq<T> + Debug,
-    E: AssertEq<E> + Debug,
+    T: AssertEq + Debug,
+    E: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &Result<T, E>, path: &mut AssertPath) {
         match (self, other) {
@@ -134,7 +188,7 @@ where
 
 impl<T> AssertEq<Vec<T>> for Vec<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), other.as_slice(), path);
@@ -143,7 +197,7 @@ where
 
 impl<T> AssertEq<[T]> for Vec<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &[T], path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), other, path);
@@ -152,7 +206,7 @@ where
 
 impl<T> AssertEq<&[T]> for Vec<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &&[T], path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), *other, path);
@@ -161,7 +215,7 @@ where
 
 impl<T> AssertEq<Vec<T>> for [T]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath) {
         AssertEq::assert_eq(self, other.as_slice(), path);
@@ -170,7 +224,7 @@ where
 
 impl<T, const N: usize> AssertEq<Vec<T>> for [T; N]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &Vec<T>, path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), other.as_slice(), path);
@@ -179,7 +233,7 @@ where
 
 impl<T, const N: usize> AssertEq<[T; N]> for Vec<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &[T; N], path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), other.as_slice(), path);
@@ -188,7 +242,7 @@ where
 
 impl<T, const N: usize> AssertEq<&[T; N]> for Vec<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &&[T; N], path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), *other, path);
@@ -197,7 +251,7 @@ where
 
 impl<T, const N: usize> AssertEq<[T]> for [T; N]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &[T], path: &mut AssertPath) {
         AssertEq::assert_eq(self.as_slice(), other, path);
@@ -206,7 +260,7 @@ where
 
 impl<T, const N: usize> AssertEq<[T; N]> for [T]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &[T; N], path: &mut AssertPath) {
         AssertEq::assert_eq(self, other.as_slice(), path);
@@ -215,7 +269,7 @@ where
 
 impl<T, const N: usize> AssertEq<&[T; N]> for [T; N]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &&[T; N], path: &mut AssertPath) {
         AssertEq::assert_eq(self, *other, path);
@@ -224,26 +278,26 @@ where
 
 impl<T, const N: usize> AssertEq<[T; N]> for &[T; N]
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
     fn assert_eq(&self, other: &[T; N], path: &mut AssertPath) {
         AssertEq::assert_eq(*self, other, path);
     }
 }
 
-impl<T> AssertEq<std::collections::Bound<T>> for std::collections::Bound<T>
+impl<T> AssertEq for core::ops::Bound<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::collections::Bound<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         match (self, other) {
-            (std::collections::Bound::Included(a), std::collections::Bound::Included(b)) => {
+            (Self::Included(a), Self::Included(b)) => {
                 a.assert_eq(b, &mut *path.__guard("[Included]"))
             }
-            (std::collections::Bound::Excluded(a), std::collections::Bound::Excluded(b)) => {
+            (Self::Excluded(a), Self::Excluded(b)) => {
                 a.assert_eq(b, &mut *path.__guard("[Excluded]"))
             }
-            (std::collections::Bound::Unbounded, std::collections::Bound::Unbounded) => {}
+            (Self::Unbounded, Self::Unbounded) => {}
             _ => panic!(
                 "at {path:?}, left and right are different kinds of Bound:\n  left: {self:?}\n right: {other:?}"
             ),
@@ -251,22 +305,22 @@ where
     }
 }
 
-impl<T> AssertEq<std::ops::Range<T>> for std::ops::Range<T>
+impl<T> AssertEq for core::ops::Range<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::ops::Range<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         self.start
             .assert_eq(&other.start, &mut *path.__guard(".start"));
         self.end.assert_eq(&other.end, &mut *path.__guard(".end"));
     }
 }
 
-impl<T> AssertEq<std::ops::RangeInclusive<T>> for std::ops::RangeInclusive<T>
+impl<T> AssertEq for core::ops::RangeInclusive<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::ops::RangeInclusive<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         self.start()
             .assert_eq(other.start(), &mut *path.__guard(".start"));
         self.end()
@@ -274,39 +328,39 @@ where
     }
 }
 
-impl<T> AssertEq<std::ops::RangeFrom<T>> for std::ops::RangeFrom<T>
+impl<T> AssertEq for core::ops::RangeFrom<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::ops::RangeFrom<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         self.start
             .assert_eq(&other.start, &mut *path.__guard(".start"));
     }
 }
 
-impl<T> AssertEq<std::ops::RangeTo<T>> for std::ops::RangeTo<T>
+impl<T> AssertEq for core::ops::RangeTo<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::ops::RangeTo<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         self.end.assert_eq(&other.end, &mut *path.__guard(".end"));
     }
 }
 
-impl<T> AssertEq<std::ops::RangeToInclusive<T>> for std::ops::RangeToInclusive<T>
+impl<T> AssertEq for core::ops::RangeToInclusive<T>
 where
-    T: AssertEq<T> + Debug,
+    T: AssertEq + Debug,
 {
-    fn assert_eq(&self, other: &std::ops::RangeToInclusive<T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         self.end.assert_eq(&other.end, &mut *path.__guard(".end"));
     }
 }
 
-impl<T> AssertEq<Cow<'_, T>> for Cow<'_, T>
+impl<T> AssertEq for Cow<'_, T>
 where
-    T: AssertEq<T> + Debug + Clone,
+    T: AssertEq + Debug + Clone,
 {
-    fn assert_eq(&self, other: &Cow<'_, T>, path: &mut AssertPath) {
+    fn assert_eq(&self, other: &Self, path: &mut AssertPath) {
         match (self, other) {
             (Cow::Borrowed(a), Cow::Borrowed(b)) => {
                 (**a).assert_eq(b, &mut *path.__guard("[Borrowed]"))
@@ -322,8 +376,8 @@ where
     }
 }
 
-impl<T> AssertEq<std::marker::PhantomData<T>> for std::marker::PhantomData<T> {
-    fn assert_eq(&self, _other: &std::marker::PhantomData<T>, _path: &mut AssertPath) {}
+impl<T> AssertEq for core::marker::PhantomData<T> {
+    fn assert_eq(&self, _other: &Self, _path: &mut AssertPath) {}
 }
 
 impl AssertEq<()> for () {

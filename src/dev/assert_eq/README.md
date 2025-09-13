@@ -38,3 +38,5 @@ let y = B {
 assert_eq::assert_eq!(x, y);
 # }, "at .x → .y → [2]\n  left: 3\n right: 8");
 ```
+
+It is `no_std` compatible, but requires the `alloc` crate.

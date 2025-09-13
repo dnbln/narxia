@@ -38,13 +38,17 @@
 //! ```
 
 #![cfg_attr(feature = "nightly", feature(ascii_char, try_reserve_kind))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(missing_docs)]
 
-use std::borrow::Cow;
-use std::fmt;
-use std::fmt::Debug;
-use std::ops::Deref;
-use std::ops::DerefMut;
+extern crate alloc;
+
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
+use core::fmt;
+use core::fmt::Debug;
+use core::ops::Deref;
+use core::ops::DerefMut;
 
 /// A path to a field in a nested structure, used for error reporting.
 #[derive(Default)]

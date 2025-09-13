@@ -69,10 +69,10 @@ fn expand_assert_eq_struct(
                 } else {
                     match &mut where_clause {
                         Some(wc) => {
-                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                         }
                         x @ None => {
-                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                         }
                     }
                     Ok(quote! {
@@ -90,10 +90,10 @@ fn expand_assert_eq_struct(
                 } else {
                     match &mut where_clause {
                         Some(wc) => {
-                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                         }
                         x @ None => {
-                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                         }
                     }
 
@@ -154,10 +154,10 @@ fn expand_assert_eq_enum(
                     if !f_config.ignored {
                         match &mut where_clause {
                             Some(wc) => {
-                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                             }
                             x @ None => {
-                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                             }
                         }
                     }
@@ -224,10 +224,10 @@ fn expand_assert_eq_enum(
                         let ty = &fields.unnamed[idx].ty;
                         match &mut where_clause {
                             Some(wc) => {
-                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                             }
                             x @ None => {
-                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + std::fmt::Debug });
+                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
                             }
                         }
                         quote::quote! {
