@@ -49,7 +49,8 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for (image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
+    for (image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
@@ -63,7 +64,8 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for (&image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
+    for (&image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
@@ -102,7 +104,8 @@ impl<T: ImgFormat> NewtypeToInner for T {
     }
 }
 
-impl<'a, 'vfs, T: ImgFormat + 'a, Vfs: vfs::VfsWithSeekWrite<'vfs>> FromRefForWriter<'a, 'vfs, Vfs> for T
+impl<'a, 'vfs, T: ImgFormat + 'a, Vfs: vfs::VfsWithSeekWrite<'vfs>> FromRefForWriter<'a, 'vfs, Vfs>
+    for T
 where
     Vfs: 'a,
     Vfs::WFile: Seek,

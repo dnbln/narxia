@@ -332,7 +332,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         inner: T,
     }
 
-    impl<'a, Vfs: vfs::Vfs, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
+    impl<'a, Vfs: vfs::Vfs<'a>, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
         fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::error::Result<Self> {
             Ok(Self {
                 count: AtomicUsize::new(0),
@@ -341,8 +341,10 @@ fn versioned_doesnt_call_write_if_not_changed() {
         }
     }
 
-    impl<Vfs: vfs::WriteSupportingVfs, T: WriteTo<Vfs>> WriteTo<Vfs> for WriteCounter<T> {
-        fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<()> {
+    impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs>
+        for WriteCounter<T>
+    {
+        fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<()> {
             self.count.fetch_add(1, Ordering::SeqCst);
             self.inner.write_to(path, vfs)
         }
