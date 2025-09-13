@@ -22,6 +22,23 @@ use std::path::Path;
 #[cfg(feature = "async")]
 use std::path::PathBuf;
 use std::pin::Pin;
+#[cfg(any(
+    feature = "image-format-png",
+    feature = "image-format-jpeg",
+    feature = "image-format-gif",
+    feature = "image-format-webp",
+    feature = "image-format-pnm",
+    feature = "image-format-tiff",
+    feature = "image-format-tga",
+    feature = "image-format-bmp",
+    feature = "image-format-ico",
+    feature = "image-format-hdr",
+    feature = "image-format-exr",
+    feature = "image-format-ff",
+    feature = "image-format-avif",
+    feature = "image-format-qoi",
+))]
+use std::fmt;
 
 #[cfg(feature = "async")]
 use futures::AsyncSeek;
@@ -222,9 +239,9 @@ macro_rules! img_format {
         $(#[$cfg_meta])*
         #[cfg(feature = "assert_eq")]
         impl assert_eq::AssertEq for $struct_name {
-            fn assert_eq(&self, other: &Self, path: &mut assert_eq::AssertPath) {
+            fn assert_eq(&self, other: &Self, path: &mut assert_eq::AssertPath, init_left: &impl fmt::Display, init_right: &impl fmt::Display) {
                 if self.0 != other.0 {
-                    panic!("Images differ (at {:?})", &*path.__guard("image"));
+                    panic!("Images differ (at {:?})\nassert_eq! initially called with:\n  left: {}\n right: {}", &*path.__guard("image"), init_left, init_right);
                 }
             }
         }
