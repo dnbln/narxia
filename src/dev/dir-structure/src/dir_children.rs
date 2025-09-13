@@ -2005,12 +2005,18 @@ impl<T, F: Filter> assert_eq::AssertEq for DirChildSingleOpt<T, F>
 where
     T: assert_eq::AssertEq + fmt::Debug,
 {
-    fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath) {
+    fn assert_eq(
+        &self,
+        other: &Self,
+        path: &mut ::assert_eq::AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    ) {
         match (self, other) {
             (DirChildSingleOpt::None, DirChildSingleOpt::None) => {}
             (DirChildSingleOpt::Some(a), DirChildSingleOpt::Some(b)) => {
                 let __g = &mut *path.__guard("[Some]");
-                a.assert_eq(b, &mut *__g.__guard(".0"));
+                a.assert_eq(b, &mut *__g.__guard(".0"), init_left, init_right);
             }
             (a, b) => panic!("DirChildSingleOpt not equal: {:?} != {:?}", a, b),
         }
