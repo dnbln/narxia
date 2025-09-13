@@ -69,14 +69,14 @@ fn expand_assert_eq_struct(
                 } else {
                     match &mut where_clause {
                         Some(wc) => {
-                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                         }
                         x @ None => {
-                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                         }
                     }
                     Ok(quote! {
-                        <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(&self.#field_name, &other.#field_name, &mut *path.__guard(concat!(".", stringify!(#field_name))));
+                        <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(&self.#field_name, &other.#field_name, &mut *path.__guard(concat!(".", stringify!(#field_name))), init_left, init_right);
                     })
                 }
             }).collect::<syn::Result<TokenStream>>()?
@@ -90,16 +90,16 @@ fn expand_assert_eq_struct(
                 } else {
                     match &mut where_clause {
                         Some(wc) => {
-                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                            wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                         }
                         x @ None => {
-                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                            *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                         }
                     }
 
                     let id = syn::Index::from(idx);
                     Ok(quote::quote! {
-                        <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(&self.#id, &other.#id, &mut *path.__guard(concat!(".", stringify!(#id))));
+                        <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(&self.#id, &other.#id, &mut *path.__guard(concat!(".", stringify!(#id))), init_left, init_right);
                     })
                 }
             }).collect::<syn::Result<TokenStream>>()?
@@ -111,7 +111,7 @@ fn expand_assert_eq_struct(
 
     let expanded = quote::quote! {
         impl #impl_generics ::assert_eq::AssertEq<#struct_name #ty_generics> for #struct_name #ty_generics #where_clause {
-            fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath) {
+            fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath, init_left: &impl ::core::fmt::Display, init_right: &impl ::core::fmt::Display) {
                 #field_checks
             }
         }
@@ -154,10 +154,10 @@ fn expand_assert_eq_enum(
                     if !f_config.ignored {
                         match &mut where_clause {
                             Some(wc) => {
-                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                             }
                             x @ None => {
-                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                             }
                         }
                     }
@@ -184,7 +184,7 @@ fn expand_assert_eq_enum(
                                 quote::quote! {}
                             } else {
                                 quote::quote! {
-                                    <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(#s, #o, &mut *__g.__guard(concat!(".", stringify!(#name))));
+                                    <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(#s, #o, &mut *__g.__guard(concat!(".", stringify!(#name))), init_left, init_right);
                                 }
                             }
                         });
@@ -224,14 +224,14 @@ fn expand_assert_eq_enum(
                         let ty = &fields.unnamed[idx].ty;
                         match &mut where_clause {
                             Some(wc) => {
-                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                                wc.predicates.push(syn::parse_quote! { for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                             }
                             x @ None => {
-                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + core::fmt::Debug });
+                                *x = Some(syn::parse_quote! { where for<'__trivial> #ty: ::assert_eq::AssertEq<#ty> + ::core::fmt::Debug });
                             }
                         }
                         quote::quote! {
-                            <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(#self_name, #other_name, &mut *__g.__guard(concat!(".", stringify!(#idx))));
+                            <#ty as ::assert_eq::AssertEq<#ty>>::assert_eq(#self_name, #other_name, &mut *__g.__guard(concat!(".", stringify!(#idx))), init_left, init_right);
                         }
                     }
                 });
@@ -252,7 +252,7 @@ fn expand_assert_eq_enum(
 
     let expanded = quote::quote! {
         impl #impl_generics ::assert_eq::AssertEq<#enum_name #ty_generics> for #enum_name #ty_generics #where_clause {
-            fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath) {
+            fn assert_eq(&self, other: &Self, path: &mut ::assert_eq::AssertPath, init_left: &impl ::core::fmt::Display, init_right: &impl ::core::fmt::Display) {
                 match (self, other) {
                     #(#variant_checks),*,
                     _ => panic!("Enum variants do not match, at {path:?}:\n  left: {self:?}\n right: {other:?}"),

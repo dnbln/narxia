@@ -1,0 +1,9 @@
+# Upcoming release
+
+- Added more context to panic messages, including the initial values passed to `assert_eq!`.
+
+# `v0.1.0`
+
+Released: 2025-09-12
+
+Initial release.

@@ -30,7 +30,7 @@ fn option_none_eq() {
 }
 
 #[test]
-#[should_panic(expected = "at <root>, left and right are different kinds of Option")]
+#[should_panic(expected = "assertion `left == right` failed: at <root>: left and right are different kinds of Option:\n  left: Some(1)\n right: None;\nassert_eq! called initially on:\n  left: Some(1)\n right: None")]
 fn option_eq_fail() {
     let a = Some(1);
     let b = None;
@@ -71,7 +71,7 @@ fn result_err_eq_fail() {
 
 #[test]
 fn derived_struct_eq() {
-    #[derive(AssertEq)]
+    #[derive(AssertEq, Debug)]
     struct S {
         a: i32,
         b: String,
@@ -92,7 +92,7 @@ fn derived_struct_eq() {
     expected = "assertion `left == right` failed: at .b\n  left: \"hello\"\n right: \"world\""
 )]
 fn derived_struct_eq_fail() {
-    #[derive(AssertEq)]
+    #[derive(AssertEq, Debug)]
     struct S {
         a: i32,
         b: String,
@@ -110,7 +110,7 @@ fn derived_struct_eq_fail() {
 
 #[test]
 fn derived_tuple_struct_eq() {
-    #[derive(AssertEq)]
+    #[derive(AssertEq, Debug)]
     struct S(i32, String);
     let a = S(1, "hello".to_owned());
     let b = S(1, "hello".to_owned());
@@ -122,7 +122,7 @@ fn derived_tuple_struct_eq() {
     expected = "assertion `left == right` failed: at .1\n  left: \"hello\"\n right: \"world\""
 )]
 fn derived_tuple_struct_eq_fail() {
-    #[derive(AssertEq)]
+    #[derive(AssertEq, Debug)]
     struct S(i32, String);
     let a = S(1, "hello".to_owned());
     let b = S(1, "world".to_owned());
@@ -208,7 +208,7 @@ fn slice_diff() {
 
 #[test]
 #[should_panic(
-    expected = "assertion `left == right` failed: at <root>, lengths differ between\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]\n  left: 3\n right: 4"
+    expected = "assertion `left == right` failed: at <root>: lengths differ between\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]:\n\n  left: 3\n right: 4;\nassert_eq! called initially on:\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]"
 )]
 fn slice_different_lengths() {
     let a = &[1, 2, 3][..];
@@ -291,7 +291,7 @@ fn slice_of_struct_diff_2() {
 
 #[test]
 fn generics() {
-    #[derive(assert_eq::AssertEq)]
+    #[derive(AssertEq, Debug)]
     struct FmtWrapper<T>(T);
 
     let a = FmtWrapper(1);
@@ -301,10 +301,10 @@ fn generics() {
 
 #[test]
 fn generics_nested() {
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct FmtWrapper<T>(T);
 
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct Container<T> {
         a: FmtWrapper<T>,
         b: Option<FmtWrapper<T>>,
@@ -326,10 +326,10 @@ fn generics_nested() {
     expected = "assertion `left == right` failed: at .b → [Some] → .0\n  left: 2\n right: 3"
 )]
 fn generics_nested_fail() {
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct FmtWrapper<T>(T);
 
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct Container<T> {
         a: FmtWrapper<T>,
         b: Option<FmtWrapper<T>>,
@@ -348,7 +348,7 @@ fn generics_nested_fail() {
 
 #[test]
 fn generics_in_slice() {
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct FmtWrapper<T>(T);
 
     let a = &[FmtWrapper(1), FmtWrapper(2)];
@@ -359,10 +359,46 @@ fn generics_in_slice() {
 #[test]
 #[should_panic(expected = "assertion `left == right` failed: at [1] → .0\n  left: 2\n right: 3")]
 fn generics_in_slice_fail() {
-    #[derive(assert_eq::AssertEq, Debug)]
+    #[derive(AssertEq, Debug)]
     struct FmtWrapper<T>(T);
 
     let a = &[FmtWrapper(1), FmtWrapper(2)];
     let b = &[FmtWrapper(1), FmtWrapper(3)];
     assert_eq::assert_eq!(a, b);
+}
+
+#[test]
+#[should_panic(
+    expected = "assertion `left == right` failed: at .x → .y → [2]\n  left: 3\n right: 8"
+)]
+fn readme() {
+    #[derive(AssertEq, Debug)]
+    struct A {
+        x: String,
+        y: Vec<i32>,
+    }
+
+    #[derive(AssertEq, Debug)]
+    struct B {
+        x: A,
+        y: Vec<i32>,
+    }
+
+    let x = B {
+        x: A {
+            x: "hello".to_string(),
+            y: vec![1, 2, 3],
+        },
+        y: vec![4, 5, 6],
+    };
+
+    let y = B {
+        x: A {
+            x: "hello".to_string(),
+            y: vec![1, 2, 8],
+        },
+        y: vec![4, 5, 6],
+    };
+
+    assert_eq::assert_eq!(x, y);
 }

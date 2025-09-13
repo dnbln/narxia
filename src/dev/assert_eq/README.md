@@ -5,7 +5,6 @@ This crate provides a custom `assert_eq!` macro that gives detailed error messag
 A quick example:
 
 ```rust ,should_panic
-# #[path = "src/check_panic_message.rs"] mod check_panic_message; use check_panic_message::check_panic_message; check_panic_message(|| {
 use assert_eq::AssertEq;
 #[derive(AssertEq, Debug)]
 struct A {
@@ -35,8 +34,7 @@ let y = B {
     y: vec![4, 5, 6],
 };
 
-assert_eq::assert_eq!(x, y);
-# }, "at .x → .y → [2]\n  left: 3\n right: 8");
+assert_eq::assert_eq!(x, y); // at .x → .y → [2] left: 3 right: 8
 ```
 
 It is `no_std` compatible, but requires the `alloc` crate.

@@ -188,7 +188,13 @@ where
     /// The panic message includes the path to the field that failed, making it easier to debug
     /// complex nested structures.
     #[track_caller]
-    fn assert_eq(&self, other: &T, path: &mut AssertPath);
+    fn assert_eq(
+        &self,
+        other: &T,
+        path: &mut AssertPath,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
+    );
 }
 
 mod __impls;
@@ -207,33 +213,33 @@ mod __impls;
 ///
 /// #[derive(AssertEq, Debug)]
 /// struct Inner {
-///    a: i32,
-///    b: String,
+///     a: i32,
+///     b: String,
 /// }
 ///
 /// #[derive(AssertEq, Debug)]
 /// struct Outer {
-///   x: Inner,
-///   y: Vec<i32>,
+///     x: Inner,
+///     y: Vec<i32>,
 /// }
 ///
 /// let a = Outer {
-///  x: Inner { a: 1, b: "hello".to_owned() },
-///  y: vec![1, 2, 3],
+///     x: Inner { a: 1, b: "hello".to_owned() },
+///     y: vec![1, 2, 3],
 /// };
 ///
 /// let b = Outer {
-/// x: Inner { a: 1, b: "world".to_owned() },
-/// y: vec![1, 2, 3],
+///     x: Inner { a: 1, b: "world".to_owned() },
+///     y: vec![1, 2, 3],
 /// };
 ///
-/// assert_eq::assert_eq!(a, b);
+/// assert_eq::assert_eq!(a, b); // at .x → .b left: "hello" right: "world"
 /// # }, "at .x → .b\n  left: \"hello\"\n right: \"world\"");
 /// ```
 #[macro_export]
 macro_rules! assert_eq {
     ($a:expr, $b:expr) => {
-        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new());
+        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new(), &format_args!("{:?}", &$a), &format_args!("{:?}", &$b));
     };
 }
 
@@ -242,7 +248,7 @@ macro_rules! assert_eq {
 macro_rules! debug_assert_eq {
     ($a:expr, $b:expr) => {
         #[cfg(debug_assertions)]
-        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new());
+        $crate::AssertEq::assert_eq(&$a, &$b, &mut $crate::AssertPath::new(), &format_args!("{:?}", &$a), &format_args!("{:?}", &$b));
     };
 }
 
