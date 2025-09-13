@@ -24,8 +24,6 @@ jobs:
         if: ${{ runner.debug == '1' }}
         run: |
           echo "NEXUS_DEBUG_NEXTEST_OUTPUT=1" >> $GITHUB_ENV
-      - name: Install dependencies
-        run: sudo apt update && sudo apt install clang ninja-build openssl libssl-dev
       - name: Install rust
         run: rustup install nightly && rustup default nightly && rustup component add rustfmt clippy
       - name: Install cargo-nextest

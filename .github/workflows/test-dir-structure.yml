@@ -33,6 +33,7 @@ jobs:
         feature-combos: [
             "--features default",
             "--features assert_eq,default",
+            "--features assert_eq,default,git",
             "--features assert_eq,async",
             "--features assert_eq,tokio",
             "--features assert_eq,image",

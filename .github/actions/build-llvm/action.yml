@@ -11,6 +11,14 @@ runs:
         key: ${{ runner.os }}-${{ runner.arch }}-built-llvm
         path: |
           nexusbuild/llvm/install
+    - name: Install dependencies
+      if: steps.llvm-cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
+      run: sudo apt update && sudo apt install clang ninja-build
+      shell: bash
+    - name: Install dependencies
+      if: steps.llvm-cache.outputs.cache-hit != 'true' && runner.os == 'macOS'
+      run: brew install llvm ninja
+      shell: bash
     - name: Build llvm
       if: steps.llvm-cache.outputs.cache-hit != 'true'
       run: cargo nexus build-sys build --targets llvm
