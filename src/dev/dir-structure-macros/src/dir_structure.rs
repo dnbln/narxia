@@ -82,7 +82,7 @@ fn expand_dir_structure_for_field(
     } else {
         let writer = match &with_newtype {
             Some(nt) => {
-                quote! { &<#nt as ::dir_structure::traits::sync::FromRefForWriter<'_, Vfs>>::from_ref_for_writer(&self.#field_name) }
+                quote! { &<#nt as ::dir_structure::traits::sync::FromRefForWriter<'_, '_, Vfs>>::from_ref_for_writer(&self.#field_name) }
             }
             None => quote! { &self.#field_name },
         };

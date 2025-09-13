@@ -319,14 +319,14 @@ where
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct NewType(String);
     ///
-    /// impl<'vfs, Vfs: dir_structure::traits::vfs::Vfs> ReadFrom<'vfs, Vfs> for NewType {
-    ///     fn read_from(path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<Self> {
+    /// impl<'vfs, Vfs: dir_structure::traits::vfs::Vfs<'vfs>> ReadFrom<'vfs, Vfs> for NewType {
+    ///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<Self> {
     ///         String::read_from(path, vfs).map(Self)
     ///     }
     /// }
     ///
-    /// impl<Vfs: dir_structure::traits::vfs::WriteSupportingVfs> WriteTo<Vfs> for NewType {
-    ///     fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> dir_structure::error::Result<()> {
+    /// impl<'vfs, Vfs: dir_structure::traits::vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for NewType {
+    ///     fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<()> {
     ///         self.0.write_to(path, vfs)
     ///     }
     /// }

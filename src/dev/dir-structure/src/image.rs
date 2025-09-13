@@ -36,7 +36,7 @@ use crate::traits::sync::FromRefForWriter;
 use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead> ReadFrom<'vfs, Vfs> for image::DynamicImage
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>> ReadFrom<'vfs, Vfs> for image::DynamicImage
 where
     Vfs::RFile: Seek,
 {
@@ -49,11 +49,11 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite> WriteTo<Vfs> for (image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for (image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
@@ -63,11 +63,11 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite> WriteTo<Vfs> for (&image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for (&image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
@@ -102,11 +102,11 @@ impl<T: ImgFormat> NewtypeToInner for T {
     }
 }
 
-impl<'a, T: ImgFormat + 'a, Vfs: vfs::VfsWithSeekWrite> FromRefForWriter<'a, Vfs> for T
+impl<'a, 'vfs, T: ImgFormat + 'a, Vfs: vfs::VfsWithSeekWrite<'vfs>> FromRefForWriter<'a, 'vfs, Vfs> for T
 where
     Vfs: 'a,
     Vfs::WFile: Seek,
-    T::WriterType<'a, Vfs>: WriteTo<Vfs> + 'a,
+    T::WriterType<'a, Vfs>: WriteTo<'vfs, Vfs> + 'a,
 {
     type Inner = image::DynamicImage;
     type Wr = T::WriterType<'a, Vfs>;
@@ -116,7 +116,7 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead, T> ReadFrom<'vfs, Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>, T> ReadFrom<'vfs, Vfs> for T
 where
     T: ImgFormat + 'vfs,
     Vfs::RFile: Seek,
@@ -136,12 +136,12 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite, T> WriteTo<Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>, T> WriteTo<'vfs, Vfs> for T
 where
     T: ImgFormat,
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
         debug_assert!(
             T::FORMAT.writing_enabled(),
             "Image format {:?} does not support writing; enable the corresponding feature",
@@ -257,11 +257,11 @@ macro_rules! img_format {
         }
 
         $(#[$cfg_meta])*
-        impl<'a, Vfs: vfs::VfsWithSeekWrite> WriteTo<Vfs> for $writer_type<'a, Vfs>
+        impl<'a, 'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for $writer_type<'a, Vfs>
         where
             Vfs::WFile: Seek,
         {
-            fn write_to(&self, path: &Path, vfs: Pin<&Vfs>) -> Result<()> {
+            fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
                 debug_assert!(
                     $struct_name::FORMAT.writing_enabled(),
                     "Image format {:?} does not support writing; enable the corresponding feature",
@@ -447,13 +447,13 @@ mod tests {
     use crate::traits::async_vfs::VfsAsyncWithSeekWrite;
     use crate::traits::vfs;
 
-    fn assert_is_read_sync<'vfs, Vfs: vfs::VfsWithSeekRead + 'vfs, T: ReadFrom<'vfs, Vfs>>()
+    fn assert_is_read_sync<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs> + 'vfs, T: ReadFrom<'vfs, Vfs>>()
     where
         Vfs::RFile: Seek,
     {
     }
 
-    fn assert_is_write_sync<'vfs, Vfs: vfs::VfsWithSeekWrite + 'vfs, T: WriteTo<Vfs>>()
+    fn assert_is_write_sync<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs> + 'vfs, T: WriteTo<'vfs, Vfs>>()
     where
         Vfs::WFile: Seek,
     {
