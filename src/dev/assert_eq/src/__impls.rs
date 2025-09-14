@@ -5,13 +5,13 @@ use super::*;
 macro_rules! panik {
     ($left:expr, $right:expr, $init_left:expr, $init_right:expr, $path:expr) => {
         panic!(
-            "assertion `left == right` failed: at {:?}\n  left: {:?}\n right: {:?};\nassert_eq! called initially on:\n  left: {}\n right: {}", $path, $left, $right, $init_left, $init_right
+            "assertion `left == right` failed: at {:?}\n  left: {:?}\n right: {:?}\nassert_eq! called initially on:\n  left: {}\n right: {}", $path, $left, $right, $init_left, $init_right
         )
     };
 
     ($left:expr, $right:expr, $init_left:expr, $init_right:expr, $path:expr, $($arg:tt)+) => {
         panic!(
-            "assertion `left == right` failed: at {:?}: {}\n  left: {:?}\n right: {:?};\nassert_eq! called initially on:\n  left: {}\n right: {}",
+            "assertion `left == right` failed: at {:?}: {}\n  left: {:?}\n right: {:?}\nassert_eq! called initially on:\n  left: {}\n right: {}",
             $path, format_args!($($arg)+), $left, $right, $init_left, $init_right
         )
     };
