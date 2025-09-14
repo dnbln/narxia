@@ -39,7 +39,7 @@ assert_eq::assert_eq!(x, y); // at .x → .y → [2] left: 3 right: 8
 
 Running this code will panic with the following message:
 
-```
+```text
 assertion `left == right` failed: at .x → .y → [2]
   left: 3
  right: 8

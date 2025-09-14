@@ -31,7 +31,7 @@ fn option_none_eq() {
 
 #[test]
 #[should_panic(
-    expected = "assertion `left == right` failed: at <root>: left and right are different kinds of Option:\n  left: Some(1)\n right: None;\nassert_eq! called initially on:\n  left: Some(1)\n right: None"
+    expected = "assertion `left == right` failed: at <root>: left and right are different kinds of Option:\n  left: Some(1)\n right: None\nassert_eq! called initially on:\n  left: Some(1)\n right: None"
 )]
 fn option_eq_fail() {
     let a = Some(1);
@@ -210,7 +210,7 @@ fn slice_diff() {
 
 #[test]
 #[should_panic(
-    expected = "assertion `left == right` failed: at <root>: lengths differ between\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]:\n\n  left: 3\n right: 4;\nassert_eq! called initially on:\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]"
+    expected = "assertion `left == right` failed: at <root>: lengths differ between\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]:\n\n  left: 3\n right: 4\nassert_eq! called initially on:\n  left: [1, 2, 3]\n right: [1, 2, 3, 4]"
 )]
 fn slice_different_lengths() {
     let a = &[1, 2, 3][..];
