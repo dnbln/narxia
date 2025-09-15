@@ -1,7 +1,7 @@
 //! Virtual file system traits.
 
 use std::ffi::OsString;
-use std::io::BufRead;
+use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
 use std::path::Path;
@@ -21,7 +21,7 @@ pub trait Vfs<'vfs>: 'vfs {
         'vfs: 'a,
         Self: 'a;
     /// The type of the file returned by the [`open_read` method](Vfs::open_read).
-    type RFile: BufRead + 'vfs;
+    type RFile: Read + 'vfs;
 
     /// Opens a file for reading, at the specified path.
     fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile>;

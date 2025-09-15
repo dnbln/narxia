@@ -374,7 +374,8 @@ mod imp {
             Box::pin(async move {
                 let p_clone = path.clone();
                 match task::spawn_blocking(move || {
-                    let mut img_reader = image::ImageReader::new(std_vfs.open_read(&p_clone)?);
+                    let mut img_reader =
+                        image::ImageReader::new(io::BufReader::new(std_vfs.open_read(&p_clone)?));
                     img_reader.set_format(T::FORMAT);
                     let img = img_reader
                         .decode()

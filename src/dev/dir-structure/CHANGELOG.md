@@ -15,6 +15,13 @@ Add `GitVfs::new` to be able to create a `GitVfs`.
 It is automatically added by the `DirStructure` derive macro, so if you are using that, you don't need to do anything.
 If you are implementing `WriteTo` manually, you will need to add the lifetime parameter to your impls.
 
+## Other changes
+
+Relax bound for `Vfs::RFile` from `BufRead` to `Read`, as `BufRead` is only necessary
+for image reading, and we can wrap the `Read` in a `BufReader` there.
+
+Similarly, relax bound for `VfsAsync::RFile` from `AsyncBufRead` to `AsyncRead`.
+
 # `v0.2.0-rc.2`
 
 ## Image support

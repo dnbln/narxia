@@ -17,6 +17,7 @@
     feature = "image-format-qoi",
 ))]
 use std::fmt;
+use std::io;
 use std::io::Seek;
 #[cfg(any(
     feature = "image-format-png",
@@ -58,7 +59,7 @@ where
     Vfs::RFile: Seek,
 {
     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
-        image::ImageReader::new(&mut vfs.open_read(path)?)
+        image::ImageReader::new(&mut io::BufReader::new(vfs.open_read(path)?))
             .with_guessed_format()
             .wrap_io_error_with(path)?
             .decode()
@@ -147,7 +148,7 @@ where
             "Image format {:?} does not support reading; enable the corresponding feature",
             T::FORMAT
         );
-        let mut img_reader = image::ImageReader::new(vfs.open_read(path)?);
+        let mut img_reader = image::ImageReader::new(io::BufReader::new(vfs.open_read(path)?));
         img_reader.set_format(T::FORMAT);
         let img = img_reader
             .decode()

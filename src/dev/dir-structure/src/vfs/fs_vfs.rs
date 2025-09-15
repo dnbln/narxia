@@ -3,7 +3,6 @@
 //! Main item is the [`FsVfs`] struct.
 
 use std::fs;
-use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -27,12 +26,10 @@ impl<'a> Vfs<'a> for FsVfs {
         'a: 'b,
         Self: 'b;
 
-    type RFile = io::BufReader<fs::File>;
+    type RFile = fs::File;
 
     fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
-        fs::File::open(path)
-            .map(io::BufReader::new)
-            .wrap_io_error_with(path)
+        fs::File::open(path).wrap_io_error_with(path)
     }
 
     fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>> {

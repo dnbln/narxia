@@ -8,7 +8,7 @@ use std::task::Poll;
 
 use futures::AsyncWrite;
 use futures::Stream;
-use futures::io::AsyncBufRead;
+use futures::io::AsyncRead;
 use futures::io::AsyncSeek;
 use pin_project::pin_project;
 
@@ -20,7 +20,7 @@ use crate::traits::vfs::DirEntryInfo;
 /// An asynchronous virtual file system. Writing operations are provided by the [`WriteSupportingVfsAsync` trait](self::WriteSupportingVfsAsync).
 pub trait VfsAsync: Send + Sync + Unpin {
     /// The type of the file returned by the [`open_read` method](VfsAsync::open_read).
-    type RFile: AsyncBufRead + Send + Unpin;
+    type RFile: AsyncRead + Send + Unpin;
     /// The future returned by the [`open_read` method](VfsAsync::open_read).
     type OpenReadFuture: Future<Output = Result<Self::RFile>> + Send + Unpin;
 
