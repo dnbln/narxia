@@ -98,7 +98,8 @@ where
 ///
 /// For example, for a [`Filter`] that only allows `.txt` files:
 ///
-/// ```rust
+#[cfg_attr(feature = "derive", doc = "```rust")]
+#[cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
 /// use std::path::Path;
 /// use std::path::PathBuf;
 ///

@@ -277,7 +277,8 @@
 /// and write the modification time of files. Let's see how to use this wrapper
 /// in practice.
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// use std::path::Path;

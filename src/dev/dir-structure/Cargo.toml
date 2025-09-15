@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = []
+default = ["derive"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
@@ -39,6 +39,7 @@ image-format-ff = ["image", "image/ff"]
 image-format-avif = ["image", "image/avif"]
 image-format-qoi = ["image", "image/qoi"]
 assert_eq = ["dep:assert_eq"]
+derive = ["dep:dir-structure-macros"]
 _all = [
     "json",
     "toml",
@@ -65,13 +66,14 @@ _all = [
     "image-format-avif",
     "image-format-qoi",
     "assert_eq",
+    "derive",
 ]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 
 [dependencies]
-dir-structure-macros.workspace = true
+dir-structure-macros = { workspace = true, optional = true }
 futures = { version = "0.3", optional = true, default-features = false, features = [
     "io-compat",
 ] }
@@ -102,47 +104,77 @@ git2 = { workspace = true, optional = true }
 [[test]]
 name = "async_tests"
 path = "tests/async_tests.rs"
-required-features = ["async", "tokio", "assert_eq"]
+required-features = ["async", "tokio", "assert_eq", "derive"]
 
 [[test]]
 name = "tests"
 path = "tests/tests.rs"
-required-features = ["assert_eq"]
+required-features = ["assert_eq", "derive"]
 
 [[example]]
 name = "reading_from_include_dir_vfs"
 path = "examples/reading_from_include_dir_vfs.rs"
-required-features = ["include_dir"]
+required-features = ["include_dir", "derive"]
 
 [[example]]
 name = "reading_dir_children_from_include_dir_vfs"
 path = "examples/reading_dir_children_from_include_dir_vfs.rs"
-required-features = ["include_dir"]
+required-features = ["include_dir", "derive"]
 
 [[example]]
 name = "reading_from_git_vfs"
 path = "examples/reading_from_git_vfs.rs"
-required-features = ["git"]
+required-features = ["git", "derive"]
 
 [[example]]
 name = "reading_from_tokio_fs_vfs"
 path = "examples/reading_from_tokio_fs_vfs.rs"
-required-features = ["tokio", "async"]
+required-features = ["tokio", "async", "derive"]
 
 [[example]]
 name = "writing_to_tokio_fs_vfs"
 path = "examples/writing_to_tokio_fs_vfs.rs"
-required-features = ["tokio", "async"]
+required-features = ["tokio", "async", "derive"]
 
 [[example]]
 name = "resolve_path"
 path = "examples/resolve_path.rs"
-required-features = ["resolve-path"]
+required-features = ["resolve-path", "derive"]
 
 [[example]]
 name = "load_path"
 path = "examples/load_path.rs"
-required-features = ["resolve-path"]
+required-features = ["resolve-path", "derive"]
+
+[[example]]
+name = "std_fs_vfs"
+path = "examples/std_fs_vfs.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "deferred_read"
+path = "examples/deferred_read.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "reading"
+path = "examples/reading.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "writing"
+path = "examples/writing.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "reading_dir_children"
+path = "examples/reading_dir_children.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "writing_dir_children"
+path = "examples/writing_dir_children.rs"
+required-features = ["derive"]
 
 [lints]
 workspace = true

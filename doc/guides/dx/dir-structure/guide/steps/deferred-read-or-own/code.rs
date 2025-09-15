@@ -1,3 +1,4 @@
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;

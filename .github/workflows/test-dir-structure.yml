@@ -31,9 +31,23 @@ jobs:
     strategy:
       matrix:
         feature-combos: [
-            "--features default",
-            "--features assert_eq,default",
-            "--features assert_eq,default,git",
+            "--no-default-features",
+            "--no-default-features --features assert_eq",
+            "--no-default-features --features git",
+            "--no-default-features --features async",
+            "--no-default-features --features tokio",
+            "--no-default-features --features image",
+            "--no-default-features --features image,image-format-png",
+            "--no-default-features --features image,image-format-jpeg",
+            "--no-default-features --features resolve-path",
+            "--no-default-features --features json",
+            "--no-default-features --features toml",
+            "--no-default-features --features yaml",
+            "--no-default-features --features ron",
+            "--no-default-features --features include_dir",
+            "--no-default-features --features derive",
+            "--features assert_eq",
+            "--features assert_eq,git",
             "--features assert_eq,async",
             "--features assert_eq,tokio",
             "--features assert_eq,image",
@@ -76,9 +90,9 @@ jobs:
         with:
           save-if: ${{ matrix.feature-combos == '--all-features' && matrix.cmd == 'test' }}
       - name: Build dir-structure
-        run: cargo build -p dir-structure --no-default-features ${{ matrix.feature-combos }}
+        run: cargo build -p dir-structure ${{ matrix.feature-combos }}
         if: matrix.cmd == 'build'
 
       - name: Run tests
-        run: cargo test -p dir-structure --no-default-features ${{ matrix.feature-combos }} -- --test-threads=1
+        run: cargo test -p dir-structure ${{ matrix.feature-combos }} -- --test-threads=1
         if: matrix.cmd == 'test'

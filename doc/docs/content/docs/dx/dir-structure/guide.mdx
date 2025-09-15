@@ -33,6 +33,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -68,6 +69,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -107,6 +109,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -155,6 +158,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature json
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -214,6 +218,7 @@ mindmap
 
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -252,6 +257,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -305,6 +311,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -362,6 +369,8 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
+// !lints
 use std::path::Path;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -431,6 +440,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -489,6 +499,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -562,6 +573,7 @@ mindmap
 />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -643,6 +655,7 @@ mindmap
  />
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -730,6 +743,7 @@ mindmap
 
 
 ```rust ! usage.rs no_run
+// !req-feature derive
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -805,10 +819,6 @@ dir_structure::traits::sync
 ```rust ,ignore
 pub trait DirStructureItem
 ```
-
----
-
-Is not dyn-compatible due to having a method `write` that is not dispatchable due to having a const or type generic parameter
 
 ---
 
@@ -912,34 +922,34 @@ For example: u8, i8, i16, u16, all integer types... bool etc.
 # Examples
 
 ```rust ,ignore
-use std::path::Path;
+ use std::path::Path;
 
-use dir_structure::traits::sync::DirStructureItem;
-use dir_structure::fmt_wrapper::FmtWrapper;
+ use dir_structure::traits::sync::DirStructureItem;
+ use dir_structure::fmt_wrapper::FmtWrapper;
 
-#[derive(dir_structure::DirStructure, PartialEq, Debug)]
-struct Dir {
-   #[dir_structure(path = "f.txt", with_newtype = FmtWrapper<u8>)]
-   f: u8,
-   #[dir_structure(path = "b.txt", with_newtype = FmtWrapper<bool>)]
-   b: bool,
-}
+ #[derive(dir_structure::DirStructure, PartialEq, Debug)]
+ struct Dir {
+    #[dir_structure(path = "f.txt", with_newtype = FmtWrapper<u8>)]
+    f: u8,
+    #[dir_structure(path = "b.txt", with_newtype = FmtWrapper<bool>)]
+    b: bool,
+ }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let d = Path::new("dir");
-    std::fs::create_dir_all(&d)?;
-    std::fs::write(d.join("f.txt"), "42")?;
-    std::fs::write(d.join("b.txt"), "true")?;
-    let mut dir = Dir::read(&d)?;
-    assert_eq!(dir.f, 42);
-    assert_eq!(dir.b, true);
-    dir.f = 100;
-    dir.b = false;
-    dir.write(&d)?;
-    assert_eq!(std::fs::read_to_string(d.join("f.txt"))?, "100");
-    assert_eq!(std::fs::read_to_string(d.join("b.txt"))?, "false");
-    Ok(())
-}
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let d = Path::new("dir");
+     std::fs::create_dir_all(&d)?;
+     std::fs::write(d.join("f.txt"), "42")?;
+     std::fs::write(d.join("b.txt"), "true")?;
+     let mut dir = Dir::read(&d)?;
+     assert_eq!(dir.f, 42);
+     assert_eq!(dir.b, true);
+     dir.f = 100;
+     dir.b = false;
+     dir.write(&d)?;
+     assert_eq!(std::fs::read_to_string(d.join("f.txt"))?, "100");
+     assert_eq!(std::fs::read_to_string(d.join("b.txt"))?, "false");
+     Ok(())
+ }
 ```
 </DocTooltip>
 
@@ -1055,43 +1065,43 @@ files we want, for example, that have just a certain extension.
 For example, for a [`Filter`](https://docs.rs/dir_structure/0.2.0-rc.2/dir_structure/dir_children/trait.Filter.html) that only allows `.txt` files:
 
 ```rust ,ignore
-use std::path::Path;
-use std::path::PathBuf;
+ use std::path::Path;
+ use std::path::PathBuf;
 
-use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
+ use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
 
-pub struct TextFileFilter;
+ pub struct TextFileFilter;
 
-impl Filter for TextFileFilter {
-    fn allows(path: &Path) -> bool {
-        path.extension()
-            .and_then(|s| s.to_str())
-            .map_or(false, |s| s == "txt")
-    }
-}
+ impl Filter for TextFileFilter {
+     fn allows(path: &Path) -> bool {
+         path.extension()
+             .and_then(|s| s.to_str())
+             .map_or(false, |s| s == "txt")
+     }
+ }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let path = PathBuf::from("dir");
-    #[derive(DirStructure)]
-    struct Dir {
-       #[dir_structure(path = self)]
-       text_files: DirChildren<String, TextFileFilter>,
-    }
-
-
-    std::fs::write(path.join("file1.txt"), "file1")?;
-    std::fs::write(path.join("file2.txt"), "file2")?;
-    std::fs::write(path.join("file3.bin"), "aaa")?;
-
-    let dir = Dir::read(&path)?;
-    assert_eq!(dir.text_files.len(), 2);
-    assert_eq!(dir.text_files.get_value_by_name("file1.txt"), Some(&String::from("file1")));
-    assert_eq!(dir.text_files.get_value_by_name("file2.txt"), Some(&String::from("file2")));
-    assert_eq!(dir.text_files.get_value_by_name("file3.bin"), None);
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let path = PathBuf::from("dir");
+     #[derive(DirStructure)]
+     struct Dir {
+        #[dir_structure(path = self)]
+        text_files: DirChildren<String, TextFileFilter>,
+     }
 
 
-    Ok(())
-}
+     std::fs::write(path.join("file1.txt"), "file1")?;
+     std::fs::write(path.join("file2.txt"), "file2")?;
+     std::fs::write(path.join("file3.bin"), "aaa")?;
+
+     let dir = Dir::read(&path)?;
+     assert_eq!(dir.text_files.len(), 2);
+     assert_eq!(dir.text_files.get_value_by_name("file1.txt"), Some(&String::from("file1")));
+     assert_eq!(dir.text_files.get_value_by_name("file2.txt"), Some(&String::from("file2")));
+     assert_eq!(dir.text_files.get_value_by_name("file3.bin"), None);
+
+
+     Ok(())
+ }
 ```
 </DocTooltip>
 
@@ -1287,31 +1297,31 @@ For a cached version see [`DeferredReadOrOwn`](crate::DeferredReadOrOwn).
 # Examples
 
 ```rust ,ignore
-use std::path::Path;
-use std::pin::Pin;
-use dir_structure::traits::sync::DirStructureItem;
-use dir_structure::deferred_read::DeferredRead;
+ use std::path::Path;
+ use std::pin::Pin;
+ use dir_structure::traits::sync::DirStructureItem;
+ use dir_structure::deferred_read::DeferredRead;
 
-#[derive(dir_structure::DirStructure)]
-struct Dir<'vfs, Vfs> {
-    #[dir_structure(path = "f.txt")]
-    f: DeferredRead<'vfs, String, Vfs>,
-}
+ #[derive(dir_structure::DirStructure)]
+ struct Dir<'vfs, Vfs> {
+     #[dir_structure(path = "f.txt")]
+     f: DeferredRead<'vfs, String, Vfs>,
+ }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let d = Path::new("dir");
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let d = Path::new("dir");
 
-    std::fs::create_dir_all(&d)?;
-    std::fs::write(d.join("f.txt"), "Hello, world!")?;
+     std::fs::create_dir_all(&d)?;
+     std::fs::write(d.join("f.txt"), "Hello, world!")?;
 
-    let dir = Dir::read(&d)?;
-    assert_eq!(dir.f.perform_read()?, "Hello, world!");
+     let dir = Dir::read(&d)?;
+     assert_eq!(dir.f.perform_read()?, "Hello, world!");
 
-    std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
-    assert_eq!(dir.f.perform_read()?, "Goodbye, world!");
+     std::fs::write(d.join("f.txt"), "Goodbye, world!")?;
+     assert_eq!(dir.f.perform_read()?, "Goodbye, world!");
 
-    Ok(())
-}
+     Ok(())
+ }
 ```
 </DocTooltip>
 

@@ -120,7 +120,8 @@ where
     ///
     /// # Examples
     ///
-    /// ```rust
+    #[cfg_attr(feature = "derive", doc = "```rust")]
+    #[cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
     /// use std::path::Path;
     /// use std::pin::Pin;
     /// use dir_structure::traits::sync::DirStructureItem;

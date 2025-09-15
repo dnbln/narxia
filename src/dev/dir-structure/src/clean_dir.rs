@@ -42,7 +42,8 @@ use crate::traits::vfs;
 /// to make sure that the directory is clean before writing it, so that there
 /// are no old files / directories left in it.
 ///
-/// ```rust
+#[cfg_attr(feature = "derive", doc = "```rust")]
+#[cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
 /// use std::path::Path;
 ///
 /// use dir_structure::traits::sync::DirStructureItem;

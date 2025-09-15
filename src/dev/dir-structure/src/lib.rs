@@ -8,7 +8,9 @@
 //! # Example
 //!
 //! ## Writing a structure to disk
-//! ```
+//!
+#![cfg_attr(feature = "derive", doc = "```rust")]
+#![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
 //! use std::path::Path;
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     use dir_structure::traits::sync::DirStructureItem;
@@ -52,7 +54,8 @@
 //!
 //! ## Reading a structure from disk
 //!
-//! ```
+#![cfg_attr(feature = "derive", doc = "```rust")]
+#![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
 //! use std::path::Path;
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     use dir_structure::traits::sync::DirStructureItem;
@@ -114,16 +117,20 @@ mod __doc_check {
         include!("../../../../doc/docs/content/docs/dx/dir-structure/.custom-impl.mdx.doctests");
     }
 
+    // need default features for README examples to work
+    #[cfg(feature = "derive")]
     #[doc = include_str!("../README.md")]
     struct Readme;
 }
 
+#[cfg(feature = "derive")]
 pub use dir_structure_macros::DirStructure;
-#[cfg(feature = "async")]
+#[cfg(all(feature = "derive", feature = "async"))]
 pub use dir_structure_macros::DirStructureAsync;
 
 pub mod prelude {
     //! A prelude for the most commonly used items in this crate.
+    #[cfg(feature = "derive")]
     pub use crate::DirStructure;
     #[cfg(feature = "async")]
     pub use crate::traits::asy::ReadFromAsync;

@@ -1,3 +1,5 @@
+// !req-feature derive
+// !lints
 use std::path::Path;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem

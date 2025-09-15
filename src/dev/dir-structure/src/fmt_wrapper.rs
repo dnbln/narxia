@@ -32,7 +32,8 @@ use crate::traits::vfs;
 ///
 /// # Examples
 ///
-/// ```rust
+#[cfg_attr(feature = "derive", doc = "```rust")]
+#[cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
 /// use std::path::Path;
 ///
 /// use dir_structure::traits::sync::DirStructureItem;

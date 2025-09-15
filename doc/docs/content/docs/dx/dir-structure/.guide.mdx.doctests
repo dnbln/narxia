@@ -32,7 +32,8 @@
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -68,7 +69,8 @@
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -108,7 +110,8 @@
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -156,52 +159,52 @@
 ///  />
 /// 
 /// 
-#[cfg_attr(all(feature = "json", ), doc = r##########"```rust,no_run
-#![deny(unused_imports)]
-
-// !tooltip[/DirStructure/] DirStructure
-// !tooltip[/DirStructureItem/] DirStructureItem
-// !tooltip[/FmtWrapper/] FmtWrapper
-// !tooltip[/Json/] Json
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper, data_formats::json::Json};
-use serde::{Serialize, Deserialize};
-
-// !tooltip[/DirStructure/] DirStructure
-#[derive(DirStructure)]
-struct Dir {
-    #[dir_structure(path = "input.bin")]
-    binary: Vec<u8>,
-    #[dir_structure(
-        path = "number.txt",
-        // !tooltip[/FmtWrapper/] FmtWrapper
-        with_newtype = FmtWrapper<u64>,
-    )]
-    number: u64,
-    #[dir_structure(
-        path = "f.json",
-        // !mark
-        // !tooltip[/Json/] Json
-        with_newtype = Json<Obj>,
-    )]
-    f: Obj,
-}
-
-// !mark(1:5)
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-struct Obj {
-    name: String,
-    age: u32,
-}
-
-let path = "dir";
-// !tooltip[/read/] DirStructureItem::read#
-let dir = Dir::read(path)?;
-// !tooltip[/write/] DirStructureItem::write#
-dir.write(path)?;
-Ok::<_, dir_structure::error::Error>(())
-
-```
-"##########)]
+#[cfg_attr(all(feature = "json", feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "json", feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+/// #![deny(unused_imports)]
+/// 
+/// // !tooltip[/DirStructure/] DirStructure
+/// // !tooltip[/DirStructureItem/] DirStructureItem
+/// // !tooltip[/FmtWrapper/] FmtWrapper
+/// // !tooltip[/Json/] Json
+/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, fmt_wrapper::FmtWrapper, data_formats::json::Json};
+/// use serde::{Serialize, Deserialize};
+/// 
+/// // !tooltip[/DirStructure/] DirStructure
+/// #[derive(DirStructure)]
+/// struct Dir {
+///     #[dir_structure(path = "input.bin")]
+///     binary: Vec<u8>,
+///     #[dir_structure(
+///         path = "number.txt",
+///         // !tooltip[/FmtWrapper/] FmtWrapper
+///         with_newtype = FmtWrapper<u64>,
+///     )]
+///     number: u64,
+///     #[dir_structure(
+///         path = "f.json",
+///         // !mark
+///         // !tooltip[/Json/] Json
+///         with_newtype = Json<Obj>,
+///     )]
+///     f: Obj,
+/// }
+/// 
+/// // !mark(1:5)
+/// #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// struct Obj {
+///     name: String,
+///     age: u32,
+/// }
+/// 
+/// let path = "dir";
+/// // !tooltip[/read/] DirStructureItem::read#
+/// let dir = Dir::read(path)?;
+/// // !tooltip[/write/] DirStructureItem::write#
+/// dir.write(path)?;
+/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// ```
 /// 
 /// ## !!steps Let's go back to the basics
 /// 
@@ -217,7 +220,8 @@ Ok::<_, dir_structure::error::Error>(())
 ///  />
 /// 
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -256,7 +260,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -310,7 +315,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -368,7 +374,10 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+/// #![deny(unused_imports)]
+/// 
 /// use std::path::Path;
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
@@ -437,7 +446,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -496,7 +506,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -570,7 +581,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 /// />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -652,7 +664,8 @@ Ok::<_, dir_structure::error::Error>(())
 /// `}
 ///  />
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -740,7 +753,8 @@ Ok::<_, dir_structure::error::Error>(())
 ///  />
 /// 
 /// 
-/// ```rust,no_run
+#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter

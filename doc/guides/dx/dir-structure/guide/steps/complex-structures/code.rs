@@ -1,3 +1,4 @@
+// !req-feature derive
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem

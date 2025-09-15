@@ -84,8 +84,8 @@ where
     }
 }
 
-#[cfg(feature = "resolve-path")]
-#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+#[cfg(all(feature = "derive", feature = "resolve-path"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "derive", feature = "resolve-path"))))]
 pub use dir_structure_macros::load_path;
 /// A macro to resolve a path to a specific field in a directory structure.
 ///
@@ -118,6 +118,6 @@ pub use dir_structure_macros::load_path;
 ///     PathBuf::from("/path/to/dir/my_field2.d/my_field3.txt")
 /// );
 /// ```
-#[cfg(feature = "resolve-path")]
-#[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
+#[cfg(all(feature = "derive", feature = "resolve-path"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "derive", feature = "resolve-path"))))]
 pub use dir_structure_macros::resolve_path;

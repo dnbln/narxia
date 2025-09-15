@@ -196,6 +196,15 @@ impl SessionWrapper {
 }
 
 pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
+    #[derive(PartialEq, Eq)]
+    enum DoctestTag {
+        NoTag,
+        NoRun,
+        Ignore,
+        ShouldPanic,
+        CompileFail,
+    }
+
     let mut after = String::new();
     let mut all_code_for_doctests = String::new();
 
@@ -206,6 +215,8 @@ pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
     let mut in_doc_tooltip = false;
     let mut write_doctests = false;
     let mut in_code_block = false;
+    let mut tag = DoctestTag::NoTag;
+    let mut current_doctest_start = None;
 
     for line in before.lines() {
         if let Some(l) = line.strip_prefix("## !!doctooltips ") {
@@ -261,30 +272,50 @@ pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
             if line == "```rust" {
                 current_doctest.clear();
                 current_doctest_req_features.clear();
-                writeln!(&mut current_doctest, "```rust").unwrap();
+                current_doctest_start = Some("```rust");
                 in_code_block = true;
             } else if line.starts_with("```rust !") {
                 current_doctest.clear();
                 current_doctest_req_features.clear();
                 in_code_block = true;
-                let tag = if line.ends_with("no_run") {
+                tag = if line.ends_with("no_run") {
                     write_doctests = true;
-                    "no_run"
+                    DoctestTag::NoRun
                 } else if line.ends_with("ignore") {
                     write_doctests = true;
-                    "ignore"
+                    DoctestTag::Ignore
                 } else if line.ends_with("should_panic") {
                     write_doctests = true;
-                    "should_panic"
+                    DoctestTag::ShouldPanic
                 } else if line.ends_with("compile_fail") {
                     write_doctests = true;
-                    "compile_fail"
+                    DoctestTag::CompileFail
                 } else {
-                    writeln!(&mut current_doctest, "```rust").unwrap();
-                    continue;
+                    DoctestTag::NoTag
                 };
 
-                writeln!(&mut current_doctest, "```rust,{tag}").unwrap();
+                match tag {
+                    DoctestTag::NoTag => {
+                        current_doctest_start = Some("```rust");
+                    }
+                    DoctestTag::NoRun => {
+                        current_doctest_start = Some("```rust,no_run");
+                    }
+                    DoctestTag::Ignore => {
+                        current_doctest_start = Some("```rust,ignore");
+                    }
+                    DoctestTag::ShouldPanic => {
+                        current_doctest_start = Some("```rust,should_panic");
+                    }
+                    DoctestTag::CompileFail => {
+                        current_doctest_start = Some("```rust,compile_fail");
+                    }
+                }
+            } else if line.starts_with("```") && line != "```" {
+                in_code_block = true;
+                current_doctest.clear();
+                current_doctest_req_features.clear();
+                current_doctest_start = Some(line);
             } else if line == "```" {
                 in_code_block = !in_code_block;
                 if in_code_block {
@@ -294,6 +325,12 @@ pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
                 } else {
                     writeln!(&mut current_doctest, "{line}").unwrap();
                     if current_doctest_req_features.is_empty() {
+                        writeln!(
+                            &mut all_code_for_doctests,
+                            "/// {}",
+                            current_doctest_start.unwrap()
+                        )
+                        .unwrap();
                         for line in current_doctest.lines() {
                             writeln!(&mut all_code_for_doctests, "/// {line}").unwrap();
                         }
@@ -304,9 +341,22 @@ pub async fn patchup_doc(session: &SessionWrapper, before: String) -> Code {
                         }
                         writeln!(
                             &mut all_code_for_doctests,
-                            "), doc = r##########\"{current_doctest}\"##########)]"
+                            r##"), doc = r#"{}"#)]"##,
+                            current_doctest_start.unwrap()
                         )
                         .unwrap();
+                        write!(&mut all_code_for_doctests, "#[cfg_attr(not(all(").unwrap();
+                        for feature in &current_doctest_req_features {
+                            write!(&mut all_code_for_doctests, "feature = {feature:?}, ").unwrap();
+                        }
+                        writeln!(
+                            &mut all_code_for_doctests,
+                            r##")), doc = r#"```rust,compile_fail"#)]"##,
+                        )
+                        .unwrap();
+                        for line in current_doctest.lines() {
+                            writeln!(&mut all_code_for_doctests, "/// {line}").unwrap();
+                        }
                     }
                 }
             } else if in_code_block {
