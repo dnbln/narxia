@@ -186,16 +186,16 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     {
         let bounds = &v.bounds;
         if bounds.is_empty() {
-            v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs<'vfs> + 'static };
+            v.bounds = parse_quote! { ::dir_structure::traits::vfs::Vfs<'vfs> + 'vfs };
         } else {
             v.bounds
                 .push(parse_quote! { ::dir_structure::traits::vfs::Vfs<'vfs> });
-            v.bounds.push(parse_quote! { 'static });
+            v.bounds.push(parse_quote! { 'vfs });
         }
     } else {
         generics_for_read_impl
             .params
-            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::Vfs<'vfs> + 'static });
+            .push(parse_quote! { Vfs: ::dir_structure::traits::vfs::Vfs<'vfs> + 'vfs });
     }
     let (read_impl_generics, _, _) = generics_for_read_impl.split_for_impl();
 
@@ -221,15 +221,15 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         let bounds = &v.bounds;
         if bounds.is_empty() {
             v.bounds =
-                parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'static };
+                parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'vfs };
         } else {
             v.bounds
                 .push(parse_quote! { ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> });
-            v.bounds.push(parse_quote! { 'static });
+            v.bounds.push(parse_quote! { 'vfs });
         }
     } else {
         generics_for_write_impl.params.push(
-            parse_quote! { Vfs: ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'static },
+            parse_quote! { Vfs: ::dir_structure::traits::vfs::WriteSupportingVfs<'vfs> + 'vfs },
         );
     }
 

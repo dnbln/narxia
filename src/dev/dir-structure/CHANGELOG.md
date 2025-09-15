@@ -2,6 +2,12 @@
 
 ## New features
 
+Examples! Lots of examples have been added to the [`examples/`](examples/) directory, demonstrating various features of the library.
+
+`dir_structure::ron_pretty::RonPretty` for pretty-formatted RON files, similar to `dir_structure::json_pretty::JsonPretty`.
+
+Add `GitVfs::new` to be able to create a `GitVfs`.
+
 ## Breaking changes
 
 `WriteTo` now takes in a `'vfs` lifetime parameter.

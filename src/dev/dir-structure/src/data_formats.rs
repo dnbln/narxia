@@ -354,6 +354,7 @@ and write them back to disk."##
 data_format_impl!(
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    #[allow(clippy::absolute_paths)]
     json,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
@@ -373,6 +374,7 @@ data_format_impl!(
 data_format_impl!(
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    #[allow(clippy::absolute_paths)]
     json_pretty,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
@@ -397,6 +399,7 @@ data_format_impl!(
 data_format_impl!(
     #[cfg(feature = "toml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
+    #[allow(clippy::absolute_paths)]
     toml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to toml when we read / write a
@@ -423,6 +426,7 @@ age = 30
 data_format_impl!(
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
+    #[allow(clippy::absolute_paths)]
     yaml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to yaml when we read / write a
@@ -445,6 +449,7 @@ age: 30
 data_format_impl!(
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+    #[allow(clippy::absolute_paths)]
     ron,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to ron when we read / write a
@@ -459,4 +464,27 @@ data_format_impl!(
     /// [`FromRefForWriter`] implementation for [`Ron`].
     RonRefWr,
     ".ron", r##"r#"(name:"John",age:30)"#"##,
+);
+
+data_format_impl!(
+    #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+    #[allow(clippy::absolute_paths)]
+    ron_pretty,
+    /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
+    /// thus allowing us to parse and serialize it from / to ron when we read / write a
+    /// directory structure.
+    RonPretty,
+    |s| ron::de::from_str(s),
+    ron::error::SpannedError,
+    RonToStr,
+    |v| ron::ser::to_string_pretty(&v, ron::ser::PrettyConfig::default()),
+    |v, w| ron::ser::to_writer_pretty(w, v, ron::ser::PrettyConfig::default()).map_err(ToWriterError::Serde),
+    ron::error::Error,
+    /// [`FromRefForWriter`] implementation for [`RonPretty`].
+    RonPrettyRefWr,
+    ".ron", r##"r#"(
+    name: "John",
+    age: 30,
+)"#"##,
 );

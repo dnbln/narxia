@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["image", "tokio", "git"]
+default = ["_all"]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
@@ -39,6 +39,33 @@ image-format-ff = ["image", "image/ff"]
 image-format-avif = ["image", "image/avif"]
 image-format-qoi = ["image", "image/qoi"]
 assert_eq = ["dep:assert_eq"]
+_all = [
+    "json",
+    "toml",
+    "yaml",
+    "ron",
+    "async",
+    "tokio",
+    "include_dir",
+    "git",
+    "resolve-path",
+    "image",
+    "image-format-png",
+    "image-format-gif",
+    "image-format-jpeg",
+    "image-format-webp",
+    "image-format-tiff",
+    "image-format-tga",
+    "image-format-bmp",
+    "image-format-ico",
+    "image-format-hdr",
+    "image-format-exr",
+    "image-format-pnm",
+    "image-format-ff",
+    "image-format-avif",
+    "image-format-qoi",
+    "assert_eq",
+]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
@@ -81,6 +108,31 @@ required-features = ["async", "tokio", "assert_eq"]
 name = "tests"
 path = "tests/tests.rs"
 required-features = ["assert_eq"]
+
+[[example]]
+name = "reading_from_include_dir_vfs"
+path = "examples/reading_from_include_dir_vfs.rs"
+required-features = ["include_dir"]
+
+[[example]]
+name = "reading_dir_children_from_include_dir_vfs"
+path = "examples/reading_dir_children_from_include_dir_vfs.rs"
+required-features = ["include_dir"]
+
+[[example]]
+name = "reading_from_git_vfs"
+path = "examples/reading_from_git_vfs.rs"
+required-features = ["git"]
+
+[[example]]
+name = "reading_from_tokio_fs_vfs"
+path = "examples/reading_from_tokio_fs_vfs.rs"
+required-features = ["tokio", "async"]
+
+[[example]]
+name = "writing_to_tokio_fs_vfs"
+path = "examples/writing_to_tokio_fs_vfs.rs"
+required-features = ["tokio", "async"]
 
 [lints]
 workspace = true

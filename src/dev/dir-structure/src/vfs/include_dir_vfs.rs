@@ -3,9 +3,11 @@
 use core::fmt;
 use std::error;
 use std::io;
+use std::path::Component;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::result::Result as StdResult;
 
 use include_dir::Dir;
 #[cfg(doc)]
@@ -37,12 +39,69 @@ impl IncludeDirVfs {
 macro_rules! include_dir_vfs {
     ($path:expr) => {{
         let dir = $crate::include_dir::include_dir!($path);
-        $crate::IncludeDirVfs::new(dir)
+        $crate::vfs::include_dir_vfs::IncludeDirVfs::new(dir)
     }};
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("path normalization error")]
+struct NormalizeError;
+
+/// [`Path::normalize_lexically`] is unstable, so we implement a simplified version here.
+///
+/// This version also allows for paths to begin with the current directory (`.`).
+fn normalize_lexically(path: &Path) -> StdResult<PathBuf, NormalizeError> {
+    let mut lexical = PathBuf::new();
+    let mut iter = path.components().peekable();
+
+    // Find the root, if any, and add it to the lexical path.
+    // Here we treat the Windows path "C:\" as a single "root" even though
+    // `components` splits it into two: (Prefix, RootDir).
+    let root = match iter.peek() {
+        Some(Component::ParentDir) => return Err(NormalizeError),
+        Some(p @ Component::RootDir) => {
+            lexical.push(p);
+            iter.next();
+            lexical.as_os_str().len()
+        }
+        Some(Component::CurDir) => {
+            iter.next();
+            0
+        }
+        Some(Component::Prefix(prefix)) => {
+            lexical.push(prefix.as_os_str());
+            iter.next();
+            if let Some(p @ Component::RootDir) = iter.peek() {
+                lexical.push(p);
+                iter.next();
+            }
+            lexical.as_os_str().len()
+        }
+        None => return Ok(PathBuf::new()),
+        Some(Component::Normal(_)) => 0,
+    };
+
+    for component in iter {
+        match component {
+            Component::RootDir => unreachable!(),
+            Component::Prefix(_) => return Err(NormalizeError),
+            Component::CurDir => continue,
+            Component::ParentDir => {
+                // It's an error if ParentDir causes us to go above the "root".
+                if lexical.as_os_str().len() == root {
+                    return Err(NormalizeError);
+                } else {
+                    lexical.pop();
+                }
+            }
+            Component::Normal(path) => lexical.push(path),
+        }
+    }
+    Ok(lexical)
+}
+
 fn norm(path: &Path) -> Result<PathBuf> {
-    path.normalize_lexically().map_err(|e| {
+    normalize_lexically(path).map_err(|e| {
         Error::Io(
             path.to_path_buf(),
             io::Error::new(io::ErrorKind::InvalidInput, e).into(),

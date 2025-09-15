@@ -137,6 +137,7 @@ pub mod prelude {
     pub use crate::traits::async_vfs::VfsAsyncExt;
     #[cfg(feature = "async")]
     pub use crate::traits::async_vfs::WriteSupportingVfsAsyncExt;
+    pub use crate::traits::sync::DirStructureItem;
     pub use crate::traits::sync::ReadFrom;
     pub use crate::traits::sync::WriteTo;
     pub use crate::traits::vfs::Vfs;

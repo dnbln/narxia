@@ -17,6 +17,13 @@ pub struct GitVfs<'r> {
     tree: git2::Tree<'r>,
 }
 
+impl<'r> GitVfs<'r> {
+    /// Create a new `GitVfs` from a git repository and a tree.
+    pub fn new(repo: &'r git2::Repository, tree: git2::Tree<'r>) -> Self {
+        Self { repo, tree }
+    }
+}
+
 impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
     type DirWalk<'a>
         = GitDirWalk
