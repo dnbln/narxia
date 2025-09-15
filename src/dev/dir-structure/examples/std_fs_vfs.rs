@@ -1,4 +1,4 @@
-//! A simple example of reading a directory structure from disk.
+//! A simple example of reading and writing a directory structure from disk, using the [`FsVfs`] VFS.
 
 use std::fs;
 use std::pin::Pin;

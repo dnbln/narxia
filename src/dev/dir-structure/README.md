@@ -1,8 +1,6 @@
 # `dir-structure`
 
-A library to make it easier to represent
-directory structures as plain Rust structures,
-and reducing the boiler-plate associated with
+A library to make it easier to represent directory structures as plain Rust structures, and reducing the boiler-plate associated with
 creating and manipulating them.
 
 A quick example:

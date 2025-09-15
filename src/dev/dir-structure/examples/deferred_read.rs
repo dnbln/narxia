@@ -38,7 +38,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     println!("input: {}", dir.input.perform_read()?);
     println!("output: {}", dir.output.perform_read()?);
 
-    // and finally, restore original contents
+    // restore original contents (not needed, just here to keep the example dir clean)
     fs::write(path.join("input.txt"), input)?;
     fs::write(path.join("output.txt"), output)?;
 

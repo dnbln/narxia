@@ -43,3 +43,12 @@ Note that the `git` VFS is read-only, so there are no writing examples.
 
 - [reading_from_tokio_fs_vfs.rs](reading_from_tokio_fs_vfs.rs): An example of reading a directory structure from the actual file system using `TokioFsVfs`.
 - [writing_to_tokio_fs_vfs.rs](writing_to_tokio_fs_vfs.rs): An example of writing a directory structure to the actual file system using `TokioFsVfs`.
+
+
+## `resolve_path`
+
+- [resolve_path.rs](resolve_path.rs): An example demonstrating the use of `resolve_path` to resolve paths within a directory structure.
+
+## `load_path`
+
+- [load_path.rs](load_path.rs): An example demonstrating the use of `load_path` to load a specific file from a path within a directory structure, without loading the entire structure.

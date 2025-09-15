@@ -134,5 +134,15 @@ name = "writing_to_tokio_fs_vfs"
 path = "examples/writing_to_tokio_fs_vfs.rs"
 required-features = ["tokio", "async"]
 
+[[example]]
+name = "resolve_path"
+path = "examples/resolve_path.rs"
+required-features = ["resolve-path"]
+
+[[example]]
+name = "load_path"
+path = "examples/load_path.rs"
+required-features = ["resolve-path"]
+
 [lints]
 workspace = true
