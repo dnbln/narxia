@@ -1,4 +1,5 @@
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 use std::path::Path;
 // !tooltip[/DirStructure/] DirStructure

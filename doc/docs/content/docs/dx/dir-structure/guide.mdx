@@ -110,6 +110,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-fmt-wrapper
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -157,8 +158,9 @@ mindmap
 
 
 ```rust ! usage.rs no_run
-// !req-feature json
 // !req-feature derive
+// !req-feature json
+// !req-feature tools-fmt-wrapper
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -312,6 +314,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
@@ -370,6 +373,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 use std::path::Path;
 // !tooltip[/DirStructure/] DirStructure
@@ -441,6 +445,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -500,6 +505,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-deferred-read
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -574,6 +580,7 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-deferred-read-or-own
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -656,6 +663,9 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-dir-children
+// !req-feature tools-deferred-read-or-own
+// !req-feature tools-versioned
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;
@@ -744,6 +754,9 @@ mindmap
 
 ```rust ! usage.rs no_run
 // !req-feature derive
+// !req-feature tools-dir-children
+// !req-feature tools-deferred-read-or-own
+// !req-feature tools-versioned
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;

@@ -152,13 +152,19 @@ pub mod prelude {
     pub use crate::traits::vfs::WriteSupportingVfsExt;
 }
 
+#[cfg(feature = "tools-clean-dir")]
 pub mod clean_dir;
 pub mod data_formats;
+#[cfg(feature = "tools-deferred-read")]
 pub mod deferred_read;
+#[cfg(feature = "tools-deferred-read-or-own")]
 pub mod deferred_read_or_own;
+#[cfg(feature = "tools-dir-children")]
 pub mod dir_children;
+#[cfg(feature = "tools-dir-descendants")]
 pub mod dir_descendants;
 pub mod error;
+#[cfg(feature = "tools-fmt-wrapper")]
 pub mod fmt_wrapper;
 #[cfg(feature = "image")]
 #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
@@ -166,8 +172,11 @@ pub mod image;
 pub mod option;
 pub mod std_types;
 pub mod traits;
+#[cfg(feature = "tools-try-parse")]
 pub mod try_parse;
+#[cfg(feature = "tools-versioned")]
 pub mod versioned;
+#[cfg(feature = "tools-versioned-hash")]
 pub mod versioned_hash;
 pub mod vfs;
 
@@ -193,6 +202,10 @@ pub mod vfs;
 /// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../..")));
 /// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../../..")));
 /// ```
+#[cfg(any(
+    feature = "tools-dir-children",
+    feature = "tools-dir-descendants",
+))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct NoFilter;

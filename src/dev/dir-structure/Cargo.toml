@@ -13,7 +13,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["derive"]
+default = [
+    "derive",
+    "tools",
+]
 json = ["dep:serde", "dep:serde_json"]
 toml = ["dep:serde", "dep:toml"]
 yaml = ["dep:serde", "dep:serde_yaml"]
@@ -22,7 +25,10 @@ async = ["dep:pin-project", "dep:futures", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
 include_dir = ["dep:include_dir"]
 git = ["dep:git2"]
-resolve-path = ["dir-structure-macros/resolve-path"]
+resolve-path = ["derive", "dir-structure-macros/resolve-path"]
+assert_eq = ["dep:assert_eq"]
+derive = ["dep:dir-structure-macros"]
+
 image = ["dep:image", "tokio/rt"]
 image-format-png = ["image", "image/png"]
 image-format-gif = ["image", "image/gif"]
@@ -38,8 +44,28 @@ image-format-pnm = ["image", "image/pnm"]
 image-format-ff = ["image", "image/ff"]
 image-format-avif = ["image", "image/avif"]
 image-format-qoi = ["image", "image/qoi"]
-assert_eq = ["dep:assert_eq"]
-derive = ["dep:dir-structure-macros"]
+
+tools-clean-dir = []
+tools-deferred-read = []
+tools-deferred-read-or-own = []
+tools-dir-children = []
+tools-dir-descendants = []
+tools-fmt-wrapper = []
+tools-try-parse = []
+tools-versioned = []
+tools-versioned-hash = []
+tools = [
+    "tools-clean-dir",
+    "tools-deferred-read",
+    "tools-deferred-read-or-own",
+    "tools-dir-children",
+    "tools-dir-descendants",
+    "tools-fmt-wrapper",
+    "tools-try-parse",
+    "tools-versioned",
+    "tools-versioned-hash",
+]
+
 _all = [
     "json",
     "toml",
@@ -50,6 +76,8 @@ _all = [
     "include_dir",
     "git",
     "resolve-path",
+    "assert_eq",
+    "derive",
     "image",
     "image-format-png",
     "image-format-gif",
@@ -65,8 +93,7 @@ _all = [
     "image-format-ff",
     "image-format-avif",
     "image-format-qoi",
-    "assert_eq",
-    "derive",
+    "tools",
 ]
 
 [dev-dependencies]
@@ -103,12 +130,12 @@ git2 = { workspace = true, optional = true }
 [[test]]
 name = "async_tests"
 path = "tests/async_tests.rs"
-required-features = ["async", "tokio", "assert_eq", "derive"]
+required-features = ["async", "tokio", "assert_eq", "derive", "tools"]
 
 [[test]]
 name = "tests"
 path = "tests/tests.rs"
-required-features = ["assert_eq", "derive"]
+required-features = ["assert_eq", "derive", "tools"]
 
 [[example]]
 name = "reading_from_include_dir_vfs"
@@ -118,7 +145,7 @@ required-features = ["include_dir", "derive"]
 [[example]]
 name = "reading_dir_children_from_include_dir_vfs"
 path = "examples/reading_dir_children_from_include_dir_vfs.rs"
-required-features = ["include_dir", "derive"]
+required-features = ["include_dir", "derive", "tools-dir-children"]
 
 [[example]]
 name = "reading_from_git_vfs"
@@ -153,7 +180,7 @@ required-features = ["derive"]
 [[example]]
 name = "deferred_read"
 path = "examples/deferred_read.rs"
-required-features = ["derive"]
+required-features = ["derive", "tools-deferred-read"]
 
 [[example]]
 name = "reading"
@@ -168,12 +195,12 @@ required-features = ["derive"]
 [[example]]
 name = "reading_dir_children"
 path = "examples/reading_dir_children.rs"
-required-features = ["derive"]
+required-features = ["derive", "tools-dir-children"]
 
 [[example]]
 name = "writing_dir_children"
 path = "examples/writing_dir_children.rs"
-required-features = ["derive"]
+required-features = ["derive", "tools-dir-children"]
 
 [lints]
 workspace = true

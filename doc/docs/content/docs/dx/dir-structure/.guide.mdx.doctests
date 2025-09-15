@@ -110,8 +110,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-fmt-wrapper", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-fmt-wrapper", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -159,8 +159,8 @@
 ///  />
 /// 
 /// 
-#[cfg_attr(all(feature = "json", feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "json", feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "json", feature = "tools-fmt-wrapper", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "json", feature = "tools-fmt-wrapper", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -315,8 +315,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-dir-children", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-dir-children", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -374,8 +374,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-dir-children", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-dir-children", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// use std::path::Path;
@@ -446,8 +446,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-dir-children", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-dir-children", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -506,8 +506,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-deferred-read", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-deferred-read", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -581,8 +581,8 @@
 /// `}
 /// />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-deferred-read-or-own", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-deferred-read-or-own", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -664,8 +664,8 @@
 /// `}
 ///  />
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-dir-children", feature = "tools-deferred-read-or-own", feature = "tools-versioned", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-dir-children", feature = "tools-deferred-read-or-own", feature = "tools-versioned", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -753,8 +753,8 @@
 ///  />
 /// 
 /// 
-#[cfg_attr(all(feature = "derive", ), doc = r#"```rust,no_run"#)]
-#[cfg_attr(not(all(feature = "derive", )), doc = r#"```rust,compile_fail"#)]
+#[cfg_attr(all(feature = "derive", feature = "tools-dir-children", feature = "tools-deferred-read-or-own", feature = "tools-versioned", ), doc = r#"```rust,no_run"#)]
+#[cfg_attr(not(all(feature = "derive", feature = "tools-dir-children", feature = "tools-deferred-read-or-own", feature = "tools-versioned", )), doc = r#"```rust,compile_fail"#)]
 /// #![deny(unused_imports)]
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -817,23 +817,6 @@
 /// Ok::<_, dir_structure::error::Error>(())
 /// 
 /// ```
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
 /// 
 /// 
 /// 

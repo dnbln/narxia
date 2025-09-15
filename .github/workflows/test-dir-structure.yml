@@ -46,6 +46,7 @@ jobs:
             "--no-default-features --features ron",
             "--no-default-features --features include_dir",
             "--no-default-features --features derive",
+            "--no-default-features --features tools",
             "--features assert_eq",
             "--features assert_eq,git",
             "--features assert_eq,async",

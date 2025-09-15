@@ -1,5 +1,6 @@
-// !req-feature json
 // !req-feature derive
+// !req-feature json
+// !req-feature tools-fmt-wrapper
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem

@@ -1,4 +1,7 @@
 // !req-feature derive
+// !req-feature tools-dir-children
+// !req-feature tools-deferred-read-or-own
+// !req-feature tools-versioned
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;

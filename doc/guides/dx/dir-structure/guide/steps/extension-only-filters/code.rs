@@ -1,4 +1,5 @@
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 // !tooltip[/ext_filter/] ext_filter
 use dir_structure::ext_filter;

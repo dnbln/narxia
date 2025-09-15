@@ -1,4 +1,5 @@
 // !req-feature derive
+// !req-feature tools-dir-children
 // !lints
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
