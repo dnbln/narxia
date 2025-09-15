@@ -34,8 +34,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-[This blog post][blog post] goes a bit more in-depth about
-the more advanced features of the library; see also [the guides in the narxia DX documentation](https://nrx.dnbln.dev/docs/dx/dir-structure).
+[This blog post][blog post] goes a bit more in-depth about the more advanced features of the library;
+see also [the guides in the narxia DX documentation](https://nrx.dnbln.dev/docs/dx/dir-structure) and
+[the examples](examples/).
 
 Here is a quick run-down:
 
