@@ -35,7 +35,8 @@ and write them back to disk."##
             //!
             #![doc = concat!(r##"## Reading a "##, stringify!($mod_name), r##" file"##)]
             //!
-            //! ```
+            #![cfg_attr(feature = "derive", doc = "```rust")]
+            #![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
             //! use std::path::Path;
             //!
             //! use dir_structure::traits::sync::DirStructureItem;
@@ -66,7 +67,8 @@ and write them back to disk."##
             //!
             #![doc = concat!(r##"## Writing a "##, stringify!($mod_name), r##" file"##)]
             //!
-            //! ```
+            #![cfg_attr(feature = "derive", doc = "```rust")]
+            #![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
             //! use std::path::Path;
             //!
             //! use dir_structure::traits::sync::DirStructureItem;
