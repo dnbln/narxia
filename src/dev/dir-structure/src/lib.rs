@@ -202,10 +202,7 @@ pub mod vfs;
 /// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../..")));
 /// assert!(NoFilter::allows(Path::new("foo/bar/baz/../../../../../..")));
 /// ```
-#[cfg(any(
-    feature = "tools-dir-children",
-    feature = "tools-dir-descendants",
-))]
+#[cfg(any(feature = "tools-dir-children", feature = "tools-dir-descendants",))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct NoFilter;
