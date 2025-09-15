@@ -1,5 +1,5 @@
 //! An example demonstrating the use of [`resolve_path`] to resolve a specific path within a directory structure.
-//! 
+//!
 //! Requires the `resolve-path` feature to be enabled.
 
 use dir_structure::traits::resolve::resolve_path;

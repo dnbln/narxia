@@ -1,6 +1,6 @@
 //! Example of using the [`load_path!`] macro to load specific fields from a directory structure,
 //! without loading the entire structure.
-//! 
+//!
 //! Requires the `resolve-path` feature to be enabled.
 
 use dir_structure::traits::resolve::load_path;
