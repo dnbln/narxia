@@ -1,29 +1,25 @@
 //! Error type, see [`Error`].
 
 use std::error;
+use std::fmt;
 use std::io;
 use std::path::Path;
 use std::path::PathBuf;
 use std::result;
 
 /// The error type for this library.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug)]
 pub enum Error {
     /// An IO error.
-    #[error("IO error at {0:?}: {1}")]
-    Io(PathBuf, #[source] io::Error),
+    Io(PathBuf, io::Error),
     /// Parse error.
-    #[error("Parse error at {0:?}: {1}")]
-    Parse(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
+    Parse(PathBuf, Box<dyn error::Error + Send + Sync>),
     /// Write error.
-    #[error("Write error at {0:?}: {1}")]
-    Write(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
+    Write(PathBuf, Box<dyn error::Error + Send + Sync>),
     /// Serde error.
-    #[error("Serde error at {0:?}: {1}")]
-    Serde(PathBuf, #[source] Box<dyn error::Error + Send + Sync>),
+    Serde(PathBuf, Box<dyn error::Error + Send + Sync>),
 
     /// An error related to the directory structure.
-    #[error("Unexpected number of children: expected {expected}, found {found} at {path:?}")]
     UnexpectedNumberOfChildren {
         /// The expected number of children.
         expected: &'static str,
@@ -32,6 +28,38 @@ pub enum Error {
         /// The path to the directory where this happened.
         path: PathBuf,
     },
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Self::Io(_, e) => Some(e),
+            Self::Parse(_, e) => Some(e.as_ref()),
+            Self::Write(_, e) => Some(e.as_ref()),
+            Self::Serde(_, e) => Some(e.as_ref()),
+            Self::UnexpectedNumberOfChildren { .. } => None,
+        }
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(path, e) => write!(f, "IO error at {:?}: {}", path, e),
+            Self::Parse(path, e) => write!(f, "Parse error at {:?}: {}", path, e),
+            Self::Write(path, e) => write!(f, "Write error at {:?}: {}", path, e),
+            Self::Serde(path, e) => write!(f, "Serde error at {:?}: {}", path, e),
+            Self::UnexpectedNumberOfChildren {
+                expected,
+                found,
+                path,
+            } => write!(
+                f,
+                "Unexpected number of children: expected {}, found {} at {:?}",
+                expected, found, path
+            ),
+        }
+    }
 }
 
 mod sealed {
