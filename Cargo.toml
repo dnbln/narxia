@@ -46,8 +46,8 @@ narxia-ssa-validator = { path = "src/compiler/narxia-ssa-validator" }
 narxia-syn = { path = "src/compiler/narxia-syn" }
 narxia-syn-db = { path = "src/compiler/narxia-syn-db" }
 
-assert_eq_macros = { path = "src/dev/assert_eq_macros", version = "=0.1.0" }
-assert_eq = { path = "src/dev/assert_eq", version = "0.1.0" }
+assert_eq_macros = { path = "src/dev/assert_eq_macros", version = "=0.2.0" }
+assert_eq = { path = "src/dev/assert_eq", version = "0.2.0" }
 doc-extract = { path = "src/dev/doc-extract" }
 dir-structure-macros = { path = "src/dev/dir-structure-macros", version = "=0.2.0-rc.2" }
 dir-structure = { path = "src/dev/dir-structure", version = "0.2.0-rc.2" }
