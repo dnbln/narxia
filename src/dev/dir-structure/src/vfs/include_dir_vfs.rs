@@ -43,9 +43,16 @@ macro_rules! include_dir_vfs {
     }};
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("path normalization error")]
+#[derive(Debug)]
 struct NormalizeError;
+
+impl fmt::Display for NormalizeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "path normalization error")
+    }
+}
+
+impl error::Error for NormalizeError {}
 
 /// [`Path::normalize_lexically`] is unstable, so we implement a simplified version here.
 ///
