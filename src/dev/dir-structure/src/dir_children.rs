@@ -15,6 +15,7 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 use std::ops::RangeBounds;
 use std::path::Path;
+#[cfg(any(feature = "async", feature = "resolve-path"))]
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::slice;
@@ -61,11 +62,6 @@ use crate::traits::vfs::DirWalker as _;
 #[derive(Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DirChildren<T, F: Filter = NoFilter> {
-    /// The path to the root directory.
-    ///
-    /// This path doesn't influence writing in any way, it is only to
-    /// point out the directory after it has been read and parsed.
-    pub self_path: PathBuf,
     /// The children of the root directory.
     pub children: Vec<DirChild<T>>,
 
@@ -80,7 +76,6 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            self_path: self.self_path.clone(),
             children: self.children.clone(),
             filter: marker::PhantomData,
         }
@@ -266,7 +261,6 @@ where
     /// ```
     pub fn new() -> Self {
         Self {
-            self_path: PathBuf::new(),
             children: Vec::new(),
             filter: marker::PhantomData,
         }
@@ -277,11 +271,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// use std::path::PathBuf;
     /// use dir_structure::{dir_children::{DirChildren, DirChild}, NoFilter};
     ///
     /// let d = DirChildren::<String, NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -289,12 +281,8 @@ where
     /// );
     /// assert!(!d.is_empty());
     /// ```
-    pub fn with_children_from_iter(
-        self_path: impl Into<PathBuf>,
-        children: impl IntoIterator<Item = DirChild<T>>,
-    ) -> Self {
+    pub fn with_children_from_iter(children: impl IntoIterator<Item = DirChild<T>>) -> Self {
         Self {
-            self_path: self_path.into(),
             children: children.into_iter().collect(),
             filter: marker::PhantomData,
         }
@@ -313,7 +301,6 @@ where
     ///
     /// ```rust
     /// use std::path::Path;
-    /// use std::path::PathBuf;
     /// use std::pin::Pin;
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}, prelude::*};
     ///
@@ -332,9 +319,7 @@ where
     ///     }
     /// }
     ///
-    /// let d = PathBuf::from("dir");
     /// let dir = DirChildren::<_, dir_structure::NoFilter>::with_children_from_iter(
-    ///     d.clone(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -345,7 +330,6 @@ where
     /// assert_eq!(
     ///     dir,
     ///     DirChildren::with_children_from_iter(
-    ///         d.clone(),
     ///         vec![
     ///             DirChild::new("file1.txt", NewType("file1".to_owned())),
     ///             DirChild::new("file2.txt", NewType("file2".to_owned())),
@@ -361,7 +345,6 @@ where
     {
         let children = self.children.into_iter().map(f).collect();
         DirChildren {
-            self_path: self.self_path,
             children,
             filter: marker::PhantomData,
         }
@@ -395,7 +378,6 @@ where
         NewF: Filter,
     {
         DirChildren {
-            self_path: self.self_path,
             children: self.children,
             filter: marker::PhantomData,
         }
@@ -406,14 +388,12 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert_eq!(d.len(), 0);
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -430,14 +410,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// assert!(d.is_empty());
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -454,7 +432,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -463,7 +440,6 @@ where
     /// assert_eq!(d.get(100), None);
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -484,7 +460,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -493,7 +468,6 @@ where
     /// assert_eq!(d.get_mut(100), None);
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -513,7 +487,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -522,7 +495,6 @@ where
     /// assert_eq!(d.get_name("aaaa"), None);
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -545,7 +517,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -554,7 +525,6 @@ where
     /// assert_eq!(d.get_name_mut("aaaa"), None);
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -576,7 +546,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -585,7 +554,6 @@ where
     /// assert_eq!(d.get_value_by_name("aaaa"), None);
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -606,7 +574,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
@@ -615,7 +582,6 @@ where
     /// assert_eq!(d.get_value_by_name_mut("aaaa"), None);
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -643,7 +609,6 @@ where
     /// assert_eq!(i.next(), None);
     ///
     /// let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -667,7 +632,6 @@ where
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -682,11 +646,9 @@ where
     /// Modifying the children is also possible:
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     ///
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -711,7 +673,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::new();
     ///
@@ -741,12 +702,10 @@ where
     /// and returns `true` if the child should be kept, or `false` if it should be removed.
     ///
     /// # Examples
-    ////
+    ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -767,10 +726,8 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -798,10 +755,8 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// use std::path::{Path, PathBuf};
     /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
     /// let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    ///     PathBuf::new(),
     ///     vec![
     ///         DirChild::new("file1.txt", "file1".to_owned()),
     ///         DirChild::new("file2.txt", "file2".to_owned()),
@@ -827,6 +782,36 @@ where
         Fi: FnMut(&mut DirChild<T>) -> bool,
     {
         DirChildrenExtractIf(self.children.extract_if(range, filter))
+    }
+}
+
+impl<T, F> From<Vec<DirChild<T>>> for DirChildren<T, F>
+where
+    F: Filter,
+{
+    fn from(children: Vec<DirChild<T>>) -> Self {
+        Self {
+            children,
+            filter: marker::PhantomData,
+        }
+    }
+}
+
+impl<T, F> Extend<DirChild<T>> for DirChildren<T, F>
+where
+    F: Filter,
+{
+    fn extend<I: IntoIterator<Item = DirChild<T>>>(&mut self, iter: I) {
+        self.children.extend(iter);
+    }
+}
+
+impl<T, F> FromIterator<DirChild<T>> for DirChildren<T, F>
+where
+    F: Filter,
+{
+    fn from_iter<I: IntoIterator<Item = DirChild<T>>>(iter: I) -> Self {
+        Self::with_children_from_iter(iter)
     }
 }
 
@@ -889,7 +874,6 @@ where
         }
 
         Ok(DirChildren {
-            self_path: path.to_path_buf(),
             children,
             filter: marker::PhantomData,
         })
@@ -979,11 +963,11 @@ where
                         kind: _,
                     }))) => {
                         if !F::allows(&path_child) {
-                            return Poll::Ready(Ok(DirChildren {
-                                self_path: path,
-                                children,
-                                filter: marker::PhantomData,
-                            }));
+                            self.project_replace(DirChildrenReadAsyncFuture::Begin(
+                                entries, children, path, vfs,
+                            ));
+                            cx.waker().wake_by_ref();
+                            return Poll::Pending;
                         }
 
                         let value_future = T::read_from_async(path_child, vfs);
@@ -999,7 +983,6 @@ where
                         Poll::Pending
                     }
                     Poll::Ready(None) => Poll::Ready(Ok(DirChildren {
-                        self_path: path,
                         children,
                         filter: marker::PhantomData,
                     })),
@@ -2384,6 +2367,76 @@ where
     /// ```
     pub fn new(children: DirChildren<T, F>) -> Self {
         ForceCreateDirChildren { children }
+    }
+
+    /// Creates a new [`ForceCreateDirChildren`] from an iterator of [`DirChild`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use dir_structure::dir_children::{ForceCreateDirChildren, DirChild, DirChildren};
+    /// use dir_structure::NoFilter;
+    ///
+    /// let children = vec![
+    ///     DirChild::new("file1.txt", "content1".to_owned()),
+    ///     DirChild::new("file2.txt", "content2".to_owned()),
+    /// ];
+    /// let force_create = ForceCreateDirChildren::<_, NoFilter>::with_children_from_iter(children);
+    ///
+    /// assert_eq!(force_create.len(), 2);
+    /// ```
+    pub fn with_children_from_iter<I>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = DirChild<T>>,
+    {
+        Self::new(DirChildren::from_iter(iter))
+    }
+}
+
+impl<T, F> AsRef<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+where
+    F: Filter,
+{
+    fn as_ref(&self) -> &DirChildren<T, F> {
+        &self.children
+    }
+}
+
+impl<T, F> AsMut<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+where
+    F: Filter,
+{
+    fn as_mut(&mut self) -> &mut DirChildren<T, F> {
+        &mut self.children
+    }
+}
+
+impl<T, F> From<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+where
+    F: Filter,
+{
+    fn from(children: DirChildren<T, F>) -> Self {
+        ForceCreateDirChildren { children }
+    }
+}
+
+impl<T, F> From<ForceCreateDirChildren<T, F>> for DirChildren<T, F>
+where
+    F: Filter,
+{
+    fn from(force_create: ForceCreateDirChildren<T, F>) -> Self {
+        force_create.children
+    }
+}
+
+impl<T, F> FromIterator<DirChild<T>> for ForceCreateDirChildren<T, F>
+where
+    F: Filter,
+{
+    fn from_iter<I: IntoIterator<Item = DirChild<T>>>(iter: I) -> Self {
+        ForceCreateDirChildren {
+            children: DirChildren::from_iter(iter),
+        }
     }
 }
 

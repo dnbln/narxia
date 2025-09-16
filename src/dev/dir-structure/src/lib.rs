@@ -154,6 +154,7 @@ pub mod prelude {
 
 #[cfg(feature = "tools-clean-dir")]
 pub mod clean_dir;
+#[cfg(feature = "tools-data-formats")]
 pub mod data_formats;
 #[cfg(feature = "tools-deferred-read")]
 pub mod deferred_read;

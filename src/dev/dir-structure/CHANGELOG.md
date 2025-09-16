@@ -8,12 +8,35 @@ Examples! Lots of examples have been added to the [`examples/`](examples/) direc
 
 Add `GitVfs::new` to be able to create a `GitVfs`.
 
+For `DirChildren`:
+- Implemented `FromIterator<DirChild<T>>` for `DirChildren<T, F>`, allowing you to create a `DirChildren` from an iterator of `DirChild<T>`.
+- Implemented `From<Vec<DirChild<T>>>` for `DirChildren<T, F>`, allowing you to create a `DirChildren<T, F>` from a `Vec<DirChild<T>>`.
+- Implemented `Extend<DirChild<T>>` for `DirChildren<T, F>`.
+
+For `ForceCreateDirChildren`:
+- Added `ForceCreateDirChildren::with_children_from_iter`, allowing you to create a `ForceCreateDirChildren` from an iterator of `DirChild<T>`.
+- Implemented `FromIterator<DirChild<T>>` for `ForceCreateDirChildren<T, F>`.
+- Implemented `AsRef<DirChildren<T, F>>` for `ForceCreateDirChildren<T, F>`.
+- Implemented `AsMut<DirChildren<T, F>>` for `ForceCreateDirChildren<T, F>`.
+- Implemented `From<DirChildren<T, F>>` for `ForceCreateDirChildren<T, F>`.
+- Implemented `From<ForceCreateDirChildren<T, F>>` for `DirChildren<T, F>`.
+
+For `DirDescendants`:
+- Implemented `Default` for `DirDescendants<T, F>`, creating an empty `DirDescendants`.
+- Implemented `From<Vec<DirDescendant<T>>>` for `DirDescendants<T, F>`.
+- Implemented `FromIterator<DirDescendant<T>>` for `DirDescendants<T, F>`.
+- Implemented `Extend<DirDescendant<T>>` for `DirDescendants<T, F>`.
+
+
+Added a `all-image-formats` feature flag, which enables support for all image formats supported by the `image` crate.
+
 ## Breaking changes
 
 `WriteTo` now takes in a `'vfs` lifetime parameter.
-
 It is automatically added by the `DirStructure` derive macro, so if you are using that, you don't need to do anything.
 If you are implementing `WriteTo` manually, you will need to add the lifetime parameter to your impls.
+
+Removed the `self_path` field from `DirChildren`, as it was not used anywhere, and did not make sense to be there.
 
 ## Other changes
 
@@ -22,7 +45,7 @@ for image reading, and we can wrap the `Read` in a `BufReader` there.
 
 Similarly, relax bound for `VfsAsync::RFile` from `AsyncBufRead` to `AsyncRead`.
 
-*`derive` and `tools` features* are now optional, default features.
+*The `derive` and `tools` features* are now optional, default features.
 This allows the user to opt-out of these features if they are not needed.
 
 Every wrapper type is put behind a `tools-<wrapper>` feature flag, so you can opt-out of
@@ -34,6 +57,8 @@ is supposed to allow you to define directory structures and read / write them, a
 as defining virtual file systems, without the derive macros or any of the wrapper types.
 
 # `v0.2.0-rc.2`
+
+Released: 2025-09-12
 
 ## Image support
 
@@ -185,7 +210,7 @@ assert_eq!(
 );
 ```
 
-# 0.1.6
+# `0.1.6`
 
 Released: 2025-08-07
 

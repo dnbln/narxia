@@ -11,7 +11,7 @@ A collection of examples demonstrating various features of the `dir-structure` c
 
 - [clean_dir.rs](clean_dir.rs): An example demonstrating the use of `CleanDir` to ensure a directory is clean before writing.
 
-## `data_formats::json`, `data_formats::json_pretty`
+## `data_formats::*`
 
 - [json.rs](json.rs): An example demonstrating the use of `Json` to read and write JSON files.
 - [json_pretty.rs](json_pretty.rs): An example demonstrating the use of `JsonPretty` to read and write pretty-printed JSON files.

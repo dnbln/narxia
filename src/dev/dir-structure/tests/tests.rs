@@ -124,14 +124,11 @@ fn write_subdirectory_children() {
         .write_typed(
             &d,
             &Dir {
-                subdir: DirChildren::with_children_from_iter(
-                    subdir.clone(),
-                    [
-                        DirChild::new("f1.txt", "f1".to_owned()),
-                        DirChild::new("f2.txt", "f2".to_owned()),
-                        DirChild::new("f3", "f3".to_owned()),
-                    ],
-                ),
+                subdir: DirChildren::with_children_from_iter([
+                    DirChild::new("f1.txt", "f1".to_owned()),
+                    DirChild::new("f2.txt", "f2".to_owned()),
+                    DirChild::new("f3", "f3".to_owned()),
+                ]),
             },
         )
         .unwrap();

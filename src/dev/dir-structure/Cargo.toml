@@ -17,10 +17,10 @@ default = [
     "derive",
     "tools",
 ]
-json = ["dep:serde", "dep:serde_json"]
-toml = ["dep:serde", "dep:toml"]
-yaml = ["dep:serde", "dep:serde_yaml"]
-ron = ["dep:serde", "dep:ron"]
+json = ["dep:serde", "dep:serde_json", "tools-data-formats"]
+toml = ["dep:serde", "dep:toml", "tools-data-formats"]
+yaml = ["dep:serde", "dep:serde_yaml", "tools-data-formats"]
+ron = ["dep:serde", "dep:ron", "tools-data-formats"]
 async = ["dep:pin-project", "dep:futures", "dir-structure-macros/async"]
 tokio = ["dep:tokio", "async"]
 include_dir = ["dep:include_dir"]
@@ -44,8 +44,25 @@ image-format-pnm = ["image", "image/pnm"]
 image-format-ff = ["image", "image/ff"]
 image-format-avif = ["image", "image/avif"]
 image-format-qoi = ["image", "image/qoi"]
+all-image-formats = [
+    "image-format-png",
+    "image-format-gif",
+    "image-format-jpeg",
+    "image-format-webp",
+    "image-format-tiff",
+    "image-format-tga",
+    "image-format-bmp",
+    "image-format-ico",
+    "image-format-hdr",
+    "image-format-exr",
+    "image-format-pnm",
+    "image-format-ff",
+    "image-format-avif",
+    "image-format-qoi",
+]
 
 tools-clean-dir = []
+tools-data-formats = []
 tools-deferred-read = []
 tools-deferred-read-or-own = []
 tools-dir-children = []

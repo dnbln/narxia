@@ -670,6 +670,36 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     }
 }
 
+impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> Default for DirDescendants<T, F> {
+    fn default() -> Self {
+        Self::new(vec![])
+    }
+}
+
+impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> From<Vec<DirDescendant<T>>>
+    for DirDescendants<T, F>
+{
+    fn from(descendants: Vec<DirDescendant<T>>) -> Self {
+        Self::new(descendants)
+    }
+}
+
+impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> FromIterator<DirDescendant<T>>
+    for DirDescendants<T, F>
+{
+    fn from_iter<I: IntoIterator<Item = DirDescendant<T>>>(iter: I) -> Self {
+        Self::new(iter.into_iter().collect())
+    }
+}
+
+impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> Extend<DirDescendant<T>>
+    for DirDescendants<T, F>
+{
+    fn extend<I: IntoIterator<Item = DirDescendant<T>>>(&mut self, iter: I) {
+        self.descendants.extend(iter);
+    }
+}
+
 impl<'a, T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator
     for &'a DirDescendants<T, F>
 {
