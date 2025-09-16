@@ -119,6 +119,7 @@ fn expand_dir_structure_for_field(
             .unwrap();
 
         let mut has_field_impl = quote! {
+            #[automatically_derived]
             impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
                 type Inner = #field_ty;
 
@@ -132,6 +133,7 @@ fn expand_dir_structure_for_field(
         match &with_newtype {
             Some(nt) => {
                 has_field_impl.extend(quote! {
+                    #[automatically_derived]
                     impl #impl_generics ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
                         type ReaderType = #nt;
 
@@ -143,6 +145,7 @@ fn expand_dir_structure_for_field(
             }
             None => {
                 has_field_impl.extend(quote! {
+                    #[automatically_derived]
                     impl #impl_generics ::dir_structure::traits::resolve::HasFieldNoNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {}
                 });
             }
@@ -262,6 +265,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     #[cfg_attr(not(feature = "resolve-path"), expect(unused_mut))]
     let mut expanded = quote! {
+        #[automatically_derived]
         impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
             fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self>
             where
@@ -272,12 +276,14 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
                 })
             }
         }
+        #[automatically_derived]
         impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_clause {
             fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<()> {
                 #(#field_write_impls)*
                 Ok(())
             }
         }
+        #[automatically_derived]
         impl #impl_generics ::dir_structure::traits::sync::DirStructure for #name #ty_generics #where_clause {}
     };
 

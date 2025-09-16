@@ -311,9 +311,10 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     let write_async_ty_name = &write_async_ref.name;
 
     expanded.extend(quote! {
-        #[allow(nonstandard_style, non_snake_case)]
+        #[automatically_derived]
         #read_async_impl_enum
 
+        #[automatically_derived]
         impl #read_async_impl_generics ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs> for #name #ty_generics #where_clause_read_from_async {
             type Future = #read_async_ty_name<'vfs, Vfs>
             where
@@ -330,9 +331,10 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             }
         }
 
-        #[allow(nonstandard_style, non_snake_case)]
+        #[automatically_derived]
         #write_async_ref_impl_enum
 
+        #[automatically_derived]
         impl #write_async_impl_generics ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs> for #name #ty_generics #where_clause_write_to_async_ref {
             type Future<'a> =  #write_async_ty_name<#vfs_lifetime_header 'a, Vfs>
             where

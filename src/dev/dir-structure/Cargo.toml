@@ -183,6 +183,11 @@ path = "examples/deferred_read.rs"
 required-features = ["derive", "tools-deferred-read"]
 
 [[example]]
+name = "deferred_read_or_own"
+path = "examples/deferred_read_or_own.rs"
+required-features = ["derive", "tools-deferred-read-or-own"]
+
+[[example]]
 name = "reading"
 path = "examples/reading.rs"
 required-features = ["derive"]
@@ -201,6 +206,41 @@ required-features = ["derive", "tools-dir-children"]
 name = "writing_dir_children"
 path = "examples/writing_dir_children.rs"
 required-features = ["derive", "tools-dir-children"]
+
+[[example]]
+name = "clean_dir"
+path = "examples/clean_dir.rs"
+required-features = ["derive", "tools-clean-dir"]
+
+[[example]]
+name = "json"
+path = "examples/json.rs"
+required-features = ["derive", "json"]
+
+[[example]]
+name = "json_pretty"
+path = "examples/json_pretty.rs"
+required-features = ["derive", "json"]
+
+[[example]]
+name = "toml"
+path = "examples/toml.rs"
+required-features = ["derive", "toml"]
+
+[[example]]
+name = "yaml"
+path = "examples/yaml.rs"
+required-features = ["derive", "yaml"]
+
+[[example]]
+name = "ron"
+path = "examples/ron.rs"
+required-features = ["derive", "ron"]
+
+[[example]]
+name = "ron_pretty"
+path = "examples/ron_pretty.rs"
+required-features = ["derive", "ron"]
 
 [lints]
 workspace = true

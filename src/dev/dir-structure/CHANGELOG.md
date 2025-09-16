@@ -22,6 +22,17 @@ for image reading, and we can wrap the `Read` in a `BufReader` there.
 
 Similarly, relax bound for `VfsAsync::RFile` from `AsyncBufRead` to `AsyncRead`.
 
+*`derive` and `tools` features* are now optional, default features.
+This allows the user to opt-out of these features if they are not needed.
+
+Every wrapper type is put behind a `tools-<wrapper>` feature flag, so you can opt-out of
+the wrapper types you don't need, and only use the ones you need. The `tools` feature
+enables all the wrapper types.
+
+Opting out of all default features removes all the dependencies of the crate. The core crate
+is supposed to allow you to define directory structures and read / write them, as well
+as defining virtual file systems, without the derive macros or any of the wrapper types.
+
 # `v0.2.0-rc.2`
 
 ## Image support

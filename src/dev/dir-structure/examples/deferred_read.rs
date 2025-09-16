@@ -1,4 +1,6 @@
 //! An example demonstrating the use of [`DeferredRead`] to defer reading file contents until needed.
+//!
+//! Requires the `derive` and `tools-deferred-read` features to be enabled.
 
 use std::error::Error;
 use std::fs;

@@ -7,9 +7,26 @@ A collection of examples demonstrating various features of the `dir-structure` c
 - [reading.rs](reading.rs): A simple example of reading a directory structure from disk.
 - [writing.rs](writing.rs): A simple example of writing a directory structure to disk.
 
+## `CleanDir`
+
+- [clean_dir.rs](clean_dir.rs): An example demonstrating the use of `CleanDir` to ensure a directory is clean before writing.
+
+## `data_formats::json`, `data_formats::json_pretty`
+
+- [json.rs](json.rs): An example demonstrating the use of `Json` to read and write JSON files.
+- [json_pretty.rs](json_pretty.rs): An example demonstrating the use of `JsonPretty` to read and write pretty-printed JSON files.
+- [toml.rs](toml.rs): An example demonstrating the use of `Toml` to read and write TOML files.
+- [yaml.rs](yaml.rs): An example demonstrating the use of `Yaml` to read and write YAML files.
+- [ron.rs](ron.rs): An example demonstrating the use of `Ron` to read and write RON files.
+- [ron_pretty.rs](ron_pretty.rs): An example demonstrating the use of `RonPretty` to read and write pretty-printed RON files.
+
 ## `DeferredRead`
 
 - [deferred_read.rs](deferred_read.rs): An example demonstrating the use of `DeferredRead` to defer reading file contents until they are needed.
+
+## `DeferredReadOrOwn`
+
+- [deferred_read_or_own.rs](deferred_read_or_own.rs): An example demonstrating the use of `DeferredReadOrOwn` to defer reading file contents and cache them.
 
 ## `DirChildren`
 

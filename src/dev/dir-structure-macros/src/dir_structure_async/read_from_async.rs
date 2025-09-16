@@ -243,6 +243,7 @@ pub(super) fn future_impl_enum(
     let vis = &st.vis;
 
     Ok(quote! {
+        #[automatically_derived]
         #[allow(non_camel_case_types)]
         #[::dir_structure::pin_project::pin_project(project_replace = #proj_name)]
         #vis enum #name<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> #where_clause_read_future {
@@ -255,6 +256,7 @@ pub(super) fn future_impl_enum(
         }
 
 
+        #[automatically_derived]
         impl<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> ::std::future::Future for #name<'vfs, Vfs> #where_clause_read_future {
             type Output = ::dir_structure::error::Result<#ty_name #ty_generics>;
 
