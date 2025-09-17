@@ -94,12 +94,12 @@ impl<T> Versioned<T> {
     }
 
     /// Checks if the value has been changed.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use dir_structure::versioned::VersionedString;
-    /// 
+    ///
     /// let mut v = VersionedString::new("value".to_owned(), "path");
     /// assert!(!v.is_dirty());
     /// *v = "new value".to_owned();
@@ -110,12 +110,12 @@ impl<T> Versioned<T> {
     }
 
     /// Checks if the value has not been changed.
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```
     /// use dir_structure::versioned::VersionedString;
-    /// 
+    ///
     /// let mut v = VersionedString::new("value".to_owned(), "path");
     /// assert!(v.is_clean());
     /// *v = "new value".to_owned();
