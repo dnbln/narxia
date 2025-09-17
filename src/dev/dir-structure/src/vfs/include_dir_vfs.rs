@@ -20,7 +20,9 @@ use crate::error::Result;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirEntryKind;
 use crate::traits::vfs::DirWalker;
+use crate::traits::vfs::PathType;
 use crate::traits::vfs::Vfs;
+use crate::traits::vfs::VfsCore;
 
 /// A [`Vfs`] implementation with an [`include_dir::Dir`] directory.
 pub struct IncludeDirVfs {
@@ -112,7 +114,7 @@ fn normalize_lexically(path: &Path) -> StdResult<PathBuf, NormalizeError> {
     Ok(lexical)
 }
 
-fn norm(path: &Path) -> Result<PathBuf> {
+fn norm(path: &Path) -> Result<PathBuf, PathBuf> {
     normalize_lexically(path).map_err(|e| {
         Error::Io(
             path.to_path_buf(),
@@ -121,7 +123,7 @@ fn norm(path: &Path) -> Result<PathBuf> {
     })
 }
 
-fn get_dir_or_root<'a>(root: &'a Dir<'static>, path: &Path) -> Result<&'a Dir<'static>> {
+fn get_dir_or_root<'a>(root: &'a Dir<'static>, path: &Path) -> Result<&'a Dir<'static>, PathBuf> {
     if path.as_os_str().is_empty() || path == Path::new(".") {
         return Ok(root);
     }
@@ -129,6 +131,10 @@ fn get_dir_or_root<'a>(root: &'a Dir<'static>, path: &Path) -> Result<&'a Dir<'s
     let p = norm(path)?;
     root.get_dir(&p)
         .ok_or(Error::Io(p, io::ErrorKind::NotFound.into()))
+}
+
+impl VfsCore for IncludeDirVfs {
+    type Path = Path;
 }
 
 impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
@@ -139,7 +145,10 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
         Self: 'a;
     type RFile = io::Cursor<&'static [u8]>;
 
-    fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
+    fn open_read(
+        self: Pin<&Self>,
+        path: &Path,
+    ) -> Result<Self::RFile, <Self::Path as PathType>::OwnedPath> {
         let p = norm(path)?;
         if self.dir.get_dir(&p).is_some() {
             return Err(Error::Io(p, io::ErrorKind::IsADirectory.into()));
@@ -153,7 +162,7 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
         Ok(io::Cursor::new(file.contents()))
     }
 
-    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>> {
+    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>, <Self::Path as PathType>::OwnedPath> {
         let p = norm(path)?;
         self.dir
             .get_file(&p)
@@ -161,7 +170,10 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
             .ok_or(Error::Io(p, io::ErrorKind::NotFound.into()))
     }
 
-    fn read_string(self: Pin<&Self>, path: &Path) -> Result<String> {
+    fn read_string(
+        self: Pin<&Self>,
+        path: &Path,
+    ) -> Result<String, <Self::Path as PathType>::OwnedPath> {
         let p = norm(path)?;
         #[derive(Debug)]
         struct Utf8Error;
@@ -191,14 +203,25 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
             .ok_or(Error::Parse(p, Box::new(Utf8Error)))
     }
 
-    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool> {
+    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
         let path = norm(path)?;
 
         Ok(get_dir_or_root(&self.dir, &path)
             .map_or_else(|_| self.dir.get_file(&path).is_some(), |_| true))
     }
 
-    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Path) -> Result<Self::DirWalk<'b>>
+    fn is_dir(
+        self: Pin<&Self>,
+        path: &Self::Path,
+    ) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+        let path = norm(path)?;
+        Ok(self.dir.get_dir(&path).is_some())
+    }
+
+    fn walk_dir<'b>(
+        self: Pin<&'b Self>,
+        path: &Path,
+    ) -> Result<Self::DirWalk<'b>, <Self::Path as PathType>::OwnedPath>
     where
         'vfs: 'b,
     {
@@ -213,7 +236,9 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
 pub struct IncludeDirWalker<'a>(slice::Iter<'a, DirEntry<'static>>);
 
 impl<'a> DirWalker<'a> for IncludeDirWalker<'a> {
-    fn next(&mut self) -> Option<Result<DirEntryInfo>> {
+    type P = Path;
+
+    fn next(&mut self) -> Option<Result<DirEntryInfo<Self::P>, <Self::P as PathType>::OwnedPath>> {
         let next_entry = self.0.next()?;
         match next_entry {
             DirEntry::Dir(dir) => Some(Ok(DirEntryInfo {

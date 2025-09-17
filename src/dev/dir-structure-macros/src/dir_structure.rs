@@ -10,6 +10,8 @@ use syn::parse_quote;
 use crate::dir_structure_core::DirStructureCoreInfo;
 use crate::dir_structure_core::PathSpec;
 use crate::dir_structure_core::compile_attrs;
+#[cfg(feature = "resolve-path")]
+use crate::resolve_path::has_field_impl;
 
 struct DirStructureForField {
     read_code: TokenStream,
@@ -47,7 +49,7 @@ fn expand_dir_structure_for_field(
 
     let (actual_path_expr, path_pusher_for_has_field) = match path {
         PathSpec::Path(p) => (
-            quote! { #path_param_name.join(#p) },
+            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name, #p).as_ref() },
             quote! { #path_param_name.push(#p); },
         ),
         PathSpec::SelfPath => (quote! { #path_param_name }, quote! {}),
@@ -70,8 +72,7 @@ fn expand_dir_structure_for_field(
         };
 
         quote! {{
-            let __translated_path = #actual_path_expr;
-            let #value_name = <#actual_field_ty_perform as ::dir_structure::traits::sync::ReadFrom<Vfs>>::read_from(&__translated_path, #vfs_param_name)?;
+            let #value_name = <#actual_field_ty_perform as ::dir_structure::traits::sync::ReadFrom<Vfs>>::read_from(#actual_path_expr, #vfs_param_name)?;
             #end_expr
         }}
     };
@@ -87,79 +88,25 @@ fn expand_dir_structure_for_field(
             None => quote! { &self.#field_name },
         };
         quote! {
-            let __translated_path = #actual_path_expr;
-            ::dir_structure::traits::sync::WriteTo::write_to(#writer, &__translated_path, #vfs_param_name)?;
+            ::dir_structure::traits::sync::WriteTo::write_to(#writer, #actual_path_expr, #vfs_param_name)?;
         }
     };
 
-    #[cfg(feature = "resolve-path")]
-    let has_field_impl = if self_path {
-        quote! {}
-    } else {
-        use std::iter;
-
-        use crate::resolve_path::MAX_LEN;
-
-        let field_name_str = field_name.to_string();
-        if field_name_str.len() > MAX_LEN {
-            return Err(syn::Error::new_spanned(
-                field_name,
-                format!(
-                    "Field name for DirStructure must be at most {} characters long",
-                    MAX_LEN
-                ),
-            ));
-        }
-        let field_name_array: [char; MAX_LEN] = field_name_str
-            .chars()
-            .chain(iter::repeat('\0'))
-            .take(MAX_LEN)
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-
-        let mut has_field_impl = quote! {
-            #[automatically_derived]
-            impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
-                type Inner = #field_ty;
-
-                fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
-                    #path_pusher_for_has_field
-                    #path_param_name
-                }
-            }
-        };
-
-        match &with_newtype {
-            Some(nt) => {
-                has_field_impl.extend(quote! {
-                    #[automatically_derived]
-                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
-                        type ReaderType = #nt;
-
-                        fn parse(read: Self::ReaderType) -> Self::Inner {
-                            <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(read)
-                        }
-                    }
-                });
-            }
-            None => {
-                has_field_impl.extend(quote! {
-                    #[automatically_derived]
-                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldNoNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {}
-                });
-            }
-        }
-
-        has_field_impl
-    };
     Ok(DirStructureForField {
         read_code: quote! {
             #field_name: #read_code
         },
         write_code,
         #[cfg(feature = "resolve-path")]
-        has_field_impl,
+        has_field_impl: has_field_impl(
+            self_path,
+            &with_newtype,
+            field_name,
+            field_ty,
+            (impl_generics, ty_name, ty_generics, where_clause),
+            path_param_name,
+            &path_pusher_for_has_field,
+        )?,
     })
 }
 
@@ -267,7 +214,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let mut expanded = quote! {
         #[automatically_derived]
         impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
-            fn read_from(#path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self>
+            fn read_from(#path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>
             where
                 Self: Sized,
             {
@@ -278,7 +225,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         }
         #[automatically_derived]
         impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_clause {
-            fn write_to(&self, #path_param_name: &::std::path::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<()> {
+            fn write_to(&self, #path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath> {
                 #(#field_write_impls)*
                 Ok(())
             }

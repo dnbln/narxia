@@ -3,6 +3,7 @@
 use std::fs as std_fs;
 use std::io;
 use std::io::SeekFrom;
+use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::Context;
@@ -27,6 +28,8 @@ use crate::traits::async_vfs::CreateParentDirDefaultFuture;
 use crate::traits::async_vfs::IoErrorWrapperFuture;
 use crate::traits::async_vfs::VfsAsync;
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
+use crate::traits::vfs::PathType;
+use crate::traits::vfs::VfsCore;
 
 /// A [`VfsAsync`] and [`WriteSupportingVfsAsync`] implementation using [`tokio::fs`].
 pub struct TokioFsVfs;
@@ -123,12 +126,18 @@ impl<T: AsyncWrite> FuturesAsyncWrite for TokioAsyncAdapter<T> {
     }
 }
 
+impl VfsCore for TokioFsVfs {
+    type Path = Path;
+}
+
 impl VfsAsync for TokioFsVfs {
     type RFile = TokioAsyncAdapter<BufReader<fs::File>>;
     type OpenReadFuture = IoErrorWrapperFuture<
         Self::RFile,
         Pin<Box<dyn Future<Output = io::Result<Self::RFile>> + Send>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
     >;
+
     fn open_read(self: Pin<&Self>, path: PathBuf) -> Self::OpenReadFuture {
         IoErrorWrapperFuture::new(
             path.clone(),
@@ -144,6 +153,7 @@ impl VfsAsync for TokioFsVfs {
         = IoErrorWrapperFuture<
         Vec<u8>,
         Pin<Box<dyn Future<Output = io::Result<Vec<u8>>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
     >
     where
         Self: 'a;
@@ -153,22 +163,48 @@ impl VfsAsync for TokioFsVfs {
     }
 
     type ReadStringFuture<'a>
-        =
-        IoErrorWrapperFuture<String, Pin<Box<dyn Future<Output = io::Result<String>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        String,
+        Pin<Box<dyn Future<Output = io::Result<String>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
-    fn read_string<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadStringFuture<'a> {
+    fn read_string<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ReadStringFuture<'a> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::read_to_string(path)))
     }
 
     type ExistsFuture<'a>
-        = IoErrorWrapperFuture<bool, Pin<Box<dyn Future<Output = io::Result<bool>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        bool,
+        Pin<Box<dyn Future<Output = io::Result<bool>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
-    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a> {
+    fn exists<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ExistsFuture<'a> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::try_exists(path)))
+    }
+
+    type IsDirFuture<'a>
+        = IoErrorWrapperFuture<
+        bool,
+        Pin<Box<dyn Future<Output = io::Result<bool>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
+    where
+        Self: 'a;
+
+    fn is_dir<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::IsDirFuture<'a> {
+        IoErrorWrapperFuture::new(
+            path.clone(),
+            Box::pin(async move { fs::metadata(path).await.map(|m| m.is_dir()) }),
+        )
     }
 
     type DirWalk<'a>
@@ -180,6 +216,7 @@ impl VfsAsync for TokioFsVfs {
         = IoErrorWrapperFuture<
         Self::DirWalk<'a>,
         Pin<Box<dyn Future<Output = io::Result<Self::DirWalk<'a>>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
     >
     where
         Self: 'a;
@@ -205,8 +242,9 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
     type OpenWriteFuture = IoErrorWrapperFuture<
         Self::WFile,
         Pin<Box<dyn Future<Output = io::Result<Self::WFile>> + Send>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
     >;
-    fn open_write(self: Pin<&Self>, path: PathBuf) -> Self::OpenWriteFuture {
+    fn open_write(self: Pin<&Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::OpenWriteFuture {
         IoErrorWrapperFuture::new(
             path.clone(),
             Box::pin(async move {
@@ -218,20 +256,28 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
     }
 
     type WriteFuture<'a>
-        = IoErrorWrapperFuture<(), Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        (),
+        Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
-    fn write<'a, 'd: 'a>(
+    fn write<'d, 'a: 'd>(
         self: Pin<&'a Self>,
-        path: PathBuf,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
         data: &'d [u8],
     ) -> Self::WriteFuture<'d> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::write(path, data)))
     }
 
     type RemoveDirAllFuture<'a>
-        = IoErrorWrapperFuture<(), Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        (),
+        Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
@@ -240,7 +286,11 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
     }
 
     type CreateDirFuture<'a>
-        = IoErrorWrapperFuture<(), Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        (),
+        Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
@@ -249,7 +299,11 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
     }
 
     type CreateDirAllFuture<'a>
-        = IoErrorWrapperFuture<(), Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>>
+        = IoErrorWrapperFuture<
+        (),
+        Pin<Box<dyn Future<Output = io::Result<()>> + Send + 'a>>,
+        <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    >
     where
         Self: 'a;
 
@@ -278,6 +332,7 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
 
 mod imp {
     use std::ffi::OsString;
+    use std::path::Path;
     use std::task::Context;
 
     use futures::FutureExt;
@@ -288,7 +343,6 @@ mod imp {
     #[cfg(feature = "image")]
     use crate::error::Error;
     use crate::error::Result;
-    use crate::error::WrapIoError;
     #[cfg(feature = "image")]
     use crate::image::ImgFormat;
     #[cfg(feature = "image")]
@@ -313,7 +367,7 @@ mod imp {
     }
 
     impl Stream for DirWalker {
-        type Item = Result<DirEntryInfo>;
+        type Item = Result<DirEntryInfo<Path>, PathBuf>;
 
         fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             if let Some((name, path, fut)) = self.current_kind_future.as_mut() {
@@ -332,7 +386,7 @@ mod imp {
                     Poll::Ready(Err(e)) => {
                         let path = self.path.clone();
                         self.current_kind_future = None;
-                        return Poll::Ready(Some(Err(e).wrap_io_error_with(&path)));
+                        return Poll::Ready(Some(Err(Error::Io(path.clone(), e))));
                     }
                     Poll::Pending => return Poll::Pending,
                 }
@@ -347,7 +401,7 @@ mod imp {
                     Poll::Pending
                 }
                 Poll::Ready(Ok(None)) => Poll::Ready(None),
-                Poll::Ready(Err(e)) => Poll::Ready(Some(Err(e).wrap_io_error_with(&self.path))),
+                Poll::Ready(Err(e)) => Poll::Ready(Some(Err(Error::Io(self.path.clone(), e)))),
                 Poll::Pending => Poll::Pending,
             }
         }
@@ -359,7 +413,7 @@ mod imp {
     where
         T: Send + 'static,
     {
-        type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'vfs>>;
+        type Future = Pin<Box<dyn Future<Output = Result<Self, PathBuf>> + Send + 'vfs>>;
 
         fn read_from_async(
             path: PathBuf,
@@ -394,7 +448,7 @@ mod imp {
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     impl<'vfs> WriteToAsync<'vfs, TokioFsVfs> for (image::DynamicImage, image::ImageFormat) {
-        type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'vfs>>;
+        type Future = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
 
         fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs TokioFsVfs>) -> Self::Future {
             Box::pin(async move {
@@ -428,7 +482,7 @@ mod imp {
     where
         'vfs: 'vfs,
     {
-        type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'vfs>>;
+        type Future = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
 
         fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs TokioFsVfs>) -> Self::Future {
             let img = self.0.clone();

@@ -1,7 +1,6 @@
 //! Asynchronous virtual file system traits.
 
 use std::io;
-use std::path::PathBuf;
 use std::pin::Pin;
 use std::task::Context;
 use std::task::Poll;
@@ -16,51 +15,97 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::prelude::*;
 use crate::traits::vfs::DirEntryInfo;
+use crate::traits::vfs::OwnedPathType;
+use crate::traits::vfs::PathType;
+use crate::traits::vfs::VfsCore;
 
 /// An asynchronous virtual file system. Writing operations are provided by the [`WriteSupportingVfsAsync` trait](self::WriteSupportingVfsAsync).
-pub trait VfsAsync: Send + Sync + Unpin {
+pub trait VfsAsync: VfsCore + Send + Sync + Unpin {
     /// The type of the file returned by the [`open_read` method](VfsAsync::open_read).
     type RFile: AsyncRead + Send + Unpin;
     /// The future returned by the [`open_read` method](VfsAsync::open_read).
-    type OpenReadFuture: Future<Output = Result<Self::RFile>> + Send + Unpin;
+    type OpenReadFuture: Future<Output = Result<Self::RFile, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin;
 
     /// Opens a file for reading, at the specified path.
-    fn open_read(self: Pin<&Self>, path: PathBuf) -> Self::OpenReadFuture;
+    fn open_read(
+        self: Pin<&Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::OpenReadFuture;
 
     /// The future returned by the [`read` method](VfsAsync::read).
-    type ReadFuture<'a>: Future<Output = Result<Vec<u8>>> + Send + Unpin + 'a
+    type ReadFuture<'a>: Future<Output = Result<Vec<u8>, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin
+        + 'a
     where
         Self: 'a;
 
     /// Reads the contents of a file, at the specified path.
-    fn read<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadFuture<'a>;
+    fn read<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::ReadFuture<'a>;
 
     /// The future returned by the [`read_string` method](VfsAsync::read_string).
-    type ReadStringFuture<'a>: Future<Output = Result<String>> + Send + Unpin + 'a
+    type ReadStringFuture<'a>: Future<Output = Result<String, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin
+        + 'a
     where
         Self: 'a;
 
     /// Reads the contents of a file, at the specified path, and returns it as a string.
-    fn read_string<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ReadStringFuture<'a>;
+    fn read_string<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::ReadStringFuture<'a>;
 
     /// The future returned by the [`exists` method](VfsAsync::exists).
-    type ExistsFuture<'a>: Future<Output = Result<bool>> + Send + 'a
+    type ExistsFuture<'a>: Future<Output = Result<bool, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
 
     /// Checks if a file exists at the specified path.
-    fn exists<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::ExistsFuture<'a>;
+    fn exists<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ExistsFuture<'a>;
+
+    /// The future type returned by the [`is_dir` method](VfsAsync::is_dir).
+    type IsDirFuture<'a>: Future<
+        Output = Result<bool, <<Self as VfsCore>::Path as PathType>::OwnedPath>,
+    >
+    where
+        Self: 'a;
+
+    /// Checks if a directory exists at the specified path.
+    fn is_dir<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::IsDirFuture<'a>;
 
     /// The stream type returned by the [`DirWalkFuture`](VfsAsync::DirWalkFuture).
-    type DirWalk<'a>: Stream<Item = Result<DirEntryInfo>> + Send + 'a
+    type DirWalk<'a>: Stream<
+            Item = Result<
+                DirEntryInfo<<Self as VfsCore>::Path>,
+                <<Self as VfsCore>::Path as PathType>::OwnedPath,
+            >,
+        > + Send
+        + 'a
     where
         Self: 'a;
     /// The future type returned by the [`walk_dir` method](VfsAsync::walk_dir).
-    type DirWalkFuture<'a>: Future<Output = Result<Self::DirWalk<'a>>> + Send + 'a
+    type DirWalkFuture<'a>: Future<Output = Result<Self::DirWalk<'a>, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
     /// Walks a directory at the given path, returning a stream of directory entries.
-    fn walk_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::DirWalkFuture<'a>;
+    fn walk_dir<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::DirWalkFuture<'a>;
 }
 
 /// Marks that the [`RFile`](VfsAsync::RFile) type of this [`VfsAsync`] also implements
@@ -85,7 +130,7 @@ pub trait VfsAsyncExt: VfsAsync {
     /// is not moved while the read operation is in progress.
     fn read_typed_async_pinned<'a, T: ReadFromAsync<'a, Self>>(
         self: Pin<&'a Self>,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
     ) -> T::Future {
         T::read_from_async(path.into(), self)
     }
@@ -96,7 +141,7 @@ pub trait VfsAsyncExt: VfsAsync {
     /// This method takes `self` as a regular reference, and pins it internally.
     fn read_typed_async<'a, T: ReadFromAsync<'a, Self>>(
         &'a self,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
     ) -> T::Future {
         Pin::new(self).read_typed_async_pinned::<T>(path)
     }
@@ -111,51 +156,75 @@ pub trait WriteSupportingVfsAsync: VfsAsync {
     type WFile: AsyncWrite + Send + Unpin;
 
     /// The future type returned by the [`open_write` method](WriteSupportingVfsAsync::open_write).
-    type OpenWriteFuture: Future<Output = Result<Self::WFile>> + Send + Unpin;
+    type OpenWriteFuture: Future<Output = Result<Self::WFile, <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin;
 
     /// Opens a file for writing, at the specified path.
-    fn open_write(self: Pin<&Self>, path: PathBuf) -> Self::OpenWriteFuture;
+    fn open_write(self: Pin<&Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::OpenWriteFuture;
 
     /// The future type returned by the [`write` method](WriteSupportingVfsAsync::write).
-    type WriteFuture<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
+    type WriteFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin
+        + 'a
     where
         Self: 'a;
 
     /// Writes the contents of a file, at the specified path.
-    fn write<'a, 'd: 'a>(
+    fn write<'d, 'a: 'd>(
         self: Pin<&'a Self>,
-        path: PathBuf,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
         data: &'d [u8],
     ) -> Self::WriteFuture<'d>;
 
     /// The future type returned by the [`remove_dir_all` method](WriteSupportingVfsAsync::remove_dir_all).
-    type RemoveDirAllFuture<'a>: Future<Output = Result<()>> + Send + 'a
+    type RemoveDirAllFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
     /// Removes a directory and all its contents.
-    fn remove_dir_all<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::RemoveDirAllFuture<'a>;
+    fn remove_dir_all<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::RemoveDirAllFuture<'a>;
 
     /// The future type returned by the [`create_dir` method](WriteSupportingVfsAsync::create_dir).
-    type CreateDirFuture<'a>: Future<Output = Result<()>> + Send + 'a
+    type CreateDirFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
     /// Creates a new directory at the specified path.
-    fn create_dir<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::CreateDirFuture<'a>;
+    fn create_dir<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::CreateDirFuture<'a>;
 
     /// The future type returned by the [`create_dir_all` method](WriteSupportingVfsAsync::create_dir_all).
-    type CreateDirAllFuture<'a>: Future<Output = Result<()>> + Send + 'a
+    type CreateDirAllFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
     /// Creates a new directory and all its parent directories at the specified path.
-    fn create_dir_all<'a>(self: Pin<&'a Self>, path: PathBuf) -> Self::CreateDirAllFuture<'a>;
+    fn create_dir_all<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::CreateDirAllFuture<'a>;
 
     /// The future type returned by the [`create_parent_dir` method](WriteSupportingVfsAsync::create_parent_dir).
-    type CreateParentDirFuture<'a>: Future<Output = Result<()>> + Send + 'a
+    type CreateParentDirFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + 'a
     where
         Self: 'a;
     /// Creates a new parent directory at the specified path.
-    fn create_parent_dir<'a>(self: Pin<&'a Self>, path: PathBuf)
-    -> Self::CreateParentDirFuture<'a>;
+    fn create_parent_dir<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::CreateParentDirFuture<'a>;
 }
 
 /// Marks that the [`WFile`](WriteSupportingVfsAsync::WFile) type of this [`WriteSupportingVfsAsync`] also implements
@@ -179,7 +248,7 @@ pub trait WriteSupportingVfsAsyncExt: WriteSupportingVfsAsync {
     /// is not moved while the write operation is in progress.
     fn write_typed_async_ref_pinned<'r, 'a: 'r, T: WriteToAsyncRef<'a, Self>>(
         self: Pin<&'r Self>,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
         value: &'r T,
     ) -> T::Future<'r> {
         T::write_to_async_ref(value, path.into(), self)
@@ -191,7 +260,7 @@ pub trait WriteSupportingVfsAsyncExt: WriteSupportingVfsAsync {
     /// This method takes `self` as a regular reference, and pins it internally.
     fn write_typed_async_ref<'r, 'a: 'r, T: WriteToAsyncRef<'a, Self>>(
         &'r self,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
         data: &'r T,
     ) -> T::Future<'r>
     where
@@ -207,7 +276,7 @@ pub trait WriteSupportingVfsAsyncExt: WriteSupportingVfsAsync {
     /// is not moved while the write operation is in progress.
     fn write_typed_async_pinned<'a, T: WriteToAsync<'a, Self>>(
         self: Pin<&'a Self>,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
         value: T,
     ) -> T::Future {
         value.write_to_async(path.into(), self)
@@ -219,7 +288,7 @@ pub trait WriteSupportingVfsAsyncExt: WriteSupportingVfsAsync {
     /// This method takes `self` as a regular reference, and pins it internally.
     fn write_typed_async<'a, T: WriteToAsync<'a, Self>>(
         &'a self,
-        path: impl Into<PathBuf>,
+        path: impl Into<<<Self as VfsCore>::Path as PathType>::OwnedPath>,
         value: T,
     ) -> T::Future
     where
@@ -236,17 +305,19 @@ impl<V: WriteSupportingVfsAsync + ?Sized> WriteSupportingVfsAsyncExt for V {}
 #[doc(hidden)]
 pub enum CreateParentDirDefaultFuture<'a, Vfs: WriteSupportingVfsAsync + 'a>
 where
-    for<'f> Vfs::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin,
-    for<'f> Vfs::CreateDirAllFuture<'f>: Future<Output = Result<()>> + Unpin,
+    for<'f> Vfs::ExistsFuture<'f>:
+        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    for<'f> Vfs::CreateDirAllFuture<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
 {
     Poison,
     Start {
         vfs: Pin<&'a Vfs>,
-        path: PathBuf,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
     },
     ExistsFuture {
         vfs: Pin<&'a Vfs>,
-        path: PathBuf,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         exists_future: Vfs::ExistsFuture<'a>,
     },
     CreateDirAllFuture {
@@ -257,10 +328,12 @@ where
 
 impl<'a, Vfs: WriteSupportingVfsAsync + 'a> Future for CreateParentDirDefaultFuture<'a, Vfs>
 where
-    for<'f> Vfs::ExistsFuture<'f>: Future<Output = Result<bool>> + Unpin,
-    for<'f> Vfs::CreateDirAllFuture<'f>: Future<Output = Result<()>> + Unpin,
+    for<'f> Vfs::ExistsFuture<'f>:
+        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    for<'f> Vfs::CreateDirAllFuture<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -321,26 +394,28 @@ where
 
 #[pin_project(project = IoErrorWrapperFutureProj)]
 #[doc(hidden)]
-pub struct IoErrorWrapperFuture<T, F: Future<Output = io::Result<T>>> {
+pub struct IoErrorWrapperFuture<T, F: Future<Output = io::Result<T>>, P: OwnedPathType> {
     #[pin]
     future: F,
-    path: PathBuf,
+    path: P,
 }
 
-impl<T, F> IoErrorWrapperFuture<T, F>
+impl<T, F, P> IoErrorWrapperFuture<T, F, P>
 where
     F: Future<Output = io::Result<T>>,
+    P: OwnedPathType,
 {
-    pub fn new(path: PathBuf, future: F) -> Self {
+    pub fn new(path: P, future: F) -> Self {
         Self { future, path }
     }
 }
 
-impl<T, F> Future for IoErrorWrapperFuture<T, F>
+impl<T, F, P> Future for IoErrorWrapperFuture<T, F, P>
 where
     F: Future<Output = io::Result<T>>,
+    P: OwnedPathType + Clone,
 {
-    type Output = Result<T>;
+    type Output = Result<T, P>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();

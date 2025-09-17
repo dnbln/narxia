@@ -13,7 +13,6 @@ use std::marker;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
-use std::path::PathBuf;
 use std::pin::Pin;
 
 use crate::error::Result;
@@ -23,6 +22,9 @@ use crate::traits::async_vfs::VfsAsync;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use crate::traits::vfs::VfsCore;
 
 /// A value with a hash to determine if it has changed.
 ///
@@ -46,14 +48,15 @@ use crate::traits::vfs;
 /// assert!(!vh.is_clean());
 /// ```
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct VersionedHash<T: Hash, H: Hasher + Default = DefaultHasher> {
+pub struct VersionedHash<T: Hash, P: PathType + ?Sized = Path, H: Hasher + Default = DefaultHasher>
+{
     value: T,
     hash: u64,
-    path: PathBuf,
+    path: P::OwnedPath,
     _hasher: marker::PhantomData<H>,
 }
 
-impl<T: Hash, H: Hasher + Default> VersionedHash<T, H> {
+impl<T: Hash, P: PathType + ?Sized, H: Hasher + Default> VersionedHash<T, P, H> {
     /// Get the inner value. You can also use [`Deref`](std::ops::Deref) / [`DerefMut`](std::ops::DerefMut)
     /// to get references to the inner value.
     ///
@@ -73,7 +76,7 @@ impl<T: Hash, H: Hasher + Default> VersionedHash<T, H> {
         self.value
     }
 
-    fn new_with_hash(path: PathBuf, value: T, hash: u64) -> Self {
+    fn new_with_hash(path: P::OwnedPath, value: T, hash: u64) -> Self {
         Self {
             value,
             hash,
@@ -100,7 +103,7 @@ impl<T: Hash, H: Hasher + Default> VersionedHash<T, H> {
     /// assert!(vh.is_clean());
     /// assert!(!vh.is_dirty());
     /// ```
-    pub fn new_clean(path: PathBuf, value: T) -> Self {
+    pub fn new_clean(path: P::OwnedPath, value: T) -> Self {
         let hash = Self::hash_value(&value);
 
         Self::new_with_hash(path, value, hash)
@@ -118,7 +121,7 @@ impl<T: Hash, H: Hasher + Default> VersionedHash<T, H> {
     /// assert!(!vh.is_clean());
     /// assert!(vh.is_dirty());
     /// ```
-    pub fn new_dirty(path: PathBuf, value: T) -> Self {
+    pub fn new_dirty(path: P::OwnedPath, value: T) -> Self {
         let hash = Self::hash_value(&value);
         Self::new_with_hash(path, value, hash.wrapping_add(1))
     }
@@ -195,7 +198,7 @@ impl<T: Hash, H: Hasher + Default> VersionedHash<T, H> {
     }
 }
 
-impl<T: Hash, H: Hasher + Default> Deref for VersionedHash<T, H> {
+impl<T: Hash, P: PathType + ?Sized, H: Hasher + Default> Deref for VersionedHash<T, P, H> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -203,18 +206,21 @@ impl<T: Hash, H: Hasher + Default> Deref for VersionedHash<T, H> {
     }
 }
 
-impl<T: Hash, H: Hasher + Default> DerefMut for VersionedHash<T, H> {
+impl<T: Hash, P: PathType + ?Sized, H: Hasher + Default> DerefMut for VersionedHash<T, P, H> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
 }
 
-impl<'a, T, H, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for VersionedHash<T, Vfs::Path, H>
 where
     T: ReadFrom<'a, Vfs> + Hash + 'a,
     H: Hasher + Default + 'a,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self> {
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
         let value = T::read_from(path, vfs)?;
         let mut hasher = H::default();
         T::hash(&value, &mut hasher);
@@ -222,19 +228,24 @@ where
         Ok(VersionedHash {
             value,
             hash,
-            path: path.to_path_buf(),
+            path: path.owned(),
             _hasher: marker::PhantomData,
         })
     }
 }
 
-impl<'a, T, H, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for VersionedHash<T, Vfs::Path, H>
 where
     T: WriteTo<'a, Vfs> + Hash,
+    Vfs::Path: PartialEq,
     H: Hasher + Default,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
-        if self.path == path && self.is_clean() {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+        if self.path.as_ref() == path && self.is_clean() {
             return Ok(());
         }
 
@@ -244,16 +255,25 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, H, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for VersionedHash<T, Vfs::Path, H>
 where
     T: ReadFromAsync<'a, Vfs> + Hash + 'a,
     H: Hasher + Default + 'a,
 {
     type Future
-        = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>
+        = Pin<
+        Box<
+            dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+                + Send
+                + 'a,
+        >,
+    >
     where
         Self: 'a;
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         use std::future::poll_fn;
 
         let mut fut = Box::pin(T::read_from_async(path.clone(), vfs));
@@ -277,18 +297,30 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, H, Vfs: WriteSupportingVfsAsync + 'a> WriteToAsync<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, P, H, Vfs: WriteSupportingVfsAsync<Path = P> + 'a> WriteToAsync<'a, Vfs>
+    for VersionedHash<T, P, H>
 where
     T: WriteToAsync<'a, Vfs> + Hash + 'a,
+    P: PathType + ?Sized + PartialEq + 'a,
     H: Hasher + Default + 'a,
 {
     type Future
-        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>
+        = Pin<
+        Box<
+            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+                + Send
+                + 'a,
+        >,
+    >
     where
         Self: 'a;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        if self.path == path && self.is_clean() {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
+        if self.path.as_ref() == path.as_ref() && self.is_clean() {
             return Box::pin(async { Ok(()) });
         }
 
@@ -300,19 +332,30 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, H, Vfs: WriteSupportingVfsAsync + 'a> WriteToAsyncRef<'a, Vfs> for VersionedHash<T, H>
+impl<'a, T, H, Vfs: WriteSupportingVfsAsync + 'a> WriteToAsyncRef<'a, Vfs>
+    for VersionedHash<T, Vfs::Path, H>
 where
     T: WriteToAsyncRef<'a, Vfs> + Hash + 'a,
     H: Hasher + Default + 'a,
 {
     type Future<'f>
-        = Pin<Box<dyn Future<Output = Result<()>> + Send + 'f>>
+        = Pin<
+        Box<
+            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+                + Send
+                + 'f,
+        >,
+    >
     where
         Self: 'f,
         'a: 'f,
         Vfs: 'f;
 
-    fn write_to_async_ref<'f>(&'f self, path: PathBuf, vfs: Pin<&'f Vfs>) -> Self::Future<'f>
+    fn write_to_async_ref<'f>(
+        &'f self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'f Vfs>,
+    ) -> Self::Future<'f>
     where
         'a: 'f,
     {

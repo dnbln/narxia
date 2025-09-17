@@ -1,7 +1,6 @@
 //! `Option<T>` implementations.
 
-use std::path::Path;
-#[cfg(any(feature = "async", feature = "resolve-path"))]
+#[cfg(any(feature = "resolve-path"))]
 use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
@@ -25,16 +24,20 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
 
 impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Option<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
-        if path.exists() {
+        if vfs.exists(path)? {
             T::read_from(path, vfs).map(Some)
         } else {
             Ok(None)
@@ -46,15 +49,15 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 #[pin_project(project_replace = OptionReadFromAsyncFutureOwnProj)]
 #[doc(hidden)]
-pub enum OptionReadFromAsyncFuture<'a, T, Vfs: VfsAsync + 'a>
+pub enum OptionReadFromAsyncFuture<'a, T, P: PathType + ?Sized + 'a, Vfs: VfsAsync<Path = P> + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    Vfs::ExistsFuture<'a>: Future<Output = Result<bool>>,
-    T::Future: Future<Output = Result<T>> + Unpin,
+    Vfs::ExistsFuture<'a>: Future<Output = Result<bool, P::OwnedPath>>,
+    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin,
 {
     Poison,
     Check {
-        path: PathBuf,
+        path: P::OwnedPath,
         check_fut: Pin<Box<Vfs::ExistsFuture<'a>>>,
         vfs: Pin<&'a Vfs>,
     },
@@ -67,12 +70,13 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: VfsAsync + 'a> Future for OptionReadFromAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a> Future
+    for OptionReadFromAsyncFuture<'a, T, P, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin,
+    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin,
 {
-    type Output = Result<Option<T>>;
+    type Output = Result<Option<T>, P::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         use std::task::Poll;
@@ -131,17 +135,18 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for Option<T>
+impl<'a, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a> ReadFromAsync<'a, Vfs>
+    for Option<T>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin + 'a,
+    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
 {
     type Future
-        = OptionReadFromAsyncFuture<'a, T, Vfs>
+        = OptionReadFromAsyncFuture<'a, T, P, Vfs>
     where
         Self: 'static;
 
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(path: P::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
         OptionReadFromAsyncFuture::Check {
             check_fut: Box::pin(vfs.exists(path.clone())),
             path,
@@ -150,11 +155,12 @@ where
     }
 }
 
-impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for Option<T>
+impl<'vfs, T, P: PathType + 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>> WriteTo<'vfs, Vfs>
+    for Option<T>
 where
     T: WriteTo<'vfs, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), P::OwnedPath> {
         if let Some(v) = self {
             v.write_to(path, vfs)
         } else {
@@ -180,11 +186,12 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: WriteSupportingVfsAsync> Future for OptionWriteToAsyncFuture<'a, T, Vfs>
+impl<'a, T, Vfs: WriteSupportingVfsAsync<Path = P>, P: PathType + ?Sized + 'a> Future
+    for OptionWriteToAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
-    type Output = Result<()>;
+    type Output = Result<(), P::OwnedPath>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -203,7 +210,11 @@ where
 {
     type Future = OptionWriteToAsyncFuture<'a, T, Vfs>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <Vfs::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         if let Some(v) = self {
             OptionWriteToAsyncFuture::HasContents {
                 inner: v.write_to_async(path, vfs),

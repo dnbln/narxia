@@ -437,3 +437,79 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
         __read_(__current #args)
     }})
 }
+
+pub fn has_field_impl(
+    self_path: bool,
+    with_newtype: &Option<syn::Type>,
+    field_name: &syn::Ident,
+    field_ty: &syn::Type,
+    (impl_generics, ty_name, ty_generics, where_clause): (
+        &syn::ImplGenerics,
+        &syn::Ident,
+        &syn::TypeGenerics,
+        Option<&syn::WhereClause>,
+    ),
+    path_param_name: &syn::Ident,
+    path_pusher_for_has_field: &TokenStream,
+) -> syn::Result<TokenStream> {
+    if self_path {
+        Ok(quote! {})
+    } else {
+        use std::iter;
+
+        use crate::resolve_path::MAX_LEN;
+
+        let field_name_str = field_name.to_string();
+        if field_name_str.len() > MAX_LEN {
+            return Err(syn::Error::new_spanned(
+                field_name,
+                format!(
+                    "Field name for DirStructure must be at most {} characters long",
+                    MAX_LEN
+                ),
+            ));
+        }
+        let field_name_array: [char; MAX_LEN] = field_name_str
+            .chars()
+            .chain(iter::repeat('\0'))
+            .take(MAX_LEN)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        let mut has_field_impl = quote! {
+            #[automatically_derived]
+            impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
+                type Inner = #field_ty;
+
+                fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
+                    #path_pusher_for_has_field
+                    #path_param_name
+                }
+            }
+        };
+
+        match &with_newtype {
+            Some(nt) => {
+                has_field_impl.extend(quote! {
+                    #[automatically_derived]
+                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
+                        type ReaderType = #nt;
+
+                        fn parse(read: Self::ReaderType) -> Self::Inner {
+                            <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(read)
+                        }
+                    }
+                });
+            }
+            None => {
+                has_field_impl.extend(quote! {
+                    #[automatically_derived]
+                    impl #impl_generics ::dir_structure::traits::resolve::HasFieldNoNewtype<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {}
+                });
+            }
+        }
+
+        Ok(has_field_impl)
+    }
+}

@@ -105,9 +105,6 @@ and write them back to disk."##
 
             use std::fmt;
             use std::fmt::Formatter;
-            use std::path::Path;
-            #[cfg(feature = "async")]
-            use std::path::PathBuf;
             use std::str::FromStr;
 
             use std::pin::Pin;
@@ -127,6 +124,8 @@ and write them back to disk."##
             use crate::std_types::FileString;
             use crate::error::Result;
             use crate::error::Error;
+            use crate::traits::vfs::VfsCore;
+            use crate::traits::vfs::PathType;
 
             $(#[$main_ty_attrs])*
             #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize, Hash)]
@@ -197,11 +196,11 @@ and write them back to disk."##
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
-                fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self> {
+                fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
                     let contents = FileString::read_from(path, vfs)?.0;
                     let v = contents
                         .parse::<$main_ty<T>>()
-                        .map_err(|e| Error::Parse(path.to_path_buf(), e.into()))?;
+                        .map_err(|e| Error::Parse(path.owned(), e.into()))?;
                     Ok(v)
                 }
             }
@@ -212,14 +211,14 @@ and write them back to disk."##
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
-                type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>;
+                type Future = Pin<Box<dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + 'a>>;
 
-                fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+                fn read_from_async(path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
                     Box::pin(async move {
                         let contents = FileString::read_from_async(path.clone(), vfs).await?.0;
                         let v = contents
                             .parse::<$main_ty<T>>()
-                            .map_err(|e| Error::Parse(path, e.into()))?;
+                            .map_err(|e| Error::Parse(path.clone(), e.into()))?;
                         Ok(v)
                     })
                 }
@@ -229,7 +228,7 @@ and write them back to disk."##
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + 'static,
             {
-                fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
+                fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
                     Self::from_ref_for_writer(&self.0).write_to(path, vfs)
                 }
             }
@@ -240,9 +239,9 @@ and write them back to disk."##
             where
                 T: serde::Serialize + for<'d> serde::Deserialize<'d> + Send + Sync + 'static,
             {
-                type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+                type Future = Pin<Box<dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + 'a>>;
 
-                fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+                fn write_to_async(self, path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
                     Box::pin(async move {
                         let s = $to_str_ty(&self.0).to_str()
                             .map_err(|e| Error::Serde(path.clone(), e.into()))?;
@@ -300,13 +299,13 @@ and write them back to disk."##
                 T: serde::Serialize + 'a,
                 'vfs: 'a,
             {
-                fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+                fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
                     vfs.create_parent_dir(path)?;
 
                     $to_str_ty(self.0).to_writer(&mut vfs.open_write(path)?)
                         .map_err(|e| match e {
-                            ToWriterError::Io(e) => Error::Io(path.to_path_buf(), e),
-                            ToWriterError::Serde(e) => Error::Serde(path.to_path_buf(), e.into()),
+                            ToWriterError::Io(e) => Error::Io(path.owned(), e),
+                            ToWriterError::Serde(e) => Error::Serde(path.owned(), e.into()),
                         })?;
 
                     Ok(())
@@ -319,9 +318,9 @@ and write them back to disk."##
             where
                 T: serde::Serialize + Send + Sync + 'a,
             {
-                type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>> where Self: 'a, Vfs: 'a;
+                type Future = Pin<Box<dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + 'a>> where Self: 'a, Vfs: 'a;
 
-                fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+                fn write_to_async(self, path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
                     Box::pin(async move {
                         let s = $to_str_ty(self.0).to_str()
                             .map_err(|e| Error::Serde(path.clone(), e.into()))?;

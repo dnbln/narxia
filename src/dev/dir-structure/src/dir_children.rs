@@ -5,17 +5,15 @@
 //! Additionally, [`ForceCreateDirChildren`] is a variant that forces the creation of the directory
 //! structure, even without any children.
 
-use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::fmt;
+use std::hash;
 use std::marker;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::ops::RangeBounds;
-use std::path::Path;
-#[cfg(any(feature = "async", feature = "resolve-path"))]
+#[cfg(feature = "resolve-path")]
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::slice;
@@ -46,6 +44,9 @@ use crate::traits::sync::DirStructureItem;
 use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker as _;
+use crate::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use crate::traits::vfs::VfsCore;
 
 /// A directory structure where we don't know the names of the folders at compile-time,
 /// and as such we cannot use the derive macro.
@@ -59,26 +60,37 @@ use crate::traits::vfs::DirWalker as _;
 ///
 /// The [`WriteTo`] implementation will directly write the children to the directory it
 /// is passed, with no regards to the path stored in `self_path`.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChildren<T, F: Filter = NoFilter> {
+pub struct DirChildren<T, F: Filter<P> = NoFilter, P: PathType + ?Sized = std::path::Path> {
     /// The children of the root directory.
-    pub children: Vec<DirChild<T>>,
+    pub children: Vec<DirChild<T, P>>,
 
     #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
-    filter: marker::PhantomData<F>,
+    filter: marker::PhantomData<(F, P)>,
 }
 
-impl<T, F> Clone for DirChildren<T, F>
+impl<T, P: PathType + ?Sized, F: Filter<P>> Clone for DirChildren<T, F, P>
 where
     T: Clone,
-    F: Filter,
 {
     fn clone(&self) -> Self {
         Self {
             children: self.children.clone(),
             filter: marker::PhantomData,
         }
+    }
+}
+
+impl<T, P: PathType + ?Sized, F: Filter<P>> fmt::Debug for DirChildren<T, F, P>
+where
+    T: fmt::Debug,
+    P::PathSegmentOwned: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DirChildren")
+            .field("children", &self.children)
+            .finish()
     }
 }
 
@@ -135,13 +147,13 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub trait Filter {
+pub trait Filter<P: PathType + ?Sized> {
     /// Checks if the path is allowed by this filter.
-    fn allows(path: &Path) -> bool;
+    fn allows(path: &P) -> bool;
 }
 
-impl Filter for NoFilter {
-    fn allows(_path: &Path) -> bool {
+impl<P: PathType + ?Sized> Filter<P> for NoFilter {
+    fn allows(_path: &P) -> bool {
         true
     }
 }
@@ -166,7 +178,7 @@ macro_rules! ext_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::dir_children::Filter for $name {
+        impl $crate::dir_children::Filter<::std::path::Path> for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.extension()
                     .map_or(false, |s| s == $Ext)
@@ -196,7 +208,7 @@ macro_rules! stem_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::dir_children::Filter for $name {
+        impl $crate::dir_children::Filter<::std::path::Path> for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.file_stem()
                     .and_then(|s| s.to_str())
@@ -228,7 +240,7 @@ macro_rules! file_prefix_filter {
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
-        impl $crate::dir_children::Filter for $name {
+        impl $crate::dir_children::Filter<::std::path::Path> for $name {
             fn allows(path: &::std::path::Path) -> bool {
                 path.file_prefix()
                     .and_then(|s| s.to_str())
@@ -238,16 +250,13 @@ macro_rules! file_prefix_filter {
     };
 }
 
-impl<T, F: Filter> Default for DirChildren<T, F> {
+impl<T, P: PathType + ?Sized, F: Filter<P>> Default for DirChildren<T, F, P> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T, F> DirChildren<T, F>
-where
-    F: Filter,
-{
+impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildren<T, F, P> {
     /// Creates an empty [`DirChildren`], with no children.
     ///
     /// # Examples
@@ -281,7 +290,7 @@ where
     /// );
     /// assert!(!d.is_empty());
     /// ```
-    pub fn with_children_from_iter(children: impl IntoIterator<Item = DirChild<T>>) -> Self {
+    pub fn with_children_from_iter(children: impl IntoIterator<Item = DirChild<T, P>>) -> Self {
         Self {
             children: children.into_iter().collect(),
             filter: marker::PhantomData,
@@ -338,10 +347,11 @@ where
     ///     )
     /// );
     /// ```
-    pub fn map<U, MapF>(self, f: MapF) -> DirChildren<U, F>
+    pub fn map<U, MapF, F2, P2>(self, f: MapF) -> DirChildren<U, F2, P2>
     where
-        MapF: FnMut(DirChild<T>) -> DirChild<U>,
-        U: DirStructureItem,
+        MapF: FnMut(DirChild<T, P>) -> DirChild<U, P2>,
+        F2: Filter<P2>,
+        P2: PathType + ?Sized,
     {
         let children = self.children.into_iter().map(f).collect();
         DirChildren {
@@ -373,9 +383,9 @@ where
     /// let d = DirChildren::<String, dir_structure::NoFilter>::new();
     /// let d2: DirChildren<String, NewFilter> = d.map_filter::<NewFilter>();
     /// ```
-    pub fn map_filter<NewF>(self) -> DirChildren<T, NewF>
+    pub fn map_filter<NewF>(self) -> DirChildren<T, NewF, P>
     where
-        NewF: Filter,
+        NewF: Filter<P>,
     {
         DirChildren {
             children: self.children,
@@ -450,7 +460,7 @@ where
     /// assert_eq!(d.get(2), None);
     /// assert_eq!(d.get(100), None);
     /// ```
-    pub fn get(&self, index: usize) -> Option<&DirChild<T>> {
+    pub fn get(&self, index: usize) -> Option<&DirChild<T, P>> {
         self.children.get(index)
     }
 
@@ -478,7 +488,7 @@ where
     /// assert_eq!(d.get_mut(2), None);
     /// assert_eq!(d.get_mut(100), None);
     /// ```
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirChild<T>> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirChild<T, P>> {
         self.children.get_mut(index)
     }
 
@@ -505,10 +515,13 @@ where
     /// assert_eq!(d.get_name("any_name"), None);
     /// assert_eq!(d.get_name("aaaa"), None);
     /// ```
-    pub fn get_name(&self, name: impl AsRef<OsStr>) -> Option<&DirChild<T>> {
+    pub fn get_name(&self, name: impl AsRef<P::PathSegmentRef>) -> Option<&DirChild<T, P>>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.children
             .iter()
-            .find(|child| child.file_name == name.as_ref())
+            .find(|child| child.file_name.as_ref() == name.as_ref())
     }
 
     /// Gets the child with the specified "file" name (last segment of path).
@@ -535,10 +548,16 @@ where
     /// assert_eq!(d.get_name_mut("any_name"), None);
     /// assert_eq!(d.get_name_mut("aaaa"), None);
     /// ```
-    pub fn get_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut DirChild<T>> {
+    pub fn get_name_mut(
+        &mut self,
+        name: impl AsRef<P::PathSegmentRef>,
+    ) -> Option<&mut DirChild<T, P>>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.children
             .iter_mut()
-            .find(|child| child.file_name == name.as_ref())
+            .find(|child| child.file_name.as_ref() == name.as_ref())
     }
 
     /// Gets the value of the child with the specified "file" name (last segment of path).
@@ -564,7 +583,10 @@ where
     /// assert_eq!(d.get_value_by_name("any_name"), None);
     /// assert_eq!(d.get_value_by_name("aaaa"), None);
     /// ```
-    pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
+    pub fn get_value_by_name(&self, name: impl AsRef<P::PathSegmentRef>) -> Option<&T>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.get_name(name).map(|child| &child.value)
     }
 
@@ -592,7 +614,10 @@ where
     /// assert_eq!(d.get_value_by_name_mut("any_name"), None);
     /// assert_eq!(d.get_value_by_name_mut("aaaa"), None);
     /// ```
-    pub fn get_value_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut T> {
+    pub fn get_value_by_name_mut(&mut self, name: impl AsRef<P::PathSegmentRef>) -> Option<&mut T>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.get_name_mut(name).map(|child| &mut child.value)
     }
 
@@ -619,7 +644,7 @@ where
     /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn iter(&self) -> DirChildrenIter<'_, T> {
+    pub fn iter(&self) -> DirChildrenIter<'_, T, P> {
         DirChildrenIter(self.children.iter())
     }
 
@@ -660,7 +685,7 @@ where
     /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "modified".to_owned())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T> {
+    pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T, P> {
         DirChildrenIterMut(self.children.iter_mut())
     }
 
@@ -689,7 +714,7 @@ where
     /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn push(&mut self, file_name: impl Into<OsString>, value: T) {
+    pub fn push(&mut self, file_name: impl Into<P::PathSegmentOwned>, value: T) {
         self.children.push(DirChild {
             file_name: file_name.into(),
             value,
@@ -716,7 +741,7 @@ where
     /// assert_eq!(i.next(), Some(&DirChild::new("file2.txt", "file2".to_owned())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn retain(&mut self, f: impl FnMut(&DirChild<T>) -> bool) {
+    pub fn retain(&mut self, f: impl FnMut(&DirChild<T, P>) -> bool) {
         self.children.retain(f);
     }
 
@@ -741,7 +766,7 @@ where
     /// assert_eq!(i.next(), Some(&DirChild::new("file3.txt", "file3".to_owned())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn drain(&mut self, range: impl RangeBounds<usize>) -> DirChildrenDrain<'_, T> {
+    pub fn drain(&mut self, range: impl RangeBounds<usize>) -> DirChildrenDrain<'_, T, P> {
         DirChildrenDrain(self.children.drain(range))
     }
 
@@ -777,19 +802,19 @@ where
         &'a mut self,
         range: impl RangeBounds<usize>,
         filter: Fi,
-    ) -> DirChildrenExtractIf<'a, T, Fi>
+    ) -> DirChildrenExtractIf<'a, T, P, Fi>
     where
-        Fi: FnMut(&mut DirChild<T>) -> bool,
+        Fi: FnMut(&mut DirChild<T, P>) -> bool,
     {
         DirChildrenExtractIf(self.children.extract_if(range, filter))
     }
 }
 
-impl<T, F> From<Vec<DirChild<T>>> for DirChildren<T, F>
+impl<T, P: PathType + ?Sized, F> From<Vec<DirChild<T, P>>> for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn from(children: Vec<DirChild<T>>) -> Self {
+    fn from(children: Vec<DirChild<T, P>>) -> Self {
         Self {
             children,
             filter: marker::PhantomData,
@@ -797,20 +822,20 @@ where
     }
 }
 
-impl<T, F> Extend<DirChild<T>> for DirChildren<T, F>
+impl<T, P: PathType + ?Sized, F> Extend<DirChild<T, P>> for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn extend<I: IntoIterator<Item = DirChild<T>>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = DirChild<T, P>>>(&mut self, iter: I) {
         self.children.extend(iter);
     }
 }
 
-impl<T, F> FromIterator<DirChild<T>> for DirChildren<T, F>
+impl<T, P: PathType + ?Sized, F> FromIterator<DirChild<T, P>> for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn from_iter<I: IntoIterator<Item = DirChild<T>>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = DirChild<T, P>>>(iter: I) -> Self {
         Self::with_children_from_iter(iter)
     }
 }
@@ -818,10 +843,10 @@ where
 /// An iterator that drains the children of a [`DirChildren`].
 ///
 /// See [`DirChildren::drain`].
-pub struct DirChildrenDrain<'a, T>(vec::Drain<'a, DirChild<T>>);
+pub struct DirChildrenDrain<'a, T, P: PathType + ?Sized>(vec::Drain<'a, DirChild<T, P>>);
 
-impl<T> Iterator for DirChildrenDrain<'_, T> {
-    type Item = DirChild<T>;
+impl<T, P: PathType + ?Sized> Iterator for DirChildrenDrain<'_, T, P> {
+    type Item = DirChild<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -832,24 +857,28 @@ impl<T> Iterator for DirChildrenDrain<'_, T> {
     }
 }
 
-impl<T> ExactSizeIterator for DirChildrenDrain<'_, T> {
+impl<T, P: PathType + ?Sized> ExactSizeIterator for DirChildrenDrain<'_, T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
-impl<T> DoubleEndedIterator for DirChildrenDrain<'_, T> {
+impl<T, P: PathType + ?Sized> DoubleEndedIterator for DirChildrenDrain<'_, T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, P: PathType + ?Sized + 'a, F: Filter<P>, Vfs: vfs::Vfs<'a, Path = P>> ReadFrom<'a, Vfs>
+    for DirChildren<T, F, P>
 where
     T: ReadFrom<'a, Vfs>,
-    F: Filter + 'a,
+    F: 'a,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
@@ -862,11 +891,11 @@ where
                 ..
             } = child?;
 
-            if !F::allows(&child_path) {
+            if !F::allows(child_path.as_ref()) {
                 continue;
             }
 
-            let value = T::read_from(&child_path, vfs)?;
+            let value = T::read_from(child_path.as_ref(), vfs)?;
             children.push(DirChild {
                 file_name: name,
                 value,
@@ -887,42 +916,48 @@ where
 pub enum DirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    F: Filter + Send + 'static,
-    T::Future: Future<Output = Result<T>> + Send + Unpin + 'a,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+        + Send
+        + Unpin
+        + 'a,
 {
     Poison,
     Init(
         Pin<Box<Vfs::DirWalkFuture<'a>>>,
-        Vec<DirChild<T>>,
-        PathBuf,
+        Vec<DirChild<T, Vfs::Path>>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         Pin<&'a Vfs>,
         PhantomData<F>,
     ),
     Begin(
         Pin<Box<Vfs::DirWalk<'a>>>,
-        Vec<DirChild<T>>,
-        PathBuf,
+        Vec<DirChild<T, Vfs::Path>>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         Pin<&'a Vfs>,
     ),
     ReadAsync(
         Pin<Box<Vfs::DirWalk<'a>>>,
-        Vec<DirChild<T>>,
-        PathBuf,
+        Vec<DirChild<T, Vfs::Path>>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         T::Future,
-        OsString,
+        <Vfs::Path as PathType>::PathSegmentOwned,
         Pin<&'a Vfs>,
     ),
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: VfsAsync> Future for DirChildrenReadAsyncFuture<'a, T, F, Vfs>
+impl<'a, T, F, Vfs: VfsAsync + 'a> Future for DirChildrenReadAsyncFuture<'a, T, F, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
-    F: Filter + Send + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+        + Unpin
+        + 'static,
 {
-    type Output = Result<DirChildren<T, F>>;
+    type Output =
+        Result<DirChildren<T, F, Vfs::Path>, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -962,7 +997,7 @@ where
                         path: path_child,
                         kind: _,
                     }))) => {
-                        if !F::allows(&path_child) {
+                        if !F::allows(path_child.as_ref()) {
                             self.project_replace(DirChildrenReadAsyncFuture::Begin(
                                 entries, children, path, vfs,
                             ));
@@ -1033,29 +1068,38 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for DirChildren<T, F, Vfs::Path>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
-    F: Filter + Send + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+        + Unpin
+        + 'static,
 {
     type Future = DirChildrenReadAsyncFuture<'a, T, F, Vfs>;
 
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         let f = Box::pin(vfs.walk_dir(path.clone()));
         DirChildrenReadAsyncFuture::Init(f, Vec::new(), path, vfs, PhantomData::<F>)
     }
 }
 
-impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildren<T, F, Vfs::Path>
 where
     T: WriteTo<'a, Vfs>,
-    F: Filter,
+    F: Filter<Vfs::Path>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
         for child in &self.children {
-            let child_path = path.join(&child.file_name);
-            child.value.write_to(&child_path, vfs)?;
+            let child_path = path.join_segment(&child.file_name);
+            child.value.write_to(child_path.as_ref(), vfs)?;
         }
 
         Ok(())
@@ -1064,15 +1108,21 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for DirChildren<T, F>
+impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for DirChildren<T, F, Vfs::Path>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    F: Filter + Send + 'static,
-    T::Future: Future<Output = Result<()>> + Unpin + 'a,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
 {
     type Future = DirChildrenWriteAsyncFuture<'a, T, Vfs>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         DirChildrenWriteAsyncFuture::Init(self.into_iter(), path, vfs)
     }
 }
@@ -1084,14 +1134,19 @@ where
 pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsync<'a, Vfs>,
-    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
 {
     Poison,
-    Init(DirChildrenIntoIter<T>, PathBuf, Pin<&'a Vfs>),
+    Init(
+        DirChildrenIntoIter<T, <Vfs as VfsCore>::Path>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        Pin<&'a Vfs>,
+    ),
     Write(
-        DirChildrenIntoIter<T>,
+        DirChildrenIntoIter<T, <Vfs as VfsCore>::Path>,
         <T as WriteToAsync<'a, Vfs>>::Future,
-        PathBuf,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         Pin<&'a Vfs>,
     ),
 }
@@ -1102,9 +1157,10 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs>,
-    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1112,7 +1168,9 @@ where
         match this {
             DirChildrenWriteAsyncFutureProjOwn::Init(mut iter, path, vfs) => {
                 if let Some(child) = iter.next() {
-                    let fut = child.value.write_to_async(path.join(&child.file_name), vfs);
+                    let fut = child
+                        .value
+                        .write_to_async(path.as_ref().join_segment(&child.file_name), vfs);
                     self.project_replace(Self::Write(iter, fut, path.clone(), vfs));
                     cx.waker().wake_by_ref();
                     Poll::Pending
@@ -1124,8 +1182,9 @@ where
                 match Pin::new(&mut fut).poll(cx) {
                     Poll::Ready(Ok(())) => {
                         if let Some(child) = iter.next() {
-                            let new_fut =
-                                child.value.write_to_async(path.join(&child.file_name), vfs);
+                            let new_fut = child
+                                .value
+                                .write_to_async(path.as_ref().join_segment(&child.file_name), vfs);
                             self.project_replace(Self::Write(iter, new_fut, path.clone(), vfs));
                             cx.waker().wake_by_ref();
                             Poll::Pending
@@ -1150,11 +1209,12 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'r, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
-    for DirChildren<T, F>
+    for DirChildren<T, F, Vfs::Path>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
-    F: Filter + Send + 'static,
-    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    F: Filter<Vfs::Path> + Send + 'static,
+    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
 {
     type Future<'a>
         = DirChildrenWriteAsyncRefFuture<'r, 'a, T, Vfs>
@@ -1166,7 +1226,7 @@ where
 
     fn write_to_async_ref<'a>(
         &'a self,
-        path: PathBuf,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         vfs: Pin<&'a Vfs>,
     ) -> <Self as WriteToAsyncRef<'r, Vfs>>::Future<'a>
     where
@@ -1183,15 +1243,20 @@ where
 pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'r, Vfs> + 'r,
-    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
     'r: 'f,
 {
     Poison,
-    Init(DirChildrenIter<'f, T>, PathBuf, Pin<&'f Vfs>),
+    Init(
+        DirChildrenIter<'f, T, Vfs::Path>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        Pin<&'f Vfs>,
+    ),
     Write(
-        DirChildrenIter<'f, T>,
+        DirChildrenIter<'f, T, Vfs::Path>,
         <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>,
-        PathBuf,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         Pin<&'f Vfs>,
     ),
 }
@@ -1202,10 +1267,11 @@ impl<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'r, Vfs>,
-    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
     'r: 'f,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1215,7 +1281,7 @@ where
                 if let Some(child) = iter.next() {
                     let fut = child
                         .value
-                        .write_to_async_ref(path.join(&child.file_name), vfs);
+                        .write_to_async_ref(path.as_ref().join_segment(&child.file_name), vfs);
                     self.project_replace(Self::Write(iter, fut, path.clone(), vfs));
                     cx.waker().wake_by_ref();
                     Poll::Pending
@@ -1227,9 +1293,10 @@ where
                 match Pin::new(&mut fut).poll(cx) {
                     Poll::Ready(Ok(())) => {
                         if let Some(child) = iter.next() {
-                            let new_fut = child
-                                .value
-                                .write_to_async_ref(path.join(&child.file_name), vfs);
+                            let new_fut = child.value.write_to_async_ref(
+                                path.as_ref().join_segment(&child.file_name),
+                                vfs,
+                            );
                             self.project_replace(Self::Write(iter, new_fut, path.clone(), vfs));
                             cx.waker().wake_by_ref();
                             Poll::Pending
@@ -1253,9 +1320,9 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<T, F> DynamicHasField for DirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> DynamicHasField for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
     type Inner = T;
 
@@ -1266,16 +1333,42 @@ where
 }
 
 /// A single child of a [`DirChildren`] structure.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChild<T> {
+pub struct DirChild<T, P: PathType + ?Sized> {
     /// The file name of the child.
-    file_name: OsString,
+    file_name: P::PathSegmentOwned,
     /// The parsed value of the child.
     value: T,
 }
 
-impl<T> DirChild<T> {
+impl<T, P: PathType + ?Sized> Clone for DirChild<T, P>
+where
+    T: Clone,
+    P::PathSegmentOwned: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            file_name: self.file_name.clone(),
+            value: self.value.clone(),
+        }
+    }
+}
+
+impl<T, P: PathType + ?Sized> fmt::Debug for DirChild<T, P>
+where
+    T: fmt::Debug,
+    P::PathSegmentOwned: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DirChild")
+            .field("file_name", &self.file_name)
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl<T, P: PathType + ?Sized> DirChild<T, P> {
     /// Creates a new [`DirChild`] with the specified file name and value.
     ///
     /// # Examples
@@ -1288,7 +1381,7 @@ impl<T> DirChild<T> {
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
-    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+    pub fn new(file_name: impl Into<P::PathSegmentOwned>, value: T) -> Self {
         Self {
             file_name: file_name.into(),
             value,
@@ -1306,7 +1399,7 @@ impl<T> DirChild<T> {
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// ```
-    pub fn file_name(&self) -> &OsString {
+    pub fn file_name(&self) -> &P::PathSegmentOwned {
         &self.file_name
     }
 
@@ -1325,7 +1418,7 @@ impl<T> DirChild<T> {
     /// *d.file_name_mut() = OsString::from("new_file.txt");
     /// assert_eq!(d.file_name(), &OsString::from("new_file.txt"));
     /// ```
-    pub fn file_name_mut(&mut self) -> &mut OsString {
+    pub fn file_name_mut(&mut self) -> &mut P::PathSegmentOwned {
         &mut self.file_name
     }
 
@@ -1380,8 +1473,8 @@ impl<T> DirChild<T> {
     /// ```
     pub fn map_file_name<F, O>(self, f: F) -> Self
     where
-        F: FnOnce(OsString) -> O,
-        O: Into<OsString>,
+        F: FnOnce(P::PathSegmentOwned) -> O,
+        O: Into<P::PathSegmentOwned>,
     {
         let file_name = f(self.file_name).into();
         DirChild {
@@ -1406,7 +1499,7 @@ impl<T> DirChild<T> {
     /// let d = DirChild::new("file.txt", "file".to_owned());
     /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt", FileString("file".to_owned())));
     /// ```
-    pub fn map_value<U, F>(self, f: F) -> DirChild<U>
+    pub fn map_value<U, F>(self, f: F) -> DirChild<U, P>
     where
         F: FnOnce(T) -> U,
     {
@@ -1418,7 +1511,7 @@ impl<T> DirChild<T> {
     }
 }
 
-impl<T> Deref for DirChild<T> {
+impl<T, P: PathType + ?Sized> Deref for DirChild<T, P> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -1426,7 +1519,7 @@ impl<T> Deref for DirChild<T> {
     }
 }
 
-impl<T> DerefMut for DirChild<T> {
+impl<T, P: PathType + ?Sized> DerefMut for DirChild<T, P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }
@@ -1436,10 +1529,10 @@ impl<T> DerefMut for DirChild<T> {
 /// [`DirChildren`] structure.
 ///
 /// See [`DirChildren::iter`] for more information.
-pub struct DirChildrenIter<'a, T>(slice::Iter<'a, DirChild<T>>);
+pub struct DirChildrenIter<'a, T, P: PathType + ?Sized>(slice::Iter<'a, DirChild<T, P>>);
 
-impl<'a, T> Iterator for DirChildrenIter<'a, T> {
-    type Item = &'a DirChild<T>;
+impl<'a, T, P: PathType + ?Sized> Iterator for DirChildrenIter<'a, T, P> {
+    type Item = &'a DirChild<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -1450,7 +1543,7 @@ impl<'a, T> Iterator for DirChildrenIter<'a, T> {
     }
 }
 
-impl<T> ExactSizeIterator for DirChildrenIter<'_, T>
+impl<T, P: PathType + ?Sized> ExactSizeIterator for DirChildrenIter<'_, T, P>
 where
     T: DirStructureItem,
 {
@@ -1459,7 +1552,7 @@ where
     }
 }
 
-impl<T> DoubleEndedIterator for DirChildrenIter<'_, T>
+impl<T, P: PathType + ?Sized> DoubleEndedIterator for DirChildrenIter<'_, T, P>
 where
     T: DirStructureItem,
 {
@@ -1473,13 +1566,13 @@ where
 /// [`DirChildren`] structure while iterating over them.
 ///
 /// See [`DirChildren::iter_mut`] for more information.
-pub struct DirChildrenIterMut<'a, T>(slice::IterMut<'a, DirChild<T>>);
+pub struct DirChildrenIterMut<'a, T, P: PathType + ?Sized>(slice::IterMut<'a, DirChild<T, P>>);
 
-impl<'a, T> Iterator for DirChildrenIterMut<'a, T>
+impl<'a, T, P: PathType + ?Sized> Iterator for DirChildrenIterMut<'a, T, P>
 where
     T: DirStructureItem,
 {
-    type Item = &'a mut DirChild<T>;
+    type Item = &'a mut DirChild<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -1490,7 +1583,7 @@ where
     }
 }
 
-impl<T> ExactSizeIterator for DirChildrenIterMut<'_, T>
+impl<T, P: PathType + ?Sized> ExactSizeIterator for DirChildrenIterMut<'_, T, P>
 where
     T: DirStructureItem,
 {
@@ -1499,7 +1592,7 @@ where
     }
 }
 
-impl<T> DoubleEndedIterator for DirChildrenIterMut<'_, T>
+impl<T, P: PathType + ?Sized> DoubleEndedIterator for DirChildrenIterMut<'_, T, P>
 where
     T: DirStructureItem,
 {
@@ -1508,36 +1601,36 @@ where
     }
 }
 
-impl<T, F> IntoIterator for DirChildren<T, F>
+impl<T, F, P: ?Sized + PathType> IntoIterator for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    type Item = DirChild<T>;
-    type IntoIter = DirChildrenIntoIter<T>;
+    type Item = DirChild<T, P>;
+    type IntoIter = DirChildrenIntoIter<T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         DirChildrenIntoIter(self.children.into_iter())
     }
 }
 
-impl<'a, T, F> IntoIterator for &'a DirChildren<T, F>
+impl<'a, T, F, P: PathType + ?Sized> IntoIterator for &'a DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    type Item = &'a DirChild<T>;
-    type IntoIter = DirChildrenIter<'a, T>;
+    type Item = &'a DirChild<T, P>;
+    type IntoIter = DirChildrenIter<'a, T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl<'a, T, F> IntoIterator for &'a mut DirChildren<T, F>
+impl<'a, T, F, P: PathType + ?Sized> IntoIterator for &'a mut DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    type Item = &'a mut DirChild<T>;
-    type IntoIter = DirChildrenIterMut<'a, T>;
+    type Item = &'a mut DirChild<T, P>;
+    type IntoIter = DirChildrenIterMut<'a, T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -1547,10 +1640,10 @@ where
 /// An owned iterator over the children of a [`DirChildren`] structure.
 ///
 /// See [`DirChildren::into_iter`] for more information.
-pub struct DirChildrenIntoIter<T>(vec::IntoIter<DirChild<T>>);
+pub struct DirChildrenIntoIter<T, P: PathType + ?Sized>(vec::IntoIter<DirChild<T, P>>);
 
-impl<T> Iterator for DirChildrenIntoIter<T> {
-    type Item = DirChild<T>;
+impl<T, P: PathType + ?Sized> Iterator for DirChildrenIntoIter<T, P> {
+    type Item = DirChild<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -1561,13 +1654,13 @@ impl<T> Iterator for DirChildrenIntoIter<T> {
     }
 }
 
-impl<T> ExactSizeIterator for DirChildrenIntoIter<T> {
+impl<T, P: PathType + ?Sized> ExactSizeIterator for DirChildrenIntoIter<T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
-impl<T> DoubleEndedIterator for DirChildrenIntoIter<T> {
+impl<T, P: PathType + ?Sized> DoubleEndedIterator for DirChildrenIntoIter<T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
@@ -1577,12 +1670,14 @@ impl<T> DoubleEndedIterator for DirChildrenIntoIter<T> {
 /// that satisfy a given predicate.
 ///
 /// See [`DirChildren::extract_if`] for more information.
-pub struct DirChildrenExtractIf<'a, T, F: FnMut(&mut DirChild<T>) -> bool>(
-    vec::ExtractIf<'a, DirChild<T>, F>,
+pub struct DirChildrenExtractIf<'a, T, P: PathType + ?Sized, F: FnMut(&mut DirChild<T, P>) -> bool>(
+    vec::ExtractIf<'a, DirChild<T, P>, F>,
 );
 
-impl<'a, T, F: FnMut(&mut DirChild<T>) -> bool> Iterator for DirChildrenExtractIf<'a, T, F> {
-    type Item = DirChild<T>;
+impl<'a, T, P: PathType + ?Sized, F: FnMut(&mut DirChild<T, P>) -> bool> Iterator
+    for DirChildrenExtractIf<'a, T, P, F>
+{
+    type Item = DirChild<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -1644,55 +1739,55 @@ macro_rules! dir_children_wrapper {
 #[macro_export]
 macro_rules! dir_children_wrapper_with_vfs {
     ($vis:vis $name:ident $ty:ident) => {
-        $vis struct $name<'vfs, Vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>);
+        $vis struct $name<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>);
 
-        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs> + 'static> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
-            fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<Self>
+        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs, Path=P> + 'static, P: $crate::traits::vfs::PathType + ?Sized + 'vfs> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs, P> {
+            fn read_from(path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<Self, <P as $crate::traits::vfs::PathType>::OwnedPath>
             where
                 Self: Sized,
             {
-                Ok(Self(<$crate::dir_children::DirChildren<$ty<'vfs, Vfs>>>::read_from(path, vfs)?))
+                Ok(Self(<$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>>::read_from(path, vfs)?))
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs> + 'static> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs> {
-            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<()> {
+        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs, Path=P> + 'static, P: $crate::traits::vfs::PathType + ?Sized + 'vfs> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs, P> {
+            fn write_to(&self, path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<(), <P as $crate::traits::vfs::PathType>::OwnedPath> {
                 self.0.write_to(path, vfs)
             }
         }
 
-        impl<'vfs, Vfs> std::ops::Deref for $name<'vfs, Vfs> {
-            type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>;
+        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::ops::Deref for $name<'vfs, Vfs, P> {
+            type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
 
-        impl<'vfs, Vfs> std::ops::DerefMut for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::ops::DerefMut for $name<'vfs, Vfs, P> {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
         }
 
-        impl<'vfs, Vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
-            type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>>;
-            type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>>;
+        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::iter::IntoIterator for $name<'vfs, Vfs, P> {
+            type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>, P>;
+            type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>, P>;
 
             fn into_iter(self) -> Self::IntoIter {
                 self.0.into_iter()
             }
         }
 
-        impl<'vfs, Vfs> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>>: $crate::traits::resolve::DynamicHasField {
-            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>> as $crate::traits::resolve::DynamicHasField>::Inner;
+        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs, P> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>: $crate::traits::resolve::DynamicHasField {
+            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P> as $crate::traits::resolve::DynamicHasField>::Inner;
 
             fn resolve_path(p: PathBuf, field: &str) -> PathBuf {
-                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
+                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
             }
         }
 
-        impl<'vfs, Vfs> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
+        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs, P> {}
     };
 }
 
@@ -1702,30 +1797,33 @@ macro_rules! dir_children_wrapper_with_vfs {
 /// [stem](Path::file_stem), but you don't care about the extension.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChildSingle<T, F: Filter> {
+pub struct DirChildSingle<T, F: Filter<P>, P: PathType + ?Sized = std::path::Path> {
     /// The file name of the child.
-    file_name: OsString,
+    file_name: P::PathSegmentOwned,
     /// The parsed value of the child.
     value: T,
     #[cfg_attr(feature = "assert_eq", assert_eq(ignore))]
-    _phantom: PhantomData<F>,
+    _phantom: PhantomData<(F, P)>,
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingle<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingle<T, F, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
-    F: Filter + 'a,
+    F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
-        let children = DirChildren::<T, F>::read_from(path, vfs)?;
+        let children = DirChildren::<T, F, Vfs::Path>::read_from(path, vfs)?;
         if children.len() != 1 {
             return Err(Error::UnexpectedNumberOfChildren {
                 expected: "1",
                 found: children.len(),
-                path: path.to_path_buf(),
+                path: path.owned(),
             });
         }
 
@@ -1738,17 +1836,22 @@ where
     }
 }
 
-impl<'a, T, F: Filter, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildSingle<T, F>
+impl<'a, T, F: Filter<Vfs::Path>, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs>
+    for DirChildSingle<T, F, Vfs::Path>
 where
     T: WriteTo<'a, Vfs>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
-        let child_path = path.join(&self.file_name);
-        self.value.write_to(&child_path, vfs)
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+        let child_path = path.join_segment(&self.file_name);
+        self.value.write_to(child_path.as_ref(), vfs)
     }
 }
 
-impl<T, F: Filter> DirChildSingle<T, F> {
+impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildSingle<T, F, P> {
     /// Creates a new [`DirChildSingle`] with the specified file name and value.
     ///
     /// # Examples
@@ -1762,7 +1865,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
-    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+    pub fn new(file_name: impl Into<P::PathSegmentOwned>, value: T) -> Self {
         Self {
             file_name: file_name.into(),
             value,
@@ -1783,7 +1886,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
-    pub fn file_name(&self) -> &OsString {
+    pub fn file_name(&self) -> &P::PathSegmentOwned {
         &self.file_name
     }
 
@@ -1800,7 +1903,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// assert_eq!(d.file_name_mut(), &mut OsString::from("file.txt"));
     /// assert_eq!(d.value_mut(), &mut "file".to_owned());
     /// ```
-    pub fn file_name_mut(&mut self) -> &mut OsString {
+    pub fn file_name_mut(&mut self) -> &mut P::PathSegmentOwned {
         &mut self.file_name
     }
 
@@ -1850,7 +1953,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// assert_eq!(d_ref.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d_ref.value(), &&"file".to_owned());
     /// ```
-    pub fn as_ref(&self) -> DirChildSingle<&T, F> {
+    pub fn as_ref(&self) -> DirChildSingle<&T, F, P> {
         DirChildSingle {
             file_name: self.file_name.clone(),
             value: &self.value,
@@ -1874,7 +1977,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// d_mut.value_mut().push_str("_modified");
     /// assert_eq!(d.value(), &"file_modified".to_owned());
     /// ```
-    pub fn as_mut(&mut self) -> DirChildSingle<&mut T, F> {
+    pub fn as_mut(&mut self) -> DirChildSingle<&mut T, F, P> {
         DirChildSingle {
             file_name: self.file_name.clone(),
             value: &mut self.value,
@@ -1895,7 +1998,7 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// let d2 = d.map(|s| s.to_uppercase());
     /// assert_eq!(d2.value(), &"FILE".to_owned());
     /// ```
-    pub fn map<T2, F2>(self, f: F2) -> DirChildSingle<T2, F>
+    pub fn map<T2, F2>(self, f: F2) -> DirChildSingle<T2, F, P>
     where
         F2: FnOnce(T) -> T2,
     {
@@ -1929,9 +2032,9 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     /// assert_eq!(d2.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d2.value(), &"file".to_owned());
     /// ```
-    pub fn map_filter<F2>(self) -> DirChildSingle<T, F2>
+    pub fn map_filter<F2>(self) -> DirChildSingle<T, F2, P>
     where
-        F2: Filter,
+        F2: Filter<P>,
     {
         DirChildSingle {
             file_name: self.file_name,
@@ -1941,10 +2044,11 @@ impl<T, F: Filter> DirChildSingle<T, F> {
     }
 }
 
-impl<T, F> fmt::Debug for DirChildSingle<T, F>
+impl<T, F, P: PathType + ?Sized> fmt::Debug for DirChildSingle<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
     T: fmt::Debug,
+    <P as PathType>::PathSegmentOwned: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DirChildSingle")
@@ -1954,9 +2058,9 @@ where
     }
 }
 
-impl<T, F> Deref for DirChildSingle<T, F>
+impl<T, F, P: PathType + ?Sized> Deref for DirChildSingle<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
     type Target = T;
 
@@ -1965,9 +2069,9 @@ where
     }
 }
 
-impl<T, F> DerefMut for DirChildSingle<T, F>
+impl<T, F, P: PathType + ?Sized> DerefMut for DirChildSingle<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
@@ -1975,19 +2079,38 @@ where
 }
 
 /// A similar idea to [`DirChildSingle`], but allows for the absence of a matching entry.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 // #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub enum DirChildSingleOpt<T, F: Filter> {
+pub enum DirChildSingleOpt<T, F: Filter<P>, P: PathType + ?Sized = std::path::Path> {
     /// The entry is absent.
     None,
     /// The entry is present.
-    Some(DirChildSingle<T, F>),
+    Some(DirChildSingle<T, F, P>),
+}
+
+impl<T, F: Filter<P>, P: PathType + ?Sized> hash::Hash for DirChildSingleOpt<T, F, P>
+where
+    T: hash::Hash,
+    <P as PathType>::PathSegmentOwned: hash::Hash,
+{
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        match self {
+            DirChildSingleOpt::None => {
+                0u8.hash(state);
+            }
+            DirChildSingleOpt::Some(child) => {
+                1u8.hash(state);
+                child.hash(state);
+            }
+        }
+    }
 }
 
 #[cfg(feature = "assert_eq")]
-impl<T, F: Filter> assert_eq::AssertEq for DirChildSingleOpt<T, F>
+impl<T, F: Filter<P>, P: PathType + ?Sized> assert_eq::AssertEq for DirChildSingleOpt<T, F, P>
 where
     T: assert_eq::AssertEq + fmt::Debug,
+    <P as PathType>::PathSegmentOwned: assert_eq::AssertEq + fmt::Debug,
 {
     fn assert_eq(
         &self,
@@ -2007,7 +2130,7 @@ where
     }
 }
 
-impl<T, F: Filter> DirChildSingleOpt<T, F> {
+impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildSingleOpt<T, F, P> {
     /// Creates a new [`DirChildSingleOpt`] with the specified file name and value.
     ///
     /// # Examples
@@ -2023,7 +2146,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
-    pub fn new(file_name: impl Into<OsString>, value: T) -> Self {
+    pub fn new(file_name: impl Into<P::PathSegmentOwned>, value: T) -> Self {
         DirChildSingleOpt::Some(DirChildSingle::new(file_name, value))
     }
 
@@ -2082,7 +2205,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// let opt_ref = opt.as_ref();
     /// assert_eq!(opt_ref, DirChildSingleOpt::None);
     /// ```
-    pub fn as_ref(&self) -> DirChildSingleOpt<&T, F> {
+    pub fn as_ref(&self) -> DirChildSingleOpt<&T, F, P> {
         match self {
             Self::Some(child) => DirChildSingleOpt::Some(child.as_ref()),
             Self::None => DirChildSingleOpt::None,
@@ -2112,7 +2235,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// let mut opt_mut = opt.as_mut();
     /// assert_eq!(opt_mut, DirChildSingleOpt::None);
     /// ```
-    pub fn as_mut(&mut self) -> DirChildSingleOpt<&mut T, F> {
+    pub fn as_mut(&mut self) -> DirChildSingleOpt<&mut T, F, P> {
         match self {
             Self::Some(child) => DirChildSingleOpt::Some(child.as_mut()),
             Self::None => DirChildSingleOpt::None,
@@ -2138,8 +2261,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// ```
     pub fn map<U>(
         self,
-        f: impl FnOnce(DirChildSingle<T, F>) -> DirChildSingle<U, F>,
-    ) -> DirChildSingleOpt<U, F> {
+        f: impl FnOnce(DirChildSingle<T, F, P>) -> DirChildSingle<U, F, P>,
+    ) -> DirChildSingleOpt<U, F, P> {
         match self {
             Self::Some(child) => DirChildSingleOpt::Some(f(child)),
             Self::None => DirChildSingleOpt::None,
@@ -2172,10 +2295,10 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// });
     /// assert_eq!(opt_and_then, DirChildSingleOpt::<_, NoFilter>::None);
     /// ```
-    pub fn and_then<U, F2: Filter>(
+    pub fn and_then<U, F2: Filter<P2>, P2: PathType + ?Sized>(
         self,
-        f: impl FnOnce(DirChildSingle<T, F>) -> DirChildSingleOpt<U, F2>,
-    ) -> DirChildSingleOpt<U, F2> {
+        f: impl FnOnce(DirChildSingle<T, F, P>) -> DirChildSingleOpt<U, F2, P2>,
+    ) -> DirChildSingleOpt<U, F2, P2> {
         match self {
             Self::Some(child) => f(child),
             Self::None => DirChildSingleOpt::None,
@@ -2208,10 +2331,10 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// let opt_or_else = opt.or_else(|| DirChildSingleOpt::<String, NoFilter>::None);
     /// assert_eq!(opt_or_else, DirChildSingleOpt::None);
     /// ```
-    pub fn or_else<F2: Filter>(
+    pub fn or_else<F2: Filter<P>>(
         self,
-        f: impl FnOnce() -> DirChildSingleOpt<T, F2>,
-    ) -> DirChildSingleOpt<T, F2> {
+        f: impl FnOnce() -> DirChildSingleOpt<T, F2, P>,
+    ) -> DirChildSingleOpt<T, F2, P> {
         match self {
             Self::Some(child) => DirChildSingleOpt::Some(child.map_filter()),
             Self::None => f(),
@@ -2235,7 +2358,7 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// let option = opt.to_option();
     /// assert_eq!(option, None);
     /// ```
-    pub fn to_option(self) -> Option<DirChildSingle<T, F>> {
+    pub fn to_option(self) -> Option<DirChildSingle<T, F, P>> {
         match self {
             DirChildSingleOpt::Some(child) => Some(child),
             DirChildSingleOpt::None => None,
@@ -2270,8 +2393,8 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     /// ```
     pub fn take_if(
         &mut self,
-        pred: impl FnOnce(&DirChildSingle<T, F>) -> bool,
-    ) -> DirChildSingleOpt<T, F> {
+        pred: impl FnOnce(&DirChildSingle<T, F, P>) -> bool,
+    ) -> DirChildSingleOpt<T, F, P> {
         match self {
             DirChildSingleOpt::Some(child) if pred(child) => {
                 mem::replace(self, DirChildSingleOpt::None)
@@ -2281,10 +2404,11 @@ impl<T, F: Filter> DirChildSingleOpt<T, F> {
     }
 }
 
-impl<T, F> fmt::Debug for DirChildSingleOpt<T, F>
+impl<T, F, P: PathType + ?Sized> fmt::Debug for DirChildSingleOpt<T, F, P>
 where
     T: fmt::Debug,
-    F: Filter,
+    F: Filter<P>,
+    <P as PathType>::PathSegmentOwned: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -2297,16 +2421,19 @@ where
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingleOpt<T, F, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
-    F: Filter + 'a,
+    F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
-        let children = DirChildren::<T, F>::read_from(path, vfs)?;
+        let children = DirChildren::<T, F, Vfs::Path>::read_from(path, vfs)?;
         if children.len() == 1 {
             let child = children.children.into_iter().next().unwrap();
             Ok(DirChildSingleOpt::Some(DirChildSingle {
@@ -2320,18 +2447,23 @@ where
             Err(Error::UnexpectedNumberOfChildren {
                 expected: "0 or 1",
                 found: children.len(),
-                path: path.to_path_buf(),
+                path: path.owned(),
             })
         }
     }
 }
 
-impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for DirChildSingleOpt<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs>
+    for DirChildSingleOpt<T, F, Vfs::Path>
 where
     T: WriteTo<'a, Vfs>,
-    F: Filter,
+    F: Filter<Vfs::Path>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
         match self {
             DirChildSingleOpt::Some(child) => child.write_to(path, vfs),
             DirChildSingleOpt::None => Ok(()),
@@ -2340,18 +2472,32 @@ where
 }
 
 /// A wrapper around [`DirChildren`] that forces the creation of the directory, even if there are no children to write.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct ForceCreateDirChildren<T, F = NoFilter>
+pub struct ForceCreateDirChildren<T, F = NoFilter, P: PathType + ?Sized = std::path::Path>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    children: DirChildren<T, F>,
+    children: DirChildren<T, F, P>,
 }
 
-impl<T, F> ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> fmt::Debug for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
+    T: fmt::Debug,
+    <P as PathType>::PathSegmentOwned: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ForceCreateDirChildren")
+            .field("children", &self.children)
+            .finish()
+    }
+}
+
+impl<T, F, P> ForceCreateDirChildren<T, F, P>
+where
+    F: Filter<P>,
+    P: PathType + ?Sized,
 {
     /// Creates a new [`ForceCreateDirChildren`] with the specified children.
     ///
@@ -2365,7 +2511,7 @@ where
     ///
     /// assert_eq!(force_create.len(), 0);
     /// ```
-    pub fn new(children: DirChildren<T, F>) -> Self {
+    pub fn new(children: DirChildren<T, F, P>) -> Self {
         ForceCreateDirChildren { children }
     }
 
@@ -2387,99 +2533,107 @@ where
     /// ```
     pub fn with_children_from_iter<I>(iter: I) -> Self
     where
-        I: IntoIterator<Item = DirChild<T>>,
+        I: IntoIterator<Item = DirChild<T, P>>,
     {
         Self::new(DirChildren::from_iter(iter))
     }
 }
 
-impl<T, F> AsRef<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> AsRef<DirChildren<T, F, P>> for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn as_ref(&self) -> &DirChildren<T, F> {
+    fn as_ref(&self) -> &DirChildren<T, F, P> {
         &self.children
     }
 }
 
-impl<T, F> AsMut<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> AsMut<DirChildren<T, F, P>> for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn as_mut(&mut self) -> &mut DirChildren<T, F> {
+    fn as_mut(&mut self) -> &mut DirChildren<T, F, P> {
         &mut self.children
     }
 }
 
-impl<T, F> From<DirChildren<T, F>> for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> From<DirChildren<T, F, P>> for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn from(children: DirChildren<T, F>) -> Self {
+    fn from(children: DirChildren<T, F, P>) -> Self {
         ForceCreateDirChildren { children }
     }
 }
 
-impl<T, F> From<ForceCreateDirChildren<T, F>> for DirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> From<ForceCreateDirChildren<T, F, P>> for DirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn from(force_create: ForceCreateDirChildren<T, F>) -> Self {
+    fn from(force_create: ForceCreateDirChildren<T, F, P>) -> Self {
         force_create.children
     }
 }
 
-impl<T, F> FromIterator<DirChild<T>> for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> FromIterator<DirChild<T, P>> for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    fn from_iter<I: IntoIterator<Item = DirChild<T>>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = DirChild<T, P>>>(iter: I) -> Self {
         ForceCreateDirChildren {
             children: DirChildren::from_iter(iter),
         }
     }
 }
 
-impl<T, F> Deref for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> Deref for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
-    type Target = DirChildren<T, F>;
+    type Target = DirChildren<T, F, P>;
 
     fn deref(&self) -> &Self::Target {
         &self.children
     }
 }
 
-impl<T, F> DerefMut for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> DerefMut for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.children
     }
 }
 
-impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for ForceCreateDirChildren<T, F, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
-    F: Filter + 'a,
+    F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
-        DirChildren::<T, F>::read_from(path, vfs)
+        DirChildren::<T, F, Vfs::Path>::read_from(path, vfs)
             .map(|children| ForceCreateDirChildren { children })
     }
 }
 
-impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs>
+    for ForceCreateDirChildren<T, F, Vfs::Path>
 where
     T: WriteTo<'a, Vfs>,
-    F: Filter,
+    F: Filter<Vfs::Path>,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
         vfs.create_dir_all(path)?;
 
         self.children.write_to(path, vfs)
@@ -2492,8 +2646,9 @@ where
 pub struct ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    F: Filter + Send + 'static,
-    T::Future: Future<Output = Result<T>> + Send + Unpin,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future:
+        Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + Unpin,
 {
     #[pin]
     inner: DirChildrenReadAsyncFuture<'a, T, F, Vfs>,
@@ -2504,10 +2659,15 @@ where
 impl<'a, T, F, Vfs: VfsAsync> Future for ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
-    F: Filter + Send + Sync + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+    F: Filter<Vfs::Path> + Send + 'static,
+    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+        + Unpin
+        + 'static,
 {
-    type Output = Result<ForceCreateDirChildren<T, F>>;
+    type Output = Result<
+        ForceCreateDirChildren<T, F, Vfs::Path>,
+        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+    >;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
@@ -2522,15 +2682,21 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for ForceCreateDirChildren<T, F>
+impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs>
+    for ForceCreateDirChildren<T, F, Vfs::Path>
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
-    F: Filter + Send + Sync + 'static,
-    T::Future: Future<Output = Result<T>> + Unpin + 'static,
+    F: Filter<Vfs::Path> + Send + Sync + 'static,
+    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+        + Unpin
+        + 'static,
 {
     type Future = ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs>;
 
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         ForceCreateDirChildrenReadAsyncFuture {
             inner: DirChildren::read_from_async(path, vfs),
         }
@@ -2540,15 +2706,26 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for ForceCreateDirChildren<T, F>
+    for ForceCreateDirChildren<T, F, Vfs::Path>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    F: Filter + Send + Sync + 'static,
-    T::Future: Future<Output = Result<()>> + Unpin + 'a,
+    F: Filter<Vfs::Path> + Send + Sync + 'static,
+    T::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<()>> + Send + 'a>>;
+    type Future = Pin<
+        Box<
+            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+                + Send
+                + 'a,
+        >,
+    >;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         Box::pin(async move {
             vfs.create_dir_all(path.clone()).await?;
 
@@ -2559,9 +2736,9 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<T, F> DynamicHasField for ForceCreateDirChildren<T, F>
+impl<T, F, P: PathType + ?Sized> DynamicHasField for ForceCreateDirChildren<T, F, P>
 where
-    F: Filter,
+    F: Filter<P>,
 {
     type Inner = T;
 

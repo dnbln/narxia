@@ -5,9 +5,6 @@
 use std::error;
 use std::fmt::Display;
 use std::marker;
-use std::path::Path;
-#[cfg(feature = "async")]
-use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
 
@@ -24,6 +21,9 @@ use crate::traits::async_vfs::WriteSupportingVfsAsync;
 use crate::traits::sync::FromRefForWriter;
 use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use crate::traits::vfs::VfsCore;
 
 /// A wrapper around a type which will use the [`Display`] and [`FromStr`] implementations
 /// for serialization / deserialization.
@@ -75,19 +75,20 @@ impl<T> NewtypeToInner for FmtWrapper<T> {
     }
 }
 
-impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FmtWrapper<T>
+impl<'a, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a> ReadFrom<'a, Vfs>
+    for FmtWrapper<T>
 where
     T: FromStr + 'a,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(path: &P, vfs: Pin<&'a Vfs>) -> Result<Self, <P as PathType>::OwnedPath>
     where
         Self: Sized,
     {
         let contents = FileString::read_from(path, vfs)?.0;
         match contents.parse::<T>() {
             Ok(v) => Ok(Self(v)),
-            Err(e) => Err(Error::Parse(path.to_path_buf(), e.into())),
+            Err(e) => Err(Error::Parse(path.owned(), e.into())),
         }
     }
 }
@@ -99,9 +100,18 @@ where
     T: FromStr + Send + 'static,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<Self>> + Send + 'a>>;
+    type Future = Pin<
+        Box<
+            dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+                + Send
+                + 'a,
+        >,
+    >;
 
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         Box::pin(async move {
             let contents = FileString::read_from_async(path.clone(), vfs).await?.0;
             match contents.parse::<T>() {
@@ -112,11 +122,12 @@ where
     }
 }
 
-impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FmtWrapper<T>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>, P: PathType + ?Sized + 'vfs> WriteTo<'vfs, Vfs>
+    for FmtWrapper<T>
 where
     T: Display,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -129,7 +140,11 @@ where
 {
     type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         let s = self.0.to_string();
         FileString::new(s).write_to_async(path, vfs)
     }
@@ -148,7 +163,11 @@ where
         'a: 'b,
         Vfs: 'b;
 
-    fn write_to_async_ref<'b>(&'b self, path: PathBuf, vfs: Pin<&'b Vfs>) -> Self::Future<'b>
+    fn write_to_async_ref<'b>(
+        &'b self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'b Vfs>,
+    ) -> Self::Future<'b>
     where
         'a: 'b,
     {
@@ -165,7 +184,7 @@ where
     'vfs: 'a,
 {
     type Inner = T;
-    type Wr = FmtWrapperRefWr<'a, T, Vfs>;
+    type Wr = FmtWrapperRefWr<'a, 'vfs, T, Vfs>;
 
     fn from_ref_for_writer(value: &'a Self::Inner) -> Self::Wr {
         FmtWrapperRefWr(value, marker::PhantomData)
@@ -179,7 +198,7 @@ where
     T: Display + Send + 'a,
 {
     type Inner = T;
-    type Wr = FmtWrapperRefWr<'a, T, Vfs>;
+    type Wr = FmtWrapperRefWr<'a, 'a, T, Vfs>;
 
     fn from_ref_for_writer_async(value: &'a Self::Inner) -> Self::Wr {
         FmtWrapperRefWr(value, marker::PhantomData)
@@ -188,27 +207,41 @@ where
 
 /// A [`WriteTo`] wrapper around a reference to a type which will use the [`Display`]
 /// implementation to write the value.
-pub struct FmtWrapperRefWr<'a, T: ?Sized, Vfs>(pub &'a T, marker::PhantomData<Vfs>);
+pub struct FmtWrapperRefWr<'a, 'vfs, T: Display + ?Sized, Vfs: 'vfs>(
+    pub &'a T,
+    marker::PhantomData<&'vfs Vfs>,
+);
 
-impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FmtWrapperRefWr<'_, T, Vfs>
+impl<'a, 'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs> + 'vfs> WriteTo<'vfs, Vfs>
+    for FmtWrapperRefWr<'a, 'vfs, T, Vfs>
 where
     T: Display + ?Sized,
+    'vfs: 'a,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'vfs Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
         FileString::new(self.0.to_string()).write_to(path, vfs)
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for FmtWrapperRefWr<'a, T, Vfs>
+impl<'a, 'vfs, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for FmtWrapperRefWr<'a, 'vfs, T, Vfs>
 where
     T: Display + Send + 'a,
+    'vfs: 'a,
 {
     type Future = <FileString as WriteToAsync<'a, Vfs>>::Future;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         let s = self.0.to_string();
         FileString::new(s).write_to_async(path, vfs)
     }

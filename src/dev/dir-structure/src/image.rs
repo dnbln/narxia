@@ -39,9 +39,6 @@ use std::io::Seek;
     feature = "image-format-qoi",
 ))]
 use std::marker;
-use std::path::Path;
-#[cfg(feature = "async")]
-use std::path::PathBuf;
 use std::pin::Pin;
 
 #[cfg(feature = "async")]
@@ -56,47 +53,49 @@ use crate::traits::async_vfs::VfsAsyncWithSeekWrite;
 use crate::traits::sync::FromRefForWriter;
 use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>> ReadFrom<'vfs, Vfs> for image::DynamicImage
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
+    ReadFrom<'vfs, Vfs> for image::DynamicImage
 where
     Vfs::RFile: Seek,
 {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+    fn read_from(path: &P, vfs: Pin<&'vfs Vfs>) -> Result<Self, <P as PathType>::OwnedPath> {
         image::ImageReader::new(&mut io::BufReader::new(vfs.open_read(path)?))
             .with_guessed_format()
             .wrap_io_error_with(path)?
             .decode()
-            .map_err(|e| Error::Parse(path.to_path_buf(), Box::new(e)))
+            .map_err(|e| Error::Parse(path.owned(), Box::new(e)))
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
-    for (image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
+    WriteTo<'vfs, Vfs> for (image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
         let (img, format) = self;
         img.write_to(&mut f, *format)
-            .map_err(|e| Error::Write(path.to_path_buf(), Box::new(e)))
+            .map_err(|e| Error::Write(path.owned(), Box::new(e)))
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
-    for (&image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
+    WriteTo<'vfs, Vfs> for (&image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
         let (img, format) = self;
         img.write_to(&mut f, *format)
-            .map_err(|e| Error::Write(path.to_path_buf(), Box::new(e)))
+            .map_err(|e| Error::Write(path.owned(), Box::new(e)))
     }
 }
 
@@ -131,6 +130,7 @@ where
     Vfs: 'a,
     Vfs::WFile: Seek,
     T::WriterType<'a, Vfs>: WriteTo<'vfs, Vfs> + 'a,
+    'vfs: 'a,
 {
     type Inner = image::DynamicImage;
     type Wr = T::WriterType<'a, Vfs>;
@@ -140,12 +140,13 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>, T> ReadFrom<'vfs, Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs, Path = P>, P: PathType + ?Sized + 'vfs, T>
+    ReadFrom<'vfs, Vfs> for T
 where
     T: ImgFormat + 'vfs,
     Vfs::RFile: Seek,
 {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+    fn read_from(path: &P, vfs: Pin<&'vfs Vfs>) -> Result<Self, <P as PathType>::OwnedPath> {
         debug_assert!(
             T::FORMAT.reading_enabled(),
             "Image format {:?} does not support reading; enable the corresponding feature",
@@ -155,17 +156,18 @@ where
         img_reader.set_format(T::FORMAT);
         let img = img_reader
             .decode()
-            .map_err(|e| Error::Parse(path.to_path_buf(), Box::new(e)))?;
+            .map_err(|e| Error::Parse(path.owned(), Box::new(e)))?;
         Ok(T::from_image(img))
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>, T> WriteTo<'vfs, Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs, T>
+    WriteTo<'vfs, Vfs> for T
 where
     T: ImgFormat,
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
         debug_assert!(
             T::FORMAT.writing_enabled(),
             "Image format {:?} does not support writing; enable the corresponding feature",
@@ -177,7 +179,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'vfs, Vfs: VfsAsyncWithSeekWrite, T: ImgFormat> WriteToAsync<'vfs, Vfs> for T
+impl<'vfs, Vfs: VfsAsyncWithSeekWrite<Path = P>, P: PathType + ?Sized + 'vfs, T: ImgFormat>
+    WriteToAsync<'vfs, Vfs> for T
 where
     Vfs: 'vfs,
     Vfs::WFile: AsyncSeek,
@@ -185,7 +188,7 @@ where
 {
     type Future = <(image::DynamicImage, image::ImageFormat) as WriteToAsync<'vfs, Vfs>>::Future;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+    fn write_to_async(self, path: P::OwnedPath, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         debug_assert!(
             T::FORMAT.writing_enabled(),
             "Image format {:?} does not support writing; enable the corresponding feature",
@@ -197,7 +200,8 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'vfs, Vfs: VfsAsyncWithSeekWrite, T: ImgFormat> WriteToAsyncRef<'vfs, Vfs> for T
+impl<'vfs, Vfs: VfsAsyncWithSeekWrite<Path = P>, P: PathType + ?Sized + 'vfs, T: ImgFormat>
+    WriteToAsyncRef<'vfs, Vfs> for T
 where
     Vfs: 'vfs,
     Vfs::WFile: AsyncSeek,
@@ -210,7 +214,7 @@ where
         'vfs: 'a,
         Vfs: 'a;
 
-    fn write_to_async_ref<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
+    fn write_to_async_ref<'a>(&'a self, path: P::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
     where
         'vfs: 'a,
     {
@@ -281,11 +285,12 @@ macro_rules! img_format {
         }
 
         $(#[$cfg_meta])*
-        impl<'a, 'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for $writer_type<'a, Vfs>
+        impl<'a, 'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path=P>, P: PathType + ?Sized + 'vfs> WriteTo<'vfs, Vfs> for $writer_type<'a, Vfs>
         where
             Vfs::WFile: Seek,
+            'vfs: 'a,
         {
-            fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+            fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
                 debug_assert!(
                     $struct_name::FORMAT.writing_enabled(),
                     "Image format {:?} does not support writing; enable the corresponding feature",

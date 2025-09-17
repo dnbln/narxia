@@ -10,6 +10,8 @@ use std::pin::Pin;
 use crate::error::Error;
 use crate::error::Result;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
+use crate::traits::vfs::VfsCore;
 
 /// A virtual filesystem that reads from a git repository.
 pub struct GitVfs<'r> {
@@ -24,6 +26,10 @@ impl<'r> GitVfs<'r> {
     }
 }
 
+impl<'r> VfsCore for GitVfs<'r> {
+    type Path = Path;
+}
+
 impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
     type DirWalk<'a>
         = GitDirWalk
@@ -33,7 +39,10 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
 
     type RFile = GitRFile<'r>;
 
-    fn open_read(self: Pin<&Self>, path: &Path) -> Result<Self::RFile> {
+    fn open_read(
+        self: Pin<&Self>,
+        path: &Path,
+    ) -> Result<Self::RFile, <Self::Path as PathType>::OwnedPath> {
         let entry = self
             .tree
             .get_path(path)
@@ -51,7 +60,7 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
         Ok(GitRFile { blob, offset: 0 })
     }
 
-    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>> {
+    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>, <Self::Path as PathType>::OwnedPath> {
         let entry = self
             .tree
             .get_path(path)
@@ -69,11 +78,24 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
         Ok(blob.content().to_vec())
     }
 
-    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool> {
+    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
         Ok(self.tree.get_path(path).is_ok())
     }
 
-    fn walk_dir<'a>(self: Pin<&'a Self>, path: &Path) -> Result<Self::DirWalk<'a>>
+    fn is_dir(
+        self: Pin<&Self>,
+        path: &Self::Path,
+    ) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+        match self.tree.get_path(path) {
+            Ok(entry) => Ok(entry.kind() == Some(git2::ObjectType::Tree)),
+            Err(_) => Ok(false),
+        }
+    }
+
+    fn walk_dir<'a>(
+        self: Pin<&'a Self>,
+        path: &Path,
+    ) -> Result<Self::DirWalk<'a>, <Self::Path as PathType>::OwnedPath>
     where
         'r: 'a,
     {
@@ -138,11 +160,15 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
 
 /// A directory walker that reads from a git tree.
 pub struct GitDirWalk {
-    next: Box<dyn FnMut() -> Option<vfs::DirEntryInfo>>,
+    next: Box<dyn FnMut() -> Option<vfs::DirEntryInfo<Path>>>,
 }
 
 impl<'r> vfs::DirWalker<'r> for GitDirWalk {
-    fn next(&mut self) -> Option<Result<vfs::DirEntryInfo>> {
+    type P = Path;
+
+    fn next(
+        &mut self,
+    ) -> Option<Result<vfs::DirEntryInfo<Self::P>, <Self::P as PathType>::OwnedPath>> {
         Some(Ok((self.next)()?))
     }
 }

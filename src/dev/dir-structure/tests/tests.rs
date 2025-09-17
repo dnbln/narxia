@@ -6,6 +6,7 @@ use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
+use dir_structure::NoFilter;
 use dir_structure::clean_dir::CleanDir;
 use dir_structure::dir_children::DirChild;
 use dir_structure::dir_children::DirChildren;
@@ -73,9 +74,9 @@ mod simple;
 #[test]
 fn deferred_read() {
     #[derive(dir_structure::DirStructure)]
-    struct FDir<'vfs, Vfs> {
+    struct FDir<'vfs, Vfs: vfs::Vfs<'vfs>> {
         #[dir_structure(path = "f1.txt")]
-        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs>,
+        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs, Vfs::Path>,
     }
 
     let p = test_dir("deferred_read");
@@ -92,8 +93,9 @@ fn deferred_read() {
 #[test]
 fn read_all_directory_files() {
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        subdir: DirChildren<String>,
+    struct Dir<'vfs, Vfs: vfs::Vfs<'vfs>> {
+        subdir: DirChildren<String, NoFilter, Vfs::Path>,
+        __marker: std::marker::PhantomData<&'vfs Vfs>,
     }
 
     let p = test_dir("read_all_directory_files");
@@ -103,7 +105,7 @@ fn read_all_directory_files() {
     std::fs::write(subdir.join("f1.txt"), "f1").unwrap();
     std::fs::write(subdir.join("f2.txt"), "f2").unwrap();
     std::fs::write(subdir.join("f3"), "f3").unwrap();
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
+    let dir = FsVfs.read_typed::<Dir<'_, _>>(&d).unwrap();
     assert_eq!(dir.subdir.len(), 3);
     assert_eq!(dir.subdir.get_name("f1.txt").unwrap().value(), "f1");
     assert_eq!(dir.subdir.get_name("f2.txt").unwrap().value(), "f2");
@@ -113,8 +115,9 @@ fn read_all_directory_files() {
 #[test]
 fn write_subdirectory_children() {
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
-        subdir: DirChildren<String>,
+    struct Dir<'vfs, Vfs: vfs::Vfs<'vfs>> {
+        subdir: DirChildren<String, NoFilter, Vfs::Path>,
+        __marker: std::marker::PhantomData<&'vfs Vfs>,
     }
 
     let p = test_dir("write_subdirectory_children");
@@ -129,6 +132,7 @@ fn write_subdirectory_children() {
                     DirChild::new("f2.txt", "f2".to_owned()),
                     DirChild::new("f3", "f3".to_owned()),
                 ]),
+                __marker: std::marker::PhantomData,
             },
         )
         .unwrap();
@@ -157,9 +161,10 @@ fn write_subdirectory_children() {
 #[test]
 fn parse_dirs_inner_with_self_path() {
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
+    struct Dir<'vfs, Vfs: vfs::Vfs<'vfs>> {
         #[dir_structure(path = self)]
-        subdirs: DirChildren<InnerDir>,
+        subdirs: DirChildren<InnerDir, NoFilter, Vfs::Path>,
+        __marker: std::marker::PhantomData<&'vfs Vfs>,
     }
 
     #[derive(dir_structure::DirStructure)]
@@ -173,7 +178,7 @@ fn parse_dirs_inner_with_self_path() {
     let subdir = d.join("subdir");
     std::fs::create_dir_all(&subdir).unwrap();
     std::fs::write(subdir.join("f.txt"), "f").unwrap();
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
+    let dir = FsVfs.read_typed::<Dir<'_, _>>(&d).unwrap();
     assert_eq!(dir.subdirs.len(), 1);
     assert_eq!(dir.subdirs.get_name("subdir").unwrap().value().f, "f");
 }
@@ -295,9 +300,10 @@ fn clean_dir_writer_newtype() {
 #[test]
 fn versioned_works() {
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
+    struct Dir<'vfs, Vfs: vfs::Vfs<'vfs>> {
         #[dir_structure(path = "f1.txt")]
-        f1: VersionedString,
+        f1: VersionedString<Vfs::Path>,
+        __marker: std::marker::PhantomData<&'vfs Vfs>,
     }
 
     let p = test_dir("versioned_works");
@@ -306,12 +312,12 @@ fn versioned_works() {
     std::fs::create_dir_all(&d).unwrap();
     std::fs::write(d.join("f1.txt"), "f1").unwrap();
 
-    let dir = FsVfs.read_typed::<Dir>(&d).unwrap();
+    let dir = FsVfs.read_typed::<Dir<'_, _>>(&d).unwrap();
     assert_eq!(*dir.f1, "f1");
 
     FsVfs.write_typed(&d, &dir).unwrap();
 
-    let mut dir = FsVfs.read_typed::<Dir>(&d).unwrap();
+    let mut dir = FsVfs.read_typed::<Dir<'_, _>>(&d).unwrap();
 
     assert_eq!(*dir.f1, "f1");
 
@@ -330,10 +336,13 @@ fn versioned_doesnt_call_write_if_not_changed() {
     }
 
     impl<'a, Vfs: vfs::Vfs<'a>, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
-        fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> dir_structure::error::Result<Self> {
+        fn read_from(
+            path: &Vfs::Path,
+            vfs: Pin<&'a Vfs>,
+        ) -> dir_structure::error::Result<Self, <Vfs::Path as vfs::PathType>::OwnedPath> {
             Ok(Self {
                 count: AtomicUsize::new(0),
-                inner: vfs.read_typed_pinned(path)?,
+                inner: T::read_from(path, vfs)?,
             })
         }
     }
@@ -341,16 +350,21 @@ fn versioned_doesnt_call_write_if_not_changed() {
     impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs>
         for WriteCounter<T>
     {
-        fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<()> {
+        fn write_to(
+            &self,
+            path: &Vfs::Path,
+            vfs: Pin<&'vfs Vfs>,
+        ) -> dir_structure::error::Result<(), <Vfs::Path as vfs::PathType>::OwnedPath> {
             self.count.fetch_add(1, Ordering::SeqCst);
             self.inner.write_to(path, vfs)
         }
     }
 
     #[derive(dir_structure::DirStructure)]
-    struct Dir {
+    struct Dir<'vfs, Vfs: vfs::Vfs<'vfs>> {
         #[dir_structure(path = "f1.txt")]
-        f1: Versioned<WriteCounter<String>>,
+        f1: Versioned<WriteCounter<String>, Vfs::Path>,
+        __marker: std::marker::PhantomData<&'vfs Vfs>,
     }
 
     let p = test_dir("versioned_doesnt_call_write_if_not_changed");
@@ -364,11 +378,12 @@ fn versioned_doesnt_call_write_if_not_changed() {
             },
             d.join("f1.txt"),
         ),
+        __marker: std::marker::PhantomData,
     };
 
     FsVfs.write_typed(&d, &dir).unwrap();
 
-    let mut dir = FsVfs.read_typed::<Dir>(&d).unwrap();
+    let mut dir = FsVfs.read_typed::<Dir<'_, _>>(&d).unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 

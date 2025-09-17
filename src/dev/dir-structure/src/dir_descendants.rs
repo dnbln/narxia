@@ -4,8 +4,6 @@
 
 use core::fmt::Debug;
 use core::slice;
-use std::ffi::OsStr;
-use std::ffi::OsString;
 use std::fmt;
 use std::marker;
 use std::ops;
@@ -35,6 +33,11 @@ use crate::traits::resolve::DynamicHasField;
 use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker;
+#[cfg(feature = "async")]
+use crate::traits::vfs::OwnedPathType;
+use crate::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use crate::traits::vfs::VfsCore;
 
 /// A structure representing the descendants of a directory.
 ///
@@ -50,14 +53,23 @@ use crate::traits::vfs::DirWalker;
 ///
 /// \* note that [`FolderFilter`] and [`FolderRecurseFilter`] may both allow the same path, in which case we will both recurse
 /// into the folder, and attempt to parse it as a `T`.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirDescendants<T, F: FolderFilter + FolderRecurseFilter + FileFilter = NoFilter> {
-    descendants: Vec<DirDescendant<T>>,
+pub struct DirDescendants<
+    T,
+    F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P> = NoFilter,
+    P: PathType + ?Sized = Path,
+> {
+    descendants: Vec<DirDescendant<T, P>>,
     _phantom: marker::PhantomData<F>,
 }
 
-impl<T: Debug, F: FolderFilter + FolderRecurseFilter + FileFilter> Debug for DirDescendants<T, F> {
+impl<T: Debug, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    Debug for DirDescendants<T, F, P>
+where
+    P::PathSegmentOwned: Debug,
+    P::OwnedPath: Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DirDescendants")
             .field("descendants", &self.descendants)
@@ -65,7 +77,9 @@ impl<T: Debug, F: FolderFilter + FolderRecurseFilter + FileFilter> Debug for Dir
     }
 }
 
-impl<T: Clone, F: FolderFilter + FolderRecurseFilter + FileFilter> Clone for DirDescendants<T, F> {
+impl<T: Clone, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    Clone for DirDescendants<T, F, P>
+{
     fn clone(&self) -> Self {
         Self {
             descendants: self.descendants.clone(),
@@ -74,7 +88,9 @@ impl<T: Clone, F: FolderFilter + FolderRecurseFilter + FileFilter> Clone for Dir
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F> {
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    DirDescendants<T, F, P>
+{
     /// Create a new [`DirDescendants`] instance from a list of [`DirDescendant`]s.
     ///
     /// # Examples
@@ -91,7 +107,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// ]);
     /// assert_eq!(descendants.len(), 2);
     /// ```
-    pub fn new(descendants: Vec<DirDescendant<T>>) -> Self {
+    pub fn new(descendants: Vec<DirDescendant<T, P>>) -> Self {
         Self {
             descendants,
             _phantom: marker::PhantomData,
@@ -157,7 +173,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(i.next(), Some(&DirDescendant::new("child2", "child2", "child2", ())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn iter(&self) -> DirDescendantsIter<'_, T> {
+    pub fn iter(&self) -> DirDescendantsIter<'_, T, P> {
         DirDescendantsIter(self.descendants.iter())
     }
 
@@ -181,7 +197,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(i.next(), Some(&mut DirDescendant::new("child2", "child2", "child2", ())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn iter_mut(&mut self) -> DirDescendantsIterMut<'_, T> {
+    pub fn iter_mut(&mut self) -> DirDescendantsIterMut<'_, T, P> {
         DirDescendantsIterMut(self.descendants.iter_mut())
     }
 
@@ -203,7 +219,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get(2), None);
     /// assert_eq!(descendants.get(100), None);
     /// ```
-    pub fn get(&self, index: usize) -> Option<&DirDescendant<T>> {
+    pub fn get(&self, index: usize) -> Option<&DirDescendant<T, P>> {
         self.descendants.get(index)
     }
 
@@ -226,7 +242,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_mut(2), None);
     /// assert_eq!(descendants.get_mut(100), None);
     /// ```
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirDescendant<T>> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut DirDescendant<T, P>> {
         self.descendants.get_mut(index)
     }
 
@@ -247,8 +263,11 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_by_name("child3"), None);
     /// assert_eq!(descendants.get_by_name("nonexistent"), None);
     /// ```
-    pub fn get_by_name(&self, name: impl AsRef<OsStr>) -> Option<&DirDescendant<T>> {
-        self.iter().find(|d| d.name == name.as_ref())
+    pub fn get_by_name(&self, name: impl AsRef<P::PathSegmentRef>) -> Option<&DirDescendant<T, P>>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
+        self.iter().find(|d| d.name.as_ref() == name.as_ref())
     }
 
     /// Returns a mutable reference to the descendant with the given name, or `None` if not found.
@@ -269,8 +288,14 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_by_name_mut("child3"), None);
     /// assert_eq!(descendants.get_by_name_mut("nonexistent"), None);
     /// ```
-    pub fn get_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut DirDescendant<T>> {
-        self.iter_mut().find(|d| d.name == name.as_ref())
+    pub fn get_by_name_mut(
+        &mut self,
+        name: impl AsRef<P::PathSegmentRef>,
+    ) -> Option<&mut DirDescendant<T, P>>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
+        self.iter_mut().find(|d| d.name.as_ref() == name.as_ref())
     }
 
     /// Returns the value of the descendant with the given name, or `None` if not found.
@@ -290,7 +315,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_name("child3"), None);
     /// assert_eq!(descendants.get_value_by_name("nonexistent"), None);
     /// ```
-    pub fn get_value_by_name(&self, name: impl AsRef<OsStr>) -> Option<&T> {
+    pub fn get_value_by_name(&self, name: impl AsRef<P::PathSegmentRef>) -> Option<&T>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.get_by_name(name).map(|d| &d.value)
     }
 
@@ -312,7 +340,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_name_mut("child3"), None);
     /// assert_eq!(descendants.get_value_by_name_mut("nonexistent"), None);
     /// ```
-    pub fn get_value_by_name_mut(&mut self, name: impl AsRef<OsStr>) -> Option<&mut T> {
+    pub fn get_value_by_name_mut(&mut self, name: impl AsRef<P::PathSegmentRef>) -> Option<&mut T>
+    where
+        P::PathSegmentRef: PartialEq,
+    {
         self.get_by_name_mut(name).map(|d| &mut d.value)
     }
 
@@ -333,8 +364,11 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_by_path("root/a/b/child3"), None);
     /// assert_eq!(descendants.get_by_path("nonexistent"), None);
     /// ```
-    pub fn get_by_path(&self, path: impl AsRef<Path>) -> Option<&DirDescendant<T>> {
-        self.iter().find(|d| d.path == path.as_ref())
+    pub fn get_by_path(&self, path: impl AsRef<P>) -> Option<&DirDescendant<T, P>>
+    where
+        P: PartialEq,
+    {
+        self.iter().find(|d| d.path.as_ref() == path.as_ref())
     }
 
     /// Returns a mutable reference to the descendant with the given path, or `None` if not found.
@@ -355,8 +389,11 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_by_path_mut("root/a/b/child3"), None);
     /// assert_eq!(descendants.get_by_path_mut("nonexistent"), None);
     /// ```
-    pub fn get_by_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut DirDescendant<T>> {
-        self.iter_mut().find(|d| d.path == path.as_ref())
+    pub fn get_by_path_mut(&mut self, path: impl AsRef<P>) -> Option<&mut DirDescendant<T, P>>
+    where
+        P: PartialEq,
+    {
+        self.iter_mut().find(|d| d.path.as_ref() == path.as_ref())
     }
 
     /// Returns the value of the descendant with the given path, or `None` if not found.
@@ -376,7 +413,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_path("root/a/b/child3"), None);
     /// assert_eq!(descendants.get_value_by_path("nonexistent"), None);
     /// ```
-    pub fn get_value_by_path(&self, path: impl AsRef<Path>) -> Option<&T> {
+    pub fn get_value_by_path(&self, path: impl AsRef<P>) -> Option<&T>
+    where
+        P: PartialEq,
+    {
         self.get_by_path(path).map(|d| &d.value)
     }
 
@@ -398,7 +438,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_path_mut("root/a/b/child3"), None);
     /// assert_eq!(descendants.get_value_by_path_mut("nonexistent"), None);
     /// ```
-    pub fn get_value_by_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut T> {
+    pub fn get_value_by_path_mut(&mut self, path: impl AsRef<P>) -> Option<&mut T>
+    where
+        P: PartialEq,
+    {
         self.get_by_path_mut(path).map(|d| &mut d.value)
     }
 
@@ -419,9 +462,12 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_by_relative_path("a/b/child3"), None);
     /// assert_eq!(descendants.get_by_relative_path("nonexistent"), None);
     /// ```
-    pub fn get_by_relative_path(&self, path: impl AsRef<Path>) -> Option<&DirDescendant<T>> {
+    pub fn get_by_relative_path(&self, path: impl AsRef<P>) -> Option<&DirDescendant<T, P>>
+    where
+        P: PartialEq,
+    {
         self.iter()
-            .find(|d| d.path_relative_to_ascendant == path.as_ref())
+            .find(|d| d.path_relative_to_ascendant.as_ref() == path.as_ref())
     }
 
     /// Returns a mutable reference to the descendant with the given path relative to the ascendant, or `None` if not found.
@@ -444,10 +490,13 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// ```
     pub fn get_by_relative_path_mut(
         &mut self,
-        path: impl AsRef<Path>,
-    ) -> Option<&mut DirDescendant<T>> {
+        path: impl AsRef<P>,
+    ) -> Option<&mut DirDescendant<T, P>>
+    where
+        P: PartialEq,
+    {
         self.iter_mut()
-            .find(|d| d.path_relative_to_ascendant == path.as_ref())
+            .find(|d| d.path_relative_to_ascendant.as_ref() == path.as_ref())
     }
 
     /// Returns the value of the descendant with the given path relative to the ascendant, or `None` if not found.
@@ -467,7 +516,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_relative_path("a/b/child3"), None);
     /// assert_eq!(descendants.get_value_by_relative_path("nonexistent"), None);
     /// ```
-    pub fn get_value_by_relative_path(&self, path: impl AsRef<Path>) -> Option<&T> {
+    pub fn get_value_by_relative_path(&self, path: impl AsRef<P>) -> Option<&T>
+    where
+        P: PartialEq,
+    {
         self.get_by_relative_path(path).map(|d| &d.value)
     }
 
@@ -489,7 +541,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.get_value_by_relative_path_mut("a/b/child3"), None);
     /// assert_eq!(descendants.get_value_by_relative_path_mut("nonexistent"), None);
     /// ```
-    pub fn get_value_by_relative_path_mut(&mut self, path: impl AsRef<Path>) -> Option<&mut T> {
+    pub fn get_value_by_relative_path_mut(&mut self, path: impl AsRef<P>) -> Option<&mut T>
+    where
+        P: PartialEq,
+    {
         self.get_by_relative_path_mut(path).map(|d| &mut d.value)
     }
 
@@ -512,7 +567,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(mapped.get(2), None);
     /// assert_eq!(mapped.get(100), None);
     /// ```
-    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> DirDescendants<U, F> {
+    pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> DirDescendants<U, F, P> {
         DirDescendants {
             descendants: self
                 .descendants
@@ -553,9 +608,9 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// ]);
     /// let descendants_with_my_filter: DirDescendants<String, MyFilter> = descendants.map_filter::<MyFilter>();
     /// ```
-    pub fn map_filter<F2: FolderFilter + FolderRecurseFilter + FileFilter>(
+    pub fn map_filter<F2: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>>(
         self,
-    ) -> DirDescendants<T, F2> {
+    ) -> DirDescendants<T, F2, P> {
         DirDescendants {
             descendants: self.descendants,
             _phantom: marker::PhantomData,
@@ -585,7 +640,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(i.next(), Some(&DirDescendant::new("child2", "child2", "child2", "value2".to_string())));
     /// assert_eq!(i.next(), None);
     /// ```
-    pub fn push(&mut self, descendant: DirDescendant<T>) {
+    pub fn push(&mut self, descendant: DirDescendant<T, P>) {
         self.descendants.push(descendant);
     }
 
@@ -606,7 +661,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.len(), 1);
     /// assert_eq!(descendants.get(0).unwrap().name(), "child2");
     /// ```
-    pub fn retain(&mut self, f: impl FnMut(&DirDescendant<T>) -> bool) {
+    pub fn retain(&mut self, f: impl FnMut(&DirDescendant<T, P>) -> bool) {
         self.descendants.retain(f);
     }
 
@@ -631,7 +686,7 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
     /// assert_eq!(descendants.len(), 1);
     /// assert_eq!(descendants.get(0).unwrap().name(), "child3");
     /// ```
-    pub fn drain(&mut self, range: impl ops::RangeBounds<usize>) -> DirDescendantsDrain<'_, T> {
+    pub fn drain(&mut self, range: impl ops::RangeBounds<usize>) -> DirDescendantsDrain<'_, T, P> {
         DirDescendantsDrain(self.descendants.drain(range))
     }
 
@@ -662,69 +717,73 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DirDescendants<T, F>
         &'a mut self,
         range: impl ops::RangeBounds<usize>,
         f: Fi,
-    ) -> DirDescendantsExtractIf<'a, T, Fi>
+    ) -> DirDescendantsExtractIf<'a, T, P, Fi>
     where
-        Fi: FnMut(&mut DirDescendant<T>) -> bool,
+        Fi: FnMut(&mut DirDescendant<T, P>) -> bool,
     {
         DirDescendantsExtractIf(self.descendants.extract_if(range, f))
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> Default for DirDescendants<T, F> {
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized> Default
+    for DirDescendants<T, F, P>
+{
     fn default() -> Self {
         Self::new(vec![])
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> From<Vec<DirDescendant<T>>>
-    for DirDescendants<T, F>
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    From<Vec<DirDescendant<T, P>>> for DirDescendants<T, F, P>
 {
-    fn from(descendants: Vec<DirDescendant<T>>) -> Self {
+    fn from(descendants: Vec<DirDescendant<T, P>>) -> Self {
         Self::new(descendants)
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> FromIterator<DirDescendant<T>>
-    for DirDescendants<T, F>
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    FromIterator<DirDescendant<T, P>> for DirDescendants<T, F, P>
 {
-    fn from_iter<I: IntoIterator<Item = DirDescendant<T>>>(iter: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = DirDescendant<T, P>>>(iter: I) -> Self {
         Self::new(iter.into_iter().collect())
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> Extend<DirDescendant<T>>
-    for DirDescendants<T, F>
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    Extend<DirDescendant<T, P>> for DirDescendants<T, F, P>
 {
-    fn extend<I: IntoIterator<Item = DirDescendant<T>>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = DirDescendant<T, P>>>(&mut self, iter: I) {
         self.descendants.extend(iter);
     }
 }
 
-impl<'a, T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator
-    for &'a DirDescendants<T, F>
+impl<'a, T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    IntoIterator for &'a DirDescendants<T, F, P>
 {
-    type Item = &'a DirDescendant<T>;
-    type IntoIter = DirDescendantsIter<'a, T>;
+    type Item = &'a DirDescendant<T, P>;
+    type IntoIter = DirDescendantsIter<'a, T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
 
-impl<'a, T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator
-    for &'a mut DirDescendants<T, F>
+impl<'a, T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    IntoIterator for &'a mut DirDescendants<T, F, P>
 {
-    type Item = &'a mut DirDescendant<T>;
-    type IntoIter = DirDescendantsIterMut<'a, T>;
+    type Item = &'a mut DirDescendant<T, P>;
+    type IntoIter = DirDescendantsIterMut<'a, T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }
 
-impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator for DirDescendants<T, F> {
-    type Item = DirDescendant<T>;
-    type IntoIter = DirDescendantsIntoIter<T>;
+impl<T, F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P>, P: PathType + ?Sized>
+    IntoIterator for DirDescendants<T, F, P>
+{
+    type Item = DirDescendant<T, P>;
+    type IntoIter = DirDescendantsIntoIter<T, P>;
 
     fn into_iter(self) -> Self::IntoIter {
         DirDescendantsIntoIter(self.descendants.into_iter())
@@ -732,10 +791,10 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> IntoIterator for Dir
 }
 
 /// An iterator over the immutable descendants.
-pub struct DirDescendantsIter<'a, T>(slice::Iter<'a, DirDescendant<T>>);
+pub struct DirDescendantsIter<'a, T, P: PathType + ?Sized>(slice::Iter<'a, DirDescendant<T, P>>);
 
-impl<'a, T> Iterator for DirDescendantsIter<'a, T> {
-    type Item = &'a DirDescendant<T>;
+impl<'a, T, P: PathType + ?Sized> Iterator for DirDescendantsIter<'a, T, P> {
+    type Item = &'a DirDescendant<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -746,23 +805,25 @@ impl<'a, T> Iterator for DirDescendantsIter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for DirDescendantsIter<'a, T> {
+impl<'a, T, P: PathType + ?Sized> DoubleEndedIterator for DirDescendantsIter<'a, T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
 }
 
-impl<'a, T> ExactSizeIterator for DirDescendantsIter<'a, T> {
+impl<'a, T, P: PathType + ?Sized> ExactSizeIterator for DirDescendantsIter<'a, T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
 /// An iterator over the mutable descendants.
-pub struct DirDescendantsIterMut<'a, T>(slice::IterMut<'a, DirDescendant<T>>);
+pub struct DirDescendantsIterMut<'a, T, P: PathType + ?Sized>(
+    slice::IterMut<'a, DirDescendant<T, P>>,
+);
 
-impl<'a, T> Iterator for DirDescendantsIterMut<'a, T> {
-    type Item = &'a mut DirDescendant<T>;
+impl<'a, T, P: PathType + ?Sized> Iterator for DirDescendantsIterMut<'a, T, P> {
+    type Item = &'a mut DirDescendant<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -773,23 +834,23 @@ impl<'a, T> Iterator for DirDescendantsIterMut<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for DirDescendantsIterMut<'a, T> {
+impl<'a, T, P: PathType + ?Sized> DoubleEndedIterator for DirDescendantsIterMut<'a, T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
 }
 
-impl<'a, T> ExactSizeIterator for DirDescendantsIterMut<'a, T> {
+impl<'a, T, P: PathType + ?Sized> ExactSizeIterator for DirDescendantsIterMut<'a, T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
 }
 
 /// An iterator over the owned descendants.
-pub struct DirDescendantsIntoIter<T>(vec::IntoIter<DirDescendant<T>>);
+pub struct DirDescendantsIntoIter<T, P: PathType + ?Sized>(vec::IntoIter<DirDescendant<T, P>>);
 
-impl<'a, T> Iterator for DirDescendantsIntoIter<T> {
-    type Item = DirDescendant<T>;
+impl<'a, T, P: PathType + ?Sized> Iterator for DirDescendantsIntoIter<T, P> {
+    type Item = DirDescendant<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -800,13 +861,13 @@ impl<'a, T> Iterator for DirDescendantsIntoIter<T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator for DirDescendantsIntoIter<T> {
+impl<'a, T, P: PathType + ?Sized> DoubleEndedIterator for DirDescendantsIntoIter<T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
 }
 
-impl<'a, T> ExactSizeIterator for DirDescendantsIntoIter<T> {
+impl<'a, T, P: PathType + ?Sized> ExactSizeIterator for DirDescendantsIntoIter<T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
@@ -815,10 +876,10 @@ impl<'a, T> ExactSizeIterator for DirDescendantsIntoIter<T> {
 /// An iterator that drains the owned descendants.
 ///
 /// See [`DirDescendants::drain`].
-pub struct DirDescendantsDrain<'a, T>(vec::Drain<'a, DirDescendant<T>>);
+pub struct DirDescendantsDrain<'a, T, P: PathType + ?Sized>(vec::Drain<'a, DirDescendant<T, P>>);
 
-impl<T> Iterator for DirDescendantsDrain<'_, T> {
-    type Item = DirDescendant<T>;
+impl<T, P: PathType + ?Sized> Iterator for DirDescendantsDrain<'_, T, P> {
+    type Item = DirDescendant<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -829,13 +890,13 @@ impl<T> Iterator for DirDescendantsDrain<'_, T> {
     }
 }
 
-impl<T> DoubleEndedIterator for DirDescendantsDrain<'_, T> {
+impl<T, P: PathType + ?Sized> DoubleEndedIterator for DirDescendantsDrain<'_, T, P> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.next_back()
     }
 }
 
-impl<T> ExactSizeIterator for DirDescendantsDrain<'_, T> {
+impl<T, P: PathType + ?Sized> ExactSizeIterator for DirDescendantsDrain<'_, T, P> {
     fn len(&self) -> usize {
         self.0.len()
     }
@@ -844,12 +905,17 @@ impl<T> ExactSizeIterator for DirDescendantsDrain<'_, T> {
 /// An iterator that extracts the owned descendants that satisfy the predicate.
 ///
 /// See [`DirDescendants::extract_if`].
-pub struct DirDescendantsExtractIf<'a, T, F: FnMut(&mut DirDescendant<T>) -> bool>(
-    vec::ExtractIf<'a, DirDescendant<T>, F>,
-);
+pub struct DirDescendantsExtractIf<
+    'a,
+    T,
+    P: PathType + ?Sized,
+    F: FnMut(&mut DirDescendant<T, P>) -> bool,
+>(vec::ExtractIf<'a, DirDescendant<T, P>, F>);
 
-impl<T, F: FnMut(&mut DirDescendant<T>) -> bool> Iterator for DirDescendantsExtractIf<'_, T, F> {
-    type Item = DirDescendant<T>;
+impl<T, P: PathType + ?Sized, F: FnMut(&mut DirDescendant<T, P>) -> bool> Iterator
+    for DirDescendantsExtractIf<'_, T, P, F>
+{
+    type Item = DirDescendant<T, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
@@ -864,13 +930,16 @@ impl<
     'vfs,
     Vfs: vfs::Vfs<'vfs>,
     T: ReadFrom<'vfs, Vfs>,
-    F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
-> ReadFrom<'vfs, Vfs> for DirDescendants<T, F>
+    F: FolderFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FileFilter<Vfs::Path> + 'vfs,
+> ReadFrom<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'vfs Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
         let mut descendants = Vec::new();
 
-        if path.is_dir() {
+        if vfs.is_dir(path)? {
             let mut walker = vfs.walk_dir(path)?;
             while let Some(entry) = walker.next() {
                 let DirEntryInfo {
@@ -880,38 +949,41 @@ impl<
                 } = entry?;
 
                 if kind.is_dir() {
-                    if <F as FolderRecurseFilter>::allows(&entry_path) {
-                        let sub_descendants = DirDescendants::<T, F>::read_from(&entry_path, vfs)?;
+                    if <F as FolderRecurseFilter<Vfs::Path>>::allows(entry_path.as_ref()) {
+                        let sub_descendants =
+                            DirDescendants::<T, F, Vfs::Path>::read_from(entry_path.as_ref(), vfs)?;
                         descendants.extend(sub_descendants.descendants.into_iter().map(
                             |mut it| {
-                                let mut p = PathBuf::from(name.clone());
-                                p.push(&it.path_relative_to_ascendant);
-                                it.path_relative_to_ascendant = p;
+                                it.path_relative_to_ascendant.insert_in_front(name.as_ref());
                                 it
                             },
                         ));
                     }
 
-                    if <F as FolderFilter>::allows(&entry_path) {
-                        let value = T::read_from(&entry_path, vfs)?;
+                    if <F as FolderFilter<Vfs::Path>>::allows(entry_path.as_ref()) {
+                        let value = T::read_from(entry_path.as_ref(), vfs)?;
                         descendants.push(DirDescendant {
                             name,
                             path_relative_to_ascendant: entry_path
+                                .as_ref()
                                 .strip_prefix(path)
                                 .unwrap()
-                                .to_path_buf(),
+                                .owned(),
                             path: entry_path,
                             value,
                         });
                     }
-                } else if kind.is_file() && <F as FileFilter>::allows(&entry_path) {
-                    let value = T::read_from(&entry_path, vfs)?;
+                } else if kind.is_file()
+                    && <F as FileFilter<Vfs::Path>>::allows(entry_path.as_ref())
+                {
+                    let value = T::read_from(entry_path.as_ref(), vfs)?;
                     descendants.push(DirDescendant {
                         name,
                         path_relative_to_ascendant: entry_path
+                            .as_ref()
                             .strip_prefix(path)
                             .unwrap()
-                            .to_path_buf(),
+                            .owned(),
                         path: entry_path,
                         value,
                     });
@@ -927,20 +999,24 @@ impl<
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<
     'vfs,
-    Vfs: VfsAsync + 'static,
+    P: PathType + ?Sized + 'vfs,
+    Vfs: VfsAsync<Path = P> + 'static,
     T: ReadFromAsync<'vfs, Vfs> + Send + 'static,
-    F: FolderFilter + FolderRecurseFilter + FileFilter + 'vfs,
-> ReadFromAsync<'vfs, Vfs> for DirDescendants<T, F>
+    F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P> + 'vfs,
+> ReadFromAsync<'vfs, Vfs> for DirDescendants<T, F, P>
+where
+    for<'f> Vfs::IsDirFuture<'f>: Future<Output = Result<bool, P::OwnedPath>> + Send + 'f,
 {
     type Future
-        = BoxFuture<'vfs, Result<Self>>
+        = BoxFuture<'vfs, Result<Self, P::OwnedPath>>
     where
         Self: 'vfs;
-    fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+
+    fn read_from_async(path: P::OwnedPath, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         Box::pin(async move {
             let mut descendants = Vec::new();
 
-            if path.is_dir() {
+            if vfs.is_dir(path.clone()).await? {
                 use std::pin::pin;
 
                 use futures::StreamExt;
@@ -954,40 +1030,40 @@ impl<
                     } = entry?;
 
                     if kind.is_dir() {
-                        if <F as FolderRecurseFilter>::allows(&entry_path) {
+                        if <F as FolderRecurseFilter<P>>::allows(entry_path.as_ref()) {
                             let sub_descendants =
-                                DirDescendants::<T, F>::read_from_async(entry_path.clone(), vfs)
+                                DirDescendants::<T, F, P>::read_from_async(entry_path.clone(), vfs)
                                     .await?;
                             descendants.extend(sub_descendants.descendants.into_iter().map(
                                 |mut it| {
-                                    let mut p = PathBuf::from(name.clone());
-                                    p.push(&it.path_relative_to_ascendant);
-                                    it.path_relative_to_ascendant = p;
+                                    it.path_relative_to_ascendant.insert_in_front(name.as_ref());
                                     it
                                 },
                             ));
                         }
 
-                        if <F as FolderFilter>::allows(&entry_path) {
+                        if <F as FolderFilter<P>>::allows(entry_path.as_ref()) {
                             let value = T::read_from_async(entry_path.clone(), vfs).await?;
                             descendants.push(DirDescendant {
                                 name,
                                 path_relative_to_ascendant: entry_path
-                                    .strip_prefix(&path)
+                                    .as_ref()
+                                    .strip_prefix(path.as_ref())
                                     .unwrap()
-                                    .to_path_buf(),
+                                    .owned(),
                                 path: entry_path,
                                 value,
                             });
                         }
-                    } else if kind.is_file() && <F as FileFilter>::allows(&entry_path) {
+                    } else if kind.is_file() && <F as FileFilter<P>>::allows(entry_path.as_ref()) {
                         let value = T::read_from_async(entry_path.clone(), vfs).await?;
                         descendants.push(DirDescendant {
                             name,
                             path_relative_to_ascendant: entry_path
-                                .strip_prefix(&path)
+                                .as_ref()
+                                .strip_prefix(path.as_ref())
                                 .unwrap()
-                                .to_path_buf(),
+                                .owned(),
                             path: entry_path,
                             value,
                         });
@@ -1004,14 +1080,19 @@ impl<
     'vfs,
     Vfs: vfs::WriteSupportingVfs<'vfs>,
     T: WriteTo<'vfs, Vfs> + 'vfs,
-    F: FileFilter + FolderRecurseFilter + FolderFilter + 'vfs,
-> WriteTo<'vfs, Vfs> for DirDescendants<T, F>
+    F: FileFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FolderFilter<Vfs::Path> + 'vfs,
+> WriteTo<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'vfs Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
         for descendant in &self.descendants {
-            descendant
-                .value
-                .write_to(&path.join(&descendant.path_relative_to_ascendant), vfs)?;
+            descendant.value.write_to(
+                path.join(&descendant.path_relative_to_ascendant).as_ref(),
+                vfs,
+            )?;
         }
         Ok(())
     }
@@ -1023,17 +1104,24 @@ impl<
     'vfs,
     Vfs: WriteSupportingVfsAsync + 'vfs,
     T: WriteToAsync<'vfs, Vfs> + Send + 'vfs,
-    F: FileFilter + FolderRecurseFilter + FolderFilter + Send + 'vfs,
-> WriteToAsync<'vfs, Vfs> for DirDescendants<T, F>
+    F: FileFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FolderFilter<Vfs::Path> + Send + 'vfs,
+> WriteToAsync<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    type Future = BoxFuture<'vfs, Result<()>>;
+    type Future = BoxFuture<'vfs, Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'vfs Vfs>,
+    ) -> Self::Future {
         Box::pin(async move {
             for descendant in self {
                 descendant
                     .value
-                    .write_to_async(path.join(&descendant.path_relative_to_ascendant), vfs)
+                    .write_to_async(
+                        path.as_ref().join(descendant.path_relative_to_ascendant),
+                        vfs,
+                    )
                     .await?;
             }
             Ok(())
@@ -1051,13 +1139,14 @@ pub enum DirDescendantsWriteRefFuture<
     Vfs: WriteSupportingVfsAsync + 'vfs,
     T: WriteToAsyncRef<'vfs, Vfs> + 'vfs,
 > where
-    T::Future<'a>: Future<Output = Result<()>> + Unpin + 'a,
+    T::Future<'a>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
 {
     Poison,
     Writing {
         vfs: Pin<&'a Vfs>,
-        path: PathBuf,
-        iter: DirDescendantsIter<'a, T>,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        iter: DirDescendantsIter<'a, T, Vfs::Path>,
         future: T::Future<'a>,
     },
     NoElems,
@@ -1068,9 +1157,10 @@ pub enum DirDescendantsWriteRefFuture<
 impl<'a, 'vfs: 'a, Vfs: WriteSupportingVfsAsync + 'vfs, T: WriteToAsyncRef<'vfs, Vfs> + 'vfs> Future
     for DirDescendantsWriteRefFuture<'a, 'vfs, Vfs, T>
 where
-    for<'r> T::Future<'r>: Future<Output = Result<()>> + Unpin + 'r,
+    for<'r> T::Future<'r>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'r,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1088,7 +1178,7 @@ where
                     let next = iter.next();
                     if let Some(descendant) = next {
                         let future = descendant.value.write_to_async_ref(
-                            path.join(&descendant.path_relative_to_ascendant),
+                            path.as_ref().join(&descendant.path_relative_to_ascendant),
                             vfs,
                         );
                         self.as_mut()
@@ -1125,12 +1215,13 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<
     'vfs,
-    Vfs: WriteSupportingVfsAsync + 'static,
+    Vfs: WriteSupportingVfsAsync<Path = P> + 'static,
+    P: ?Sized + vfs::PathType,
     T: WriteToAsyncRef<'vfs, Vfs> + Sync + 'static,
-    F: FileFilter + FolderRecurseFilter + FolderFilter + Sync + 'vfs,
-> WriteToAsyncRef<'vfs, Vfs> for DirDescendants<T, F>
+    F: FileFilter<P> + FolderRecurseFilter<P> + FolderFilter<P> + Sync + 'vfs,
+> WriteToAsyncRef<'vfs, Vfs> for DirDescendants<T, F, P>
 where
-    for<'r> T::Future<'r>: Future<Output = Result<()>> + Unpin + 'r,
+    for<'r> T::Future<'r>: Future<Output = Result<(), P::OwnedPath>> + Unpin + 'r,
 {
     type Future<'r>
         = DirDescendantsWriteRefFuture<'r, 'vfs, Vfs, T>
@@ -1140,7 +1231,7 @@ where
         Vfs: 'r,
         T: 'r;
 
-    fn write_to_async_ref<'r>(&'r self, path: PathBuf, vfs: Pin<&'r Vfs>) -> Self::Future<'r>
+    fn write_to_async_ref<'r>(&'r self, path: P::OwnedPath, vfs: Pin<&'r Vfs>) -> Self::Future<'r>
     where
         'vfs: 'r,
     {
@@ -1148,7 +1239,7 @@ where
         if let Some(first) = iter.next() {
             let future = first
                 .value
-                .write_to_async_ref(path.join(&first.path_relative_to_ascendant), vfs);
+                .write_to_async_ref(path.as_ref().join(&first.path_relative_to_ascendant), vfs);
             DirDescendantsWriteRefFuture::Writing {
                 vfs,
                 iter,
@@ -1162,37 +1253,37 @@ where
 }
 
 /// A filter for folders, see the [`DirDescendants`] documentation.
-pub trait FolderFilter {
+pub trait FolderFilter<P: PathType + ?Sized = Path> {
     /// Whether to allow the given path.
-    fn allows(folder: &Path) -> bool;
+    fn allows(folder: &P) -> bool;
 }
 
-impl FolderFilter for NoFilter {
-    fn allows(_folder: &Path) -> bool {
+impl<P: PathType + ?Sized> FolderFilter<P> for NoFilter {
+    fn allows(_folder: &P) -> bool {
         true
     }
 }
 
 /// A filter to tell the reading logic whether to recurse into a folder, see the [`DirDescendants`] documentation.
-pub trait FolderRecurseFilter {
+pub trait FolderRecurseFilter<P: PathType + ?Sized = Path> {
     /// Whether to allow the given path.
-    fn allows(folder: &Path) -> bool;
+    fn allows(folder: &P) -> bool;
 }
 
-impl FolderRecurseFilter for NoFilter {
-    fn allows(_folder: &Path) -> bool {
+impl<P: PathType + ?Sized> FolderRecurseFilter<P> for NoFilter {
+    fn allows(_folder: &P) -> bool {
         true
     }
 }
 
 /// A filter for files, see the [`DirDescendants`] documentation.
-pub trait FileFilter {
+pub trait FileFilter<P: PathType + ?Sized = Path> {
     /// Whether to allow the given path.
-    fn allows(file: &Path) -> bool;
+    fn allows(file: &P) -> bool;
 }
 
-impl FileFilter for NoFilter {
-    fn allows(_file: &Path) -> bool {
+impl<P: PathType + ?Sized> FileFilter<P> for NoFilter {
+    fn allows(_file: &P) -> bool {
         true
     }
 }
@@ -1200,16 +1291,49 @@ impl FileFilter for NoFilter {
 /// A single directory descendant, identified by its path relative to the ascendant.
 ///
 /// It also stores the path relative to the "root."
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirDescendant<T> {
-    name: OsString,
-    path: PathBuf,
-    path_relative_to_ascendant: PathBuf,
+pub struct DirDescendant<T, P: PathType + ?Sized = Path> {
+    name: P::PathSegmentOwned,
+    path: P::OwnedPath,
+    path_relative_to_ascendant: P::OwnedPath,
     value: T,
 }
 
-impl<T> DirDescendant<T> {
+impl<T: fmt::Debug, P: PathType + ?Sized> fmt::Debug for DirDescendant<T, P>
+where
+    P::PathSegmentOwned: fmt::Debug,
+    P::OwnedPath: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DirDescendant")
+            .field("name", &self.name)
+            .field("path", &self.path)
+            .field(
+                "path_relative_to_ascendant",
+                &self.path_relative_to_ascendant,
+            )
+            .field("value", &self.value)
+            .finish()
+    }
+}
+
+impl<T: Clone, P: PathType + ?Sized> Clone for DirDescendant<T, P>
+where
+    P::PathSegmentOwned: Clone,
+    P::OwnedPath: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            path: self.path.clone(),
+            path_relative_to_ascendant: self.path_relative_to_ascendant.clone(),
+            value: self.value.clone(),
+        }
+    }
+}
+
+impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// Create a new directory descendant from its parts.
     ///
     /// # Examples
@@ -1231,9 +1355,9 @@ impl<T> DirDescendant<T> {
     /// assert_eq!(descendant.value(), &String::from("child_value"));
     /// ```
     pub fn new(
-        name: impl Into<OsString>,
-        path: impl Into<PathBuf>,
-        path_relative_to_ascendant: impl Into<PathBuf>,
+        name: impl Into<P::PathSegmentOwned>,
+        path: impl Into<P::OwnedPath>,
+        path_relative_to_ascendant: impl Into<P::OwnedPath>,
         value: T,
     ) -> Self {
         Self {
@@ -1260,7 +1384,7 @@ impl<T> DirDescendant<T> {
     /// );
     /// assert_eq!(descendant.name(), &OsString::from("child"));
     /// ```
-    pub fn name(&self) -> &OsString {
+    pub fn name(&self) -> &P::PathSegmentOwned {
         &self.name
     }
 
@@ -1280,8 +1404,8 @@ impl<T> DirDescendant<T> {
     /// );
     /// assert_eq!(descendant.path(), &PathBuf::from("root/a/b/child"));
     /// ```
-    pub fn path(&self) -> &PathBuf {
-        &self.path
+    pub fn path(&self) -> &P {
+        self.path.as_ref()
     }
 
     /// Get the path relative to the ascendant.
@@ -1300,8 +1424,8 @@ impl<T> DirDescendant<T> {
     /// );
     /// assert_eq!(descendant.path_relative_to_ascendant(), &PathBuf::from("a/b/child"));
     /// ```
-    pub fn path_relative_to_ascendant(&self) -> &PathBuf {
-        &self.path_relative_to_ascendant
+    pub fn path_relative_to_ascendant(&self) -> &P {
+        self.path_relative_to_ascendant.as_ref()
     }
 
     /// Get the value of the descendant.
@@ -1359,7 +1483,7 @@ impl<T> DirDescendant<T> {
     /// );
     /// assert_eq!(descendant.into_name(), OsString::from("child"));
     /// ```
-    pub fn into_name(self) -> OsString {
+    pub fn into_name(self) -> P::PathSegmentOwned {
         self.name
     }
 
@@ -1379,7 +1503,7 @@ impl<T> DirDescendant<T> {
     /// );
     /// assert_eq!(descendant.into_path(), PathBuf::from("root/a/b/child"));
     /// ```
-    pub fn into_path(self) -> PathBuf {
+    pub fn into_path(self) -> P::OwnedPath {
         self.path
     }
 
@@ -1401,7 +1525,7 @@ impl<T> DirDescendant<T> {
     /// *descendant.name_mut() = OsString::from("new_child");
     /// assert_eq!(descendant.name(), &OsString::from("new_child"));
     /// ```
-    pub fn name_mut(&mut self) -> &mut OsString {
+    pub fn name_mut(&mut self) -> &mut P::PathSegmentOwned {
         &mut self.name
     }
 
@@ -1446,7 +1570,7 @@ impl<T> DirDescendant<T> {
     /// assert_eq!(ref_descendant.path_relative_to_ascendant(), descendant.path_relative_to_ascendant());
     /// assert_eq!(ref_descendant.value(), &descendant.value());
     /// ```
-    pub fn as_ref(&self) -> DirDescendant<&T> {
+    pub fn as_ref(&self) -> DirDescendant<&T, P> {
         DirDescendant::new(
             self.name.clone(),
             self.path.clone(),
@@ -1473,7 +1597,7 @@ impl<T> DirDescendant<T> {
     /// mut_ref_descendant.value_mut().push_str("_new");
     /// assert_eq!(descendant.value(), &String::from("child_value_new"));
     /// ```
-    pub fn as_mut(&mut self) -> DirDescendant<&mut T> {
+    pub fn as_mut(&mut self) -> DirDescendant<&mut T, P> {
         DirDescendant::new(
             self.name.clone(),
             self.path.clone(),
@@ -1498,7 +1622,7 @@ impl<T> DirDescendant<T> {
     /// let mapped = descendant.map(|v| v.len());
     /// assert_eq!(mapped.value(), &11);
     /// ```
-    pub fn map<F, U>(self, f: F) -> DirDescendant<U>
+    pub fn map<F, U>(self, f: F) -> DirDescendant<U, P>
     where
         F: FnOnce(T) -> U,
     {

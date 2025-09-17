@@ -2,14 +2,13 @@
 
 use std::future;
 use std::future::Future;
-use std::path::PathBuf;
 use std::pin::Pin;
 
 use crate::error::Result;
-#[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
-#[cfg(feature = "async")]
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
+use crate::traits::vfs::VfsCore;
+use crate::traits::vfs::PathType;
 
 /// Trait for types / structures that can be read from disk asynchronously.
 ///
@@ -18,13 +17,13 @@ use crate::traits::async_vfs::WriteSupportingVfsAsync;
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
     /// The future type returned by the async read function.
-    type Future: Future<Output = Result<Self>> + Send + Unpin + 'a
+    type Future: Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + Unpin + 'a
     where
         Self: 'a;
 
     /// Asynchronously reads the structure from the specified path,
     /// which can be either a file or a directory.
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future;
+    fn read_from_async(path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future;
 }
 
 /// Trait for types / structures that can be written to disk asynchronously.
@@ -35,10 +34,10 @@ pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
     /// The future type returned by the async write function.
-    type Future: Future<Output = Result<()>> + Send + Unpin + 'a;
+    type Future: Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + Unpin + 'a;
 
     /// Asynchronously writes the structure to the specified path.
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future;
+    fn write_to_async(self, path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future;
 }
 
 /// Trait for types / structures that can be written to disk asynchronously.
@@ -49,14 +48,14 @@ pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsyncRef<'r, Vfs: WriteSupportingVfsAsync + ?Sized + 'r> {
     /// The future type returned by the async write function.
-    type Future<'a>: Future<Output = Result<()>> + Send + Unpin + 'a
+    type Future<'a>: Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + Unpin + 'a
     where
         Self: 'a,
         'r: 'a,
         Vfs: 'a;
 
     /// Asynchronously writes the structure to the specified path.
-    fn write_to_async_ref<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
+    fn write_to_async_ref<'a>(&'a self, path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
     where
         'r: 'a;
 }
@@ -78,9 +77,9 @@ pub trait FromRefForWriterAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: VfsAsync + ?Sized + 'a> ReadFromAsync<'a, Vfs> for () {
-    type Future = future::Ready<Result<Self>>;
+    type Future = future::Ready<Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
 
-    fn read_from_async(_path: PathBuf, _vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(_path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, _vfs: Pin<&'a Vfs>) -> Self::Future {
         future::ready(Ok(()))
     }
 }
@@ -88,9 +87,9 @@ impl<'a, Vfs: VfsAsync + ?Sized + 'a> ReadFromAsync<'a, Vfs> for () {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> WriteToAsync<'a, Vfs> for () {
-    type Future = future::Ready<Result<()>>;
+    type Future = future::Ready<Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
 
-    fn write_to_async(self, _path: PathBuf, _vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn write_to_async(self, _path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath, _vfs: Pin<&'a Vfs>) -> Self::Future {
         future::ready(Ok(()))
     }
 }

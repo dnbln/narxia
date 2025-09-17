@@ -4,7 +4,6 @@
 
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
@@ -28,6 +27,9 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
+use crate::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use crate::traits::vfs::VfsCore;
 
 /// A versioned value. This is a wrapper around a value that will keep track of
 /// how many times it has been changed. This is useful to not write the value
@@ -55,19 +57,19 @@ use crate::traits::vfs;
 /// ```
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct Versioned<T> {
+pub struct Versioned<T, P: PathType + ?Sized> {
     value: T,
     version: usize,
-    path: PathBuf,
+    path: P::OwnedPath,
 }
 
-impl<T> Versioned<T> {
+impl<T, P: PathType + ?Sized> Versioned<T, P> {
     const DEFAULT_VERSION: usize = 0;
 
     /// Creates a new [`Versioned`] with the specified value.
     ///
     /// The version is set to the default value.
-    pub fn new(value: T, path: impl Into<PathBuf>) -> Self {
+    pub fn new(value: T, path: impl Into<P::OwnedPath>) -> Self {
         Self {
             value,
             version: Self::DEFAULT_VERSION,
@@ -85,7 +87,7 @@ impl<T> Versioned<T> {
     /// let v = VersionedString::new_dirty("value".to_owned(), "path");
     /// assert!(v.is_dirty());
     /// ```
-    pub fn new_dirty(value: T, path: impl Into<PathBuf>) -> Self {
+    pub fn new_dirty(value: T, path: impl Into<P::OwnedPath>) -> Self {
         Self {
             value,
             version: Self::DEFAULT_VERSION + 1,
@@ -193,15 +195,18 @@ impl<T> Versioned<T> {
     }
 }
 
-impl<'a, Vfs: vfs::Vfs<'a>, T> ReadFrom<'a, Vfs> for Versioned<T>
+impl<'a, Vfs: vfs::Vfs<'a>, T> ReadFrom<'a, Vfs> for Versioned<T, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &Path, vfs: Pin<&'a Vfs>) -> Result<Self>
+    fn read_from(
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
     where
         Self: Sized,
     {
-        T::read_from(path, vfs).map(|it| Self::new(it, path))
+        T::read_from(path, vfs).map(|it| Self::new(it, path.owned()))
     }
 }
 
@@ -212,7 +217,7 @@ where
 pub struct VersionedReadFuture<'a, Vfs: VfsAsync, T: ReadFromAsync<'a, Vfs> + Send + 'static> {
     #[pin]
     inner: T::Future,
-    path: PathBuf,
+    path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
 }
 
 #[cfg(feature = "async")]
@@ -221,23 +226,26 @@ impl<'a, Vfs: VfsAsync + 'static, T> Future for VersionedReadFuture<'a, Vfs, T>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
-    type Output = Result<Versioned<T>>;
+    type Output = Result<Versioned<T, Vfs::Path>, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let projection = self.project();
         <T::Future as Future>::poll(projection.inner, cx)
-            .map_ok(|value| Versioned::new(value, projection.path.to_path_buf()))
+            .map_ok(|value| Versioned::new(value, projection.path.clone()))
     }
 }
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: VfsAsync + 'static, T: ReadFromAsync<'a, Vfs> + Send + 'static> ReadFromAsync<'a, Vfs>
-    for Versioned<T>
+    for Versioned<T, Vfs::Path>
 {
     type Future = VersionedReadFuture<'a, Vfs, T>;
 
-    fn read_from_async(path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
+    fn read_from_async(
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
         VersionedReadFuture {
             inner: T::read_from_async(path.clone(), vfs),
             path,
@@ -245,9 +253,17 @@ impl<'a, Vfs: VfsAsync + 'static, T: ReadFromAsync<'a, Vfs> + Send + 'static> Re
     }
 }
 
-impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs> for Versioned<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&'a Vfs>) -> Result<()> {
-        if self.path == path && self.is_clean() {
+impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs>
+    for Versioned<T, Vfs::Path>
+where
+    Vfs::Path: PartialEq,
+{
+    fn write_to(
+        &self,
+        path: &Vfs::Path,
+        vfs: Pin<&'a Vfs>,
+    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+        if self.path.as_ref() == path && self.is_clean() {
             return Ok(());
         }
 
@@ -262,7 +278,8 @@ impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs>
 pub enum VersionedWriteFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
+    <T as WriteToAsync<'a, Vfs>>::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
 {
     Poisson,
     NotTouched,
@@ -276,9 +293,10 @@ where
 impl<'a, T, Vfs: WriteSupportingVfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin + 'a,
+    <T as WriteToAsync<'a, Vfs>>::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);
@@ -302,15 +320,22 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Versioned<T>
+impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
+    for Versioned<T, Vfs::Path>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = Result<()>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    Vfs::Path: PartialEq,
 {
     type Future = VersionedWriteFuture<'a, T, Vfs>;
 
-    fn write_to_async(self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future {
-        if self.path == path && self.is_clean() {
+    fn write_to_async(
+        self,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
+        if self.path.as_ref() == path.as_ref() && self.is_clean() {
             return VersionedWriteFuture::NotTouched;
         }
 
@@ -327,7 +352,8 @@ where
 pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
     'a: 'f,
 {
     Poisson,
@@ -343,10 +369,11 @@ impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'a> Future
     for VersionedWriteRefFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
     'a: 'f,
 {
-    type Output = Result<()>;
+    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);
@@ -372,10 +399,13 @@ where
 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-impl<'r, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs> for Versioned<T>
+impl<'r, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
+    for Versioned<T, Vfs::Path>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
-    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = Result<()>> + Unpin + 'f,
+    for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
+        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    Vfs::Path: PartialEq,
 {
     type Future<'a>
         = VersionedWriteRefFuture<'r, 'a, T, Vfs>
@@ -386,13 +416,13 @@ where
 
     fn write_to_async_ref<'a>(
         &'a self,
-        path: PathBuf,
+        path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
         vfs: Pin<&'a Vfs>,
     ) -> <Self as WriteToAsyncRef<'r, Vfs>>::Future<'a>
     where
         'r: 'a,
     {
-        if self.path == path && self.is_clean() {
+        if self.path.as_ref() == path.as_ref() && self.is_clean() {
             return VersionedWriteRefFuture::NotTouched;
         }
 
@@ -404,7 +434,8 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<const NAME: [char; HAS_FIELD_MAX_LEN], T> HasField<NAME> for Versioned<T>
+impl<const NAME: [char; HAS_FIELD_MAX_LEN], T, P: PathType + ?Sized> HasField<NAME>
+    for Versioned<T, P>
 where
     T: HasField<NAME>,
 {
@@ -417,7 +448,7 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<T> DynamicHasField for Versioned<T>
+impl<T, P: PathType + ?Sized> DynamicHasField for Versioned<T, P>
 where
     T: DynamicHasField,
 {
@@ -428,7 +459,7 @@ where
     }
 }
 
-impl<T> Deref for Versioned<T> {
+impl<T, P: PathType + ?Sized> Deref for Versioned<T, P> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -436,7 +467,7 @@ impl<T> Deref for Versioned<T> {
     }
 }
 
-impl<T> DerefMut for Versioned<T> {
+impl<T, P: PathType + ?Sized> DerefMut for Versioned<T, P> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // We will assume that the value has changed, if `deref_mut` was called.
         // So we increment the version.
@@ -447,6 +478,109 @@ impl<T> DerefMut for Versioned<T> {
 }
 
 /// A [`Versioned`] [`String`].
-pub type VersionedString = Versioned<String>;
+pub type VersionedString<P: PathType + ?Sized> = Versioned<String, P>;
 /// A [`Versioned`] `Vec<u8>`.
-pub type VersionedBytes = Versioned<Vec<u8>>;
+pub type VersionedBytes<P: PathType + ?Sized> = Versioned<Vec<u8>, P>;
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+    use std::pin::Pin;
+    use std::sync::atomic::AtomicUsize;
+    use std::sync::atomic::Ordering;
+
+    use super::*;
+
+    struct WriteCounter<T> {
+        count: AtomicUsize,
+        inner: T,
+    }
+
+    impl<T> WriteCounter<T> {
+        fn write_count(&self) -> usize {
+            self.count.load(Ordering::SeqCst)
+        }
+    }
+
+    impl<T> Deref for WriteCounter<T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            &self.inner
+        }
+    }
+
+    impl<T> DerefMut for WriteCounter<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.inner
+        }
+    }
+
+    impl<'a, Vfs: vfs::Vfs<'a>, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
+        fn read_from(
+            path: &Vfs::Path,
+            vfs: Pin<&'a Vfs>,
+        ) -> Result<Self, <Vfs::Path as vfs::PathType>::OwnedPath> {
+            Ok(Self {
+                count: AtomicUsize::new(0),
+                inner: T::read_from(path, vfs)?,
+            })
+        }
+    }
+
+    impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs>
+        for WriteCounter<T>
+    {
+        fn write_to(
+            &self,
+            path: &Vfs::Path,
+            vfs: Pin<&'a Vfs>,
+        ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+            self.inner.write_to(path, vfs)?;
+            self.count.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn versioned_works() {
+        let s = VersionedString::<Path>::new("value".to_owned(), "path");
+        assert!(s.is_clean());
+        assert!(!s.is_dirty());
+
+        let mut s = s;
+        *s = "new value".to_owned();
+        assert!(s.is_dirty());
+        assert!(!s.is_clean());
+
+        s.edit_eq_check(|v| *v = "new value".to_owned());
+        assert!(s.is_dirty());
+        assert!(!s.is_clean());
+        s.edit_eq_check(|v| *v = "value".to_owned());
+        assert!(s.is_dirty());
+        assert!(!s.is_clean());
+
+        #[expect(unsafe_code, reason = "This function is unsafe by design")]
+        unsafe {
+            s.reset();
+        }
+
+        assert!(s.is_clean());
+        assert!(!s.is_dirty());
+
+        s.edit_eq_check(|v| *v = "value".to_owned());
+        assert!(s.is_clean());
+        assert!(!s.is_dirty());
+
+        s.edit_eq_check(|v| *v = "new value".to_owned());
+        assert!(s.is_dirty());
+        assert!(!s.is_clean());
+    }
+
+    #[test]
+    fn type_checks() {
+        crate::test_utils::assert_is_read_from::<crate::vfs::fs_vfs::FsVfs, VersionedString<Path>>(
+        );
+        crate::test_utils::assert_is_write_to::<crate::vfs::fs_vfs::FsVfs, VersionedString<Path>>();
+    }
+}

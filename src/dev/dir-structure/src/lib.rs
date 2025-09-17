@@ -207,3 +207,20 @@ pub mod vfs;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct NoFilter;
+
+#[cfg(test)]
+mod test_utils {
+    use crate::traits::vfs;
+    pub(crate) fn assert_is_read_from<
+        'vfs,
+        Vfs: vfs::Vfs<'vfs>,
+        T: crate::traits::sync::ReadFrom<'vfs, Vfs>,
+    >() {
+    }
+    pub(crate) fn assert_is_write_to<
+        'vfs,
+        Vfs: vfs::WriteSupportingVfs<'vfs>,
+        T: crate::traits::sync::WriteTo<'vfs, Vfs>,
+    >() {
+    }
+}
