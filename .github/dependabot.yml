@@ -10,4 +10,5 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      - patterns: "*"
+      all:
+        patterns: "*"
