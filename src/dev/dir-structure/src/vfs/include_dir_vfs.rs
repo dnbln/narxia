@@ -1,6 +1,7 @@
 //! A [`Vfs`] implementation for an [`include_dir::Dir`] directory.
 
 use core::fmt;
+use core::slice;
 use std::error;
 use std::io;
 use std::path::Component;
@@ -10,8 +11,9 @@ use std::pin::Pin;
 use std::result::Result as StdResult;
 
 use include_dir::Dir;
+use include_dir::DirEntry;
 #[cfg(doc)]
-use include_dir::include_dir;
+use include_dir::include_dir as _include_dir;
 
 use crate::error::Error;
 use crate::error::Result;
@@ -34,14 +36,17 @@ impl IncludeDirVfs {
 
 /// Convenience macro to [`include_dir!(...)`][include_dir] and wrap it in an [`IncludeDirVfs`].
 ///
-/// [include_dir]: include_dir
+/// [include_dir]: _include_dir
 #[macro_export]
 macro_rules! include_dir_vfs {
     ($path:expr) => {{
-        let dir = $crate::include_dir::include_dir!($path);
-        $crate::vfs::include_dir_vfs::IncludeDirVfs::new(dir)
+        $crate::vfs::include_dir_vfs::IncludeDirVfs::new(
+            $crate::vfs::include_dir_vfs::include_dir_patched!($path),
+        )
     }};
 }
+
+pub use dir_structure_macros::include_dir_patched;
 
 #[derive(Debug)]
 struct NormalizeError;
@@ -116,7 +121,7 @@ fn norm(path: &Path) -> Result<PathBuf> {
     })
 }
 
-fn get_dir_or_root(root: Dir<'static>, path: &Path) -> Result<Dir<'static>> {
+fn get_dir_or_root<'a>(root: &'a Dir<'static>, path: &Path) -> Result<&'a Dir<'static>> {
     if path.as_os_str().is_empty() || path == Path::new(".") {
         return Ok(root);
     }
@@ -128,7 +133,7 @@ fn get_dir_or_root(root: Dir<'static>, path: &Path) -> Result<Dir<'static>> {
 
 impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
     type DirWalk<'a>
-        = IncludeDirWalker
+        = IncludeDirWalker<'a>
     where
         'vfs: 'a,
         Self: 'a;
@@ -189,7 +194,7 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
     fn exists(self: Pin<&Self>, path: &Path) -> Result<bool> {
         let path = norm(path)?;
 
-        Ok(get_dir_or_root(self.dir, &path)
+        Ok(get_dir_or_root(&self.dir, &path)
             .map_or_else(|_| self.dir.get_file(&path).is_some(), |_| true))
     }
 
@@ -198,36 +203,29 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
         'vfs: 'b,
     {
         let path = norm(path)?;
-        Ok(IncludeDirWalker(get_dir_or_root(self.dir, &path)?, 0))
+        Ok(IncludeDirWalker(
+            get_dir_or_root(&self.dir, &path)?.entries().iter(),
+        ))
     }
 }
 
 /// The [`DirWalker`] implementation for [`IncludeDirVfs`].
-pub struct IncludeDirWalker(Dir<'static>, usize);
+pub struct IncludeDirWalker<'a>(slice::Iter<'a, DirEntry<'static>>);
 
-impl<'a> DirWalker<'a> for IncludeDirWalker {
+impl<'a> DirWalker<'a> for IncludeDirWalker<'a> {
     fn next(&mut self) -> Option<Result<DirEntryInfo>> {
-        self.0
-            .dirs()
-            .get(self.1)
-            .map(|dir| DirEntryInfo {
-                name: dir.path().file_name().unwrap().to_owned(),
-                path: dir.path().to_path_buf(),
+        let next_entry = self.0.next()?;
+        match next_entry {
+            DirEntry::Dir(dir) => Some(Ok(DirEntryInfo {
                 kind: DirEntryKind::Directory,
-            })
-            .or_else(|| {
-                self.0
-                    .files()
-                    .get(self.1 - self.0.dirs().len())
-                    .map(|file| DirEntryInfo {
-                        name: file.path().file_name().unwrap().to_owned(),
-                        path: file.path().to_path_buf(),
-                        kind: DirEntryKind::File,
-                    })
-            })
-            .map(|entry| {
-                self.1 += 1;
-                Ok(entry)
-            })
+                name: dir.path().file_name().unwrap().to_os_string(),
+                path: dir.path().to_path_buf(),
+            })),
+            DirEntry::File(file) => Some(Ok(DirEntryInfo {
+                kind: DirEntryKind::File,
+                name: file.path().file_name().unwrap().to_os_string(),
+                path: file.path().to_path_buf(),
+            })),
+        }
     }
 }

@@ -461,7 +461,7 @@ data_format_impl!(
     ron::error::SpannedError,
     RonToStr,
     |v| ron::ser::to_string(&v),
-    |v, w| ron::ser::to_writer(w, v).map_err(ToWriterError::Serde),
+    |v, w| ron::options::Options::default().to_io_writer(w, v).map_err(ToWriterError::Serde),
     ron::error::Error,
     /// [`FromRefForWriter`] implementation for [`Ron`].
     RonRefWr,
@@ -481,7 +481,7 @@ data_format_impl!(
     ron::error::SpannedError,
     RonToStr,
     |v| ron::ser::to_string_pretty(&v, ron::ser::PrettyConfig::default()),
-    |v, w| ron::ser::to_writer_pretty(w, v, ron::ser::PrettyConfig::default()).map_err(ToWriterError::Serde),
+    |v, w| ron::options::Options::default().to_io_writer_pretty(w, v, ron::ser::PrettyConfig::default()).map_err(ToWriterError::Serde),
     ron::error::Error,
     /// [`FromRefForWriter`] implementation for [`RonPretty`].
     RonPrettyRefWr,

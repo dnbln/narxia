@@ -16,7 +16,7 @@ pub struct Dir {
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let vfs = dir_structure::include_dir_vfs!("examples/example_dirs/children");
+    let vfs = dir_structure::include_dir_vfs!("$CARGO_MANIFEST_DIR/examples/example_dirs/children");
 
     let dir = Dir::read_from(Path::new("."), Pin::new(&vfs))?;
 

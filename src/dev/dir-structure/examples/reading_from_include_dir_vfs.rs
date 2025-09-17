@@ -17,7 +17,7 @@ struct Dir {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let vfs = dir_structure::include_dir_vfs!("examples/example_dirs/reading");
+    let vfs = dir_structure::include_dir_vfs!("$CARGO_MANIFEST_DIR/examples/example_dirs/reading");
 
     // either
     let dir = Dir::read_from(Path::new("."), Pin::new(&vfs))?;

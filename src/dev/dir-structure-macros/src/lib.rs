@@ -56,3 +56,10 @@ pub fn __resolve_max_len(_input: proc_macro::TokenStream) -> proc_macro::TokenSt
     let output = quote::quote! { #max_len };
     output.into()
 }
+
+#[cfg(feature = "include_dir_vfs")]
+#[proc_macro]
+pub fn include_dir_patched(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = syn::parse_macro_input!(input as syn::LitStr);
+    quote::quote! {::dir_structure::include_dir::include_dir!(#input)}.into()
+}
