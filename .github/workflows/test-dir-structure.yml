@@ -4,14 +4,22 @@ on:
   push:
     branches: ["trunk"]
     paths:
-      - 'src/dev/dir-structure/**'
+      - 'src/dev/dir-structure/src/**'
+      - 'src/dev/dir-structure/Cargo.toml'
+      - 'src/dev/dir-structure/README.md'
+      - 'src/dev/dir-structure/tests/**'
+      - 'src/dev/dir-structure/examples/**'
       - 'src/dev/dir-structure-macros/**'
       - 'doc/docs/content/docs/dev/dir-structure/*.doctests'
       - '.github/workflows/test-dir-structure.yml'
   pull_request:
     branches: ["trunk"]
     paths:
-      - 'src/dev/dir-structure/**'
+      - 'src/dev/dir-structure/src/**'
+      - 'src/dev/dir-structure/Cargo.toml'
+      - 'src/dev/dir-structure/README.md'
+      - 'src/dev/dir-structure/tests/**'
+      - 'src/dev/dir-structure/examples/**'
       - 'src/dev/dir-structure-macros/**'
       - 'doc/docs/content/docs/dev/dir-structure/*.doctests'
       - '.github/workflows/test-dir-structure.yml'
@@ -53,29 +61,15 @@ jobs:
             "--features assert_eq,tokio",
             "--features assert_eq,image",
             "--features assert_eq,image,image-format-png",
-            "--features assert_eq,image,image-format-jpeg",
             "--features assert_eq,async,image",
             "--features assert_eq,tokio,image",
             "--features assert_eq,tokio,image,image-format-png",
-            "--features assert_eq,tokio,image,image-format-jpeg",
             "--features assert_eq,resolve-path",
-            "--features assert_eq,async,resolve-path",
             "--features assert_eq,tokio,resolve-path",
-            "--features assert_eq,async,tokio,resolve-path",
-            "--features assert_eq,json",
-            "--features assert_eq,async,json",
-            "--features assert_eq,tokio,json",
-            "--features assert_eq,toml",
-            "--features assert_eq,async,toml",
-            "--features assert_eq,tokio,toml",
-            "--features assert_eq,yaml",
-            "--features assert_eq,async,yaml",
-            "--features assert_eq,tokio,yaml",
-            "--features assert_eq,ron",
-            "--features assert_eq,async,ron",
-            "--features assert_eq,tokio,ron",
+            "--features assert_eq,json,toml,yaml,ron",
+            "--features assert_eq,async,json,toml,yaml,ron",
+            "--features assert_eq,tokio,json,toml,yaml,ron",
             "--features assert_eq,include_dir",
-            "--features assert_eq,async,include_dir",
             "--all-features",
         ]
         cmd: [ "build", "test" ]

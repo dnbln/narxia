@@ -38,6 +38,11 @@ If you are implementing `WriteTo` manually, you will need to add the lifetime pa
 
 Removed the `self_path` field from `DirChildren`, as it was not used anywhere, and did not make sense to be there.
 
+`read_from`, `write_to`, `read_from_async`, `write_to_async`, and `write_to_async_ref` now take in a `&Vfs::Path` or `<Vfs::Path as PathType>::PathOwned`
+instead of the old `&Path` and `PathBuf`. `Vfs::Path` is an associated type of the `Vfs` trait, which allows you to use
+custom path types for your virtual file system. `Vfs::Path` must implement the `PathType` trait, which also defines the associated
+type `PathOwned`, and a couple of other methods needed by the library for path manipulation.
+
 ## Other changes
 
 Relax bound for `Vfs::RFile` from `BufRead` to `Read`, as `BufRead` is only necessary
@@ -55,6 +60,9 @@ enables all the wrapper types.
 Opting out of all default features removes all the dependencies of the crate. The core crate
 is supposed to allow you to define directory structures and read / write them, as well
 as defining virtual file systems, without the derive macros or any of the wrapper types.
+
+Uncovered a bug in the old implementations of `ReadFrom` and `ReadFromAsync` for `DirDescendants`, when converting it to the
+new path types. These have been fixed.
 
 # `v0.2.0-rc.2`
 
