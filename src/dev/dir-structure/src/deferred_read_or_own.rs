@@ -15,6 +15,7 @@ use pin_project::pin_project;
 
 use crate::deferred_read::DeferredRead;
 use crate::error::Result;
+#[cfg(feature = "async")]
 use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]

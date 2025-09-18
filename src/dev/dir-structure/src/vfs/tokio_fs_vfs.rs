@@ -349,7 +349,6 @@ mod imp {
     use tokio::task;
 
     use super::*;
-    #[cfg(feature = "image")]
     use crate::error::Error;
     use crate::error::Result;
     #[cfg(feature = "image")]

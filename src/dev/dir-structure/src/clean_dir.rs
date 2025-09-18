@@ -33,6 +33,7 @@ use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
 #[cfg(feature = "resolve-path")]
 use crate::traits::vfs::OwnedPathType;
+#[cfg(feature = "async")]
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use crate::traits::vfs::VfsCore;

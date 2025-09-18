@@ -32,7 +32,6 @@ use crate::traits::resolve::DynamicHasField;
 use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker;
-#[cfg(feature = "async")]
 use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
