@@ -124,6 +124,7 @@ and write them back to disk."##
             use crate::std_types::FileString;
             use crate::error::VfsResult;
             use crate::error::Error;
+            #[cfg(feature = "async")]
             use crate::traits::vfs::VfsCore;
             use crate::traits::vfs::PathType;
 
