@@ -4,7 +4,7 @@ write_test!(
     write_simple,
     {
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -27,7 +27,7 @@ write_test!(
     write_simple_with_subdir,
     {
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -50,7 +50,7 @@ write_test!(
     write_simple_nested,
     {
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -59,7 +59,7 @@ write_test!(
         }
 
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Subdir {
             #[dir_structure(path = "f2.txt")]
             f2: String,
@@ -81,7 +81,7 @@ read_test!(
     read_simple,
     {
         #[derive(dir_structure::DirStructure, Debug, PartialEq, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -104,7 +104,7 @@ read_test!(
     read_simple_with_subdir,
     {
         #[derive(dir_structure::DirStructure, Debug, PartialEq, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -127,7 +127,7 @@ read_test!(
     read_simple_nested,
     {
         #[derive(dir_structure::DirStructure, Debug, PartialEq, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: String,
@@ -136,7 +136,7 @@ read_test!(
         }
 
         #[derive(dir_structure::DirStructure, Debug, PartialEq, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Subdir {
             #[dir_structure(path = "f2.txt")]
             f2: String,

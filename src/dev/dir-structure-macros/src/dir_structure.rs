@@ -10,14 +10,10 @@ use syn::parse_quote;
 use crate::dir_structure_core::DirStructureCoreInfo;
 use crate::dir_structure_core::PathSpec;
 use crate::dir_structure_core::compile_attrs;
-#[cfg(feature = "resolve-path")]
-use crate::resolve_path::has_field_impl;
 
 struct DirStructureForField {
     read_code: TokenStream,
     write_code: TokenStream,
-    #[cfg(feature = "resolve-path")]
-    has_field_impl: TokenStream,
 }
 
 fn expand_dir_structure_for_field(
@@ -47,18 +43,17 @@ fn expand_dir_structure_for_field(
         ..
     } = compile_attrs(field)?;
 
-    let (actual_path_expr, path_pusher_for_has_field) = match path {
-        PathSpec::Path(p) => (
-            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name, #p).as_ref() },
-            quote! { #path_param_name.push(#p); },
-        ),
-        PathSpec::SelfPath => (quote! { #path_param_name }, quote! {}),
+    let actual_path_expr = match path {
+        PathSpec::Path(p) => {
+            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name, #p).as_ref() }
+        }
+        PathSpec::SelfPath => quote! { #path_param_name },
     };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
     let read_code = if self_path {
         // self_path field, just use the path directly
         quote! {
-            #field_ty::from(#path_param_name)
+            #field_ty::from(::dir_structure::traits::vfs::PathType::owned(#path_param_name))
         }
     } else {
         let value_name = format_ident!("__value");
@@ -97,16 +92,6 @@ fn expand_dir_structure_for_field(
             #field_name: #read_code
         },
         write_code,
-        #[cfg(feature = "resolve-path")]
-        has_field_impl: has_field_impl(
-            self_path,
-            &with_newtype,
-            field_name,
-            field_ty,
-            (impl_generics, ty_name, ty_generics, where_clause),
-            path_param_name,
-            &path_pusher_for_has_field,
-        )?,
     })
 }
 
@@ -189,15 +174,11 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     let mut field_read_impls = Vec::new();
     let mut field_write_impls = Vec::new();
-    #[cfg(feature = "resolve-path")]
-    let mut has_field_impls = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
             read_code,
             write_code,
-            #[cfg(feature = "resolve-path")]
-            has_field_impl,
         } = expand_dir_structure_for_field(
             (&impl_generics, name, &ty_generics, where_clause),
             &path_param_name,
@@ -206,8 +187,6 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         )?;
         field_read_impls.push(read_code);
         field_write_impls.push(write_code);
-        #[cfg(feature = "resolve-path")]
-        has_field_impls.push(has_field_impl);
     }
 
     #[cfg_attr(not(feature = "resolve-path"), expect(unused_mut))]
@@ -233,13 +212,6 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         #[automatically_derived]
         impl #impl_generics ::dir_structure::traits::sync::DirStructure for #name #ty_generics #where_clause {}
     };
-
-    #[cfg(feature = "resolve-path")]
-    {
-        for has_field_impl in has_field_impls {
-            expanded.extend(has_field_impl);
-        }
-    }
 
     Ok(expanded)
 }

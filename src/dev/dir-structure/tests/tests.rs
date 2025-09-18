@@ -76,7 +76,7 @@ fn deferred_read() {
     #[derive(dir_structure::DirStructure)]
     struct FDir<'vfs, Vfs: vfs::Vfs<'vfs>> {
         #[dir_structure(path = "f1.txt")]
-        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs, Vfs::Path>,
+        f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs>,
     }
 
     let p = test_dir("deferred_read");

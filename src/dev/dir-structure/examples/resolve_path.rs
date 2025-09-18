@@ -6,14 +6,14 @@ use dir_structure::traits::resolve::resolve_path;
 
 mod example_dirs;
 
-#[derive(dir_structure::DirStructure)]
+#[derive(dir_structure::DirStructure, dir_structure::HasField)]
 pub struct ComplexRoot {
     a: A,
     b: B,
     c: C,
 }
 
-#[derive(dir_structure::DirStructure)]
+#[derive(dir_structure::DirStructure, dir_structure::HasField)]
 pub struct A {
     #[dir_structure(path = "a1.txt")]
     a1: String,
@@ -21,7 +21,7 @@ pub struct A {
     a2: String,
 }
 
-#[derive(dir_structure::DirStructure)]
+#[derive(dir_structure::DirStructure, dir_structure::HasField)]
 pub struct B {
     #[dir_structure(path = "b1.txt")]
     b1: String,
@@ -29,7 +29,7 @@ pub struct B {
     b2: String,
 }
 
-#[derive(dir_structure::DirStructure)]
+#[derive(dir_structure::DirStructure, dir_structure::HasField)]
 pub struct C {
     #[dir_structure(path = "c1.txt")]
     c1: String,

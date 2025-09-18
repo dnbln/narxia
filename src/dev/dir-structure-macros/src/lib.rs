@@ -42,6 +42,16 @@ pub fn resolve_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 #[cfg(feature = "resolve-path")]
+#[proc_macro_derive(HasField, attributes(dir_structure))]
+pub fn derive_has_field(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let item = syn::parse_macro_input!(item as ItemStruct);
+
+    resolve_path::expand_has_field_impls(item)
+        .unwrap_or_else(|err| err.to_compile_error())
+        .into()
+}
+
+#[cfg(feature = "resolve-path")]
 #[proc_macro]
 pub fn load_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     resolve_path::load_path(input)

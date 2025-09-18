@@ -4,7 +4,7 @@
 
 use std::ops::Deref;
 use std::ops::DerefMut;
-use std::path::PathBuf;
+use std::path::Path;
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -27,6 +27,8 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use crate::traits::vfs::VfsCore;
@@ -46,21 +48,36 @@ use crate::traits::vfs::VfsCore;
 /// # Example
 ///
 /// ```
+/// use std::path::Path;
 /// use dir_structure::versioned::VersionedString;
 ///
-/// let mut v = VersionedString::new("value".to_owned(), "path");
+/// let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
 /// assert!(v.is_clean());
 /// assert!(!v.is_dirty());
 ///
 /// *v = "new value".to_owned();
 /// assert!(v.is_dirty());
 /// ```
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct Versioned<T, P: PathType + ?Sized> {
+pub struct Versioned<T, P: PathType + ?Sized = Path> {
     value: T,
     version: usize,
     path: P::OwnedPath,
+}
+
+impl<T, P: PathType + ?Sized> Clone for Versioned<T, P>
+where
+    T: Clone,
+    P::OwnedPath: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            value: self.value.clone(),
+            version: self.version,
+            path: self.path.clone(),
+        }
+    }
 }
 
 impl<T, P: PathType + ?Sized> Versioned<T, P> {
@@ -82,9 +99,10 @@ impl<T, P: PathType + ?Sized> Versioned<T, P> {
     /// # Example
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::versioned::VersionedString;
     ///
-    /// let v = VersionedString::new_dirty("value".to_owned(), "path");
+    /// let v = VersionedString::<Path>::new_dirty("value".to_owned(), "path".to_owned());
     /// assert!(v.is_dirty());
     /// ```
     pub fn new_dirty(value: T, path: impl Into<P::OwnedPath>) -> Self {
@@ -100,9 +118,10 @@ impl<T, P: PathType + ?Sized> Versioned<T, P> {
     /// # Example
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::versioned::VersionedString;
     ///
-    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    /// let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
     /// assert!(!v.is_dirty());
     /// *v = "new value".to_owned();
     /// assert!(v.is_dirty());
@@ -116,9 +135,10 @@ impl<T, P: PathType + ?Sized> Versioned<T, P> {
     /// # Example
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::versioned::VersionedString;
     ///
-    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    /// let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
     /// assert!(v.is_clean());
     /// *v = "new value".to_owned();
     /// assert!(!v.is_clean());
@@ -133,9 +153,10 @@ impl<T, P: PathType + ?Sized> Versioned<T, P> {
     /// # Example
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::versioned::VersionedString;
     ///
-    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    /// let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
     ///
     /// v.edit_eq_check(|s| *s = "value".to_owned());
     /// assert!(v.is_clean());
@@ -170,10 +191,11 @@ impl<T, P: PathType + ?Sized> Versioned<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::{traits::sync::DirStructureItem, versioned::VersionedString};
     /// std::fs::write("path", "value").unwrap();
     ///
-    /// let mut v = VersionedString::new("value".to_owned(), "path");
+    /// let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
     /// assert!(v.is_clean());
     /// v.edit_eq_check(|s| *s = "new value".to_owned());
     /// assert!(v.is_dirty());
@@ -441,7 +463,7 @@ where
 {
     type Inner = <T as HasField<NAME>>::Inner;
 
-    fn resolve_path(p: PathBuf) -> PathBuf {
+    fn resolve_path<Pt: OwnedPathType>(p: Pt) -> Pt {
         T::resolve_path(p)
     }
 }
@@ -454,7 +476,7 @@ where
 {
     type Inner = <T as DynamicHasField>::Inner;
 
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+    fn resolve_path<Pt: OwnedPathType>(p: Pt, name: &str) -> Pt {
         T::resolve_path(p, name)
     }
 }
@@ -478,9 +500,9 @@ impl<T, P: PathType + ?Sized> DerefMut for Versioned<T, P> {
 }
 
 /// A [`Versioned`] [`String`].
-pub type VersionedString<P: PathType + ?Sized> = Versioned<String, P>;
+pub type VersionedString<P: PathType + ?Sized = Path> = Versioned<String, P>;
 /// A [`Versioned`] `Vec<u8>`.
-pub type VersionedBytes<P: PathType + ?Sized> = Versioned<Vec<u8>, P>;
+pub type VersionedBytes<P: PathType + ?Sized = Path> = Versioned<Vec<u8>, P>;
 
 #[cfg(test)]
 mod tests {

@@ -16,6 +16,10 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Async;
 
+use crate::dir_structure_core::DirStructureCoreInfo;
+use crate::dir_structure_core::PathSpec;
+use crate::dir_structure_core::compile_attrs;
+
 // resolve_path!([T @ path_expr].a."b".c.d.${e});
 // or
 // resolve_path!(["path/to/dir" as T].a."b".c.d.${e});
@@ -197,11 +201,12 @@ fn do_resolve_path(input: ResolvePathInput) -> syn::Result<TokenStream> {
 }
 
 enum LoadPathAsyncVfs {
-    Async(syn::Expr),
-    Sync(Option<syn::Expr>),
+    Async(syn::Expr, syn::Type),
+    Sync(Option<(syn::Expr, syn::Type)>),
 }
 
 struct LoadPathInput {
+    bound: syn::Lifetime,
     core: CoreTyExpression,
     async_vfs: LoadPathAsyncVfs,
     segments: Punctuated<ResolveSingleSegment, Token![.]>,
@@ -216,6 +221,18 @@ impl Parse for LoadPathInput {
             false
         };
 
+        let bound = {
+            let c = input.fork();
+
+            match c.parse::<syn::Lifetime>() {
+                Ok(l) => {
+                    input.advance_to(&c);
+                    l
+                }
+                Err(_) => parse_quote! {'static},
+            }
+        };
+
         let content;
         bracketed!(content in input);
         let core = content.parse()?;
@@ -225,10 +242,18 @@ impl Parse for LoadPathInput {
             let c;
             parenthesized!(c in input);
             let vfs = c.parse()?;
+
+            let syn::Expr::Cast(syn::ExprCast { expr, ty, .. }) = vfs else {
+                return Err(syn::Error::new_spanned(
+                    vfs,
+                    "expected expression to be `value as type`",
+                ));
+            };
+
             if is_async {
-                LoadPathAsyncVfs::Async(vfs)
+                LoadPathAsyncVfs::Async(*expr, *ty)
             } else {
-                LoadPathAsyncVfs::Sync(Some(vfs))
+                LoadPathAsyncVfs::Sync(Some((*expr, *ty)))
             }
         } else if is_async {
             return Err(input.error("expected 'in (vfs)' for async load_path"));
@@ -245,6 +270,7 @@ impl Parse for LoadPathInput {
         }
 
         Ok(LoadPathInput {
+            bound,
             core,
             async_vfs,
             segments,
@@ -317,7 +343,7 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                                 Ok(<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::parse(
                                     <<#current_path as ::dir_structure::traits::resolve::HasFieldMaybeNewtype<{ [#(#name_array),*] }>>::ReaderType
                                         as ::dir_structure::traits::sync::ReadFrom<'_, _>>
-                                            ::read_from(&__current, #vfs)?
+                                            ::read_from(__current.as_ref(), #vfs)?
                                 ))
                             }
                         }
@@ -354,7 +380,7 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                                 Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
                                     <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
                                         as ::dir_structure::traits::sync::ReadFrom<'_, _>>
-                                            ::read_from(&__current, #vfs)?
+                                            ::read_from(__current.as_ref(), #vfs)?
                                 ))
                             }
                         }
@@ -388,7 +414,7 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
                                 Ok(<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::parse(
                                     <<#current_path as ::dir_structure::traits::resolve::DynamicHasFieldMaybeNewtype>::ReaderType
                                         as ::dir_structure::traits::sync::ReadFrom<'_, _>>
-                                            ::read_from(&__current, #vfs)?
+                                            ::read_from(__current.as_ref(), #vfs)?
                                 ))
                             }
                         }
@@ -407,19 +433,29 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
         syn::Error::new_spanned(input.core.ty, "no segments provided to load_path")
     })?;
 
-    let (asy, read_code) = match input.async_vfs {
-        LoadPathAsyncVfs::Async(vfs) => {
-            (Some(Async(vfs.span())), reader_code(true, &vfs))
+    let lt = input.bound;
+
+    let (asy, vfs_expr, vfs_ty, read_code) = match input.async_vfs {
+        LoadPathAsyncVfs::Async(vfs, ty) => {
+            (
+                Some(Async(vfs.span())),
+                vfs,
+                ty,
+                reader_code(true, &parse_quote! {__vfs}),
+            )
             // quote! {
             //     <#current_path as ::dir_structure::traits::asy::ReadFromAsync<'_, _>>::read_from_async(__current, #vfs)
             // }
         }
         LoadPathAsyncVfs::Sync(vfs) => {
-            let vfs = vfs.unwrap_or_else(
-                || parse_quote! { ::std::pin::Pin::new(&::dir_structure::vfs::fs_vfs::FsVfs) },
-            );
+            let (vfs, ty) = vfs.unwrap_or_else(|| {
+                (
+                    parse_quote! { ::std::pin::Pin::new(&::dir_structure::vfs::fs_vfs::FsVfs) },
+                    parse_quote! { ::dir_structure::vfs::fs_vfs::FsVfs },
+                )
+            });
 
-            (None, reader_code(false, &vfs))
+            (None, vfs, ty, reader_code(false, &parse_quote! {__vfs}))
             // quote! {
             //     <#current_path as ::dir_structure::traits::sync::ReadFrom<'_, _>>::read_from(&__current, #vfs)
             // }
@@ -427,18 +463,18 @@ fn do_load_path(input: LoadPathInput) -> syn::Result<TokenStream> {
     };
 
     Ok(quote! {{
-        #asy fn __read_(__current: ::std::path::PathBuf #params) -> ::dir_structure::error::Result<#current_path>
+        #asy fn __read_<'vfs : #lt>(__current: impl Into<<<#vfs_ty as ::dir_structure::traits::vfs::VfsCore>::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>, __vfs: ::std::pin::Pin<&'vfs #vfs_ty> #params) -> ::dir_structure::error::VfsResult<#current_path, #vfs_ty>
             #where_clause
         {
+            let __current = __current.into();
             #resolve
             #read_code
         }
-        let __current: ::std::path::PathBuf = ::std::path::PathBuf::from(#p);
-        __read_(__current #args)
+        __read_(#p, #vfs_expr #args)
     }})
 }
 
-pub fn has_field_impl(
+fn has_field_impl(
     self_path: bool,
     with_newtype: &Option<syn::Type>,
     field_name: &syn::Ident,
@@ -482,7 +518,7 @@ pub fn has_field_impl(
             impl #impl_generics ::dir_structure::traits::resolve::HasField<{ [#(#field_name_array),*] }> for #ty_name #ty_generics #where_clause {
                 type Inner = #field_ty;
 
-                fn resolve_path(mut #path_param_name: ::std::path::PathBuf) -> ::std::path::PathBuf {
+                fn resolve_path<__P: ::dir_structure::traits::vfs::OwnedPathType>(mut #path_param_name: __P) -> __P {
                     #path_pusher_for_has_field
                     #path_param_name
                 }
@@ -512,4 +548,52 @@ pub fn has_field_impl(
 
         Ok(has_field_impl)
     }
+}
+
+pub fn expand_has_field_impls(item: syn::ItemStruct) -> syn::Result<TokenStream> {
+    let struct_name = &item.ident;
+    let (impl_generics, ty_generics, where_clause) = item.generics.split_for_impl();
+
+    let mut has_field_impls = quote! {};
+
+    for field in &item.fields {
+        let field_name = field
+            .ident
+            .as_ref()
+            .ok_or_else(|| syn::Error::new_spanned(field, "Expected named fields in the struct"))?;
+
+        let DirStructureCoreInfo {
+            self_path,
+            name: _,
+            ty,
+            newtype_ty: with_newtype,
+            path,
+        } = compile_attrs(field)?;
+
+        let path_param_name = format_ident!("__path");
+
+        let path_pusher_for_has_field = match path {
+            PathSpec::Path(path) => {
+                quote! {
+                    #path_param_name.push_segment_str(#path);
+                }
+            }
+            PathSpec::SelfPath => {
+                // do nothing, this is a self path
+                quote! {}
+            }
+        };
+
+        has_field_impls.extend(has_field_impl(
+            self_path,
+            &with_newtype,
+            field_name,
+            &ty,
+            (&impl_generics, struct_name, &ty_generics, where_clause),
+            &path_param_name,
+            &path_pusher_for_has_field,
+        )?);
+    }
+
+    Ok(has_field_impls)
 }

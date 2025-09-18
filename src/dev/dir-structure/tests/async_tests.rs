@@ -73,7 +73,7 @@ mod simple;
 #[tokio::test]
 async fn deferred_read() {
     #[derive(dir_structure::DirStructureAsync)]
-    struct Dir<'vfs, Vfs> {
+    struct Dir<'vfs, Vfs: VfsCore> {
         #[dir_structure(path = "f1.txt")]
         f: dir_structure::deferred_read::DeferredRead<'vfs, String, Vfs>,
     }
@@ -297,9 +297,9 @@ async fn clean_dir_writer() {
 #[tokio::test]
 async fn versioned_works() {
     #[derive(dir_structure::DirStructureAsync)]
-    struct Dir {
+    struct Dir<Vfs: VfsCore> {
         #[dir_structure(path = "f1.txt")]
-        f1: VersionedString,
+        f1: VersionedString<Vfs::Path>,
     }
 
     let p = test_dir("versioned_works");
@@ -308,7 +308,10 @@ async fn versioned_works() {
     std::fs::create_dir_all(d.clone()).unwrap();
     std::fs::write(d.join("f1.txt"), "f1").unwrap();
 
-    let dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
+    let dir = TokioFsVfs
+        .read_typed_async::<Dir<_>>(d.clone())
+        .await
+        .unwrap();
     assert_eq!(*dir.f1, "f1");
 
     TokioFsVfs
@@ -316,7 +319,10 @@ async fn versioned_works() {
         .await
         .unwrap();
 
-    let mut dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
+    let mut dir = TokioFsVfs
+        .read_typed_async::<Dir<_>>(d.clone())
+        .await
+        .unwrap();
 
     assert_eq!(*dir.f1, "f1");
 
@@ -341,10 +347,22 @@ async fn versioned_doesnt_call_write_if_not_changed() {
     where
         T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
     {
-        type Future =
-            Pin<Box<dyn Future<Output = dir_structure::error::Result<Self>> + Send + 'vfs>>;
+        type Future = Pin<
+            Box<
+                dyn Future<
+                        Output = dir_structure::error::Result<
+                            Self,
+                            <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
+                        >,
+                    > + Send
+                    + 'vfs,
+            >,
+        >;
 
-        fn read_from_async(path: PathBuf, vfs: Pin<&'vfs Vfs>) -> Self::Future {
+        fn read_from_async(
+            path: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
+            vfs: Pin<&'vfs Vfs>,
+        ) -> Self::Future {
             Box::pin(async move {
                 Ok(Self {
                     count: AtomicUsize::new(0),
@@ -359,13 +377,27 @@ async fn versioned_doesnt_call_write_if_not_changed() {
         T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     {
         type Future<'a>
-            = Pin<Box<dyn Future<Output = dir_structure::error::Result<()>> + Send + 'a>>
+            = Pin<
+            Box<
+                dyn Future<
+                        Output = dir_structure::error::Result<
+                            (),
+                            <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
+                        >,
+                    > + Send
+                    + 'a,
+            >,
+        >
         where
             Self: 'a,
             'r: 'a,
             Vfs: 'a;
 
-        fn write_to_async_ref<'a>(&'a self, path: PathBuf, vfs: Pin<&'a Vfs>) -> Self::Future<'a>
+        fn write_to_async_ref<'a>(
+            &'a self,
+            path: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
+            vfs: Pin<&'a Vfs>,
+        ) -> Self::Future<'a>
         where
             'r: 'a,
         {
@@ -375,9 +407,9 @@ async fn versioned_doesnt_call_write_if_not_changed() {
     }
 
     #[derive(dir_structure::DirStructureAsync)]
-    struct Dir {
+    struct Dir<Vfs: VfsCore> {
         #[dir_structure(path = "f1.txt")]
-        f1: Versioned<WriteCounter<String>>,
+        f1: Versioned<WriteCounter<String>, Vfs::Path>,
     }
 
     let p = test_dir("versioned_doesnt_call_write_if_not_changed");
@@ -398,7 +430,10 @@ async fn versioned_doesnt_call_write_if_not_changed() {
         .await
         .unwrap();
 
-    let mut dir = TokioFsVfs.read_typed_async::<Dir>(d.clone()).await.unwrap();
+    let mut dir = TokioFsVfs
+        .read_typed_async::<Dir<_>>(d.clone())
+        .await
+        .unwrap();
 
     assert_eq!(dir.f1.count.load(Ordering::SeqCst), 0);
 

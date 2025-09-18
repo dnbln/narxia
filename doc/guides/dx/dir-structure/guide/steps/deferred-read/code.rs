@@ -7,14 +7,14 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredRead/] DeferredRead
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -22,7 +22,7 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredRead/] DeferredRead
     // !mark
@@ -50,4 +50,6 @@ dir.subdirs.iter().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>

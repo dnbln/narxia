@@ -12,6 +12,7 @@ use std::result;
 use std::slice;
 
 use dir_structure::DirStructure;
+use dir_structure::HasField;
 use dir_structure::data_formats::json_pretty::JsonPretty;
 use dir_structure::dir_children::DirChildSingle;
 use dir_structure::dir_children::DirChildSingleOpt;
@@ -20,8 +21,11 @@ use dir_structure::dir_children::Filter;
 use dir_structure::dir_children::ForceCreateDirChildren;
 use dir_structure::error::Error as DirStructureError;
 use dir_structure::file_prefix_filter;
+use dir_structure::prelude::PathType;
+use dir_structure::prelude::VfsCore;
 use dir_structure::traits::resolve::resolve_path;
 use dir_structure::versioned::Versioned;
+use dir_structure::vfs::fs_vfs::FsVfs;
 use git2::RebaseOperationType;
 use git2::Repository;
 use git2::build::CheckoutBuilder;
@@ -35,7 +39,7 @@ pub enum Error {
     #[error("git error: {0}")]
     GitError(#[from] git2::Error),
     #[error("dir-structure error: {0}")]
-    DirStructureError(#[from] DirStructureError),
+    DirStructureError(#[from] DirStructureError<PathBuf>),
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
     #[error("Failed to parse step reference: {0}")]
@@ -44,26 +48,26 @@ pub enum Error {
 
 pub type Result<T> = result::Result<T, Error>;
 
-#[derive(DirStructure)]
-pub struct Guide {
+#[derive(DirStructure, HasField)]
+pub struct Guide<Vfs: VfsCore<Path = Path>> {
     #[dir_structure(path = "steps.json")]
-    steps: Versioned<JsonPretty<Steps>>,
+    steps: Versioned<JsonPretty<Steps>, Vfs::Path>,
     #[dir_structure(path = "steps")]
-    step_dirs: ForceCreateDirChildren<StepDir>,
-    code_header: Option<Versioned<String>>,
-    code_footer: Option<Versioned<String>>,
+    step_dirs: ForceCreateDirChildren<StepDir<Vfs>, dir_structure::NoFilter, Vfs::Path>,
+    code_header: Option<Versioned<String, Vfs::Path>>,
+    code_footer: Option<Versioned<String, Vfs::Path>>,
     #[dir_structure(path = self)]
-    template: Versioned<DirChildSingle<String, TemplateFilter>>,
+    template: Versioned<DirChildSingle<String, TemplateFilter, Vfs::Path>, Vfs::Path>,
 
-    self_path: PathBuf,
+    self_path: <Vfs::Path as PathType>::OwnedPath,
 }
 
-impl Guide {
+impl Guide<FsVfs> {
     pub fn new_default(dir: PathBuf, template_extension: &str) -> Self {
         Self {
             steps: Versioned::new_dirty(
                 JsonPretty(Steps { steps: vec![] }),
-                resolve_path!([Guide @ dir.clone()].steps),
+                resolve_path!([Guide<FsVfs> @ dir.clone()].steps),
             ),
             step_dirs: ForceCreateDirChildren::new(DirChildren::new()),
             code_header: Some(Versioned::new_dirty(
@@ -177,7 +181,7 @@ End of the guide.
                 None => (
                     Versioned::new_dirty(
                         String::new(),
-                        resolve_path!([&self.self_path as Guide].step_dirs.${&step.0}.code),
+                        resolve_path!([&self.self_path as Guide<FsVfs>].step_dirs.${&step.0}.code),
                     ),
                     code_extension.unwrap_or_else(Extension::default_code_extension),
                     before_after_extension
@@ -194,7 +198,7 @@ End of the guide.
                 format!("before{before_after}"),
                 Versioned::new_dirty(
                     String::new(),
-                    resolve_path!([&self.self_path as Guide].step_dirs.${&step.0})
+                    resolve_path!([&self.self_path as Guide<FsVfs>].step_dirs.${&step.0})
                         .join(format!("before{before_after}")),
                 ),
             )),
@@ -202,19 +206,19 @@ End of the guide.
                 format!("after{before_after}"),
                 Versioned::new_dirty(
                     String::new(),
-                    resolve_path!([&self.self_path as Guide].step_dirs.${&step.0})
+                    resolve_path!([&self.self_path as Guide<FsVfs>].step_dirs.${&step.0})
                         .join(format!("after{before_after}")),
                 ),
             )),
             code: DirChildSingle::new(format!("code{code_extension}"), code),
             code_header: None,
             code_footer: None,
-            self_path: resolve_path!([Guide @ self.self_path.clone()].step_dirs.${&step.0}),
+            self_path: resolve_path!([Guide<FsVfs> @ self.self_path.clone()].step_dirs.${&step.0}),
         };
         self.step_dirs.push(step.0.clone(), step_dir);
     }
 
-    pub fn get_step_dir(&self, step: &StepRef) -> Option<&StepDir> {
+    pub fn get_step_dir(&self, step: &StepRef) -> Option<&StepDir<FsVfs>> {
         self.step_dirs.get_value_by_name(&step.0)
     }
 
@@ -265,7 +269,9 @@ impl Extension {
         &self.0
     }
 
-    fn guess_from<T, F: Filter>(dir_child: &DirChildSingle<T, F>) -> Self {
+    fn guess_from<T, F: Filter<<FsVfs as VfsCore>::Path>>(
+        dir_child: &DirChildSingle<T, F>,
+    ) -> Self {
         let s = dir_child.file_name().to_str().unwrap();
         let p = Path::new(dir_child.file_name());
         let prefix = if let Some(prefix) = p.file_prefix() {
@@ -277,10 +283,10 @@ impl Extension {
     }
 }
 
-pub struct StepsIter<'a>(slice::Iter<'a, StepRef>, &'a DirChildren<StepDir>);
+pub struct StepsIter<'a>(slice::Iter<'a, StepRef>, &'a DirChildren<StepDir<FsVfs>>);
 
 impl<'a> Iterator for StepsIter<'a> {
-    type Item = (&'a StepRef, &'a StepDir);
+    type Item = (&'a StepRef, &'a StepDir<FsVfs>);
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0
@@ -307,26 +313,26 @@ impl<'a> DoubleEndedIterator for StepsIter<'a> {
     }
 }
 
-#[derive(DirStructure)]
-pub struct StepDir {
+#[derive(DirStructure, HasField)]
+pub struct StepDir<Vfs: VfsCore<Path = Path>> {
     #[dir_structure(path = self)]
-    before: DirChildSingleOpt<Versioned<String>, BeforeFilter>,
+    before: DirChildSingleOpt<Versioned<String, Vfs::Path>, BeforeFilter, Vfs::Path>,
     #[dir_structure(path = self)]
-    after: DirChildSingleOpt<Versioned<String>, AfterFilter>,
+    after: DirChildSingleOpt<Versioned<String, Vfs::Path>, AfterFilter, Vfs::Path>,
     #[dir_structure(path = self)]
-    pub code: DirChildSingle<Versioned<String>, CodeFilter>,
+    pub code: DirChildSingle<Versioned<String, Vfs::Path>, CodeFilter, Vfs::Path>,
 
-    code_header: Option<Versioned<String>>,
-    code_footer: Option<Versioned<String>>,
+    code_header: Option<Versioned<String, Vfs::Path>>,
+    code_footer: Option<Versioned<String, Vfs::Path>>,
     self_path: PathBuf,
 }
 
-impl StepDir {
+impl StepDir<FsVfs> {
     pub fn code_path(&self) -> PathBuf {
         self.self_path.join(self.code.file_name())
     }
 
-    pub fn render_step(&self, guide: &Guide) -> String {
+    pub fn render_step(&self, guide: &Guide<FsVfs>) -> String {
         let mut output = String::new();
         if let DirChildSingleOpt::Some(before) = &self.before {
             writeln!(output, "{}", &**before.value()).unwrap();
@@ -406,7 +412,7 @@ impl<T> DbgGitErr for result::Result<T, git2::Error> {
 }
 
 fn perform_patchup(
-    guide: &Guide,
+    guide: &Guide<FsVfs>,
     step: &StepRef,
     new_code: &str,
     repo_root: &Path,
@@ -565,7 +571,7 @@ fn perform_patchup(
 }
 
 pub fn patchup(
-    guide: &mut Guide,
+    guide: &mut Guide<FsVfs>,
     dir: &Path,
     step: &StepRef,
     new_code: &str,
@@ -591,7 +597,7 @@ pub fn patchup(
 }
 
 pub fn repatch(
-    guide: &mut Guide,
+    guide: &mut Guide<FsVfs>,
     dir: &Path,
     empty_commits: &BTreeMap<String, String>,
 ) -> Result<()> {

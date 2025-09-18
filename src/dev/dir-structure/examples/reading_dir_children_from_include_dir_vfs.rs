@@ -6,13 +6,14 @@
 use std::path::Path;
 use std::pin::Pin;
 
+use dir_structure::NoFilter;
 use dir_structure::dir_children::DirChildren;
 use dir_structure::prelude::*;
 
 #[derive(dir_structure::DirStructure)]
-pub struct Dir {
+pub struct Dir<Vfs: VfsCore> {
     #[dir_structure(path = self)]
-    children: DirChildren<String>,
+    children: DirChildren<String, NoFilter, Vfs::Path>,
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {

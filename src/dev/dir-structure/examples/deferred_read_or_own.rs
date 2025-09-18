@@ -7,11 +7,12 @@ use std::error::Error;
 
 use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
 use dir_structure::prelude::*;
+use dir_structure::traits::vfs::VfsCore;
 
 mod example_dirs;
 
 #[derive(dir_structure::DirStructure)]
-pub struct Dir<'vfs, Vfs> {
+pub struct Dir<'vfs, Vfs: VfsCore> {
     #[dir_structure(path = "input.txt")]
     input: DeferredReadOrOwn<'vfs, String, Vfs>,
     #[dir_structure(path = "output.txt")]

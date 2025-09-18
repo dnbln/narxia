@@ -5,6 +5,8 @@ use std::fmt;
 use std::io;
 use std::result;
 
+use crate::prelude::PathType;
+use crate::prelude::VfsCore;
 use crate::traits::vfs;
 use crate::traits::vfs::OwnedPathType;
 
@@ -91,7 +93,10 @@ pub trait WrapIoError<PathType: vfs::PathType + ?Sized>: Sized + sealed::Sealed 
 impl<T, P: vfs::PathType + ?Sized> WrapIoError<P> for io::Result<T> {
     type Output = T;
 
-    fn wrap_io_error(self, get_path: impl FnOnce() -> P::OwnedPath) -> Result<Self::Output, P::OwnedPath> {
+    fn wrap_io_error(
+        self,
+        get_path: impl FnOnce() -> P::OwnedPath,
+    ) -> Result<Self::Output, P::OwnedPath> {
         self.map_err(|e| Error::Io(get_path(), e))
     }
 }
@@ -100,3 +105,6 @@ impl<T, P: vfs::PathType + ?Sized> WrapIoError<P> for io::Result<T> {
 ///
 /// See [the `Error` enum](Error) for the errors that can happen.
 pub type Result<T, P: OwnedPathType> = result::Result<T, Error<P>>;
+
+/// A convenience result type for a specific VFS.
+pub type VfsResult<T, Vfs: VfsCore> = Result<T, <Vfs::Path as PathType>::OwnedPath>;

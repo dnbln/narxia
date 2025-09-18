@@ -1,11 +1,11 @@
 //! Synchronous reading / writing traits.
 
-use std::path::Path;
 use std::pin::Pin;
 
 use crate::error::Result;
+use crate::traits::vfs;
 use crate::traits::vfs::PathType;
-use crate::traits::vfs::{self};
+use crate::traits::vfs::VfsCore;
 use crate::vfs::fs_vfs;
 
 /// The main trait. This is implemented for
@@ -21,8 +21,8 @@ pub trait DirStructureItem {
     /// Uses the [`ReadFrom`] implementation to read the structure from
     /// disk, from the specified path.
     fn read(
-        path: impl AsRef<Path>,
-    ) -> Result<Self, <<fs_vfs::FsVfs as vfs::VfsCore>::Path as PathType>::OwnedPath>
+        path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>,
+    ) -> Result<Self, <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
     where
         Self: ReadFrom<'static, fs_vfs::FsVfs> + Sized,
     {
@@ -33,8 +33,8 @@ pub trait DirStructureItem {
     /// to disk at the specified path.
     fn write<'a, 'vfs: 'a>(
         &'a self,
-        path: impl AsRef<Path>,
-    ) -> Result<(), <<fs_vfs::FsVfs as vfs::VfsCore>::Path as PathType>::OwnedPath>
+        path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>,
+    ) -> Result<(), <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
     where
         Self: WriteTo<'vfs, fs_vfs::FsVfs>,
     {

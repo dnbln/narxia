@@ -2,7 +2,8 @@
 //!
 //! [`HasField`] is automatically derived by the `#[derive(DirStructure)]` macro.
 
-use std::path::PathBuf;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 
 #[doc(hidden)]
 pub const HAS_FIELD_MAX_LEN: usize = dir_structure_macros::__resolve_max_len!();
@@ -18,7 +19,7 @@ pub trait HasField<const NAME: [char; HAS_FIELD_MAX_LEN]> {
     type Inner;
 
     /// How to resolve the path for the field, from the path of `Self`.
-    fn resolve_path(p: PathBuf) -> PathBuf;
+    fn resolve_path<P: OwnedPathType>(p: P) -> P;
 }
 
 /// A trait for types that may or may not have a newtype wrapper around their field type for reading / writing.
@@ -58,7 +59,7 @@ pub trait DynamicHasField {
     type Inner;
     /// How to resolve the path for the field, from the path of `Self`, given the name
     /// passed into [the `resolve_path!` macro](resolve_path).
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf;
+    fn resolve_path<P: OwnedPathType>(p: P, name: &str) -> P;
 }
 
 /// [`DynamicHasField`] for types that do not have a newtype wrapper around their field type.
@@ -93,9 +94,9 @@ pub use dir_structure_macros::load_path;
 ///
 /// ```rust
 /// use std::path::PathBuf;
-/// use dir_structure::{DirStructure, traits::resolve::resolve_path};
+/// use dir_structure::{DirStructure, HasField, traits::resolve::resolve_path};
 ///
-/// #[derive(DirStructure)]
+/// #[derive(DirStructure, HasField)]
 /// struct MyStruct {
 ///     #[dir_structure(path = "my_field.txt")]
 ///     my_field: String,
@@ -103,7 +104,7 @@ pub use dir_structure_macros::load_path;
 ///     my_field2: MyStruct2,
 /// }
 ///
-/// #[derive(DirStructure)]
+/// #[derive(DirStructure, HasField)]
 /// struct MyStruct2 {
 ///     #[dir_structure(path = "my_field3.txt")]
 ///     my_field3: String,

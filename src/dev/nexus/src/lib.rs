@@ -321,7 +321,7 @@ async fn patch_guide(
 }
 
 async fn render_guide(
-    guide: &Guide,
+    guide: &Guide<FsVfs>,
     guide_dir: &Path,
     output: Option<&Path>,
     check: bool,

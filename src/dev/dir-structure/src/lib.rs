@@ -127,6 +127,8 @@ mod __doc_check {
 pub use dir_structure_macros::DirStructure;
 #[cfg(all(feature = "derive", feature = "async"))]
 pub use dir_structure_macros::DirStructureAsync;
+#[cfg(all(feature = "derive", feature = "resolve-path"))]
+pub use dir_structure_macros::HasField;
 
 pub mod prelude {
     //! A prelude for the most commonly used items in this crate.
@@ -147,7 +149,9 @@ pub mod prelude {
     pub use crate::traits::sync::DirStructureItem;
     pub use crate::traits::sync::ReadFrom;
     pub use crate::traits::sync::WriteTo;
+    pub use crate::traits::vfs::PathType;
     pub use crate::traits::vfs::Vfs;
+    pub use crate::traits::vfs::VfsCore;
     pub use crate::traits::vfs::VfsExt;
     pub use crate::traits::vfs::WriteSupportingVfsExt;
 }

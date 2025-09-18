@@ -39,7 +39,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -48,8 +48,8 @@ struct FsMtime<T> {
 }
 
 // !mark(1:5)
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         todo!()
     }
 }
@@ -65,7 +65,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -73,8 +73,8 @@ struct FsMtime<T> {
     value: T,
 }
 
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         // !mark(1:3)
         let mtime = path.metadata()
             .and_then(|m| m.modified())
@@ -94,7 +94,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -102,8 +102,8 @@ struct FsMtime<T> {
     value: T,
 }
 
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -124,7 +124,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -133,8 +133,8 @@ struct FsMtime<T> {
 }
 
 // !collapse(1:9)
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -155,7 +155,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -164,8 +164,8 @@ struct FsMtime<T> {
 }
 
 // !collapse(1:9) collapsed
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -175,8 +175,8 @@ impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for 
 }
 
 // !mark(1:6)
-impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path=Path>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         todo!();
         Ok(())
     }
@@ -193,7 +193,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -202,8 +202,8 @@ struct FsMtime<T> {
 }
 
 // !collapse(1:9) collapsed
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -212,8 +212,8 @@ impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for 
     }
 }
 
-impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path=Path>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         // !mark
         self.value.write_to(path, vfs)?;
         todo!();
@@ -231,7 +231,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4) collapsed
 struct FsMtime<T> {
@@ -240,8 +240,8 @@ struct FsMtime<T> {
 }
 
 // !collapse(1:9) collapsed
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -251,8 +251,8 @@ impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for 
 }
 
 // !collapse(1:9)
-impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path=Path>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         self.value.write_to(path, vfs)?;
         // !mark(1:3)
         std::fs::File::open(path)
@@ -276,7 +276,7 @@ use std::path::Path;
 use std::pin::Pin;
 use std::time::SystemTime;
 
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, error::Result, traits::vfs, error::WrapIoError, prelude::*};
+use dir_structure::{DirStructure, traits::sync::DirStructureItem, error::VfsResult, traits::vfs, error::WrapIoError, prelude::*};
 
 // !collapse(1:4)
 struct FsMtime<T> {
@@ -285,8 +285,8 @@ struct FsMtime<T> {
 }
 
 // !collapse(1:9)
-impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
-    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<Self> {
+impl<'vfs, Vfs: vfs::Vfs<'vfs, Path=Path>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for FsMtime<T> {
+    fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mtime = path.metadata()
             .and_then(|m| m.modified())
             .wrap_io_error_with(path)?;
@@ -296,8 +296,8 @@ impl<'vfs, Vfs: vfs::Vfs<'vfs>, T: ReadFrom<'vfs, Vfs>> ReadFrom<'vfs, Vfs> for 
 }
 
 // !collapse(1:9)
-impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
-    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> Result<()> {
+impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path=Path>, T: WriteTo<'vfs, Vfs>> WriteTo<'vfs, Vfs> for FsMtime<T> {
+    fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         self.value.write_to(path, vfs)?;
         std::fs::File::open(path)
             .and_then(|f| f.set_modified(self.mtime))
@@ -309,16 +309,17 @@ impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>, T: WriteTo<'vfs, Vfs>> WriteTo<'v
 // !mark(1:9)
 // !collapse(1:5)
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<Vfs: vfs::VfsCore<Path=Path>> {
     #[dir_structure(path = "file.txt")]
     file: FsMtime<String>,
+    __marker: std::marker::PhantomData<Vfs>,
 }
 
 // !hidden let path = "dir";
 let mut dir = Dir::read(path)?;
 dir.file.mtime = SystemTime::UNIX_EPOCH;
 dir.write(path)?;
-// !tail dir_structure::error::Error
+// !tail dir_structure::error::Error::<std::path::PathBuf>
 
 ```
 

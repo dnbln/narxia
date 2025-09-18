@@ -26,4 +26,6 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>

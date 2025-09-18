@@ -15,7 +15,6 @@ use syn::parse_quote;
 use crate::dir_structure_core::DirStructureCoreInfo;
 use crate::dir_structure_core::PathSpec;
 use crate::dir_structure_core::compile_attrs;
-use crate::resolve_path::has_field_impl;
 
 mod read_from_async;
 mod write_to_async_ref;
@@ -48,8 +47,6 @@ struct DirStructureForField {
     async_read_bound: Option<Vec<WherePredicate>>,
     async_write_bound: Option<Vec<WherePredicate>>,
     async_write_ref_bound: Option<Vec<WherePredicate>>,
-    #[cfg(feature = "resolve-path")]
-    has_field_impl: TokenStream,
 }
 
 fn expand_dir_structure_for_field(
@@ -80,12 +77,11 @@ fn expand_dir_structure_for_field(
         ..
     } = compile_attrs(field)?;
 
-    let (actual_path_expr_move, path_pusher_for_has_field) = match &path {
-        PathSpec::Path(p) => (
-            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name, #p).as_ref() },
-            quote! { #path_param_name.push(#p); },
-        ),
-        PathSpec::SelfPath => (quote! { #path_param_name }, quote! {}),
+    let actual_path_expr_move = match &path {
+        PathSpec::Path(p) => {
+            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name, #p).as_ref() }
+        }
+        PathSpec::SelfPath => quote! { #path_param_name },
     };
 
     let async_read_bound = read_from_async::expand_dir_structure_for_field(
@@ -125,16 +121,6 @@ fn expand_dir_structure_for_field(
         async_read_bound,
         async_write_bound,
         async_write_ref_bound,
-        #[cfg(feature = "resolve-path")]
-        has_field_impl: has_field_impl(
-            self_path,
-            &with_newtype,
-            field_name,
-            &field.ty,
-            (impl_generics, ty_name, ty_generics, where_clause),
-            path_param_name,
-            &path_pusher_for_has_field,
-        )?
     })
 }
 
@@ -218,7 +204,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         proj_name: format_ident!("__{}ReadAsyncFutureProj", name),
         std_field_set: vec![
             parse_quote! {
-                #path_param_name: ::std::path::PathBuf
+                #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath
             },
             parse_quote! {
                 #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>
@@ -236,7 +222,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         proj_name: format_ident!("__{}WriteAsyncRefFutureProj", name),
         std_field_set: vec![
             parse_quote! {
-                #path_param_name: ::std::path::PathBuf
+                #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath
             },
             parse_quote! {
                 #vfs_param_name: ::std::pin::Pin<&'fut Vfs>
@@ -257,7 +243,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         proj_name: format_ident!("__{}WriteAsyncOwnedFutureProj", name),
         std_field_set: vec![
             parse_quote! {
-                #path_param_name: ::std::path::PathBuf
+                #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath
             },
             parse_quote! {
                 #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>
@@ -273,16 +259,12 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     let mut field_async_read_bounds = Vec::new();
     let mut field_async_write_bounds = Vec::new();
     let mut field_async_write_ref_bounds = Vec::new();
-    #[cfg(feature = "resolve-path")]
-    let mut has_field_impls = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
             async_read_bound,
             async_write_bound,
             async_write_ref_bound,
-            #[cfg(feature = "resolve-path")]
-            has_field_impl,
         } = expand_dir_structure_for_field(
             (&impl_generics, name, &ty_generics, where_clause),
             &path_param_name,
@@ -300,10 +282,6 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
         }
         if let Some(async_write_ref_bound) = async_write_ref_bound {
             field_async_write_ref_bounds.extend(async_write_ref_bound);
-        }
-        #[cfg(feature = "resolve-path")]
-        {
-            has_field_impls.push(has_field_impl);
         }
     }
 
@@ -343,7 +321,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             where
                 Self: 'vfs;
 
-            fn read_from_async(#path_param_name: ::std::path::PathBuf, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> Self::Future
+            fn read_from_async(#path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> Self::Future
             where
                 Self: Sized,
             {
@@ -365,7 +343,7 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
                 'vfs: 'a,
                 Vfs: 'a;
 
-            fn write_to_async_ref<'a>(&'a self, #path_param_name: ::std::path::PathBuf, #vfs_param_name: ::std::pin::Pin<&'a Vfs>) -> Self::Future<'a> where 'vfs: 'a {
+            fn write_to_async_ref<'a>(&'a self, #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath, #vfs_param_name: ::std::pin::Pin<&'a Vfs>) -> Self::Future<'a> where 'vfs: 'a {
                 #write_async_ty_name::Init {
                     #path_param_name,
                     #vfs_param_name,
@@ -374,13 +352,6 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
             }
         }
     });
-
-    #[cfg(feature = "resolve-path")]
-    {
-        for has_field_impl in has_field_impls {
-            expanded.extend(has_field_impl);
-        }
-    }
 
     Ok(expanded)
 }

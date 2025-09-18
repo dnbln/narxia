@@ -122,8 +122,8 @@ where
     }
 }
 
-impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>, P: PathType + ?Sized + 'vfs> WriteTo<'vfs, Vfs>
-    for FmtWrapper<T>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
+    WriteTo<'vfs, Vfs> for FmtWrapper<T>
 where
     T: Display,
 {

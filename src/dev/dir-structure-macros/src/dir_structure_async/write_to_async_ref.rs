@@ -42,7 +42,9 @@ pub(super) fn expand_dir_structure_for_field(
     let field_ty = &field.ty;
 
     let actual_path_expr_move = match &path {
-        PathSpec::Path(p) => quote! { #path_param_name.join(#p) },
+        PathSpec::Path(p) => {
+            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name.as_ref(), #p) }
+        }
         PathSpec::SelfPath => quote! { #path_param_name.clone() },
     };
     let actual_field_ty_perform = with_newtype.unwrap_or(field_ty);
@@ -75,7 +77,7 @@ pub(super) fn expand_dir_structure_for_field(
                         for<'trivial, 'f> <#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs>>::Wr: ::dir_structure::traits::asy::WriteToAsync<'f, Vfs>
                     },
                     parse_quote! {
-                        for<'trivial, 'f> <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'f, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'f
+                        for<'trivial, 'f> <<#nt as ::dir_structure::traits::asy::FromRefForWriterAsync<'f, Vfs>>::Wr as ::dir_structure::traits::asy::WriteToAsync<'f, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>> + ::std::marker::Send + ::std::marker::Unpin + 'f
                     },
                 ];
                 async_write_ref_future.clauses.extend(bound.clone());
@@ -94,7 +96,7 @@ pub(super) fn expand_dir_structure_for_field(
                         for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>
                     },
                     parse_quote! {
-                        for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>: ::std::future::Future<Output = ::dir_structure::error::Result<()>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
+                        for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::WriteToAsyncRef<'vfs, Vfs>>::Future<'fut>: ::std::future::Future<Output = ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>> + ::std::marker::Send + ::std::marker::Unpin + 'fut
                     },
                 ];
                 async_write_ref_future.clauses.extend(bound.clone());
@@ -274,7 +276,7 @@ pub(super) fn future_impl_enum(
             #vis enum #name<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> #where_clause_write_future {
                 Poison,
                 Init {
-                    #path_param_name: ::std::path::PathBuf,
+                    #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
                     #vfs_param_name: ::std::pin::Pin<&'fut Vfs>,
                     __this: &'fut #ty_name #ty_generics,
                 },
@@ -283,7 +285,7 @@ pub(super) fn future_impl_enum(
 
             #[automatically_derived]
             impl<#vfs_lifetime_header 'fut, Vfs: ::dir_structure::traits::async_vfs::WriteSupportingVfsAsync + 'static> ::std::future::Future for #name<#vfs_lifetime_header 'fut, Vfs> #where_clause_write_future {
-                type Output = ::dir_structure::error::Result<()>;
+                type Output = ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>;
 
                 fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
                     let this = self.as_mut().project_replace(Self::Poison);

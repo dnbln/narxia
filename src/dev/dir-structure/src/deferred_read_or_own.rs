@@ -4,8 +4,6 @@
 
 use std::fmt;
 use std::hash;
-#[cfg(any(feature = "resolve-path", feature = "async"))]
-use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -17,6 +15,7 @@ use pin_project::pin_project;
 
 use crate::deferred_read::DeferredRead;
 use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -29,6 +28,8 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use crate::traits::vfs::VfsCore;
@@ -56,25 +57,18 @@ use crate::vfs::fs_vfs;
 /// If you never call [`DeferredReadOrOwn::perform_and_store_read`], and only ever call [`DeferredReadOrOwn::get`],
 /// that would effectively be the same as using a [`DeferredRead`], and that should be preferred instead.
 #[derive(Clone)]
-pub enum DeferredReadOrOwn<
-    'a,
-    T,
-    Vfs = fs_vfs::FsVfs,
-    P: PathType + ?Sized = <fs_vfs::FsVfs as vfs::VfsCore>::Path,
-    const CHECK_ON_READ: bool = false,
-> {
+pub enum DeferredReadOrOwn<'a, T, Vfs: VfsCore = fs_vfs::FsVfs, const CHECK_ON_READ: bool = false> {
     /// An owned value.
     Own(T),
     /// A deferred read.
-    Deferred(DeferredRead<'a, T, Vfs, P, CHECK_ON_READ>),
+    Deferred(DeferredRead<'a, T, Vfs, CHECK_ON_READ>),
 }
 
-impl<'a, T, Vfs, P, const CHECK_ON_READ: bool> hash::Hash
-    for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+impl<'a, T, Vfs: VfsCore, const CHECK_ON_READ: bool> hash::Hash
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: hash::Hash,
-    P: PathType + ?Sized,
-    P::OwnedPath: hash::Hash + fmt::Debug,
+    <Vfs::Path as PathType>::OwnedPath: hash::Hash,
 {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         match self {
@@ -91,8 +85,8 @@ where
 }
 
 #[cfg(feature = "assert_eq")]
-impl<'a, T, Vfs, P, const CHECK_ON_READ: bool> assert_eq::AssertEq
-    for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+impl<'a, T, Vfs: VfsCore<Path = P>, P, const CHECK_ON_READ: bool> assert_eq::AssertEq
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: assert_eq::AssertEq,
     P: PathType + ?Sized,
@@ -102,15 +96,15 @@ where
         &self,
         other: &Self,
         path: &mut assert_eq::AssertPath,
-        init_left: &impl core::fmt::Display,
-        init_right: &impl core::fmt::Display,
+        init_left: &impl fmt::Display,
+        init_right: &impl fmt::Display,
     ) {
         match (self, other) {
             (Self::Own(l), Self::Own(r)) => {
                 T::assert_eq(l, r, &mut *path.__guard("[Own]"), init_left, init_right);
             }
             (Self::Deferred(l), Self::Deferred(r)) => {
-                DeferredRead::<T, Vfs, P, CHECK_ON_READ>::assert_eq(
+                DeferredRead::<T, Vfs, CHECK_ON_READ>::assert_eq(
                     l,
                     r,
                     &mut *path.__guard("[Deferred]"),
@@ -128,8 +122,8 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs, P> fmt::Debug
-    for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: VfsCore<Path = P>, P> fmt::Debug
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: fmt::Debug,
     P: PathType + ?Sized,
@@ -144,7 +138,7 @@ where
 }
 
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a>
-    DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -172,7 +166,7 @@ where
     ///     let d = Path::new("dir");
     ///     std::fs::create_dir_all(&d)?;
     ///     let deferred = DeferredReadOrOwn::<String, FsVfs>::Deferred(
-    ///         DeferredRead::read_from(&d.join("f.txt"), Pin::new(&FsVfs)).unwrap()
+    ///         DeferredRead::read_from(d.join("f.txt").as_ref(), Pin::new(&FsVfs)).unwrap()
     ///     );
     ///     assert!(deferred.get().is_err());
     ///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
@@ -213,7 +207,7 @@ where
     ///     let d = Path::new("dir");
     ///     std::fs::create_dir_all(&d)?;
     ///     let mut deferred = DeferredReadOrOwn::<String, FsVfs>::Deferred(
-    ///         DeferredRead::read_from(&d.join("f.txt"), Pin::new(&FsVfs)).unwrap()
+    ///         DeferredRead::read_from(d.join("f.txt").as_ref(), Pin::new(&FsVfs)).unwrap()
     ///     );
     ///     assert!(deferred.perform_and_store_read().is_err());
     ///     std::fs::write(d.join("f.txt"), "Hello, world!")?;
@@ -255,7 +249,7 @@ where
 }
 
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a>
-    ReadFrom<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+    ReadFrom<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
@@ -270,7 +264,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a>
-    DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
@@ -309,15 +303,12 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a>
-    DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+    DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     P::OwnedPath: 'a,
 {
     /// Flushes the current value to the specified path. Async version of [`flush_to`](Self::flush_to).
-    pub async fn flush_to_async<
-        TargetVfs: WriteSupportingVfsAsync<Path = P> + 'a,
-        ReadFutTy,
-    >(
+    pub async fn flush_to_async<TargetVfs: WriteSupportingVfsAsync<Path = P> + 'a, ReadFutTy>(
         &'a self,
         path: P::OwnedPath,
         vfs: Pin<&'a TargetVfs>,
@@ -340,7 +331,7 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: VfsAsync<Path = P> + 'static, P: PathType + ?Sized + 'a>
-    ReadFromAsync<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+    ReadFromAsync<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     P::OwnedPath: Send + Sync,
@@ -350,7 +341,7 @@ where
     fn read_from_async(path: P::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
         use std::future::poll_fn;
 
-        let mut fut = DeferredRead::<T, Vfs, P, CHECK_ON_READ>::read_from_async(path, vfs);
+        let mut fut = DeferredRead::<T, Vfs, CHECK_ON_READ>::read_from_async(path, vfs);
 
         Box::pin(poll_fn(move |cx| {
             fut.as_mut().poll(cx).map_ok(Self::Deferred)
@@ -366,7 +357,7 @@ impl<
     P: PathType + ?Sized + 'a,
     SelfVfs: vfs::Vfs<'a, Path = P>,
     TargetVfs: vfs::WriteSupportingVfs<'t, Path = P>,
-> WriteTo<'t, TargetVfs> for DeferredReadOrOwn<'a, T, SelfVfs, P, CHECK_ON_READ>
+> WriteTo<'t, TargetVfs> for DeferredReadOrOwn<'a, T, SelfVfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, SelfVfs> + WriteTo<'t, TargetVfs>,
 {
@@ -385,22 +376,19 @@ where
 pub enum DeferredReadOrOwnWriteFuture<
     'a,
     T,
-    P: PathType + ?Sized + 'a,
-    Vfs: WriteSupportingVfsAsync<Path = P> + 'static,
+    Vfs: WriteSupportingVfsAsync + 'static,
     const CHECK_ON_READ: bool,
 > where
     T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
-    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'b,
-    for<'b> <T as WriteToAsync<'b, Vfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'b,
+    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'b,
 {
     Poisson,
     Own {
         inner: <T as WriteToAsync<'a, Vfs>>::Future,
     },
     Deferred {
-        inner: <DeferredRead<'a, T, Vfs, P, CHECK_ON_READ> as WriteToAsync<'a, Vfs>>::Future,
+        inner: <DeferredRead<'a, T, Vfs, CHECK_ON_READ> as WriteToAsync<'a, Vfs>>::Future,
     },
 }
 
@@ -412,7 +400,7 @@ impl<
     T,
     P: PathType + ?Sized + 'a,
     Vfs: WriteSupportingVfsAsync<Path = P> + 'a,
-> Future for DeferredReadOrOwnWriteFuture<'a, T, P, Vfs, CHECK_ON_READ>
+> Future for DeferredReadOrOwnWriteFuture<'a, T, Vfs, CHECK_ON_READ>
 where
     T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
     for<'b> <T as ReadFromAsync<'b, Vfs>>::Future:
@@ -455,15 +443,13 @@ where
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, const CHECK_ON_READ: bool, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
-    for DeferredReadOrOwn<'a, T, Vfs, Vfs::Path, CHECK_ON_READ>
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
-    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future:
-        Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'b,
-    for<'b> <T as WriteToAsync<'b, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'b,
+    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'b,
 {
-    type Future = DeferredReadOrOwnWriteFuture<'a, T, Vfs::Path, Vfs, CHECK_ON_READ>;
+    type Future = DeferredReadOrOwnWriteFuture<'a, T, Vfs, CHECK_ON_READ>;
 
     fn write_to_async(
         self,
@@ -483,30 +469,30 @@ where
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<'a, const CHECK_ON_READ: bool, const NAME: [char; HAS_FIELD_MAX_LEN], T, Vfs, P> HasField<NAME>
-    for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, const NAME: [char; HAS_FIELD_MAX_LEN], T, Vfs> HasField<NAME>
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: HasField<NAME>,
-    P: PathType + ?Sized,
+    Vfs: VfsCore,
 {
     type Inner = <T as HasField<NAME>>::Inner;
 
-    fn resolve_path(p: PathBuf) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P) -> P {
         T::resolve_path(p)
     }
 }
 
 #[cfg(feature = "resolve-path")]
 #[cfg_attr(docsrs, doc(cfg(feature = "resolve-path")))]
-impl<'a, const CHECK_ON_READ: bool, T, Vfs, P> DynamicHasField
-    for DeferredReadOrOwn<'a, T, Vfs, P, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs> DynamicHasField
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: DynamicHasField,
-    P: PathType + ?Sized,
+    Vfs: VfsCore,
 {
     type Inner = <T as DynamicHasField>::Inner;
 
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P, name: &str) -> P {
         T::resolve_path(p, name)
     }
 }

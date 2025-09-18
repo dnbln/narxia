@@ -6,22 +6,22 @@ use std::path::Path;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/Filter/] Filter
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<Vfs: VfsCore<Path = Path>> {
     // !mark(1:2)
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir, Filt>,
+    subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 }
 
 // !mark(1:11)
 struct Filt;
 
 // !tooltip[/Filter/] Filter
-impl Filter for Filt {
+impl Filter<Path> for Filt {
     fn allows(path: &Path) -> bool {
         path.extension().map_or(false, |ext| ext == "d")
     }
@@ -41,4 +41,6 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>

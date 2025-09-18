@@ -1,7 +1,5 @@
 //! `Option<T>` implementations.
 
-#[cfg(any(feature = "resolve-path"))]
-use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -24,6 +22,8 @@ use crate::traits::resolve::HAS_FIELD_MAX_LEN;
 #[cfg(feature = "resolve-path")]
 use crate::traits::resolve::HasField;
 use crate::traits::vfs;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 
 impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Option<T>
@@ -155,8 +155,8 @@ where
     }
 }
 
-impl<'vfs, T, P: PathType + 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>> WriteTo<'vfs, Vfs>
-    for Option<T>
+impl<'vfs, T, P: PathType + ?Sized + 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>>
+    WriteTo<'vfs, Vfs> for Option<T>
 where
     T: WriteTo<'vfs, Vfs>,
 {
@@ -233,7 +233,7 @@ where
 {
     type Inner = <T as HasField<NAME>>::Inner;
 
-    fn resolve_path(p: PathBuf) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P) -> P {
         T::resolve_path(p)
     }
 }
@@ -246,7 +246,7 @@ where
 {
     type Inner = <T as DynamicHasField>::Inner;
 
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P, name: &str) -> P {
         T::resolve_path(p, name)
     }
 }

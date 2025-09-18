@@ -4,8 +4,6 @@
 #[cfg(feature = "async")]
 use std::future::Future;
 use std::marker;
-#[cfg(any(feature = "async", feature = "resolve-path"))]
-use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -15,7 +13,7 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::asy::FromRefForWriterAsync;
@@ -33,6 +31,8 @@ use crate::traits::sync::DirStructureItem;
 use crate::traits::sync::FromRefForWriter;
 use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use crate::traits::vfs::VfsCore;
@@ -80,10 +80,7 @@ impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for CleanDir<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -110,7 +107,7 @@ impl<'a, T, Vfs: VfsAsync> Future for CleanDirReadFuture<'a, T, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
-    type Output = Result<CleanDir<T>, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<CleanDir<T>, Vfs>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
@@ -127,13 +124,7 @@ impl<'a, T, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for CleanDir<T>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
-    type Future = Pin<
-        Box<
-            dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>;
 
     fn read_from_async(
         path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
@@ -147,11 +138,7 @@ impl<'a, T, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for CleanDir<T>
 where
     T: WriteTo<'a, Vfs>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -162,13 +149,7 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Cl
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
 {
-    type Future = Pin<
-        Box<
-            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'a>>;
 
     fn write_to_async(
         self,
@@ -193,12 +174,10 @@ where
 pub enum CleanDirWriteRefFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'a,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
-    <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
     Poison,
@@ -223,15 +202,13 @@ impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for CleanDirWriteRefFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
-    <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -293,11 +270,10 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
     for<'f> <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
-    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
+    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
 {
     type Future<'b>
         = CleanDirWriteRefFuture<'a, 'b, T, Vfs>
@@ -339,10 +315,9 @@ where
 impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> FromRefForWriterAsync<'a, Vfs> for CleanDir<T>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
 {
     type Inner = T;
     type Wr = CleanDirRefWr<'a, 'a, T, Vfs>;
@@ -371,7 +346,7 @@ where
 {
     type Inner = <T as HasField<NAME>>::Inner;
 
-    fn resolve_path(p: PathBuf) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P) -> P {
         T::resolve_path(p)
     }
 }
@@ -384,7 +359,7 @@ where
 {
     type Inner = <T as DynamicHasField>::Inner;
 
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
+    fn resolve_path<P: OwnedPathType>(p: P, name: &str) -> P {
         T::resolve_path(p, name)
     }
 }
@@ -403,11 +378,7 @@ where
     T: ?Sized + WriteTo<'vfs, Vfs>,
     'vfs: 'a,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         if vfs.exists(path)? {
             vfs.remove_dir_all(path)?;
         } else {
@@ -423,10 +394,9 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for CleanDirRefWr<'a, 'a, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    for<'f> <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     for<'f> <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
 {
     type Future = CleanDirRefWrWriteFuture<'a, 'a, T, Vfs>;
 
@@ -447,12 +417,10 @@ where
 pub enum CleanDirRefWrWriteFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
-    <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    T::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
     Poison,
@@ -481,15 +449,13 @@ impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for CleanDirRefWrWriteFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + ?Sized + 'a,
-    T::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
-    <Vfs as VfsAsync>::ExistsFuture<'f>:
-        Future<Output = Result<bool, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    T::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
+    <Vfs as VfsAsync>::ExistsFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Unpin + 'f,
     <Vfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);

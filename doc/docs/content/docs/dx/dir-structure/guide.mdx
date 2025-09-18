@@ -51,7 +51,9 @@ struct Dir {
 // !hidden let path = "dir";
 // !tooltip[/read/] DirStructureItem::read#
 let dir = Dir::read(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -90,7 +92,9 @@ let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 // !mark
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -136,7 +140,9 @@ struct Dir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -201,7 +207,9 @@ struct Obj {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -240,7 +248,9 @@ struct Dir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -287,7 +297,9 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -319,15 +331,15 @@ mindmap
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<Vfs: VfsCore> {
     // !mark(1:2)
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir>,
+    subdirs: DirChildren<SubDir, dir_structure::NoFilter, Vfs::Path>,
 }
 
 // !tooltip[/DirStructure/] DirStructure
@@ -344,7 +356,9 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -380,22 +394,22 @@ use std::path::Path;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/Filter/] Filter
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<Vfs: VfsCore<Path = Path>> {
     // !mark(1:2)
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir, Filt>,
+    subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 }
 
 // !mark(1:11)
 struct Filt;
 
 // !tooltip[/Filter/] Filter
-impl Filter for Filt {
+impl Filter<Path> for Filt {
     fn allows(path: &Path) -> bool {
         path.extension().map_or(false, |ext| ext == "d")
     }
@@ -415,7 +429,9 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -452,15 +468,15 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructure/] DirStructure
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir {
+struct Dir<Vfs: VfsCore<Path = std::path::Path>> {
     // !mark(1:2)
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir, Filt>,
+    subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -480,7 +496,9 @@ struct SubDir {
 let dir = Dir::read(path)?;
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -513,14 +531,14 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredRead/] DeferredRead
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -528,7 +546,7 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredRead/] DeferredRead
     // !mark
@@ -556,7 +574,9 @@ dir.subdirs.iter().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -588,14 +608,14 @@ use dir_structure::ext_filter;
 // !tooltip[/DirStructureItem/] DirStructureItem
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -603,7 +623,7 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !mark
@@ -636,7 +656,9 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -674,15 +696,15 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -690,17 +712,17 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
     // !mark
-    input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    input: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
     // !mark
-    output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    output: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 }
 
 // !hidden let path = "dir";
@@ -724,7 +746,9 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will not write anything to disk, since nothing has changed
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -765,14 +789,15 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -780,15 +805,17 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    // !mark
+    input: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
-    output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    // !mark
+    output: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 }
 
 // !hidden let path = "dir";
@@ -815,7 +842,9 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will write the changed values to disk
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>
 
 ```
 
@@ -876,7 +905,7 @@ dir_structure::traits::sync::DirStructureItem
 
 ```rust ,ignore
 pub trait DirStructureItem
-pub fn read(path: impl AsRef<Path>) -> Result<Self>
+pub fn read(path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>) -> Result<Self, <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
 where
     Self: ReadFrom<'static, fs_vfs::FsVfs> + Sized,
 ```
@@ -897,7 +926,7 @@ dir_structure::traits::sync::DirStructureItem
 
 ```rust ,ignore
 pub trait DirStructureItem
-pub fn write<'a, 'vfs>(&'a self, path: impl AsRef<Path>) -> Result<()>
+pub fn write<'a, 'vfs>(&'a self, path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>) -> Result<(), <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
 where
     'vfs: 'a,
     Self: WriteTo<'vfs, fs_vfs::FsVfs>,
@@ -986,7 +1015,7 @@ type param may need Drop
 
 ---
 
-A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde/1.0.219/serde/de/trait.Deserialize.html),
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.225/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.225/serde_core/de/trait.Deserialize.html),
 thus allowing us to parse and serialize it from / to json when we read / write a
 directory structure.
 
@@ -1004,7 +1033,7 @@ where
 
 ---
 
-A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde/1.0.219/serde/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde/1.0.219/serde/de/trait.Deserialize.html),
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.225/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.225/serde_core/de/trait.Deserialize.html),
 thus allowing us to parse and serialize it from / to json when we read / write a
 directory structure.
 </DocTooltip>
@@ -1018,19 +1047,19 @@ dir_structure::dir_children
 ```
 
 ```rust ,ignore
-pub struct DirChildren<T, F = NoFilter>
+pub struct DirChildren<T, F = NoFilter, P = Path>
 where
-    F: Filter,
+    F: Filter<P>,
+    P: PathType + ?Sized,
 {
-    pub self_path: PathBuf,
-    pub children: Vec<DirChild<T>>,
-    filter: PhantomData<F>,
+    pub children: Vec<DirChild<T, P>>,
+    filter: PhantomData<(F, P)>,
 }
 ```
 
 ---
 
-size = 48 (0x30), align = 0x8, needs Drop
+size = 24 (0x18), align = 0x8, needs Drop
 
 ---
 
@@ -1057,7 +1086,9 @@ dir_structure::dir_children
 ```
 
 ```rust ,ignore
-pub trait Filter
+pub trait Filter<P>
+where
+    P: PathType + ?Sized,
 ```
 
 ---
@@ -1082,10 +1113,11 @@ For example, for a [`Filter`](https://docs.rs/dir_structure/0.2.0-rc.2/dir_struc
  use std::path::PathBuf;
 
  use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
+ use dir_structure::prelude::*;
 
  pub struct TextFileFilter;
 
- impl Filter for TextFileFilter {
+ impl Filter<Path> for TextFileFilter {
      fn allows(path: &Path) -> bool {
          path.extension()
              .and_then(|s| s.to_str())
@@ -1096,9 +1128,9 @@ For example, for a [`Filter`](https://docs.rs/dir_structure/0.2.0-rc.2/dir_struc
  fn main() -> Result<(), Box<dyn std::error::Error>> {
      let path = PathBuf::from("dir");
      #[derive(DirStructure)]
-     struct Dir {
+     struct Dir<Vfs: VfsCore<Path = Path>> {
         #[dir_structure(path = self)]
-        text_files: DirChildren<String, TextFileFilter>,
+        text_files: DirChildren<String, TextFileFilter, Vfs::Path>,
      }
 
 
@@ -1157,12 +1189,14 @@ dir_structure::deferred_read
 ```
 
 ```rust ,ignore
-pub struct DeferredRead<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}>(pub PathBuf, Pin<&'a Vfs>, PhantomData<T>)
+pub struct DeferredRead<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}>(pub <<Vfs as VfsCore>::Path as PathType>::OwnedPath, Pin<&'a Vfs>, PhantomData<T>)
+where
+    Vfs: VfsCore,
 ```
 
 ---
 
-size = 32 (0x20), align = 0x8, needs Drop
+size = 32 (0x20), align = 0x8, type param may need Drop
 
 ---
 
@@ -1175,7 +1209,7 @@ See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.2.0-rc.2/
 </DocTooltip>
 
 ## !!doctooltips DirChildren::iter-R
-<TooltipTarget>`DirChildren<T, F>::iter#`</TooltipTarget>
+<TooltipTarget>`DirChildren<T, F, P>::iter#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1184,11 +1218,12 @@ dir_structure::dir_children::DirChildren
 ```
 
 ```rust ,ignore
-impl<T, F> DirChildren<T, F>
-pub fn iter(&self) -> DirChildrenIter<'_, T>
+impl<T, F, P> DirChildren<T, F, P>
+pub fn iter(&self) -> DirChildrenIter<'_, T, P>
 where
     // Bounds from impl:
-    F: Filter,
+    F: Filter<P>,
+    P: PathType + ?Sized,
 ```
 
 ---
@@ -1206,7 +1241,6 @@ let mut i = d.iter();
 assert_eq!(i.next(), None);
 
 let d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    PathBuf::new(),
     vec![
         DirChild::new("file1.txt", "file1".to_owned()),
         DirChild::new("file2.txt", "file2".to_owned()),
@@ -1220,7 +1254,7 @@ assert_eq!(i.next(), None);
 </DocTooltip>
 
 ## !!doctooltips DirChildren::iter_mut-R
-<TooltipTarget>`DirChildren<T, F>::iter_mut#`</TooltipTarget>
+<TooltipTarget>`DirChildren<T, F, P>::iter_mut#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1229,11 +1263,12 @@ dir_structure::dir_children::DirChildren
 ```
 
 ```rust ,ignore
-impl<T, F> DirChildren<T, F>
-pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T>
+impl<T, F, P> DirChildren<T, F, P>
+pub fn iter_mut(&mut self) -> DirChildrenIterMut<'_, T, P>
 where
     // Bounds from impl:
-    F: Filter,
+    F: Filter<P>,
+    P: PathType + ?Sized,
 ```
 
 ---
@@ -1247,7 +1282,6 @@ use std::path::{Path, PathBuf};
 use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
 
 let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    PathBuf::new(),
     vec![
         DirChild::new("file1.txt", "file1".to_owned()),
         DirChild::new("file2.txt", "file2".to_owned()),
@@ -1262,11 +1296,9 @@ assert_eq!(i.next(), None);
 Modifying the children is also possible:
 
 ```rust ,ignore
-use std::path::{Path, PathBuf};
 use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}};
 
 let mut d = DirChildren::<String, dir_structure::NoFilter>::with_children_from_iter(
-    PathBuf::new(),
     vec![
         DirChild::new("file1.txt", "file1".to_owned()),
         DirChild::new("file2.txt", "file2".to_owned()),
@@ -1290,11 +1322,12 @@ dir_structure::deferred_read::DeferredRead
 ```
 
 ```rust ,ignore
-impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredRead<'a, T, Vfs, CHECK_ON_READ>
-pub fn perform_read(&self) -> Result<T>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs, P> DeferredRead<'a, T, Vfs, CHECK_ON_READ>
+pub fn perform_read(&self) -> Result<T, <P as PathType>::OwnedPath>
 where
     // Bounds from impl:
-    Vfs: vfs::Vfs<'a>,
+    Vfs: vfs::Vfs<'a, Path = P>,
+    P: PathType + ?Sized + 'a,
     T: ReadFrom<'a, Vfs>,
 ```
 
@@ -1314,9 +1347,10 @@ For a cached version see [`DeferredReadOrOwn`](crate::DeferredReadOrOwn).
  use std::pin::Pin;
  use dir_structure::traits::sync::DirStructureItem;
  use dir_structure::deferred_read::DeferredRead;
+ use dir_structure::prelude::*;
 
  #[derive(dir_structure::DirStructure)]
- struct Dir<'vfs, Vfs> {
+ struct Dir<'vfs, Vfs: VfsCore> {
      #[dir_structure(path = "f.txt")]
      f: DeferredRead<'vfs, String, Vfs>,
  }
@@ -1347,7 +1381,10 @@ dir_structure::deferred_read_or_own
 ```
 
 ```rust ,ignore
-pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}> {
+pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool = {const}>
+where
+    Vfs: VfsCore,
+{
     Own( /* … */ ),
     Deferred( /* … */ ),
 }
@@ -1355,7 +1392,7 @@ pub enum DeferredReadOrOwn<'a, T, Vfs = fs_vfs::FsVfs, const CHECK_ON_READ: bool
 
 ---
 
-needs Drop
+type param may need Drop
 
 ---
 
@@ -1392,11 +1429,12 @@ dir_structure::deferred_read_or_own::DeferredReadOrOwn
 ```
 
 ```rust ,ignore
-impl<'a, const CHECK_ON_READ: bool, T, Vfs> DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
-pub fn perform_and_store_read(&mut self) -> Result<&mut T>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs, P> DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
+pub fn perform_and_store_read(&mut self) -> Result<&mut T, P::OwnedPath>
 where
     // Bounds from impl:
-    Vfs: vfs::Vfs<'a>,
+    Vfs: vfs::Vfs<'a, Path = P>,
+    P: PathType + ?Sized + 'a,
     T: ReadFrom<'a, Vfs>,
 ```
 
@@ -1422,7 +1460,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let d = Path::new("dir");
     std::fs::create_dir_all(&d)?;
     let mut deferred = DeferredReadOrOwn::<String, FsVfs>::Deferred(
-        DeferredRead::read_from(&d.join("f.txt"), Pin::new(&FsVfs)).unwrap()
+        DeferredRead::read_from(d.join("f.txt").as_ref(), Pin::new(&FsVfs)).unwrap()
     );
     assert!(deferred.perform_and_store_read().is_err());
     std::fs::write(d.join("f.txt"), "Hello, world!")?;
@@ -1443,16 +1481,19 @@ dir_structure::versioned
 ```
 
 ```rust ,ignore
-pub struct Versioned<T> {
+pub struct Versioned<T, P = Path>
+where
+    P: PathType + ?Sized,
+{
     value: T,
     version: usize,
-    path: PathBuf,
+    path: <P as PathType>::OwnedPath,
 }
 ```
 
 ---
 
-needs Drop
+type param may need Drop
 
 ---
 
@@ -1471,9 +1512,10 @@ method to edit the value, and it will increment the version if the value has cha
 # Example
 
 ```rust ,ignore
+use std::path::Path;
 use dir_structure::versioned::VersionedString;
 
-let mut v = VersionedString::new("value".to_owned(), "path");
+let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
 assert!(v.is_clean());
 assert!(!v.is_dirty());
 
@@ -1483,7 +1525,7 @@ assert!(v.is_dirty());
 </DocTooltip>
 
 ## !!doctooltips Versioned::edit_eq_check-R
-<TooltipTarget>`Versioned<T>::edit_eq_check#`</TooltipTarget>
+<TooltipTarget>`Versioned<T, P>::edit_eq_check#`</TooltipTarget>
 
 <DocTooltip>
 
@@ -1492,10 +1534,12 @@ dir_structure::versioned::Versioned
 ```
 
 ```rust ,ignore
-impl<T> Versioned<T>
+impl<T, P> Versioned<T, P>
 pub fn edit_eq_check(&mut self, f: impl FnOnce(&mut T))
 where
     T: Eq + Clone,
+    // Bounds from impl:
+    P: PathType + ?Sized,
 ```
 
 ---
@@ -1506,9 +1550,10 @@ if the value has changed.
 # Example
 
 ```rust ,ignore
+use std::path::Path;
 use dir_structure::versioned::VersionedString;
 
-let mut v = VersionedString::new("value".to_owned(), "path");
+let mut v = VersionedString::<Path>::new("value".to_owned(), "path".to_owned());
 
 v.edit_eq_check(|s| *s = "value".to_owned());
 assert!(v.is_clean());

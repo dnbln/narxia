@@ -70,7 +70,10 @@ pub trait VfsAsync: VfsCore + Send + Sync + Unpin {
         Self: 'a;
 
     /// Checks if a file exists at the specified path.
-    fn exists<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ExistsFuture<'a>;
+    fn exists<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::ExistsFuture<'a>;
 
     /// The future type returned by the [`is_dir` method](VfsAsync::is_dir).
     type IsDirFuture<'a>: Future<
@@ -161,7 +164,10 @@ pub trait WriteSupportingVfsAsync: VfsAsync {
         + Unpin;
 
     /// Opens a file for writing, at the specified path.
-    fn open_write(self: Pin<&Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::OpenWriteFuture;
+    fn open_write(
+        self: Pin<&Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::OpenWriteFuture;
 
     /// The future type returned by the [`write` method](WriteSupportingVfsAsync::write).
     type WriteFuture<'a>: Future<Output = Result<(), <<Self as VfsCore>::Path as PathType>::OwnedPath>>

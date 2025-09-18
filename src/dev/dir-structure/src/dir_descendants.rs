@@ -10,7 +10,6 @@ use std::ops;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::path::Path;
-use std::path::PathBuf;
 use std::pin::Pin;
 #[cfg(feature = "async")]
 use std::task::Context;
@@ -1340,13 +1339,14 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use std::path::PathBuf;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
-    ///     "child",
-    ///     "root/a/b/child",
-    ///     "a/b/child",
+    /// let descendant = DirDescendant::<_, Path>::new(
+    ///     "child".to_owned(),
+    ///     "root/a/b/child".to_owned(),
+    ///     "a/b/child".to_owned(),
     ///     String::from("child_value"),
     /// );
     /// assert_eq!(descendant.name(), &OsString::from("child"));
@@ -1374,9 +1374,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1394,9 +1395,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::path::PathBuf;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1414,9 +1416,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::path::PathBuf;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1434,9 +1437,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::path::PathBuf;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1453,9 +1457,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1473,9 +1478,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1493,9 +1499,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::path::PathBuf;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1514,9 +1521,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     ///
     /// ```
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let mut descendant = DirDescendant::new(
+    /// let mut descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1535,9 +1543,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let mut descendant = DirDescendant::new(
+    /// let mut descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1555,9 +1564,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1584,13 +1594,14 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let mut descendant = DirDescendant::new(
-    ///    "child",
-    ///   "root/a/b/child",
-    ///  "a/b/child",
-    ///   String::from("child_value"),
+    /// let mut descendant = DirDescendant::<_, Path>::new(
+    ///     "child",
+    ///     "root/a/b/child",
+    ///     "a/b/child",
+    ///     String::from("child_value"),
     /// );
     ///
     /// let mut mut_ref_descendant = descendant.as_mut();
@@ -1611,9 +1622,10 @@ impl<T, P: PathType + ?Sized> DirDescendant<T, P> {
     /// # Examples
     ///
     /// ```
+    /// use std::path::Path;
     /// use dir_structure::dir_descendants::DirDescendant;
     ///
-    /// let descendant = DirDescendant::new(
+    /// let descendant = DirDescendant::<_, Path>::new(
     ///     "child",
     ///     "root/a/b/child",
     ///     "a/b/child",
@@ -1655,7 +1667,8 @@ impl<T, F: FolderFilter + FolderRecurseFilter + FileFilter> DynamicHasField
 {
     type Inner = T;
 
-    fn resolve_path(p: PathBuf, name: &str) -> PathBuf {
-        p.join(name)
+    fn resolve_path<P: OwnedPathType>(mut p: P, name: &str) -> P {
+        p.push_segment_str(name);
+        p
     }
 }

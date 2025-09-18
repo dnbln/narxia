@@ -10,15 +10,15 @@ use dir_structure::ext_filter;
 // !tooltip[/DirChildren/] DirChildren
 // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 // !tooltip[/Versioned/] Versioned
-use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct Dir<'vfs, Vfs> {
+struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "subdirs")]
     // !tooltip[/DirChildren/] DirChildren
-    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+    subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 }
 
 // !tooltip[/ext_filter/] ext_filter
@@ -26,17 +26,17 @@ ext_filter!(Filt, "d");
 
 // !tooltip[/DirStructure/] DirStructure
 #[derive(DirStructure)]
-struct SubDir<'vfs, Vfs> {
+struct SubDir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
     #[dir_structure(path = "input.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
     // !mark
-    input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    input: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
     #[dir_structure(path = "output.txt")]
     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
     // !tooltip[/Versioned/] Versioned
     // !mark
-    output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+    output: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 }
 
 // !hidden let path = "dir";
@@ -60,4 +60,6 @@ dir.subdirs.iter_mut().try_for_each(|subdir| {
 // This will not write anything to disk, since nothing has changed
 // !tooltip[/write/] DirStructureItem::write#
 dir.write(path)?;
-// !tail dir_structure::error::Error
+
+// !__end
+// !tail dir_structure::error::Error<std::path::PathBuf>

@@ -52,7 +52,9 @@
 /// let path = "dir";
 /// // !tooltip[/read/] DirStructureItem::read#
 /// let dir = Dir::read(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -92,7 +94,9 @@
 /// // !tooltip[/write/] DirStructureItem::write#
 /// // !mark
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -138,7 +142,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -202,7 +208,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -242,7 +250,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -290,7 +300,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -322,15 +334,15 @@
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir {
+/// struct Dir<Vfs: VfsCore> {
 ///     // !mark(1:2)
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir>,
+///     subdirs: DirChildren<SubDir, dir_structure::NoFilter, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
@@ -347,7 +359,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -383,22 +397,22 @@
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/Filter/] Filter
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::{DirChildren, Filter}};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir {
+/// struct Dir<Vfs: VfsCore<Path = Path>> {
 ///     // !mark(1:2)
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir, Filt>,
+///     subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !mark(1:11)
 /// struct Filt;
 /// 
 /// // !tooltip[/Filter/] Filter
-/// impl Filter for Filt {
+/// impl Filter<Path> for Filt {
 ///     fn allows(path: &Path) -> bool {
 ///         path.extension().map_or(false, |ext| ext == "d")
 ///     }
@@ -418,7 +432,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -455,15 +471,15 @@
 /// // !tooltip[/DirStructure/] DirStructure
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir {
+/// struct Dir<Vfs: VfsCore<Path = std::path::Path>> {
 ///     // !mark(1:2)
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir, Filt>,
+///     subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -483,7 +499,9 @@
 /// let dir = Dir::read(path)?;
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -516,14 +534,14 @@
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredRead/] DeferredRead
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read::DeferredRead};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir<'vfs, Vfs> {
+/// struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -531,7 +549,7 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct SubDir<'vfs, Vfs> {
+/// struct SubDir<'vfs, Vfs: VfsCore> {
 ///     #[dir_structure(path = "input.txt")]
 ///     // !tooltip[/DeferredRead/] DeferredRead
 ///     // !mark
@@ -559,7 +577,9 @@
 /// 
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -591,14 +611,14 @@
 /// // !tooltip[/DirStructureItem/] DirStructureItem
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn};
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir<'vfs, Vfs> {
+/// struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -606,7 +626,7 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct SubDir<'vfs, Vfs> {
+/// struct SubDir<'vfs, Vfs: VfsCore> {
 ///     #[dir_structure(path = "input.txt")]
 ///     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 ///     // !mark
@@ -639,7 +659,9 @@
 /// 
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -675,15 +697,15 @@
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 /// // !tooltip[/Versioned/] Versioned
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
 /// 
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir<'vfs, Vfs> {
+/// struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -691,17 +713,17 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct SubDir<'vfs, Vfs> {
+/// struct SubDir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "input.txt")]
 ///     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 ///     // !tooltip[/Versioned/] Versioned
 ///     // !mark
-///     input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+///     input: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 ///     #[dir_structure(path = "output.txt")]
 ///     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 ///     // !tooltip[/Versioned/] Versioned
 ///     // !mark
-///     output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+///     output: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 /// }
 /// 
 /// let path = "dir";
@@ -725,7 +747,9 @@
 /// // This will not write anything to disk, since nothing has changed
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
 /// 
@@ -764,14 +788,15 @@
 /// // !tooltip[/DirChildren/] DirChildren
 /// // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 /// // !tooltip[/Versioned/] Versioned
-/// use dir_structure::{DirStructure, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+/// use dir_structure::{DirStructure, traits::vfs::VfsCore, traits::sync::DirStructureItem, dir_children::DirChildren, deferred_read_or_own::DeferredReadOrOwn, versioned::Versioned};
+/// 
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct Dir<'vfs, Vfs> {
+/// struct Dir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "subdirs")]
 ///     // !tooltip[/DirChildren/] DirChildren
-///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt>,
+///     subdirs: DirChildren<SubDir<'vfs, Vfs>, Filt, Vfs::Path>,
 /// }
 /// 
 /// // !tooltip[/ext_filter/] ext_filter
@@ -779,15 +804,17 @@
 /// 
 /// // !tooltip[/DirStructure/] DirStructure
 /// #[derive(DirStructure)]
-/// struct SubDir<'vfs, Vfs> {
+/// struct SubDir<'vfs, Vfs: VfsCore<Path = std::path::Path>> {
 ///     #[dir_structure(path = "input.txt")]
 ///     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 ///     // !tooltip[/Versioned/] Versioned
-///     input: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+///     // !mark
+///     input: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 ///     #[dir_structure(path = "output.txt")]
 ///     // !tooltip[/DeferredReadOrOwn/] DeferredReadOrOwn
 ///     // !tooltip[/Versioned/] Versioned
-///     output: DeferredReadOrOwn<'vfs, Versioned<String>, Vfs>,
+///     // !mark
+///     output: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs>,
 /// }
 /// 
 /// let path = "dir";
@@ -814,9 +841,28 @@
 /// // This will write the changed values to disk
 /// // !tooltip[/write/] DirStructureItem::write#
 /// dir.write(path)?;
-/// Ok::<_, dir_structure::error::Error>(())
+/// 
+/// // !__end
+/// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
+/// 
 /// 
 /// 
 /// 

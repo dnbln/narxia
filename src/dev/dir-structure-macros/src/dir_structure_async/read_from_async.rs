@@ -40,7 +40,9 @@ pub(super) fn expand_dir_structure_for_field(
     let field_ty = &field.ty;
 
     let actual_path_expr_move = match path {
-        PathSpec::Path(p) => quote! { #path_param_name.join(#p) },
+        PathSpec::Path(p) => {
+            quote! { ::dir_structure::traits::vfs::PathType::join_segment_str(#path_param_name.as_ref(), #p) }
+        }
         PathSpec::SelfPath => quote! { #path_param_name.clone() },
     };
     let actual_field_ty_perform = newtype_ty.unwrap_or(field_ty);
@@ -94,7 +96,7 @@ pub(super) fn expand_dir_structure_for_field(
             for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>
         });
         async_read_future.clauses.push(parse_quote! {
-            for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<#actual_field_ty_perform>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
+            for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<#actual_field_ty_perform, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
         });
         let path_param_name = path_param_name.clone();
         async_read_future.variants.push(FutureVariant {
@@ -249,7 +251,7 @@ pub(super) fn future_impl_enum(
         #vis enum #name<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> #where_clause_read_future {
             Poison,
             Init {
-                #path_param_name: ::std::path::PathBuf,
+                #path_param_name: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
                 #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>,
             },
             #(#variants),*
@@ -258,7 +260,7 @@ pub(super) fn future_impl_enum(
 
         #[automatically_derived]
         impl<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> ::std::future::Future for #name<'vfs, Vfs> #where_clause_read_future {
-            type Output = ::dir_structure::error::Result<#ty_name #ty_generics>;
+            type Output = ::dir_structure::error::Result<#ty_name #ty_generics, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>;
 
             fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
                 let this = self.as_mut().project_replace(Self::Poison);

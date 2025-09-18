@@ -6,7 +6,7 @@ read_test!(
     read_numbers,
     {
         #[derive(dir_structure::DirStructure, Debug, PartialEq, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt", with_newtype = FmtWrapper<u32>)]
             f1: u32,
@@ -30,7 +30,7 @@ write_test!(
     write_numbers,
     {
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt", with_newtype = FmtWrapper<u32>)]
             f1: u32,
@@ -54,7 +54,7 @@ write_test!(
     write_numbers_newtyped,
     {
         #[derive(dir_structure::DirStructure, assert_eq::AssertEq)]
-        // #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
+        #[cfg_attr(feature = "async", derive(dir_structure::DirStructureAsync))]
         struct Dir {
             #[dir_structure(path = "f1.txt")]
             f1: FmtWrapper<u32>,

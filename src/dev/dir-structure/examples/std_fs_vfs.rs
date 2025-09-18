@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vfs = FsVfs;
 
     // either
-    let dir = Dir::read_from(&path, Pin::new(&vfs))?;
+    let dir = Dir::read_from(path.as_ref(), Pin::new(&vfs))?;
     // or as a shorthand
     let dir = vfs.read_typed::<Dir>(&path)?;
 
@@ -34,7 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let write_path = example_dirs::get_example_dir_path("temp_writing");
 
     // either
-    dir.write_to(&write_path, Pin::new(&vfs))?;
+    dir.write_to(write_path.as_ref(), Pin::new(&vfs))?;
     // or as a shorthand
     vfs.write_typed(&write_path, &dir)?;
 

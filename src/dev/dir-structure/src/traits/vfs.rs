@@ -1,10 +1,12 @@
 //! Virtual file system traits.
 
+use std::error::Error as StdError;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
+use std::path;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -210,7 +212,7 @@ pub trait PathType: PartialEq + Send + Sync {
     /// The owned version of this path type.
     type OwnedPath: OwnedPathType<RefType = Self>;
     /// The type of a path segment (a component of a path).
-    type PathSegmentRef: ToOwned<Owned = Self::PathSegmentOwned> + ?Sized;
+    type PathSegmentRef: ToOwned<Owned = Self::PathSegmentOwned> + PartialEq + ?Sized;
     /// The owned version of a path segment.
     type PathSegmentOwned: Send + Sync + Clone + Eq + AsRef<Self::PathSegmentRef>;
 
@@ -222,8 +224,12 @@ pub trait PathType: PartialEq + Send + Sync {
     fn join_segment(&self, new_fragment: impl AsRef<Self::PathSegmentRef>) -> Self::OwnedPath;
     /// Joins this path with a string slice as a path segment, returning a new owned path.
     fn join_segment_str(&self, new_fragment: &str) -> Self::OwnedPath;
+
+    /// The error type returned when stripping a prefix fails.
+    type StripPrefixError: StdError + Send + Sync + 'static;
+
     /// Strips the given base path from this path, returning the relative path if successful.
-    fn strip_prefix(&self, base: &Self) -> StdResult<&Self, ()>;
+    fn strip_prefix(&self, base: &Self) -> StdResult<&Self, Self::StripPrefixError>;
     /// Converts this path to its owned version.
     fn owned(&self) -> Self::OwnedPath;
 }
@@ -249,8 +255,10 @@ impl PathType for Path {
         Self::join(self, new_fragment)
     }
 
-    fn strip_prefix(&self, base: &Self) -> StdResult<&Self, ()> {
-        self.strip_prefix(base).map_err(|_| ())
+    type StripPrefixError = path::StripPrefixError;
+
+    fn strip_prefix(&self, base: &Self) -> StdResult<&Self, Self::StripPrefixError> {
+        self.strip_prefix(base)
     }
 
     fn owned(&self) -> Self::OwnedPath {
@@ -268,10 +276,13 @@ pub trait OwnedPathType: Clone + AsRef<Self::RefType> + PartialEq + Send + Sync 
 
     /// Inserts a new path fragment at the front of this path.
     fn insert_in_front(&mut self, new_fragment: &<Self::RefType as PathType>::PathSegmentRef);
+
+    /// Pushes a new path segment at the end of this path.
+    fn push_segment_str(&mut self, new_fragment: &str);
 }
 
-impl OwnedPathType for std::path::PathBuf {
-    type RefType = std::path::Path;
+impl OwnedPathType for PathBuf {
+    type RefType = Path;
 
     fn parent(&self) -> Option<&Self::RefType> {
         self.as_path().parent()
@@ -281,6 +292,10 @@ impl OwnedPathType for std::path::PathBuf {
         let mut new_path = PathBuf::from(new_fragment);
         new_path.push(&self);
         *self = new_path;
+    }
+
+    fn push_segment_str(&mut self, new_fragment: &str) {
+        self.push(new_fragment);
     }
 }
 

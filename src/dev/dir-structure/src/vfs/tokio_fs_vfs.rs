@@ -171,7 +171,10 @@ impl VfsAsync for TokioFsVfs {
     where
         Self: 'a;
 
-    fn read_string<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ReadStringFuture<'a> {
+    fn read_string<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::ReadStringFuture<'a> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::read_to_string(path)))
     }
 
@@ -184,7 +187,10 @@ impl VfsAsync for TokioFsVfs {
     where
         Self: 'a;
 
-    fn exists<'a>(self: Pin<&'a Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::ExistsFuture<'a> {
+    fn exists<'a>(
+        self: Pin<&'a Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::ExistsFuture<'a> {
         IoErrorWrapperFuture::new(path.clone(), Box::pin(fs::try_exists(path)))
     }
 
@@ -244,7 +250,10 @@ impl WriteSupportingVfsAsync for TokioFsVfs {
         Pin<Box<dyn Future<Output = io::Result<Self::WFile>> + Send>>,
         <<Self as VfsCore>::Path as PathType>::OwnedPath,
     >;
-    fn open_write(self: Pin<&Self>, path: <<Self as VfsCore>::Path as PathType>::OwnedPath) -> Self::OpenWriteFuture {
+    fn open_write(
+        self: Pin<&Self>,
+        path: <<Self as VfsCore>::Path as PathType>::OwnedPath,
+    ) -> Self::OpenWriteFuture {
         IoErrorWrapperFuture::new(
             path.clone(),
             Box::pin(async move {

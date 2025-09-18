@@ -11,7 +11,7 @@ use dir_structure::prelude::*;
 mod example_dirs;
 
 #[derive(dir_structure::DirStructure)]
-pub struct Dir<'vfs, Vfs> {
+pub struct Dir<'vfs, Vfs: VfsCore> {
     #[dir_structure(path = "input.txt")]
     input: DeferredRead<'vfs, String, Vfs>,
     #[dir_structure(path = "output.txt")]

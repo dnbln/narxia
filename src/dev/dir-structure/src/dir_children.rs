@@ -13,8 +13,7 @@ use std::mem;
 use std::ops::Deref;
 use std::ops::DerefMut;
 use std::ops::RangeBounds;
-#[cfg(feature = "resolve-path")]
-use std::path::PathBuf;
+use std::path::Path;
 use std::pin::Pin;
 use std::slice;
 #[cfg(feature = "async")]
@@ -44,6 +43,8 @@ use crate::traits::sync::DirStructureItem;
 use crate::traits::vfs;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirWalker as _;
+#[cfg(feature = "resolve-path")]
+use crate::traits::vfs::OwnedPathType;
 use crate::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use crate::traits::vfs::VfsCore;
@@ -62,7 +63,7 @@ use crate::traits::vfs::VfsCore;
 /// is passed, with no regards to the path stored in `self_path`.
 #[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChildren<T, F: Filter<P> = NoFilter, P: PathType + ?Sized = std::path::Path> {
+pub struct DirChildren<T, F: Filter<P> = NoFilter, P: PathType + ?Sized = Path> {
     /// The children of the root directory.
     pub children: Vec<DirChild<T, P>>,
 
@@ -111,10 +112,11 @@ where
 /// use std::path::PathBuf;
 ///
 /// use dir_structure::{DirStructure, traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, Filter}};
+/// use dir_structure::prelude::*;
 ///
 /// pub struct TextFileFilter;
 ///
-/// impl Filter for TextFileFilter {
+/// impl Filter<Path> for TextFileFilter {
 ///     fn allows(path: &Path) -> bool {
 ///         path.extension()
 ///             .and_then(|s| s.to_str())
@@ -125,9 +127,9 @@ where
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let path = PathBuf::from("dir");
 ///     #[derive(DirStructure)]
-///     struct Dir {
+///     struct Dir<Vfs: VfsCore<Path = Path>> {
 ///        #[dir_structure(path = self)]
-///        text_files: DirChildren<String, TextFileFilter>,
+///        text_files: DirChildren<String, TextFileFilter, Vfs::Path>,
 ///     }
 ///
 ///     # std::fs::create_dir_all(&path)?;
@@ -317,13 +319,13 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildren<T, F, P> {
     /// struct NewType(String);
     ///
     /// impl<'vfs, Vfs: dir_structure::traits::vfs::Vfs<'vfs>> ReadFrom<'vfs, Vfs> for NewType {
-    ///     fn read_from(path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<Self> {
+    ///     fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<Self, <Vfs::Path as dir_structure::traits::vfs::PathType>::OwnedPath> {
     ///         String::read_from(path, vfs).map(Self)
     ///     }
     /// }
     ///
     /// impl<'vfs, Vfs: dir_structure::traits::vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for NewType {
-    ///     fn write_to(&self, path: &Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<()> {
+    ///     fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<(), <Vfs::Path as dir_structure::traits::vfs::PathType>::OwnedPath> {
     ///         self.0.write_to(path, vfs)
     ///     }
     /// }
@@ -335,7 +337,7 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildren<T, F, P> {
     ///         DirChild::new("file3.txt", "file3".to_owned()),
     ///     ],
     /// );
-    /// let dir = dir.map(|child| child.map_value(NewType));
+    /// let dir = dir.map::<_, _, dir_structure::NoFilter, Path>(|child| child.map_value(NewType));
     /// assert_eq!(
     ///     dir,
     ///     DirChildren::with_children_from_iter(
@@ -370,12 +372,13 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildren<T, F, P> {
     ///
     /// ```rust
     /// use std::path::Path;
+    /// use dir_structure::traits::vfs::PathType;
     /// use dir_structure::dir_children::{Filter, DirChildren};
     ///
     /// struct NewFilter;
     ///
-    /// impl Filter for NewFilter {
-    ///     fn allows(_path: &Path) -> bool {
+    /// impl<P: PathType + ?Sized> Filter<P> for NewFilter {
+    ///     fn allows(_path: &P) -> bool {
     ///         true
     ///     }
     /// }
@@ -1326,8 +1329,8 @@ where
 {
     type Inner = T;
 
-    fn resolve_path(mut p: PathBuf, name: &str) -> PathBuf {
-        p.push(name);
+    fn resolve_path<Pt: OwnedPathType>(mut p: Pt, name: &str) -> Pt {
+        p.push_segment_str(name);
         p
     }
 }
@@ -1335,7 +1338,7 @@ where
 /// A single child of a [`DirChildren`] structure.
 #[derive(PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChild<T, P: PathType + ?Sized> {
+pub struct DirChild<T, P: PathType + ?Sized = Path> {
     /// The file name of the child.
     file_name: P::PathSegmentOwned,
     /// The parsed value of the child.
@@ -1375,9 +1378,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// let d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
@@ -1394,9 +1398,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// let d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// ```
     pub fn file_name(&self) -> &P::PathSegmentOwned {
@@ -1411,9 +1416,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// let mut d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.file_name(), &OsString::from("file.txt"));
     /// *d.file_name_mut() = OsString::from("new_file.txt");
     /// assert_eq!(d.file_name(), &OsString::from("new_file.txt"));
@@ -1430,9 +1436,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// let d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.value(), &"file".to_owned());
     /// ```
     pub fn value(&self) -> &T {
@@ -1449,9 +1456,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let mut d = DirChild::new("file.txt", "file".to_owned());
+    /// let mut d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.value(), &"file".to_owned());
     /// *d.value_mut() = "new_file".to_owned();
     /// assert_eq!(d.value(), &"new_file".to_owned());
@@ -1466,9 +1474,10 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     ///
-    /// let d = DirChild::new("file.txt", "file".to_owned());
+    /// let d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
     /// assert_eq!(d.map_file_name(|s| s.to_str().unwrap().to_uppercase()), DirChild::new("FILE.TXT", "file".to_owned()));
     /// ```
     pub fn map_file_name<F, O>(self, f: F) -> Self
@@ -1493,11 +1502,12 @@ impl<T, P: PathType + ?Sized> DirChild<T, P> {
     ///
     /// ```rust
     /// use std::ffi::OsString;
+    /// use std::path::Path;
     /// use dir_structure::dir_children::DirChild;
     /// use dir_structure::std_types::FileString;
     ///
-    /// let d = DirChild::new("file.txt", "file".to_owned());
-    /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt", FileString("file".to_owned())));
+    /// let d = DirChild::<_, Path>::new("file.txt".to_owned(), "file".to_owned());
+    /// assert_eq!(d.map_value(|v| FileString(v)), DirChild::new("file.txt".to_owned(), FileString("file".to_owned())));
     /// ```
     pub fn map_value<U, F>(self, f: F) -> DirChild<U, P>
     where
@@ -1688,106 +1698,61 @@ impl<'a, T, P: PathType + ?Sized, F: FnMut(&mut DirChild<T, P>) -> bool> Iterato
     }
 }
 
-/// A simple macro that generates a [`DirChildren`] newtype, together with
-/// a few impls to make it easy to use.
-#[macro_export]
-macro_rules! dir_children_wrapper {
-    ($vis:vis $name:ident $ty:ty) => {
-        $vis struct $name(pub $crate::dir_children::DirChildren<$ty>);
-
-        impl<'vfs, Vfs: $crate::traits::vfs::Vfs + 'static> $crate::ReadFrom<'vfs, Vfs> for $name {
-            fn read_from(path: &::std::path::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::Result<Self>
-            where
-                Self: Sized,
-            {
-                Ok(Self(<$crate::DirChildren<$ty>>::read_from(path, vfs)?))
-            }
-        }
-
-        impl<Vfs: $crate::WriteSupportingVfs> $crate::WriteTo<Vfs> for $name {
-            fn write_to(&self, path: &::std::path::Path, vfs: ::std::pin::Pin<&Vfs>) -> $crate::Result<()> {
-                self.0.write_to(path, vfs)
-            }
-        }
-
-        impl std::ops::Deref for $name {
-            type Target = $crate::DirChildren<$ty>;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl std::ops::DerefMut for $name {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
-            }
-        }
-
-        impl std::iter::IntoIterator for $name {
-            type Item = $crate::DirChild<$ty>;
-            type IntoIter = $crate::DirChildrenIntoIter<$ty>;
-
-            fn into_iter(self) -> Self::IntoIter {
-                self.0.into_iter()
-            }
-        }
-    };
-}
-
 /// A wrapper around [`DirChildren`] that adds the <'vfs, Vfs> generics.
 #[macro_export]
 macro_rules! dir_children_wrapper_with_vfs {
-    ($vis:vis $name:ident $ty:ident) => {
-        $vis struct $name<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>);
+    ($vis:vis $name:ident $ty:ident $(<Path=$p_ty:ty>)?) => {
+        $vis struct $name<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>)
+        where
+            Vfs: $crate::traits::vfs::VfsCore + 'vfs;
 
-        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs, Path=P> + 'static, P: $crate::traits::vfs::PathType + ?Sized + 'vfs> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs, P> {
-            fn read_from(path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<Self, <P as $crate::traits::vfs::PathType>::OwnedPath>
+        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn read_from(path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::VfsResult<Self, Vfs>
             where
                 Self: Sized,
             {
-                Ok(Self(<$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>>::read_from(path, vfs)?))
+                Ok(Self(<$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>>::read_from(path, vfs)?))
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs, Path=P> + 'static, P: $crate::traits::vfs::PathType + ?Sized + 'vfs> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs, P> {
-            fn write_to(&self, path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::Result<(), <P as $crate::traits::vfs::PathType>::OwnedPath> {
+        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn write_to(&self, path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::VfsResult<(), Vfs> {
                 self.0.write_to(path, vfs)
             }
         }
 
-        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::ops::Deref for $name<'vfs, Vfs, P> {
-            type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>;
+        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::Deref for $name<'vfs, Vfs> {
+            type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0
             }
         }
 
-        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::ops::DerefMut for $name<'vfs, Vfs, P> {
+        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::DerefMut for $name<'vfs, Vfs> {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
         }
 
-        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> std::iter::IntoIterator for $name<'vfs, Vfs, P> {
-            type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>, P>;
-            type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>, P>;
+        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)?+ 'vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
+            type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>, Vfs::Path>;
+            type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>, Vfs::Path>;
 
             fn into_iter(self) -> Self::IntoIter {
                 self.0.into_iter()
             }
         }
 
-        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs, P> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P>: $crate::traits::resolve::DynamicHasField {
-            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P> as $crate::traits::resolve::DynamicHasField>::Inner;
+        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>: $crate::traits::resolve::DynamicHasField {
+            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::traits::resolve::DynamicHasField>::Inner;
 
-            fn resolve_path(p: PathBuf, field: &str) -> PathBuf {
-                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, P> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
+            fn resolve_path<P: $crate::traits::vfs::OwnedPathType>(p: P, field: &str) -> P {
+                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
             }
         }
 
-        impl<'vfs, Vfs, P: $crate::traits::vfs::PathType + ?Sized> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs, P> {}
+        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
     };
 }
 
@@ -1797,7 +1762,7 @@ macro_rules! dir_children_wrapper_with_vfs {
 /// [stem](Path::file_stem), but you don't care about the extension.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct DirChildSingle<T, F: Filter<P>, P: PathType + ?Sized = std::path::Path> {
+pub struct DirChildSingle<T, F: Filter<P>, P: PathType + ?Sized = Path> {
     /// The file name of the child.
     file_name: P::PathSegmentOwned,
     /// The parsed value of the child.
@@ -2015,14 +1980,14 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildSingle<T, F, P> {
     ///
     /// ```
     /// use std::ffi::OsString;
-    /// use std::path::Path;
     /// use dir_structure::NoFilter;
     /// use dir_structure::dir_children::DirChildSingle;
+    /// use dir_structure::traits::vfs::PathType;
     ///
     /// struct Filt;
     ///
-    /// impl dir_structure::dir_children::Filter for Filt {
-    ///     fn allows(_path: &Path) -> bool {
+    /// impl<P: PathType + ?Sized> dir_structure::dir_children::Filter<P> for Filt {
+    ///     fn allows(_path: &P) -> bool {
     ///         true
     ///     }
     /// }
@@ -2081,7 +2046,7 @@ where
 /// A similar idea to [`DirChildSingle`], but allows for the absence of a matching entry.
 #[derive(Clone, PartialEq, Eq)]
 // #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub enum DirChildSingleOpt<T, F: Filter<P>, P: PathType + ?Sized = std::path::Path> {
+pub enum DirChildSingleOpt<T, F: Filter<P>, P: PathType + ?Sized = Path> {
     /// The entry is absent.
     None,
     /// The entry is present.
@@ -2474,7 +2439,7 @@ where
 /// A wrapper around [`DirChildren`] that forces the creation of the directory, even if there are no children to write.
 #[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
-pub struct ForceCreateDirChildren<T, F = NoFilter, P: PathType + ?Sized = std::path::Path>
+pub struct ForceCreateDirChildren<T, F = NoFilter, P: PathType + ?Sized = Path>
 where
     F: Filter<P>,
 {
@@ -2742,8 +2707,8 @@ where
 {
     type Inner = T;
 
-    fn resolve_path(mut p: PathBuf, name: &str) -> PathBuf {
-        p.push(name);
+    fn resolve_path<Pt: OwnedPathType>(mut p: Pt, name: &str) -> Pt {
+        p.push_segment_str(name);
         p
     }
 }
