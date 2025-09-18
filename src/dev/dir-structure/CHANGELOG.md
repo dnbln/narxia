@@ -43,6 +43,9 @@ instead of the old `&Path` and `PathBuf`. `Vfs::Path` is an associated type of t
 custom path types for your virtual file system. `Vfs::Path` must implement the `PathType` trait, which also defines the associated
 type `PathOwned`, and a couple of other methods needed by the library for path manipulation.
 
+`HasField` implementations moved from the `dir_structure::DirStructure` derive macro to the `dir_structure::HasField` derive macro,
+so if you are using the `resolve_path!` / `load_path!` macros, you will need to derive `HasField` for your structs in addition to `DirStructure` / `DirStructureAsync`.
+
 ## Other changes
 
 Relax bound for `Vfs::RFile` from `BufRead` to `Read`, as `BufRead` is only necessary
