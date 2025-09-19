@@ -357,7 +357,9 @@ mod imp {
     use crate::prelude::*;
     #[cfg(feature = "image")]
     use crate::traits::async_vfs::ReadImageFromAsync;
+    #[cfg(feature = "image")]
     use crate::traits::async_vfs::WriteImageToAsync;
+    #[cfg(feature = "image")]
     use crate::traits::async_vfs::WriteImageToAsyncRef;
     use crate::traits::vfs::DirEntryInfo;
     use crate::traits::vfs::DirEntryKind;
