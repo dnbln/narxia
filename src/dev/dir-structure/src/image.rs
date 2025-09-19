@@ -237,6 +237,11 @@ where
 // - `impl<T: ImgFormat> ReadFromAsync<'vfs, NewVfsType> for T`                                 to satisfy the bound `T: ReadFromAsync<'vfs, NewVfsType>`
 // - `impl<'a> WriteToAsync<'a, NewVfsType> for (image::DynamicImage, image::ImageFormat)`      to satisfy the bound `T: WriteToAsync<'a, NewVfsType>`
 // - `impl<'a> WriteToAsync<'a, NewVfsType> for (&'a image::DynamicImage, image::ImageFormat)`  to satisfy the bound `T: WriteToAsyncRef<'a, NewVfsType>`
+//
+// These impls are automatically generated for Vfs types that implement the following traits:
+// - `ReadImageFromAsync<T>`
+// - `WriteImageToAsync<'a>`
+// - `WriteImageToAsyncRef<'a>`
 
 macro_rules! img_format {
     ($(#[$meta:meta])* cfg $(#[$cfg_meta:meta])* $struct_name:ident, $format:expr, $(#[$writer_meta:meta])* $writer_type:ident) => {

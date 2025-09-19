@@ -16,28 +16,28 @@
 //! is that the methods take _owned_ paths instead of references. This is because
 //! the async methods typically need to move the path into the future, and
 //! references would not be valid for the entire duration of the future.
-//! 
+//!
 //! ## Note on images
-//! 
+//!
 //! Note that, in addition to the [`VfsAsync`] and [`WriteSupportingVfsAsync`] traits,
 //! you might also want to implement the following impls for your async VFS implementation,
 //! to allow reading and writing image files using the types and traits from the
 //! [`image`](crate::image) module:
-//! 
-//! - `impl<T: ImgFormat> ReadFromAsync<'vfs, YourVfsType> for T`                                 to satisfy the bound `T: ReadFromAsync<'vfs, YourVfsType>`
-//! - `impl<'a> WriteToAsync<'a, YourVfsType> for (image::DynamicImage, image::ImageFormat)`      to satisfy the bound `T: WriteToAsync<'a, YourVfsType>`
-//! - `impl<'a> WriteToAsync<'a, YourVfsType> for (&'a image::DynamicImage, image::ImageFormat)`  to satisfy the bound `T: WriteToAsyncRef<'a, YourVfsType>`
-//! 
+//!
+//! - `impl<T: ImgFormat> ReadImageFromAsync<T> for YourVfsType`                                  to satisfy the bound `T: ReadFromAsync<'vfs, YourVfsType>`
+//! - `impl<'a> WriteImageToAsync<'a> for YourVfsType`                                            to satisfy the bound `T: WriteToAsync<'a, YourVfsType>`
+//! - `impl<'a> WriteImageToAsyncRef<'a, YourVfsType> for YourVfsType`                            to satisfy the bound `T: WriteToAsyncRef<'a, YourVfsType>`
+//!
 //! These impls are required because the image encoding and decoding operations are CPU-bound and blocking,
 //! and thus cannot be implemented in a generic way for all async VFS implementations. They need to be implemented
 //! specifically for each async VFS type.
-//! 
+//!
 //! You can see the implementations for the [`TokioFsVfs`](crate::vfs::tokio_fs_vfs::TokioFsVfs) VFS, which use
 //! [`tokio::task::spawn_blocking`] to offload the blocking operations to a separate thread pool.
-//! 
+//!
 //! Your async VFS implementation might use a different async runtime, and thus might need to use a
 //! different method to offload blocking operations, but that is the ideal approach to take.
-//! 
+//!
 //! You can of course not implement these impls, but then you will not be able to use the image
 //! encoding and decoding operations with your async VFS implementation.
 
@@ -55,6 +55,8 @@ use pin_project::pin_project;
 use crate::error::Error;
 use crate::error::Result;
 use crate::error::VfsResult;
+#[cfg(feature = "image")]
+use crate::image::ImgFormat;
 use crate::prelude::*;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::OwnedPathType;
@@ -447,5 +449,111 @@ where
             }
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+/// A trait implemented by async vfs implementations that support reading images.
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub trait ReadImageFromAsync<T>: VfsAsync
+where
+    T: ImgFormat,
+{
+    /// The future type returned by the [`read_image_async` method](ReadImageFromAsync::read_image_async).
+    type ReadImageFuture<'a>: Future<Output = VfsResult<T, Self>> + Send + Unpin + 'a
+    where
+        Self: 'a;
+
+    /// Reads an image file at the specified path, returning the decoded image and its format.
+    fn read_image_async<'a>(
+        self: Pin<&'a Self>,
+        path: <Self::Path as PathType>::OwnedPath,
+    ) -> Self::ReadImageFuture<'a>;
+}
+
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+impl<'vfs, Vfs, T> ReadFromAsync<'vfs, Vfs> for T
+where
+    Vfs: VfsAsync + ReadImageFromAsync<T> + 'vfs,
+    T: ImgFormat + Send + 'vfs,
+{
+    type Future = <Vfs as ReadImageFromAsync<T>>::ReadImageFuture<'vfs>;
+
+    fn read_from_async(
+        path: <Vfs::Path as PathType>::OwnedPath,
+        vfs: Pin<&'vfs Vfs>,
+    ) -> Self::Future {
+        Vfs::read_image_async(vfs, path)
+    }
+}
+
+/// A trait implemented by async vfs implementations that support writing images.
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub trait WriteImageToAsync<'a>: WriteSupportingVfsAsync {
+    /// The future type returned by the [`write_image_async` method](WriteImageToAsync::write_image_async).
+    type WriteImageFuture: Future<Output = VfsResult<(), Self>> + Send + Unpin + 'a;
+
+    /// Writes an image file at the specified path, using the specified image and format.
+    fn write_image_async(
+        self: Pin<&'a Self>,
+        path: <Self::Path as PathType>::OwnedPath,
+        image: image::DynamicImage,
+        format: image::ImageFormat,
+    ) -> Self::WriteImageFuture;
+}
+
+// impl for owned images
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+impl<'a, Vfs> WriteToAsync<'a, Vfs> for (image::DynamicImage, image::ImageFormat)
+where
+    Vfs: WriteSupportingVfsAsync + WriteImageToAsync<'a> + 'a,
+{
+    type Future = Vfs::WriteImageFuture;
+
+    fn write_to_async(
+        self,
+        path: <Vfs::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
+        let (image, format) = self;
+        vfs.write_image_async(path, image, format)
+    }
+}
+
+/// A trait implemented by async vfs implementations that support writing images from references.
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+pub trait WriteImageToAsyncRef<'a>: WriteSupportingVfsAsync {
+    /// The future type returned by the [`write_image_async_ref` method](WriteImageToAsyncRef::write_image_async_ref).
+    type WriteImageRefFuture: Future<Output = VfsResult<(), Self>> + Send + Unpin + 'a;
+
+    /// Writes an image file at the specified path, using the specified image reference and format.
+    fn write_image_async_ref(
+        self: Pin<&'a Self>,
+        path: <Self::Path as PathType>::OwnedPath,
+        image: &'a image::DynamicImage,
+        format: image::ImageFormat,
+    ) -> Self::WriteImageRefFuture;
+}
+
+// impl for image references
+#[cfg(feature = "image")]
+#[cfg_attr(docsrs, doc(cfg(feature = "image")))]
+impl<'a, Vfs: 'a> WriteToAsync<'a, Vfs> for (&'a image::DynamicImage, image::ImageFormat)
+where
+    Vfs: WriteSupportingVfsAsync + WriteImageToAsyncRef<'a>,
+{
+    type Future = Vfs::WriteImageRefFuture;
+
+    fn write_to_async(
+        self,
+        path: <Vfs::Path as PathType>::OwnedPath,
+        vfs: Pin<&'a Vfs>,
+    ) -> Self::Future {
+        let (image, format) = self;
+        vfs.write_image_async_ref(path, image, format)
     }
 }

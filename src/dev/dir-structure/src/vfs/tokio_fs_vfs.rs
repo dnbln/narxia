@@ -355,6 +355,10 @@ mod imp {
     use crate::image::ImgFormat;
     #[cfg(feature = "image")]
     use crate::prelude::*;
+    #[cfg(feature = "image")]
+    use crate::traits::async_vfs::ReadImageFromAsync;
+    use crate::traits::async_vfs::WriteImageToAsync;
+    use crate::traits::async_vfs::WriteImageToAsyncRef;
     use crate::traits::vfs::DirEntryInfo;
     use crate::traits::vfs::DirEntryKind;
     #[cfg(feature = "image")]
@@ -417,16 +421,19 @@ mod imp {
 
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    impl<'vfs, T: ImgFormat> ReadFromAsync<'vfs, TokioFsVfs> for T
+    impl<'vfs, T: ImgFormat> ReadImageFromAsync<T> for TokioFsVfs
     where
         T: Send + 'static,
     {
-        type Future = Pin<Box<dyn Future<Output = Result<Self, PathBuf>> + Send + 'vfs>>;
+        type ReadImageFuture<'a>
+            = Pin<Box<dyn Future<Output = Result<T, PathBuf>> + Send + 'a>>
+        where
+            Self: 'a;
 
-        fn read_from_async(
-            path: PathBuf,
-            #[expect(unused, reason = "Uses FsVfs under the hood")] vfs: Pin<&'vfs TokioFsVfs>,
-        ) -> Self::Future {
+        fn read_image_async<'a>(
+            self: Pin<&'a Self>,
+            path: <Self::Path as PathType>::OwnedPath,
+        ) -> Self::ReadImageFuture<'a> {
             debug_assert!(
                 T::FORMAT.reading_enabled(),
                 "Image format {:?} does not support reading; enable the corresponding feature",
@@ -455,20 +462,24 @@ mod imp {
 
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    impl<'vfs> WriteToAsync<'vfs, TokioFsVfs> for (image::DynamicImage, image::ImageFormat) {
-        type Future = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
+    impl<'vfs> WriteImageToAsync<'vfs> for TokioFsVfs {
+        type WriteImageFuture = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
 
-        fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs TokioFsVfs>) -> Self::Future {
+        fn write_image_async(
+            self: Pin<&'vfs Self>,
+            path: <Self::Path as PathType>::OwnedPath,
+            image: image::DynamicImage,
+            format: image::ImageFormat,
+        ) -> Self::WriteImageFuture {
             Box::pin(async move {
                 use crate::traits::async_vfs::WriteSupportingVfsAsync;
 
-                vfs.create_parent_dir(path.clone()).await?;
+                self.create_parent_dir(path.clone()).await?;
 
                 let p_clone = path.clone();
 
                 let std_vfs = Pin::new(&FsVfs);
                 match task::spawn_blocking(move || {
-                    let (image, format) = self;
                     let mut f = std_vfs.open_write(&p_clone)?;
                     image
                         .write_to(&mut f, format)
@@ -485,16 +496,20 @@ mod imp {
 
     #[cfg(feature = "image")]
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    /// Warning! This implementation clones `self` and calls `write_to_async`.
-    impl<'vfs> WriteToAsync<'vfs, TokioFsVfs> for (&'vfs image::DynamicImage, image::ImageFormat)
+    impl<'vfs> WriteImageToAsyncRef<'vfs> for TokioFsVfs
     where
         'vfs: 'vfs,
     {
-        type Future = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
+        type WriteImageRefFuture = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
 
-        fn write_to_async(self, path: PathBuf, vfs: Pin<&'vfs TokioFsVfs>) -> Self::Future {
-            let img = self.0.clone();
-            (img, self.1).write_to_async(path, vfs)
+        fn write_image_async_ref(
+            self: Pin<&'vfs Self>,
+            path: <Self::Path as PathType>::OwnedPath,
+            image: &'vfs image::DynamicImage,
+            format: image::ImageFormat,
+        ) -> Self::WriteImageRefFuture {
+            let img = image.clone();
+            (img, format).write_to_async(path, self)
         }
     }
 }
