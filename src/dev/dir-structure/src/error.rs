@@ -104,9 +104,9 @@ impl<T, P: vfs::PathType + ?Sized> WrapIoError<P> for io::Result<T> {
 /// The result type for this library.
 ///
 /// See [the `Error` enum](Error) for the errors that can happen.
-#[allow(type_alias_bounds)]
+#[expect(type_alias_bounds)]
 pub type Result<T, P: OwnedPathType> = result::Result<T, Error<P>>;
 
 /// A convenience result type for a specific VFS.
-#[allow(type_alias_bounds)]
+#[expect(type_alias_bounds)]
 pub type VfsResult<T, Vfs: VfsCore> = Result<T, <Vfs::Path as PathType>::OwnedPath>;

@@ -500,10 +500,10 @@ impl<T, P: PathType + ?Sized> DerefMut for Versioned<T, P> {
 }
 
 /// A [`Versioned`] [`String`].
-#[allow(type_alias_bounds)]
+#[expect(type_alias_bounds)]
 pub type VersionedString<P: PathType + ?Sized = Path> = Versioned<String, P>;
 /// A [`Versioned`] `Vec<u8>`.
-#[allow(type_alias_bounds)]
+#[expect(type_alias_bounds)]
 pub type VersionedBytes<P: PathType + ?Sized = Path> = Versioned<Vec<u8>, P>;
 
 #[cfg(test)]
