@@ -1,4 +1,6 @@
-# Upcoming release
+# `0.2.0-rc.3`
+
+Released: 2025-09-19
 
 ## New features
 

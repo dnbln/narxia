@@ -794,7 +794,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure"
-version = "0.2.0-rc.2"
+version = "0.2.0-rc.3"
 dependencies = [
  "assert_eq",
  "dir-structure-macros",
@@ -813,7 +813,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-macros"
-version = "0.2.0-rc.2"
+version = "0.2.0-rc.3"
 dependencies = [
  "include_dir_macros",
  "proc-macro2",

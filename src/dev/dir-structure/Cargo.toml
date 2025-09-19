@@ -1,6 +1,6 @@
 [package]
 name = "dir-structure"
-version = "0.2.0-rc.2"
+version = "0.2.0-rc.3"
 edition.workspace = true
 license = "MIT OR Apache-2.0"
 description = "Simple crate to create and model directory structures."
@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["derive", "tools", "_all"]
+default = ["derive", "tools"]
 json = ["dep:serde", "dep:serde_json", "tools-data-formats"]
 toml = ["dep:serde", "dep:toml", "tools-data-formats"]
 yaml = ["dep:serde", "dep:serde_yaml", "tools-data-formats"]
