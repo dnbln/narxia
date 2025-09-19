@@ -229,13 +229,14 @@ where
 }
 
 // async implementations are available only for specific VFS implementations,
-// as they require specific async traits that are not part of the standard library.
+// as they require specific async traits that are not part of the standard library (e.g. a la tokio::task::spawn_blocking,
+// or similar, for other runtimes, given that image encoding / decoding with the image crate is CPU-bound and blocking).
 //
 // as such, they are implemented in the respective VFS modules.
-// only the following impls are required:
-// - `impl<T: ImgFormat> ReadFromAsync<'vfs, ...> for T`
-// - `impl<'a> WriteToAsync<'a, ...> for (image::DynamicImage, image::ImageFormat)` for `WriteToAsync`
-// - `impl<'a> WriteToAsync<'a, ...> for (&'a image::DynamicImage, image::ImageFormat)` for `WriteToAsyncRef`
+// for new async VFS implementations, the following impls are required for Image formats to work with it:
+// - `impl<T: ImgFormat> ReadFromAsync<'vfs, NewVfsType> for T`                                 to satisfy the bound `T: ReadFromAsync<'vfs, NewVfsType>`
+// - `impl<'a> WriteToAsync<'a, NewVfsType> for (image::DynamicImage, image::ImageFormat)`      to satisfy the bound `T: WriteToAsync<'a, NewVfsType>`
+// - `impl<'a> WriteToAsync<'a, NewVfsType> for (&'a image::DynamicImage, image::ImageFormat)`  to satisfy the bound `T: WriteToAsyncRef<'a, NewVfsType>`
 
 macro_rules! img_format {
     ($(#[$meta:meta])* cfg $(#[$cfg_meta:meta])* $struct_name:ident, $format:expr, $(#[$writer_meta:meta])* $writer_type:ident) => {

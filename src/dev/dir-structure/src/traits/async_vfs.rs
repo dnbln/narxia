@@ -16,6 +16,30 @@
 //! is that the methods take _owned_ paths instead of references. This is because
 //! the async methods typically need to move the path into the future, and
 //! references would not be valid for the entire duration of the future.
+//! 
+//! ## Note on images
+//! 
+//! Note that, in addition to the [`VfsAsync`] and [`WriteSupportingVfsAsync`] traits,
+//! you might also want to implement the following impls for your async VFS implementation,
+//! to allow reading and writing image files using the types and traits from the
+//! [`image`](crate::image) module:
+//! 
+//! - `impl<T: ImgFormat> ReadFromAsync<'vfs, YourVfsType> for T`                                 to satisfy the bound `T: ReadFromAsync<'vfs, YourVfsType>`
+//! - `impl<'a> WriteToAsync<'a, YourVfsType> for (image::DynamicImage, image::ImageFormat)`      to satisfy the bound `T: WriteToAsync<'a, YourVfsType>`
+//! - `impl<'a> WriteToAsync<'a, YourVfsType> for (&'a image::DynamicImage, image::ImageFormat)`  to satisfy the bound `T: WriteToAsyncRef<'a, YourVfsType>`
+//! 
+//! These impls are required because the image encoding and decoding operations are CPU-bound and blocking,
+//! and thus cannot be implemented in a generic way for all async VFS implementations. They need to be implemented
+//! specifically for each async VFS type.
+//! 
+//! You can see the implementations for the [`TokioFsVfs`](crate::vfs::tokio_fs_vfs::TokioFsVfs) VFS, which use
+//! [`tokio::task::spawn_blocking`] to offload the blocking operations to a separate thread pool.
+//! 
+//! Your async VFS implementation might use a different async runtime, and thus might need to use a
+//! different method to offload blocking operations, but that is the ideal approach to take.
+//! 
+//! You can of course not implement these impls, but then you will not be able to use the image
+//! encoding and decoding operations with your async VFS implementation.
 
 use std::io;
 use std::pin::Pin;
