@@ -33,6 +33,7 @@
             mandoc
             openssl
             tree
+            curl
           ];
 
           env = {

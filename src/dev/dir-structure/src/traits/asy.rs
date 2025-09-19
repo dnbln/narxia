@@ -12,7 +12,7 @@ use crate::traits::vfs::VfsCore;
 
 /// Trait for types / structures that can be read from disk asynchronously.
 ///
-/// `async` version of [`ReadFrom`].
+/// `async` version of [`ReadFrom`](crate::traits::sync::ReadFrom).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
@@ -57,6 +57,8 @@ pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
 ///
 /// The difference between this and [`WriteToAsync`] is that this trait takes in
 /// a reference instead of owned data.
+/// 
+/// This is an async equivalent of [`WriteTo`](crate::traits::sync::WriteTo).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsyncRef<'r, Vfs: WriteSupportingVfsAsync + ?Sized + 'r> {
@@ -80,7 +82,7 @@ pub trait WriteToAsyncRef<'r, Vfs: WriteSupportingVfsAsync + ?Sized + 'r> {
         'r: 'a;
 }
 
-/// Async equivalent of [`FromRefForWriter`](crate::FromRefForWriter).
+/// Async equivalent of [`FromRefForWriter`](crate::traits::sync::FromRefForWriter).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait FromRefForWriterAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {

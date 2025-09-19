@@ -1,6 +1,6 @@
 //! Traits for resolving paths in a directory structure.
 //!
-//! [`HasField`] is automatically derived by the `#[derive(DirStructure)]` macro.
+//! [`HasField`] is automatically derived by the [`#[derive(HasField)]` macro](crate::HasField).
 
 #[cfg(feature = "resolve-path")]
 use crate::traits::vfs::OwnedPathType;

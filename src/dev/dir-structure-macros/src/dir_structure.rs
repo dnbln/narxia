@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use proc_macro2::Ident;
 use proc_macro2::TokenStream;
 use quote::format_ident;
@@ -5,6 +7,7 @@ use quote::quote;
 use syn::Field;
 use syn::ImplGenerics;
 use syn::ItemStruct;
+use syn::WherePredicate;
 use syn::parse_quote;
 
 use crate::dir_structure_core::DirStructureCoreInfo;
@@ -13,7 +16,9 @@ use crate::dir_structure_core::compile_attrs;
 
 struct DirStructureForField {
     read_code: TokenStream,
+    read_bounds: Vec<WherePredicate>,
     write_code: TokenStream,
+    write_bounds: Vec<WherePredicate>,
 }
 
 fn expand_dir_structure_for_field(
@@ -50,48 +55,89 @@ fn expand_dir_structure_for_field(
         PathSpec::SelfPath => quote! { #path_param_name },
     };
     let actual_field_ty_perform = with_newtype.as_ref().unwrap_or(field_ty);
-    let read_code = if self_path {
+    let (read_code, read_bounds) = if self_path {
         // self_path field, just use the path directly
-        quote! {
-            #field_ty::from(::dir_structure::traits::vfs::PathType::owned(#path_param_name))
-        }
+        (
+            quote! {
+                #field_ty::from(::dir_structure::traits::vfs::PathType::owned(#path_param_name))
+            },
+            vec![parse_quote! {
+                #field_ty: ::std::convert::From<<<Vfs as ::dir_structure::traits::vfs::VfsCore>::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>
+            }],
+        )
     } else {
         let value_name = format_ident!("__value");
-        let end_expr = match &with_newtype {
-            Some(nt) => quote! {
-                <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(#value_name)
-            },
-            None => quote! {
-                #value_name
-            },
+        let (end_expr, read_bounds) = match &with_newtype {
+            Some(nt) => (
+                quote! {
+                    <#nt as ::dir_structure::traits::sync::NewtypeToInner>::into_inner(#value_name)
+                },
+                vec![
+                    parse_quote! {
+                        #nt: ::dir_structure::traits::sync::NewtypeToInner<Inner = #field_ty>
+                    },
+                    parse_quote! {
+                        #nt: ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs>
+                    },
+                ],
+            ),
+            None => (
+                quote! {
+                    #value_name
+                },
+                vec![parse_quote! {
+                    #field_ty: ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs>
+                }],
+            ),
         };
 
-        quote! {{
-            let #value_name = <#actual_field_ty_perform as ::dir_structure::traits::sync::ReadFrom<Vfs>>::read_from(#actual_path_expr, #vfs_param_name)?;
-            #end_expr
-        }}
+        (
+            quote! {{
+                let #value_name = <#actual_field_ty_perform as ::dir_structure::traits::sync::ReadFrom<Vfs>>::read_from(#actual_path_expr, #vfs_param_name)?;
+                #end_expr
+            }},
+            read_bounds,
+        )
     };
 
-    let write_code = if self_path {
+    let (write_code, write_bounds) = if self_path {
         // self_path does not need to write anything
-        quote! {}
+        (quote! {}, vec![])
     } else {
-        let writer = match &with_newtype {
-            Some(nt) => {
-                quote! { &<#nt as ::dir_structure::traits::sync::FromRefForWriter<'_, '_, Vfs>>::from_ref_for_writer(&self.#field_name) }
-            }
-            None => quote! { &self.#field_name },
+        let (writer, write_bounds) = match &with_newtype {
+            Some(nt) => (
+                quote! { &<#nt as ::dir_structure::traits::sync::FromRefForWriter<'_, '_, Vfs>>::from_ref_for_writer(&self.#field_name) },
+                vec![
+                    parse_quote! {
+                        for<'a> #nt: ::dir_structure::traits::sync::FromRefForWriter<'a, 'vfs, Vfs, Inner = #field_ty>
+                    },
+                    parse_quote! {
+                        #nt: ::dir_structure::traits::sync::WriteTo<'vfs, Vfs>
+                    },
+                ],
+            ),
+            None => (
+                quote! { &self.#field_name },
+                vec![parse_quote! {
+                    #field_ty: ::dir_structure::traits::sync::WriteTo<'vfs, Vfs>
+                }],
+            ),
         };
-        quote! {
-            ::dir_structure::traits::sync::WriteTo::write_to(#writer, #actual_path_expr, #vfs_param_name)?;
-        }
+        (
+            quote! {
+                ::dir_structure::traits::sync::WriteTo::write_to(#writer, #actual_path_expr, #vfs_param_name)?;
+            },
+            write_bounds,
+        )
     };
 
     Ok(DirStructureForField {
         read_code: quote! {
             #field_name: #read_code
         },
+        read_bounds,
         write_code,
+        write_bounds,
     })
 }
 
@@ -174,11 +220,15 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     let mut field_read_impls = Vec::new();
     let mut field_write_impls = Vec::new();
+    let mut read_bounds_b = HashSet::new();
+    let mut write_bounds_b = HashSet::new();
 
     for field in &st.fields {
         let DirStructureForField {
             read_code,
+            read_bounds,
             write_code,
+            write_bounds,
         } = expand_dir_structure_for_field(
             (&impl_generics, name, &ty_generics, where_clause),
             &path_param_name,
@@ -187,12 +237,17 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         )?;
         field_read_impls.push(read_code);
         field_write_impls.push(write_code);
+
+        read_bounds_b.extend(read_bounds);
+        write_bounds_b.extend(write_bounds);
     }
 
-    #[cfg_attr(not(feature = "resolve-path"), expect(unused_mut))]
-    let mut expanded = quote! {
+    let where_read_clause = merge_where_clauses(where_clause, read_bounds_b);
+    let where_write_clause = merge_where_clauses(where_clause, write_bounds_b);
+
+    let expanded = quote! {
         #[automatically_derived]
-        impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_clause {
+        impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_read_clause {
             fn read_from(#path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>
             where
                 Self: Sized,
@@ -203,7 +258,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
             }
         }
         #[automatically_derived]
-        impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_clause {
+        impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_write_clause {
             fn write_to(&self, #path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath> {
                 #(#field_write_impls)*
                 Ok(())
@@ -214,4 +269,27 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     };
 
     Ok(expanded)
+}
+
+fn merge_where_clauses(
+    original: Option<&syn::WhereClause>,
+    additional: HashSet<WherePredicate>,
+) -> Option<syn::WhereClause> {
+    if original.is_none() && additional.is_empty() {
+        return None;
+    }
+    let mut predicates = if let Some(wc) = original {
+        wc.predicates.clone()
+    } else {
+        syn::punctuated::Punctuated::new()
+    };
+    for p in additional {
+        if !predicates.iter().any(|q| q == &p) {
+            predicates.push(p);
+        }
+    }
+    Some(syn::WhereClause {
+        where_token: Default::default(),
+        predicates,
+    })
 }

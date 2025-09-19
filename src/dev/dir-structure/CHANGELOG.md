@@ -5,6 +5,8 @@
 - Changed the image async pipeline to use the new traits `ReadImageFromAsync`, `WriteImageToAsync`, and `WriteImageToAsyncRef`.
   See the documentation in the [`async_vcs`](src/traits/async_vfs.rs) module for more details.
 
+- Added bounds for derived implementations of `ReadFrom` and `WriteTo` via the `DirStructure` derive macro.
+
 # `0.2.0-rc.3`
 
 Released: 2025-09-19
