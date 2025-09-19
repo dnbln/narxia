@@ -1,3 +1,10 @@
+# Unreleased
+
+## Other changes
+
+- Changed the image async pipeline to use the new traits `ReadImageFromAsync`, `WriteImageToAsync`, and `WriteImageToAsyncRef`.
+  See the documentation in the [`async_vcs`](src/traits/async_vfs.rs) module for more details.
+
 # `0.2.0-rc.3`
 
 Released: 2025-09-19
