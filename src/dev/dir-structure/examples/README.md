@@ -20,6 +20,16 @@ A collection of examples demonstrating various features of the `dir-structure` c
 - [ron.rs](ron.rs): An example demonstrating the use of `Ron` to read and write RON files.
 - [ron_pretty.rs](ron_pretty.rs): An example demonstrating the use of `RonPretty` to read and write pretty-printed RON files.
 
+## A note on the following examples
+
+The examples above demonstrate the basic usage of the `dir-structure` crate with the default synchronous VFS (`StdFsVfs`). While
+98% of use-cases can be covered with just those basic usage patterns, the crate also supports more advanced features, which are
+demonstrated in the examples below.
+
+> [!IMPORTANT]
+> A warning first: In order to understand the examples below, it is recommended to read the documentation for the
+> [`dir_structure::traits::vfs` module](../src/traits/vfs.rs) first.
+
 ## `DeferredRead`
 
 - [deferred_read.rs](deferred_read.rs): An example demonstrating the use of `DeferredRead` to defer reading file contents until they are needed.
