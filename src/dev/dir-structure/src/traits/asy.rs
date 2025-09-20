@@ -17,10 +17,7 @@ use crate::traits::vfs::VfsCore;
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
     /// The future type returned by the async read function.
-    type Future: Future<Output = VfsResult<Self, Vfs>>
-        + Send
-        + Unpin
-        + 'a
+    type Future: Future<Output = VfsResult<Self, Vfs>> + Send + Unpin + 'a
     where
         Self: 'a;
 
@@ -40,10 +37,7 @@ pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
     /// The future type returned by the async write function.
-    type Future: Future<Output = VfsResult<(), Vfs>>
-        + Send
-        + Unpin
-        + 'a;
+    type Future: Future<Output = VfsResult<(), Vfs>> + Send + Unpin + 'a;
 
     /// Asynchronously writes the structure to the specified path.
     fn write_to_async(
@@ -63,10 +57,7 @@ pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsyncRef<'r, Vfs: WriteSupportingVfsAsync + ?Sized + 'r> {
     /// The future type returned by the async write function.
-    type Future<'a>: Future<Output = VfsResult<(), Vfs>>
-        + Send
-        + Unpin
-        + 'a
+    type Future<'a>: Future<Output = VfsResult<(), Vfs>> + Send + Unpin + 'a
     where
         Self: 'a,
         'r: 'a,

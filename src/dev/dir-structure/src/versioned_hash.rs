@@ -320,13 +320,7 @@ where
     H: Hasher + Default + 'a,
 {
     type Future<'f>
-        = Pin<
-        Box<
-            dyn Future<Output = VfsResult<(), Vfs>>
-                + Send
-                + 'f,
-        >,
-    >
+        = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'f>>
     where
         Self: 'f,
         'a: 'f,
