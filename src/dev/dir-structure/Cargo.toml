@@ -13,20 +13,23 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["derive", "tools", "_all"]
+default = ["derive", "tools"]
 json = ["dep:serde", "dep:serde_json", "tools-data-formats"]
 toml = ["dep:serde", "dep:toml", "tools-data-formats"]
 yaml = ["dep:serde", "dep:serde_yaml", "tools-data-formats"]
 ron = ["dep:serde", "dep:ron", "tools-data-formats"]
-async = ["dep:pin-project", "dep:futures", "dir-structure-macros/async"]
+async = ["dep:pin-project", "dep:futures", "dir-structure-macros?/async"]
 tokio = ["dep:tokio", "async"]
-include_dir = ["dep:include_dir", "dir-structure-macros/include_dir_vfs"]
+include_dir = [
+    "dep:include_dir",
+    "dir-structure-macros/include_dir_vfs", # need workaround until https://github.com/Michael-F-Bryan/include_dir/pull/115 for the include_dir_vfs! macro
+]
 git = ["dep:git2"]
 resolve-path = ["derive", "dir-structure-macros/resolve-path"]
 assert_eq = ["dep:assert_eq"]
 derive = ["dep:dir-structure-macros"]
 
-image = ["dep:image", "tokio/rt"]
+image = ["dep:image", "tokio?/rt"]
 image-format-png = ["image", "image/png"]
 image-format-gif = ["image", "image/gif"]
 image-format-jpeg = ["image", "image/jpeg"]
@@ -93,20 +96,7 @@ _all = [
     "assert_eq",
     "derive",
     "image",
-    "image-format-png",
-    "image-format-gif",
-    "image-format-jpeg",
-    "image-format-webp",
-    "image-format-tiff",
-    "image-format-tga",
-    "image-format-bmp",
-    "image-format-ico",
-    "image-format-hdr",
-    "image-format-exr",
-    "image-format-pnm",
-    "image-format-ff",
-    "image-format-avif",
-    "image-format-qoi",
+    "all-image-formats",
     "tools",
 ]
 

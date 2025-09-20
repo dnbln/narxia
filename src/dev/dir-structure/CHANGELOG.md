@@ -7,6 +7,11 @@
 
 - Added bounds for derived implementations of `ReadFrom` and `WriteTo` via the `DirStructure` derive macro.
 
+- Fixed bugs where we were pulling in extra dependencies when certain features were enabled. For example, due to the dependency
+  of `image` on `tokio/rt` for async support, enabling the `image` feature would also pull in `tokio` as a dependency, even if
+  the `tokio` feature was not enabled. This has been fixed by changing the `image` feature to depend on `tokio?/rt` instead of `tokio/rt`,
+  and similarly for a few other features.
+
 # `0.2.0-rc.3`
 
 Released: 2025-09-19
