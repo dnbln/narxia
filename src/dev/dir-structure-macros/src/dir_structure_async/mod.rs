@@ -6,7 +6,6 @@ use syn::Expr;
 use syn::Field;
 use syn::ImplGenerics;
 use syn::ItemStruct;
-use syn::Token;
 use syn::Type;
 use syn::Variant;
 use syn::WherePredicate;
@@ -15,6 +14,7 @@ use syn::parse_quote;
 use crate::dir_structure_core::DirStructureCoreInfo;
 use crate::dir_structure_core::PathSpec;
 use crate::dir_structure_core::compile_attrs;
+use crate::merge_where_clause;
 
 mod read_from_async;
 mod write_to_async_ref;
@@ -354,27 +354,4 @@ pub fn expand_dir_structure_async(st: ItemStruct) -> syn::Result<TokenStream> {
     });
 
     Ok(expanded)
-}
-
-use syn::punctuated::Punctuated;
-
-fn merge_where_clause(
-    where_clause: Option<syn::WhereClause>,
-    additional_bounds: Vec<syn::WherePredicate>,
-) -> Option<syn::WhereClause> {
-    if let Some(mut where_clause) = where_clause {
-        where_clause.predicates.extend(additional_bounds);
-        Some(where_clause)
-    } else {
-        let mut where_clause = syn::WhereClause {
-            where_token: <Token![where]>::default(),
-            predicates: Punctuated::new(),
-        };
-        where_clause.predicates.extend(additional_bounds);
-        if where_clause.predicates.is_empty() {
-            None
-        } else {
-            Some(where_clause)
-        }
-    }
 }

@@ -57,7 +57,7 @@ pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
 ///
 /// The difference between this and [`WriteToAsync`] is that this trait takes in
 /// a reference instead of owned data.
-/// 
+///
 /// This is an async equivalent of [`WriteTo`](crate::traits::sync::WriteTo).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]

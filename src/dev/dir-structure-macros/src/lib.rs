@@ -1,4 +1,5 @@
 use syn::ItemStruct;
+use syn::punctuated::Punctuated;
 
 mod dir_structure;
 #[cfg(feature = "async")]
@@ -72,4 +73,25 @@ pub fn __resolve_max_len(_input: proc_macro::TokenStream) -> proc_macro::TokenSt
 pub fn include_dir_patched(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = syn::parse_macro_input!(input as syn::LitStr);
     quote::quote! {::dir_structure::include_dir::include_dir!(#input)}.into()
+}
+
+fn merge_where_clause(
+    where_clause: Option<syn::WhereClause>,
+    additional_bounds: Vec<syn::WherePredicate>,
+) -> Option<syn::WhereClause> {
+    if let Some(mut where_clause) = where_clause {
+        where_clause.predicates.extend(additional_bounds);
+        Some(where_clause)
+    } else {
+        let mut where_clause = syn::WhereClause {
+            where_token: <syn::Token![where]>::default(),
+            predicates: Punctuated::new(),
+        };
+        where_clause.predicates.extend(additional_bounds);
+        if where_clause.predicates.is_empty() {
+            None
+        } else {
+            Some(where_clause)
+        }
+    }
 }

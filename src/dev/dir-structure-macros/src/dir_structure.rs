@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use proc_macro2::Ident;
 use proc_macro2::TokenStream;
 use quote::format_ident;
@@ -13,6 +11,7 @@ use syn::parse_quote;
 use crate::dir_structure_core::DirStructureCoreInfo;
 use crate::dir_structure_core::PathSpec;
 use crate::dir_structure_core::compile_attrs;
+use crate::merge_where_clause;
 
 struct DirStructureForField {
     read_code: TokenStream,
@@ -220,8 +219,8 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
 
     let mut field_read_impls = Vec::new();
     let mut field_write_impls = Vec::new();
-    let mut read_bounds_b = HashSet::new();
-    let mut write_bounds_b = HashSet::new();
+    let mut read_bounds_b = Vec::new();
+    let mut write_bounds_b = Vec::new();
 
     for field in &st.fields {
         let DirStructureForField {
@@ -242,8 +241,8 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         write_bounds_b.extend(write_bounds);
     }
 
-    let where_read_clause = merge_where_clauses(where_clause, read_bounds_b);
-    let where_write_clause = merge_where_clauses(where_clause, write_bounds_b);
+    let where_read_clause = merge_where_clause(where_clause.cloned(), read_bounds_b);
+    let where_write_clause = merge_where_clause(where_clause.cloned(), write_bounds_b);
 
     let expanded = quote! {
         #[automatically_derived]
@@ -269,27 +268,4 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     };
 
     Ok(expanded)
-}
-
-fn merge_where_clauses(
-    original: Option<&syn::WhereClause>,
-    additional: HashSet<WherePredicate>,
-) -> Option<syn::WhereClause> {
-    if original.is_none() && additional.is_empty() {
-        return None;
-    }
-    let mut predicates = if let Some(wc) = original {
-        wc.predicates.clone()
-    } else {
-        syn::punctuated::Punctuated::new()
-    };
-    for p in additional {
-        if !predicates.iter().any(|q| q == &p) {
-            predicates.push(p);
-        }
-    }
-    Some(syn::WhereClause {
-        where_token: Default::default(),
-        predicates,
-    })
 }
