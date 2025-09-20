@@ -473,10 +473,13 @@ img_format!(
 mod tests {
     use std::io::Seek;
 
+    #[cfg(feature = "async")]
     use futures::AsyncSeek;
 
     use crate::prelude::*;
+    #[cfg(feature = "async")]
     use crate::traits::async_vfs::VfsAsyncWithSeekRead;
+    #[cfg(feature = "async")]
     use crate::traits::async_vfs::VfsAsyncWithSeekWrite;
     use crate::traits::vfs;
 
@@ -492,16 +495,19 @@ mod tests {
     {
     }
 
+    #[cfg(feature = "async")]
     fn assert_is_read_async<'vfs, Vfs: VfsAsyncWithSeekRead + 'vfs, T: ReadFromAsync<'vfs, Vfs>>()
     where
         Vfs::RFile: AsyncSeek,
     {
     }
+    #[cfg(feature = "async")]
     fn assert_is_write_async<'vfs, Vfs: VfsAsyncWithSeekWrite + 'vfs, T: WriteToAsync<'vfs, Vfs>>()
     where
         Vfs::WFile: AsyncSeek,
     {
     }
+    #[cfg(feature = "async")]
     fn assert_is_write_async_ref<
         'vfs,
         Vfs: VfsAsyncWithSeekWrite + 'vfs,
@@ -543,7 +549,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-png")]
+        #[cfg(all(feature = "image-format-png", feature = "tokio"))]
         fn test_png_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Png
@@ -557,7 +563,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-jpeg")]
+        #[cfg(all(feature = "image-format-jpeg", feature = "tokio"))]
         fn test_jpeg_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Jpeg
@@ -571,7 +577,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-gif")]
+        #[cfg(all(feature = "image-format-gif", feature = "tokio"))]
         fn test_gif_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Gif
@@ -585,7 +591,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-webp")]
+        #[cfg(all(feature = "image-format-webp", feature = "tokio"))]
         fn test_webp_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::WebP
@@ -599,7 +605,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-pnm")]
+        #[cfg(all(feature = "image-format-pnm", feature = "tokio"))]
         fn test_pnm_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Pnm
@@ -613,7 +619,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-tiff")]
+        #[cfg(all(feature = "image-format-tiff", feature = "tokio"))]
         fn test_tiff_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Tiff
@@ -627,7 +633,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-tga")]
+        #[cfg(all(feature = "image-format-tga", feature = "tokio"))]
         fn test_tga_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Tga
@@ -641,7 +647,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-bmp")]
+        #[cfg(all(feature = "image-format-bmp", feature = "tokio"))]
         fn test_bmp_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Bmp
@@ -655,7 +661,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-ico")]
+        #[cfg(all(feature = "image-format-ico", feature = "tokio"))]
         fn test_ico_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Ico
@@ -669,7 +675,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-hdr")]
+        #[cfg(all(feature = "image-format-hdr", feature = "tokio"))]
         fn test_hdr_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Hdr
@@ -683,7 +689,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-exr")]
+        #[cfg(all(feature = "image-format-exr", feature = "tokio"))]
         fn test_openexr_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::OpenExr
@@ -697,7 +703,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-ff")]
+        #[cfg(all(feature = "image-format-ff", feature = "tokio"))]
         fn test_farbfeld_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Farbfeld
@@ -711,7 +717,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-avif")]
+        #[cfg(all(feature = "image-format-avif", feature = "tokio"))]
         fn test_avif_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Avif
@@ -725,7 +731,7 @@ mod tests {
     );
 
     test_async_traits!(
-        #[cfg(feature = "image-format-qoi")]
+        #[cfg(all(feature = "image-format-qoi", feature = "tokio"))]
         fn test_qoi_async_traits(),
         crate::vfs::tokio_fs_vfs::TokioFsVfs,
         crate::image::Qoi
