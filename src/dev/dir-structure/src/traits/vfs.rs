@@ -294,7 +294,7 @@ pub trait WriteSupportingVfsExt<'vfs>: WriteSupportingVfs<'vfs> {
         self: Pin<&'vfs Self>,
         path: impl AsRef<Self::Path>,
         value: &T,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    ) -> VfsResult<(), Self> {
         value.write_to(path.as_ref(), self)
     }
 
@@ -306,7 +306,7 @@ pub trait WriteSupportingVfsExt<'vfs>: WriteSupportingVfs<'vfs> {
         &'vfs self,
         path: impl AsRef<Self::Path>,
         value: &T,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath>
+    ) -> VfsResult<(), Self>
     where
         Self: Unpin,
     {

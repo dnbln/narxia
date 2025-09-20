@@ -13,7 +13,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["derive", "tools"]
+default = ["derive", "tools", "_all"]
 json = ["dep:serde", "dep:serde_json", "tools-data-formats"]
 toml = ["dep:serde", "dep:toml", "tools-data-formats"]
 yaml = ["dep:serde", "dep:serde_yaml", "tools-data-formats"]

@@ -18,6 +18,7 @@ use pin_project::pin_project;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -82,12 +83,12 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a>
-    ReadFrom<'a, Vfs> for DeferredRead<'a, T, Vfs, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs>
+    for DeferredRead<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &P, vfs: Pin<&'a Vfs>) -> Result<Self, <P as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -107,7 +108,7 @@ where
     T: Send + ReadFromAsync<'a, Vfs> + 'static,
 {
     type Future
-        = Pin<Box<dyn Future<Output = Result<Self, P::OwnedPath>> + Send + 'a>>
+        = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>
     where
         Self: 'a;
 
@@ -166,7 +167,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn perform_read(&self) -> Result<T, <P as PathType>::OwnedPath> {
+    pub fn perform_read(&self) -> VfsResult<T, Vfs> {
         T::read_from(self.0.as_ref(), self.1)
     }
 }
@@ -186,7 +187,7 @@ where
     /// For a cached version see [`DeferredReadOrOwn`].
     ///
     /// Asynchronous version of [`DeferredRead::perform_read`].
-    pub async fn perform_read_async(&self) -> Result<T, P::OwnedPath> {
+    pub async fn perform_read_async(&self) -> VfsResult<T, Vfs> {
         T::read_from_async(self.0.clone(), self.1).await
     }
 }
@@ -232,10 +233,9 @@ pub enum DeferredReadWriteFuture<
     TargetVfs: WriteSupportingVfsAsync<Path = P> + 'a,
 > where
     T: ReadFromAsync<'a, SelfVfs> + WriteToAsync<'a, TargetVfs> + Send + 'static,
-    <T as ReadFromAsync<'a, SelfVfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+    <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = VfsResult<T, SelfVfs>> + Unpin + 'a,
     <T as WriteToAsync<'a, TargetVfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<(), TargetVfs>> + Unpin + 'a,
 {
     Poisson,
     SamePath,
@@ -261,8 +261,8 @@ impl<
 > Future for DeferredReadWriteFuture<'a, T, P, SelfVfs, TargetVfs>
 where
     T: ReadFromAsync<'a, SelfVfs> + WriteToAsync<'a, TargetVfs> + Send + 'static,
-    <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin,
-    <T as WriteToAsync<'a, TargetVfs>>::Future: Future<Output = Result<(), P::OwnedPath>> + Unpin,
+    <T as ReadFromAsync<'a, SelfVfs>>::Future: Future<Output = VfsResult<T, SelfVfs>> + Unpin,
+    <T as WriteToAsync<'a, TargetVfs>>::Future: Future<Output = VfsResult<(), TargetVfs>> + Unpin,
 {
     type Output = Result<(), P::OwnedPath>;
 
@@ -326,9 +326,9 @@ impl<
 where
     T: for<'a> ReadFromAsync<'a, SelfVfs> + for<'a> WriteToAsync<'a, TargetVfs> + Send + 'static,
     for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<T, SelfVfs>> + Unpin + 'a,
     for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<(), TargetVfs>> + Unpin + 'a,
 {
     type Future = DeferredReadWriteFuture<'f, T, P, SelfVfs, TargetVfs>;
 
@@ -366,9 +366,9 @@ pub enum DeferredReadWriteRefFuture<
 > where
     T: for<'a> ReadFromAsync<'a, SelfVfs> + for<'a> WriteToAsync<'a, TargetVfs> + Send + 'static,
     for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<T, SelfVfs>> + Unpin + 'a,
     for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<(), TargetVfs>> + Unpin + 'a,
 {
     Poisson,
     SamePath,
@@ -395,9 +395,9 @@ impl<
 where
     T: for<'a> ReadFromAsync<'a, SelfVfs> + for<'a> WriteToAsync<'a, TargetVfs> + Send + 'static,
     for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<T, SelfVfs>> + Unpin + 'a,
     for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<(), TargetVfs>> + Unpin + 'a,
 {
     type Output = Result<(), P::OwnedPath>;
 
@@ -461,9 +461,9 @@ impl<
 where
     for<'a> T: ReadFromAsync<'a, SelfVfs> + WriteToAsync<'a, TargetVfs> + Send + 'a,
     for<'a> <T as ReadFromAsync<'a, SelfVfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<T, SelfVfs>> + Unpin + 'a,
     for<'a> <T as WriteToAsync<'a, TargetVfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'a,
+        Future<Output = VfsResult<(), TargetVfs>> + Unpin + 'a,
 {
     type Future<'a>
         = DeferredReadWriteFuture<'a, T, P, SelfVfs, TargetVfs>

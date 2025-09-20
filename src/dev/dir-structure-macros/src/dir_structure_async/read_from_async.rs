@@ -96,7 +96,7 @@ pub(super) fn expand_dir_structure_for_field(
             for<'trivial> #actual_field_ty_perform: ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>
         });
         async_read_future.clauses.push(parse_quote! {
-            for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::Result<#actual_field_ty_perform, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
+            for<'trivial> <#actual_field_ty_perform as ::dir_structure::traits::asy::ReadFromAsync<'vfs, Vfs>>::Future: ::std::future::Future<Output = ::dir_structure::error::VfsResult<#actual_field_ty_perform, Vfs>> + ::std::marker::Send + ::std::marker::Unpin + 'vfs
         });
         let path_param_name = path_param_name.clone();
         async_read_future.variants.push(FutureVariant {
@@ -260,7 +260,7 @@ pub(super) fn future_impl_enum(
 
         #[automatically_derived]
         impl<'vfs, Vfs: ::dir_structure::traits::async_vfs::VfsAsync + 'static> ::std::future::Future for #name<'vfs, Vfs> #where_clause_read_future {
-            type Output = ::dir_structure::error::Result<#ty_name #ty_generics, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>;
+            type Output = ::dir_structure::error::VfsResult<#ty_name #ty_generics, Vfs>;
 
             fn poll(mut self: ::std::pin::Pin<&mut Self>, cx: &mut ::std::task::Context<'_>) -> ::std::task::Poll<Self::Output> {
                 let this = self.as_mut().project_replace(Self::Poison);

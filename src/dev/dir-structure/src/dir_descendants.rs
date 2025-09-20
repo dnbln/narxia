@@ -23,7 +23,7 @@ use futures::future::BoxFuture;
 use pin_project::pin_project;
 
 use crate::NoFilter;
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
@@ -931,10 +931,7 @@ impl<
     F: FolderFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FileFilter<Vfs::Path> + 'vfs,
 > ReadFrom<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         let mut descendants = Vec::new();
 
         if vfs.is_dir(path)? {
@@ -1003,10 +1000,10 @@ impl<
     F: FolderFilter<P> + FolderRecurseFilter<P> + FileFilter<P> + 'vfs,
 > ReadFromAsync<'vfs, Vfs> for DirDescendants<T, F, P>
 where
-    for<'f> Vfs::IsDirFuture<'f>: Future<Output = Result<bool, P::OwnedPath>> + Send + 'f,
+    for<'f> Vfs::IsDirFuture<'f>: Future<Output = VfsResult<bool, Vfs>> + Send + 'f,
 {
     type Future
-        = BoxFuture<'vfs, Result<Self, P::OwnedPath>>
+        = BoxFuture<'vfs, VfsResult<Self, Vfs>>
     where
         Self: 'vfs;
 
@@ -1081,11 +1078,7 @@ impl<
     F: FileFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FolderFilter<Vfs::Path> + 'vfs,
 > WriteTo<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         for descendant in &self.descendants {
             descendant.value.write_to(
                 path.join(&descendant.path_relative_to_ascendant).as_ref(),
@@ -1105,7 +1098,7 @@ impl<
     F: FileFilter<Vfs::Path> + FolderRecurseFilter<Vfs::Path> + FolderFilter<Vfs::Path> + Send + 'vfs,
 > WriteToAsync<'vfs, Vfs> for DirDescendants<T, F, Vfs::Path>
 {
-    type Future = BoxFuture<'vfs, Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
+    type Future = BoxFuture<'vfs, VfsResult<(), Vfs>>;
 
     fn write_to_async(
         self,
@@ -1137,8 +1130,7 @@ pub enum DirDescendantsWriteRefFuture<
     Vfs: WriteSupportingVfsAsync + 'vfs,
     T: WriteToAsyncRef<'vfs, Vfs> + 'vfs,
 > where
-    T::Future<'a>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
+    T::Future<'a>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'a,
 {
     Poison,
     Writing {
@@ -1155,10 +1147,9 @@ pub enum DirDescendantsWriteRefFuture<
 impl<'a, 'vfs: 'a, Vfs: WriteSupportingVfsAsync + 'vfs, T: WriteToAsyncRef<'vfs, Vfs> + 'vfs> Future
     for DirDescendantsWriteRefFuture<'a, 'vfs, Vfs, T>
 where
-    for<'r> T::Future<'r>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'r,
+    for<'r> T::Future<'r>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'r,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1219,7 +1210,7 @@ impl<
     F: FileFilter<P> + FolderRecurseFilter<P> + FolderFilter<P> + Sync + 'vfs,
 > WriteToAsyncRef<'vfs, Vfs> for DirDescendants<T, F, P>
 where
-    for<'r> T::Future<'r>: Future<Output = Result<(), P::OwnedPath>> + Unpin + 'r,
+    for<'r> T::Future<'r>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'r,
 {
     type Future<'r>
         = DirDescendantsWriteRefFuture<'r, 'vfs, Vfs, T>

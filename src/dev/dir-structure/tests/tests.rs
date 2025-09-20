@@ -339,7 +339,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
         fn read_from(
             path: &Vfs::Path,
             vfs: Pin<&'a Vfs>,
-        ) -> dir_structure::error::Result<Self, <Vfs::Path as vfs::PathType>::OwnedPath> {
+        ) -> dir_structure::error::VfsResult<Self, Vfs> {
             Ok(Self {
                 count: AtomicUsize::new(0),
                 inner: T::read_from(path, vfs)?,
@@ -354,7 +354,7 @@ fn versioned_doesnt_call_write_if_not_changed() {
             &self,
             path: &Vfs::Path,
             vfs: Pin<&'vfs Vfs>,
-        ) -> dir_structure::error::Result<(), <Vfs::Path as vfs::PathType>::OwnedPath> {
+        ) -> dir_structure::error::VfsResult<(), Vfs> {
             self.count.fetch_add(1, Ordering::SeqCst);
             self.inner.write_to(path, vfs)
         }

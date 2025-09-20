@@ -9,6 +9,7 @@ use std::pin::Pin;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::error::VfsResult;
 use crate::traits::vfs;
 use crate::traits::vfs::PathType;
 use crate::traits::vfs::VfsCore;
@@ -39,10 +40,7 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
 
     type RFile = GitRFile<'r>;
 
-    fn open_read(
-        self: Pin<&Self>,
-        path: &Path,
-    ) -> Result<Self::RFile, <Self::Path as PathType>::OwnedPath> {
+    fn open_read(self: Pin<&Self>, path: &Path) -> VfsResult<Self::RFile, Self> {
         let entry = self
             .tree
             .get_path(path)
@@ -60,7 +58,7 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
         Ok(GitRFile { blob, offset: 0 })
     }
 
-    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>, <Self::Path as PathType>::OwnedPath> {
+    fn read(self: Pin<&Self>, path: &Path) -> VfsResult<Vec<u8>, Self> {
         let entry = self
             .tree
             .get_path(path)
@@ -78,24 +76,18 @@ impl<'r> vfs::Vfs<'r> for GitVfs<'r> {
         Ok(blob.content().to_vec())
     }
 
-    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+    fn exists(self: Pin<&Self>, path: &Path) -> VfsResult<bool, Self> {
         Ok(self.tree.get_path(path).is_ok())
     }
 
-    fn is_dir(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+    fn is_dir(self: Pin<&Self>, path: &Self::Path) -> VfsResult<bool, Self> {
         match self.tree.get_path(path) {
             Ok(entry) => Ok(entry.kind() == Some(git2::ObjectType::Tree)),
             Err(_) => Ok(false),
         }
     }
 
-    fn walk_dir<'a>(
-        self: Pin<&'a Self>,
-        path: &Path,
-    ) -> Result<Self::DirWalk<'a>, <Self::Path as PathType>::OwnedPath>
+    fn walk_dir<'a>(self: Pin<&'a Self>, path: &Path) -> VfsResult<Self::DirWalk<'a>, Self>
     where
         'r: 'a,
     {

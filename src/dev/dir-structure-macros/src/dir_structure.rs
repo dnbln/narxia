@@ -247,7 +247,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
     let expanded = quote! {
         #[automatically_derived]
         impl #read_impl_generics ::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for #name #ty_generics #where_read_clause {
-            fn read_from(#path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<Self, <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath>
+            fn read_from(#path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::VfsResult<Self, Vfs>
             where
                 Self: Sized,
             {
@@ -258,7 +258,7 @@ pub fn expand_dir_structure(st: ItemStruct) -> syn::Result<TokenStream> {
         }
         #[automatically_derived]
         impl #write_impl_generics ::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for #name #ty_generics #where_write_clause {
-            fn write_to(&self, #path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::Result<(), <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath> {
+            fn write_to(&self, #path_param_name: &Vfs::Path, #vfs_param_name: ::std::pin::Pin<&'vfs Vfs>) -> ::dir_structure::error::VfsResult<(), Vfs> {
                 #(#field_write_impls)*
                 Ok(())
             }

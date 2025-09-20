@@ -347,17 +347,8 @@ async fn versioned_doesnt_call_write_if_not_changed() {
     where
         T: ReadFromAsync<'vfs, Vfs> + Send + Sync + 'static,
     {
-        type Future = Pin<
-            Box<
-                dyn Future<
-                        Output = dir_structure::error::Result<
-                            Self,
-                            <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
-                        >,
-                    > + Send
-                    + 'vfs,
-            >,
-        >;
+        type Future =
+            Pin<Box<dyn Future<Output = dir_structure::error::VfsResult<Self, Vfs>> + Send + 'vfs>>;
 
         fn read_from_async(
             path: <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
@@ -377,17 +368,7 @@ async fn versioned_doesnt_call_write_if_not_changed() {
         T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     {
         type Future<'a>
-            = Pin<
-            Box<
-                dyn Future<
-                        Output = dir_structure::error::Result<
-                            (),
-                            <Vfs::Path as ::dir_structure::traits::vfs::PathType>::OwnedPath,
-                        >,
-                    > + Send
-                    + 'a,
-            >,
-        >
+            = Pin<Box<dyn Future<Output = dir_structure::error::VfsResult<(), Vfs>> + Send + 'a>>
         where
             Self: 'a,
             'r: 'a,

@@ -15,7 +15,6 @@ use pin_project::pin_project;
 
 use crate::deferred_read::DeferredRead;
 use crate::error::Result;
-#[cfg(feature = "async")]
 use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
@@ -178,7 +177,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn get(&self) -> Result<T, P::OwnedPath>
+    pub fn get(&self) -> VfsResult<T, Vfs>
     where
         T: Clone,
     {
@@ -219,7 +218,7 @@ where
     ///     Ok(())
     /// }
     /// ```
-    pub fn perform_and_store_read(&mut self) -> Result<&mut T, P::OwnedPath> {
+    pub fn perform_and_store_read(&mut self) -> VfsResult<&mut T, Vfs> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
             DeferredReadOrOwn::Deferred(d) => {
@@ -238,7 +237,7 @@ where
         &self,
         path: &P,
         vfs: Pin<&'t TargetVfs>,
-    ) -> Result<(), P::OwnedPath>
+    ) -> VfsResult<(), Vfs>
     where
         T: WriteTo<'t, TargetVfs>,
     {
@@ -249,12 +248,12 @@ where
     }
 }
 
-impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a>
-    ReadFrom<'a, Vfs> for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
+impl<'a, const CHECK_ON_READ: bool, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs>
+    for DeferredReadOrOwn<'a, T, Vfs, CHECK_ON_READ>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(path: &P, vfs: Pin<&'a Vfs>) -> Result<Self, P::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -270,7 +269,7 @@ where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
     /// Gets the value, asynchronously. This is an async version of [`get`](Self::get).
-    pub async fn get_async(&'a self) -> Result<T, P::OwnedPath>
+    pub async fn get_async(&'a self) -> VfsResult<T, Vfs>
     where
         T: Clone,
     {
@@ -286,7 +285,7 @@ where
     /// See [`DeferredReadOrOwn`] for more details.
     ///
     /// This is an async version of [`perform_and_store_read`](Self::perform_and_store_read).
-    pub async fn perform_and_store_read_async(&'a mut self) -> Result<&'a mut T, P::OwnedPath> {
+    pub async fn perform_and_store_read_async(&'a mut self) -> VfsResult<&'a mut T, Vfs> {
         match self {
             DeferredReadOrOwn::Own(own) => Ok(own),
             DeferredReadOrOwn::Deferred(d) => {
@@ -313,14 +312,14 @@ where
         &'a self,
         path: P::OwnedPath,
         vfs: Pin<&'a TargetVfs>,
-    ) -> Result<(), P::OwnedPath>
+    ) -> VfsResult<(), Vfs>
     where
         for<'b> T: ReadFromAsync<'b, Vfs, Future = ReadFutTy>
             + WriteToAsync<'b, TargetVfs>
             + WriteToAsyncRef<'b, TargetVfs>
             + Send
             + 'b,
-        ReadFutTy: Future<Output = Result<T, P::OwnedPath>> + Unpin + 'static,
+        ReadFutTy: Future<Output = VfsResult<T, Vfs>> + Unpin + 'static,
     {
         match self {
             DeferredReadOrOwn::Own(own) => own.write_to_async_ref(path, vfs).await,
@@ -337,7 +336,7 @@ where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     P::OwnedPath: Send + Sync,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<Self, P::OwnedPath>> + Send + 'a>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>;
 
     fn read_from_async(path: P::OwnedPath, vfs: Pin<&'a Vfs>) -> Self::Future {
         use std::future::poll_fn;
@@ -404,12 +403,10 @@ impl<
 > Future for DeferredReadOrOwnWriteFuture<'a, T, Vfs, CHECK_ON_READ>
 where
     T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
-    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future:
-        Future<Output = Result<T, P::OwnedPath>> + Unpin + 'b,
-    for<'b> <T as WriteToAsync<'b, Vfs>>::Future:
-        Future<Output = Result<(), P::OwnedPath>> + Unpin + 'b,
+    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'b,
 {
-    type Output = Result<(), P::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);

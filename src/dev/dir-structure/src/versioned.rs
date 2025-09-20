@@ -14,7 +14,7 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -221,10 +221,7 @@ impl<'a, Vfs: vfs::Vfs<'a>, T> ReadFrom<'a, Vfs> for Versioned<T, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -248,7 +245,7 @@ impl<'a, Vfs: VfsAsync + 'static, T> Future for VersionedReadFuture<'a, Vfs, T>
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
 {
-    type Output = Result<Versioned<T, Vfs::Path>, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<Versioned<T, Vfs::Path>, Vfs>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let projection = self.project();
@@ -280,11 +277,7 @@ impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs>
 where
     Vfs::Path: PartialEq,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         if self.path.as_ref() == path && self.is_clean() {
             return Ok(());
         }
@@ -300,8 +293,7 @@ where
 pub enum VersionedWriteFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'a,
 {
     Poisson,
     NotTouched,
@@ -315,10 +307,9 @@ where
 impl<'a, T, Vfs: WriteSupportingVfsAsync + 'a> Future for VersionedWriteFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'a,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);
@@ -346,8 +337,7 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for Versioned<T, Vfs::Path>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsync<'a, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin,
     Vfs::Path: PartialEq,
 {
     type Future = VersionedWriteFuture<'a, T, Vfs>;
@@ -374,8 +364,7 @@ where
 pub enum VersionedWriteRefFuture<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'a>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
     Poisson,
@@ -391,11 +380,10 @@ impl<'a, 'f, T, Vfs: WriteSupportingVfsAsync + 'a> Future
     for VersionedWriteRefFuture<'a, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'a, Vfs> + Send + Sync + 'static,
-    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'a, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'a: 'f,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poisson);
@@ -426,7 +414,7 @@ impl<'r, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'r, Vfs>
 where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     Vfs::Path: PartialEq,
 {
     type Future<'a>
@@ -541,10 +529,7 @@ mod tests {
     }
 
     impl<'a, Vfs: vfs::Vfs<'a>, T: ReadFrom<'a, Vfs>> ReadFrom<'a, Vfs> for WriteCounter<T> {
-        fn read_from(
-            path: &Vfs::Path,
-            vfs: Pin<&'a Vfs>,
-        ) -> Result<Self, <Vfs::Path as vfs::PathType>::OwnedPath> {
+        fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs> {
             Ok(Self {
                 count: AtomicUsize::new(0),
                 inner: T::read_from(path, vfs)?,
@@ -555,11 +540,7 @@ mod tests {
     impl<'a, Vfs: vfs::WriteSupportingVfs<'a>, T: WriteTo<'a, Vfs>> WriteTo<'a, Vfs>
         for WriteCounter<T>
     {
-        fn write_to(
-            &self,
-            path: &Vfs::Path,
-            vfs: Pin<&'a Vfs>,
-        ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+        fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
             self.inner.write_to(path, vfs)?;
             self.count.fetch_add(1, Ordering::SeqCst);
             Ok(())

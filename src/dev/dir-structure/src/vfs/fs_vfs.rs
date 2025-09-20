@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::pin::Pin;
 
 use crate::error::Result;
+use crate::error::VfsResult;
 use crate::error::WrapIoError;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirEntryKind;
@@ -34,39 +35,27 @@ impl<'a> Vfs<'a> for FsVfs {
 
     type RFile = fs::File;
 
-    fn open_read(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<Self::RFile, <Path as PathType>::OwnedPath> {
+    fn open_read(self: Pin<&Self>, path: &Self::Path) -> VfsResult<Self::RFile, Self> {
         fs::File::open(path).wrap_io_error_with(path)
     }
 
-    fn read(self: Pin<&Self>, path: &Self::Path) -> Result<Vec<u8>, <Path as PathType>::OwnedPath> {
+    fn read(self: Pin<&Self>, path: &Self::Path) -> VfsResult<Vec<u8>, Self> {
         fs::read(path).wrap_io_error_with(path)
     }
 
-    fn read_string(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<String, <Path as PathType>::OwnedPath> {
+    fn read_string(self: Pin<&Self>, path: &Self::Path) -> VfsResult<String, Self> {
         fs::read_to_string(path).wrap_io_error_with(path)
     }
 
-    fn exists(self: Pin<&Self>, path: &Self::Path) -> Result<bool, <Path as PathType>::OwnedPath> {
+    fn exists(self: Pin<&Self>, path: &Self::Path) -> VfsResult<bool, Self> {
         Ok(path.exists())
     }
 
-    fn is_dir(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+    fn is_dir(self: Pin<&Self>, path: &Self::Path) -> VfsResult<bool, Self> {
         Ok(path.is_dir())
     }
 
-    fn walk_dir<'b>(
-        self: Pin<&'b Self>,
-        path: &Self::Path,
-    ) -> Result<Self::DirWalk<'b>, <Path as PathType>::OwnedPath>
+    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Self::Path) -> VfsResult<Self::DirWalk<'b>, Self>
     where
         'a: 'b,
     {
@@ -79,46 +68,27 @@ impl<'a> Vfs<'a> for FsVfs {
 impl<'a> WriteSupportingVfs<'a> for FsVfs {
     type WFile = fs::File;
 
-    fn open_write(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<Self::WFile, <Self::Path as PathType>::OwnedPath> {
+    fn open_write(self: Pin<&Self>, path: &Self::Path) -> VfsResult<Self::WFile, Self> {
         fs::File::create(path).wrap_io_error_with(path)
     }
 
-    fn write(
-        self: Pin<&Self>,
-        path: &Self::Path,
-        data: &[u8],
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    fn write(self: Pin<&Self>, path: &Self::Path, data: &[u8]) -> VfsResult<(), Self> {
         fs::write(path, data).wrap_io_error_with(path)
     }
 
-    fn create_dir(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    fn create_dir(self: Pin<&Self>, path: &Self::Path) -> VfsResult<(), Self> {
         fs::create_dir(path).wrap_io_error_with(path)
     }
 
-    fn create_dir_all(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    fn create_dir_all(self: Pin<&Self>, path: &Self::Path) -> VfsResult<(), Self> {
         fs::create_dir_all(path).wrap_io_error_with(path)
     }
 
-    fn remove_dir_all(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    fn remove_dir_all(self: Pin<&Self>, path: &Self::Path) -> VfsResult<(), Self> {
         fs::remove_dir_all(path).wrap_io_error_with(path)
     }
 
-    fn create_parent_dir(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<(), <Self::Path as PathType>::OwnedPath> {
+    fn create_parent_dir(self: Pin<&Self>, path: &Self::Path) -> VfsResult<(), Self> {
         if let Some(parent) = path.parent()
             && !self.exists(parent)?
         {

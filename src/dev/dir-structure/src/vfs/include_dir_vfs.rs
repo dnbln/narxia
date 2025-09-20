@@ -17,6 +17,7 @@ use include_dir::include_dir as _include_dir;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::error::VfsResult;
 use crate::traits::vfs::DirEntryInfo;
 use crate::traits::vfs::DirEntryKind;
 use crate::traits::vfs::DirWalker;
@@ -145,10 +146,7 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
         Self: 'a;
     type RFile = io::Cursor<&'static [u8]>;
 
-    fn open_read(
-        self: Pin<&Self>,
-        path: &Path,
-    ) -> Result<Self::RFile, <Self::Path as PathType>::OwnedPath> {
+    fn open_read(self: Pin<&Self>, path: &Path) -> VfsResult<Self::RFile, Self> {
         let p = norm(path)?;
         if self.dir.get_dir(&p).is_some() {
             return Err(Error::Io(p, io::ErrorKind::IsADirectory.into()));
@@ -162,7 +160,7 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
         Ok(io::Cursor::new(file.contents()))
     }
 
-    fn read(self: Pin<&Self>, path: &Path) -> Result<Vec<u8>, <Self::Path as PathType>::OwnedPath> {
+    fn read(self: Pin<&Self>, path: &Path) -> VfsResult<Vec<u8>, Self> {
         let p = norm(path)?;
         self.dir
             .get_file(&p)
@@ -170,10 +168,7 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
             .ok_or(Error::Io(p, io::ErrorKind::NotFound.into()))
     }
 
-    fn read_string(
-        self: Pin<&Self>,
-        path: &Path,
-    ) -> Result<String, <Self::Path as PathType>::OwnedPath> {
+    fn read_string(self: Pin<&Self>, path: &Path) -> VfsResult<String, Self> {
         let p = norm(path)?;
         #[derive(Debug)]
         struct Utf8Error;
@@ -203,25 +198,19 @@ impl<'vfs> Vfs<'vfs> for IncludeDirVfs {
             .ok_or(Error::Parse(p, Box::new(Utf8Error)))
     }
 
-    fn exists(self: Pin<&Self>, path: &Path) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+    fn exists(self: Pin<&Self>, path: &Path) -> VfsResult<bool, Self> {
         let path = norm(path)?;
 
         Ok(get_dir_or_root(&self.dir, &path)
             .map_or_else(|_| self.dir.get_file(&path).is_some(), |_| true))
     }
 
-    fn is_dir(
-        self: Pin<&Self>,
-        path: &Self::Path,
-    ) -> Result<bool, <Self::Path as PathType>::OwnedPath> {
+    fn is_dir(self: Pin<&Self>, path: &Self::Path) -> VfsResult<bool, Self> {
         let path = norm(path)?;
         Ok(self.dir.get_dir(&path).is_some())
     }
 
-    fn walk_dir<'b>(
-        self: Pin<&'b Self>,
-        path: &Path,
-    ) -> Result<Self::DirWalk<'b>, <Self::Path as PathType>::OwnedPath>
+    fn walk_dir<'b>(self: Pin<&'b Self>, path: &Path) -> VfsResult<Self::DirWalk<'b>, Self>
     where
         'vfs: 'b,
     {

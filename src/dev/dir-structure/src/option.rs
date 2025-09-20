@@ -9,7 +9,7 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -30,10 +30,7 @@ impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Option<T>
 where
     T: ReadFrom<'a, Vfs>,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -52,8 +49,8 @@ where
 pub enum OptionReadFromAsyncFuture<'a, T, P: PathType + ?Sized + 'a, Vfs: VfsAsync<Path = P> + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    Vfs::ExistsFuture<'a>: Future<Output = Result<bool, P::OwnedPath>>,
-    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin,
+    Vfs::ExistsFuture<'a>: Future<Output = VfsResult<bool, Vfs>>,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin,
 {
     Poison,
     Check {
@@ -74,9 +71,9 @@ impl<'a, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a> Future
     for OptionReadFromAsyncFuture<'a, T, P, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin,
 {
-    type Output = Result<Option<T>, P::OwnedPath>;
+    type Output = VfsResult<Option<T>, Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         use std::task::Poll;
@@ -139,7 +136,7 @@ impl<'a, T, Vfs: VfsAsync<Path = P> + 'a, P: PathType + ?Sized + 'a> ReadFromAsy
     for Option<T>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
-    T::Future: Future<Output = Result<T, P::OwnedPath>> + Unpin + 'a,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'a,
 {
     type Future
         = OptionReadFromAsyncFuture<'a, T, P, Vfs>
@@ -160,7 +157,7 @@ impl<'vfs, T, P: PathType + ?Sized + 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs, Pa
 where
     T: WriteTo<'vfs, Vfs>,
 {
-    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), P::OwnedPath> {
+    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         if let Some(v) = self {
             v.write_to(path, vfs)
         } else {
@@ -191,7 +188,7 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync<Path = P>, P: PathType + ?Sized + 'a> F
 where
     T: WriteToAsync<'a, Vfs> + 'static,
 {
-    type Output = Result<(), P::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();

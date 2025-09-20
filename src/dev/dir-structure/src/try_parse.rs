@@ -13,7 +13,7 @@ use std::task::Poll;
 use std::task::ready;
 
 use crate::error::Error;
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -39,10 +39,7 @@ where
     P: PathType + ?Sized + 'vfs,
     T: ReadFrom<'vfs, Vfs>,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<Self, <P as PathType>::OwnedPath> {
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         match T::read_from(path, vfs) {
             Ok(value) => Ok(TryParse::Success(value)),
             Err(error) => Ok(TryParse::Failure(error)),
@@ -56,11 +53,7 @@ where
     Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>,
     T: WriteTo<'vfs, Vfs>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <P as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         match self {
             Self::Success(value) => value.write_to(path, vfs),
             Self::Failure(_error) => Ok(()),
@@ -76,7 +69,7 @@ where
     Vfs: VfsAsync<Path = P> + 'vfs,
     T: ReadFromAsync<'vfs, Vfs> + Send + 'vfs,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<Self, P::OwnedPath>> + Send + 'vfs>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'vfs>>;
 
     fn read_from_async(path: P::OwnedPath, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         let mut read_fut = Box::pin(T::read_from_async(path, vfs));
@@ -97,9 +90,9 @@ where
     P: PathType + ?Sized + 'vfs,
     Vfs: WriteSupportingVfsAsync<Path = P> + 'vfs,
     T: WriteToAsync<'vfs, Vfs> + Send + 'vfs,
-    <T as WriteToAsync<'vfs, Vfs>>::Future: Future<Output = Result<(), P::OwnedPath>> + Unpin,
+    <T as WriteToAsync<'vfs, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin,
 {
-    type Future = Pin<Box<dyn Future<Output = Result<(), P::OwnedPath>> + Send + 'vfs>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'vfs>>;
 
     fn write_to_async(self, path: P::OwnedPath, vfs: Pin<&'vfs Vfs>) -> Self::Future {
         match self {
@@ -117,10 +110,10 @@ where
     Vfs: WriteSupportingVfsAsync<Path = P> + 'static,
     T: WriteToAsyncRef<'vfs, Vfs> + Send + 'vfs,
     for<'a> <T as WriteToAsyncRef<'vfs, Vfs>>::Future<'a>:
-        Future<Output = Result<(), P::OwnedPath>> + Send + Sync + Unpin + 'a,
+        Future<Output = VfsResult<(), Vfs>> + Send + Sync + Unpin + 'a,
 {
     type Future<'a>
-        = Pin<Box<dyn Future<Output = Result<(), P::OwnedPath>> + Send + Sync + 'a>>
+        = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + Sync + 'a>>
     where
         Self: 'a,
         'vfs: 'a,

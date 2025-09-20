@@ -12,7 +12,7 @@ use std::task::Poll;
 #[cfg(feature = "async")]
 use pin_project::pin_project;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::asy::FromRefForWriterAsync;
@@ -23,6 +23,7 @@ use crate::traits::async_vfs::WriteSupportingVfsAsync;
 use crate::traits::sync::FromRefForWriter;
 use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
+#[cfg(feature = "async")]
 use crate::traits::vfs::PathType;
 
 /// A newtype around a `Vec<u8>`.
@@ -38,10 +39,7 @@ impl FileBytes {
 }
 
 impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FileBytes {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -51,8 +49,7 @@ impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FileBytes {
 
 #[cfg(feature = "async")]
 impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileBytes {
-    type Future =
-        Pin<Box<dyn Future<Output = Result<Self, <Vfs::Path as PathType>::OwnedPath>> + Send + 'a>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>;
 
     fn read_from_async(
         path: <Vfs::Path as PathType>::OwnedPath,
@@ -63,11 +60,7 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileBytes {
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for FileBytes {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -126,11 +119,7 @@ impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs>
 where
     'vfs: 'a,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         vfs.create_parent_dir(path)?;
         vfs.write(path, self.0)?;
         Ok(())
@@ -142,8 +131,7 @@ where
 impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
     for FileBytesRefWr<'a, 'a, Vfs>
 {
-    type Future =
-        Pin<Box<dyn Future<Output = Result<(), <Vfs::Path as PathType>::OwnedPath>> + Send + 'a>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'a>>;
 
     fn write_to_async(
         self,
@@ -191,10 +179,7 @@ impl NewtypeToInner for FileString {
 }
 
 impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FileString {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -210,7 +195,7 @@ pub struct FileStringReadFuture<'a, Vfs: VfsAsync + 'static>(Vfs::ReadStringFutu
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: VfsAsync + 'static> Future for FileStringReadFuture<'a, Vfs> {
-    type Output = Result<FileString, <Vfs::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<FileString, Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match Pin::new(&mut self.0).poll(cx) {
@@ -234,11 +219,7 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for FileString {
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for FileString {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -246,8 +227,7 @@ impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for FileString {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileString {
-    type Future =
-        Pin<Box<dyn Future<Output = Result<(), <Vfs::Path as PathType>::OwnedPath>> + Send + 'a>>;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'a>>;
 
     fn write_to_async(
         self,
@@ -295,11 +275,7 @@ impl<'a, 'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FileSt
 where
     'vfs: 'a,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         FileBytes::from_ref_for_writer(self.0.as_bytes()).write_to(path, vfs)
     }
 }
@@ -321,10 +297,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for FileS
 // Impls for std types.
 
 impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for String {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -346,11 +319,7 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for String {
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for String {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileString::from_ref_for_writer(self).write_to(path, vfs)
     }
 }
@@ -392,10 +361,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsyncRef<'a, Vfs> for St
 }
 
 impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for Vec<u8> {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -414,7 +380,7 @@ pub struct VecReadFuture<'a, Vfs: VfsAsync + 'static>(
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: VfsAsync + 'static> Future for VecReadFuture<'a, Vfs> {
-    type Output = Result<Vec<u8>, <Vfs::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<Vec<u8>, Vfs>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let projection = self.project();
@@ -440,11 +406,7 @@ impl<'a, Vfs: VfsAsync + 'static> ReadFromAsync<'a, Vfs> for Vec<u8> {
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for Vec<u8> {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileBytes::from_ref_for_writer(self).write_to(path, vfs)
     }
 }
@@ -467,21 +429,13 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for Vec<u
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for str {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileStrWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for &str {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileStrWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
@@ -501,21 +455,13 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a s
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for [u8] {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileBytesRefWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
 
 impl<'a, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for &[u8] {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         FileBytesRefWr(self, marker::PhantomData).write_to(path, vfs)
     }
 }
@@ -535,10 +481,7 @@ impl<'a, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for &'a [
 }
 
 impl<'a, T: 'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for marker::PhantomData<T> {
-    fn read_from(
-        _path: &Vfs::Path,
-        _vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(_path: &Vfs::Path, _vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -547,11 +490,7 @@ impl<'a, T: 'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for marker::PhantomData<T> 
 }
 
 impl<'a, T, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, Vfs> for marker::PhantomData<T> {
-    fn write_to(
-        &self,
-        _path: &Vfs::Path,
-        _vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, _path: &Vfs::Path, _vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         Ok(())
     }
 }
@@ -562,7 +501,7 @@ impl<'a, T, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for marker::PhantomData<T
 where
     T: Send + Sync + 'static,
 {
-    type Future = future::Ready<Result<Self, <Vfs::Path as PathType>::OwnedPath>>;
+    type Future = future::Ready<VfsResult<Self, Vfs>>;
 
     fn read_from_async(_path: <Vfs::Path as PathType>::OwnedPath, _vfs: Pin<&Vfs>) -> Self::Future {
         future::ready(Ok(Self))
@@ -575,7 +514,7 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs> for ma
 where
     T: Send + Sync + 'static,
 {
-    type Future = future::Ready<Result<(), <Vfs::Path as PathType>::OwnedPath>>;
+    type Future = future::Ready<VfsResult<(), Vfs>>;
 
     fn write_to_async(
         self,

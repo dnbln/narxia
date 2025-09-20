@@ -2,9 +2,8 @@
 
 use std::pin::Pin;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::traits::vfs;
-use crate::traits::vfs::PathType;
 use crate::traits::vfs::VfsCore;
 use crate::vfs::fs_vfs;
 
@@ -20,9 +19,7 @@ pub trait DirStructure: DirStructureItem {}
 pub trait DirStructureItem {
     /// Uses the [`ReadFrom`] implementation to read the structure from
     /// disk, from the specified path.
-    fn read(
-        path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>,
-    ) -> Result<Self, <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
+    fn read(path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>) -> VfsResult<Self, fs_vfs::FsVfs>
     where
         Self: ReadFrom<'static, fs_vfs::FsVfs> + Sized,
     {
@@ -34,7 +31,7 @@ pub trait DirStructureItem {
     fn write<'a, 'vfs: 'a>(
         &'a self,
         path: impl AsRef<<fs_vfs::FsVfs as VfsCore>::Path>,
-    ) -> Result<(), <<fs_vfs::FsVfs as VfsCore>::Path as PathType>::OwnedPath>
+    ) -> VfsResult<(), fs_vfs::FsVfs>
     where
         Self: WriteTo<'vfs, fs_vfs::FsVfs>,
     {
@@ -50,10 +47,7 @@ impl<T> DirStructureItem for T {}
 pub trait ReadFrom<'vfs, Vfs: vfs::Vfs<'vfs> + ?Sized>: Sized + 'vfs {
     /// Reads the structure from the specified path, which
     /// can be either a file or a directory.
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>;
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs>;
 }
 
 /// Trait for types / structures that can be
@@ -66,11 +60,7 @@ pub trait ReadFrom<'vfs, Vfs: vfs::Vfs<'vfs> + ?Sized>: Sized + 'vfs {
 /// really be created).
 pub trait WriteTo<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs> + ?Sized> {
     /// Writes the structure to the specified path.
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath>;
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs>;
 }
 
 /// Trait to use when using the `with_newtype` attribute.
@@ -110,20 +100,13 @@ pub trait NewtypeToInner {
 }
 
 impl<'a, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for () {
-    fn read_from(
-        _path: &Vfs::Path,
-        _vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
+    fn read_from(_path: &Vfs::Path, _vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs> {
         Ok(())
     }
 }
 
 impl<'vfs, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for () {
-    fn write_to(
-        &self,
-        _path: &Vfs::Path,
-        _vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, _path: &Vfs::Path, _vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         Ok(())
     }
 }

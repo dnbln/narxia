@@ -45,7 +45,7 @@ use std::pin::Pin;
 use futures::AsyncSeek;
 
 use crate::error::Error;
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::error::WrapIoError;
 use crate::prelude::*;
 #[cfg(feature = "async")]
@@ -55,12 +55,11 @@ use crate::traits::sync::NewtypeToInner;
 use crate::traits::vfs;
 use crate::traits::vfs::PathType;
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
-    ReadFrom<'vfs, Vfs> for image::DynamicImage
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>> ReadFrom<'vfs, Vfs> for image::DynamicImage
 where
     Vfs::RFile: Seek,
 {
-    fn read_from(path: &P, vfs: Pin<&'vfs Vfs>) -> Result<Self, <P as PathType>::OwnedPath> {
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         image::ImageReader::new(&mut io::BufReader::new(vfs.open_read(path)?))
             .with_guessed_format()
             .wrap_io_error_with(path)?
@@ -69,12 +68,12 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
-    WriteTo<'vfs, Vfs> for (image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
+    for (image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
@@ -84,12 +83,12 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
-    WriteTo<'vfs, Vfs> for (&image::DynamicImage, image::ImageFormat)
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs>
+    for (&image::DynamicImage, image::ImageFormat)
 where
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         vfs.create_parent_dir(path)?;
         let mut f = vfs.open_write(path)?;
 
@@ -140,13 +139,12 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs, Path = P>, P: PathType + ?Sized + 'vfs, T>
-    ReadFrom<'vfs, Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs>, T> ReadFrom<'vfs, Vfs> for T
 where
     T: ImgFormat + 'vfs,
     Vfs::RFile: Seek,
 {
-    fn read_from(path: &P, vfs: Pin<&'vfs Vfs>) -> Result<Self, <P as PathType>::OwnedPath> {
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<Self, Vfs> {
         debug_assert!(
             T::FORMAT.reading_enabled(),
             "Image format {:?} does not support reading; enable the corresponding feature",
@@ -161,13 +159,12 @@ where
     }
 }
 
-impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path = P>, P: PathType + ?Sized + 'vfs, T>
-    WriteTo<'vfs, Vfs> for T
+impl<'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>, T> WriteTo<'vfs, Vfs> for T
 where
     T: ImgFormat,
     Vfs::WFile: Seek,
 {
-    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         debug_assert!(
             T::FORMAT.writing_enabled(),
             "Image format {:?} does not support writing; enable the corresponding feature",
@@ -291,12 +288,12 @@ macro_rules! img_format {
         }
 
         $(#[$cfg_meta])*
-        impl<'a, 'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs, Path=P>, P: PathType + ?Sized + 'vfs> WriteTo<'vfs, Vfs> for $writer_type<'a, Vfs>
+        impl<'a, 'vfs, Vfs: vfs::VfsWithSeekWrite<'vfs>> WriteTo<'vfs, Vfs> for $writer_type<'a, Vfs>
         where
             Vfs::WFile: Seek,
             'vfs: 'a,
         {
-            fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
+            fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
                 debug_assert!(
                     $struct_name::FORMAT.writing_enabled(),
                     "Image format {:?} does not support writing; enable the corresponding feature",

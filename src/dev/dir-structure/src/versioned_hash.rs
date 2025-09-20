@@ -15,7 +15,7 @@ use std::ops::DerefMut;
 use std::path::Path;
 use std::pin::Pin;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::async_vfs::VfsAsync;
@@ -217,10 +217,7 @@ where
     T: ReadFrom<'a, Vfs> + Hash + 'a,
     H: Hasher + Default + 'a,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath> {
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs> {
         let value = T::read_from(path, vfs)?;
         let mut hasher = H::default();
         T::hash(&value, &mut hasher);
@@ -240,11 +237,7 @@ where
     Vfs::Path: PartialEq,
     H: Hasher + Default,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         if self.path.as_ref() == path && self.is_clean() {
             return Ok(());
         }
@@ -261,13 +254,7 @@ where
     H: Hasher + Default + 'a,
 {
     type Future
-        = Pin<
-        Box<
-            dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >
+        = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>
     where
         Self: 'a;
     fn read_from_async(
@@ -305,13 +292,7 @@ where
     H: Hasher + Default + 'a,
 {
     type Future
-        = Pin<
-        Box<
-            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >
+        = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'a>>
     where
         Self: 'a;
 
@@ -341,7 +322,7 @@ where
     type Future<'f>
         = Pin<
         Box<
-            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+            dyn Future<Output = VfsResult<(), Vfs>>
                 + Send
                 + 'f,
         >,

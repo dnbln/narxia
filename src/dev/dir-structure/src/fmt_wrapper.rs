@@ -9,7 +9,7 @@ use std::pin::Pin;
 use std::str::FromStr;
 
 use crate::error::Error;
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 use crate::std_types::FileString;
 #[cfg(feature = "async")]
@@ -75,13 +75,12 @@ impl<T> NewtypeToInner for FmtWrapper<T> {
     }
 }
 
-impl<'a, T, Vfs: vfs::Vfs<'a, Path = P>, P: PathType + ?Sized + 'a> ReadFrom<'a, Vfs>
-    for FmtWrapper<T>
+impl<'a, T, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for FmtWrapper<T>
 where
     T: FromStr + 'a,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
-    fn read_from(path: &P, vfs: Pin<&'a Vfs>) -> Result<Self, <P as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -100,13 +99,7 @@ where
     T: FromStr + Send + 'static,
     T::Err: Into<Box<dyn error::Error + Send + Sync>>,
 {
-    type Future = Pin<
-        Box<
-            dyn Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<Self, Vfs>> + Send + 'a>>;
 
     fn read_from_async(
         path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
@@ -122,12 +115,11 @@ where
     }
 }
 
-impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs, Path = P>, P: PathType + ?Sized + 'vfs>
-    WriteTo<'vfs, Vfs> for FmtWrapper<T>
+impl<'vfs, T, Vfs: vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for FmtWrapper<T>
 where
     T: Display,
 {
-    fn write_to(&self, path: &P, vfs: Pin<&'vfs Vfs>) -> Result<(), <P as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         Self::from_ref_for_writer(&self.0).write_to(path, vfs)
     }
 }
@@ -218,11 +210,7 @@ where
     T: Display + ?Sized,
     'vfs: 'a,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'vfs Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> VfsResult<(), Vfs> {
         FileString::new(self.0.to_string()).write_to(path, vfs)
     }
 }

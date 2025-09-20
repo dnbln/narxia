@@ -4,7 +4,7 @@ use std::future;
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::traits::async_vfs::VfsAsync;
 use crate::traits::async_vfs::WriteSupportingVfsAsync;
 use crate::traits::vfs::PathType;
@@ -17,7 +17,7 @@ use crate::traits::vfs::VfsCore;
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
     /// The future type returned by the async read function.
-    type Future: Future<Output = Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+    type Future: Future<Output = VfsResult<Self, Vfs>>
         + Send
         + Unpin
         + 'a
@@ -40,7 +40,7 @@ pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
     /// The future type returned by the async write function.
-    type Future: Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+    type Future: Future<Output = VfsResult<(), Vfs>>
         + Send
         + Unpin
         + 'a;
@@ -63,7 +63,7 @@ pub trait WriteToAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> {
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteToAsyncRef<'r, Vfs: WriteSupportingVfsAsync + ?Sized + 'r> {
     /// The future type returned by the async write function.
-    type Future<'a>: Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
+    type Future<'a>: Future<Output = VfsResult<(), Vfs>>
         + Send
         + Unpin
         + 'a
@@ -99,7 +99,7 @@ pub trait FromRefForWriterAsync<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> 
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: VfsAsync + ?Sized + 'a> ReadFromAsync<'a, Vfs> for () {
-    type Future = future::Ready<Result<Self, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
+    type Future = future::Ready<VfsResult<Self, Vfs>>;
 
     fn read_from_async(
         _path: <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
@@ -112,7 +112,7 @@ impl<'a, Vfs: VfsAsync + ?Sized + 'a> ReadFromAsync<'a, Vfs> for () {
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: WriteSupportingVfsAsync + ?Sized + 'a> WriteToAsync<'a, Vfs> for () {
-    type Future = future::Ready<Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>;
+    type Future = future::Ready<VfsResult<(), Vfs>>;
 
     fn write_to_async(
         self,

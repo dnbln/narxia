@@ -29,7 +29,7 @@ use pin_project::pin_project;
 
 use crate::NoFilter;
 use crate::error::Error;
-use crate::error::Result;
+use crate::error::VfsResult;
 use crate::prelude::*;
 #[cfg(feature = "async")]
 use crate::traits::asy::ReadFromAsync;
@@ -313,22 +313,10 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildren<T, F, P> {
     /// ```rust
     /// use std::path::Path;
     /// use std::pin::Pin;
-    /// use dir_structure::{traits::sync::{DirStructure, DirStructureItem}, dir_children::{DirChildren, DirChild}, prelude::*};
+    /// use dir_structure::{dir_children::{DirChildren, DirChild}, prelude::*};
     ///
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct NewType(String);
-    ///
-    /// impl<'vfs, Vfs: dir_structure::traits::vfs::Vfs<'vfs>> ReadFrom<'vfs, Vfs> for NewType {
-    ///     fn read_from(path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<Self, <Vfs::Path as dir_structure::traits::vfs::PathType>::OwnedPath> {
-    ///         String::read_from(path, vfs).map(Self)
-    ///     }
-    /// }
-    ///
-    /// impl<'vfs, Vfs: dir_structure::traits::vfs::WriteSupportingVfs<'vfs>> WriteTo<'vfs, Vfs> for NewType {
-    ///     fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'vfs Vfs>) -> dir_structure::error::Result<(), <Vfs::Path as dir_structure::traits::vfs::PathType>::OwnedPath> {
-    ///         self.0.write_to(path, vfs)
-    ///     }
-    /// }
     ///
     /// let dir = DirChildren::<_, dir_structure::NoFilter>::with_children_from_iter(
     ///     vec![
@@ -878,10 +866,7 @@ where
     T: ReadFrom<'a, Vfs>,
     F: 'a,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -920,10 +905,7 @@ pub enum DirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync + 'a>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-        + Send
-        + Unpin
-        + 'a,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Send + Unpin + 'a,
 {
     Poison,
     Init(
@@ -955,12 +937,9 @@ impl<'a, T, F, Vfs: VfsAsync + 'a> Future for DirChildrenReadAsyncFuture<'a, T, 
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-        + Unpin
-        + 'static,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'static,
 {
-    type Output =
-        Result<DirChildren<T, F, Vfs::Path>, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<DirChildren<T, F, Vfs::Path>, Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1075,9 +1054,7 @@ impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs> for DirChildren<T, F, 
 where
     T: ReadFromAsync<'a, Vfs> + Send + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-        + Unpin
-        + 'static,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'static,
 {
     type Future = DirChildrenReadAsyncFuture<'a, T, F, Vfs>;
 
@@ -1095,11 +1072,7 @@ where
     T: WriteTo<'a, Vfs>,
     F: Filter<Vfs::Path>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         for child in &self.children {
             let child_path = path.join_segment(&child.file_name);
             child.value.write_to(child_path.as_ref(), vfs)?;
@@ -1116,8 +1089,7 @@ impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
+    T::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'a,
 {
     type Future = DirChildrenWriteAsyncFuture<'a, T, Vfs>;
 
@@ -1137,8 +1109,7 @@ where
 pub enum DirChildrenWriteAsyncFuture<'a, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsync<'a, Vfs>,
-    <T as WriteToAsync<'a, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin,
 {
     Poison,
     Init(
@@ -1160,10 +1131,9 @@ impl<'a, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncFuture<'a, T, Vfs>
 where
     T: WriteToAsync<'a, Vfs>,
-    <T as WriteToAsync<'a, Vfs>>::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin,
+    <T as WriteToAsync<'a, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1217,7 +1187,7 @@ where
     T: WriteToAsyncRef<'r, Vfs> + Send + Sync + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
     for<'f> <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+        Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
 {
     type Future<'a>
         = DirChildrenWriteAsyncRefFuture<'r, 'a, T, Vfs>
@@ -1246,8 +1216,7 @@ where
 pub enum DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static>
 where
     T: WriteToAsyncRef<'r, Vfs> + 'r,
-    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'r: 'f,
 {
     Poison,
@@ -1270,11 +1239,10 @@ impl<'r, 'f, T, Vfs: WriteSupportingVfsAsync + 'static> Future
     for DirChildrenWriteAsyncRefFuture<'r, 'f, T, Vfs>
 where
     T: WriteToAsyncRef<'r, Vfs>,
-    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'f,
+    <T as WriteToAsyncRef<'r, Vfs>>::Future<'f>: Future<Output = VfsResult<(), Vfs>> + Unpin + 'f,
     'r: 'f,
 {
-    type Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>;
+    type Output = VfsResult<(), Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project_replace(Self::Poison);
@@ -1776,10 +1744,7 @@ where
     T: ReadFrom<'a, Vfs>,
     F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -1806,11 +1771,7 @@ impl<'a, T, F: Filter<Vfs::Path>, Vfs: vfs::WriteSupportingVfs<'a>> WriteTo<'a, 
 where
     T: WriteTo<'a, Vfs>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         let child_path = path.join_segment(&self.file_name);
         self.value.write_to(child_path.as_ref(), vfs)
     }
@@ -2391,10 +2352,7 @@ where
     T: ReadFrom<'a, Vfs>,
     F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -2424,11 +2382,7 @@ where
     T: WriteTo<'a, Vfs>,
     F: Filter<Vfs::Path>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         match self {
             DirChildSingleOpt::Some(child) => child.write_to(path, vfs),
             DirChildSingleOpt::None => Ok(()),
@@ -2576,10 +2530,7 @@ where
     T: ReadFrom<'a, Vfs>,
     F: Filter<Vfs::Path> + 'a,
 {
-    fn read_from(
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<Self, <Vfs::Path as PathType>::OwnedPath>
+    fn read_from(path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<Self, Vfs>
     where
         Self: Sized,
     {
@@ -2594,11 +2545,7 @@ where
     T: WriteTo<'a, Vfs>,
     F: Filter<Vfs::Path>,
 {
-    fn write_to(
-        &self,
-        path: &Vfs::Path,
-        vfs: Pin<&'a Vfs>,
-    ) -> Result<(), <Vfs::Path as PathType>::OwnedPath> {
+    fn write_to(&self, path: &Vfs::Path, vfs: Pin<&'a Vfs>) -> VfsResult<(), Vfs> {
         vfs.create_dir_all(path)?;
 
         self.children.write_to(path, vfs)
@@ -2612,8 +2559,7 @@ pub struct ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs: VfsAsync>
 where
     T: ReadFromAsync<'a, Vfs> + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future:
-        Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Send + Unpin,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Send + Unpin,
 {
     #[pin]
     inner: DirChildrenReadAsyncFuture<'a, T, F, Vfs>,
@@ -2625,14 +2571,9 @@ impl<'a, T, F, Vfs: VfsAsync> Future for ForceCreateDirChildrenReadAsyncFuture<'
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter<Vfs::Path> + Send + 'static,
-    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-        + Unpin
-        + 'static,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'static,
 {
-    type Output = Result<
-        ForceCreateDirChildren<T, F, Vfs::Path>,
-        <<Vfs as VfsCore>::Path as PathType>::OwnedPath,
-    >;
+    type Output = VfsResult<ForceCreateDirChildren<T, F, Vfs::Path>, Vfs>;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.as_mut().project();
@@ -2652,9 +2593,7 @@ impl<'a, T, F, Vfs: VfsAsync + 'a> ReadFromAsync<'a, Vfs>
 where
     T: ReadFromAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter<Vfs::Path> + Send + Sync + 'static,
-    T::Future: Future<Output = Result<T, <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-        + Unpin
-        + 'static,
+    T::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'static,
 {
     type Future = ForceCreateDirChildrenReadAsyncFuture<'a, T, F, Vfs>;
 
@@ -2675,16 +2614,9 @@ impl<'a, T, F, Vfs: WriteSupportingVfsAsync + 'static> WriteToAsync<'a, Vfs>
 where
     T: WriteToAsync<'a, Vfs> + Send + Sync + 'static,
     F: Filter<Vfs::Path> + Send + Sync + 'static,
-    T::Future:
-        Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>> + Unpin + 'a,
+    T::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'a,
 {
-    type Future = Pin<
-        Box<
-            dyn Future<Output = Result<(), <<Vfs as VfsCore>::Path as PathType>::OwnedPath>>
-                + Send
-                + 'a,
-        >,
-    >;
+    type Future = Pin<Box<dyn Future<Output = VfsResult<(), Vfs>> + Send + 'a>>;
 
     fn write_to_async(
         self,
