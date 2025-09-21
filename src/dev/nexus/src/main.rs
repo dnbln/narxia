@@ -172,10 +172,10 @@ impl fmt::Display for SnapshotsTestMode {
     }
 }
 
-fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
+async fn run_app(app: App, cx: &mut NexusContext<'_>) -> NexusR {
     match app {
         App::Build(cmd) => {
-            cmd.run(cx)?;
+            cmd.run(cx).await?;
         }
         App::Test {
             test_filter,
@@ -209,7 +209,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     sys: SysTarget::Host,
                     llvm_link_behavior,
                 }
-                .run(&cx.llvm_manager, &mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))
+                .await?
             };
             let mut item = cx.new_child("Test");
             let test_count = if count_tests {
@@ -285,7 +286,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     sys: SysTarget::Host,
                     llvm_link_behavior,
                 }
-                .run(&cx.llvm_manager, &mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))
+                .await?
             };
 
             let (llvm_k, llvm_v) = bins.llvm.unwrap().to_env();
@@ -340,7 +342,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     sys: SysTarget::Host,
                     llvm_link_behavior,
                 }
-                .run(&cx.llvm_manager, &mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))
+                .await?
             };
 
             let run_compiler_bins = RunCompilerBins::compile_from(&bins);
@@ -381,7 +384,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
                     },
                     llvm_link_behavior,
                 }
-                .run(&cx.llvm_manager, &mut item, Some(bp))?
+                .run(&cx.llvm_manager, &mut item, Some(bp))
+                .await?
             };
 
             let build_distrib_bins = BuildDistribsBins::compile_from(&bins);
@@ -396,7 +400,8 @@ fn run_app(app: App, cx: &mut NexusContext) -> NexusR {
     Ok(())
 }
 
-fn main() -> NexusR {
+#[tokio::main]
+async fn main() -> NexusR {
     narxia_log_impl::init();
 
     let color_config = match env::var("COLOR") {
@@ -441,7 +446,7 @@ fn main() -> NexusR {
 
     let app = App::parse();
 
-    let r = run_app(app, &mut cx);
+    let r = run_app(app, &mut cx).await;
 
     match r {
         Ok(()) => cx.done(format!("elapsed {}", NexusDuration::since(start))),

@@ -1899,9 +1899,9 @@ checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
 name = "llvm-sys"
-version = "201.0.1"
+version = "211.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bb947e8b79254ca10d496d0798a9ba1287dcf68e50a92b016fec1cc45bef447"
+checksum = "108b3ad2b2eaf2a561fc74196273b20e3436e4a688b8b44e250d83974dc1b2e2"
 dependencies = [
  "anyhow",
  "cc",
@@ -2340,6 +2340,7 @@ checksum = "d906846a98739ed9d73d66e62c2641eef8321f1734b7a1156ab045a0248fb2b3"
 name = "nexus"
 version = "0.0.0"
 dependencies = [
+ "bytes 1.10.1",
  "cargo_metadata",
  "clap",
  "dir-structure",

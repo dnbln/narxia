@@ -7,6 +7,7 @@ use std::fmt::Write as _;
 use std::fs;
 use std::io;
 use std::io::BufRead;
+use std::io::Cursor;
 use std::io::Read;
 use std::io::Seek;
 use std::io::Write;
@@ -18,6 +19,7 @@ use std::thread;
 use std::time::Instant;
 
 use bin_context::NexusContext;
+use bytes::Bytes;
 use cargo_interface::BuildCmdBuildingProgress;
 use cargo_interface::BuildTarget;
 use cargo_interface::LintConfig;
@@ -54,9 +56,7 @@ use narxia_workspace::ssa_tests::SsaTestSingleFolder;
 use narxia_workspace::ws_root;
 use prodash::tree::Item;
 use prodash::unit;
-use reqwest::blocking;
 use tokio::process::Child;
-use tokio::runtime;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -134,118 +134,106 @@ pub enum BuildSysCmd {
 }
 
 impl BuildSysCmd {
-    pub fn run(self, cx: &mut NexusContext) -> NexusR {
-        runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .into_diagnostic()?
-            .block_on(async move {
-                match self {
-                    Self::Build(cmd) => {
-                        let mut item = cx.new_child("Build");
-                        let bp = BuildCmdBuildingProgress::new(
-                            item.add_child("Build progress"),
-                            Instant::now(),
-                        );
-                        cmd.run(&cx.llvm_manager, &mut item, Some(bp))?;
+    pub async fn run(self, cx: &mut NexusContext<'_>) -> NexusR {
+        match self {
+            Self::Build(cmd) => {
+                let mut item = cx.new_child("Build");
+                let bp =
+                    BuildCmdBuildingProgress::new(item.add_child("Build progress"), Instant::now());
+                cmd.run(&cx.llvm_manager, &mut item, Some(bp)).await?;
+            }
+            Self::CollectParserTests => {
+                let mut item = cx.new_child("collect parser tests");
+                collect_tests_from_source::<ParserTestSingleFolder<FsVfs>>(
+                    cx.ws.compiler_crate_mut("narxia-syn"),
+                    "// parser-test:",
+                    &mut item,
+                )?;
+            }
+            Self::CollectNameResolutionTests => {
+                let mut item = cx.new_child("collect name resolution tests");
+                collect_tests_from_source::<NameResolutionTestSingleFolder<FsVfs>>(
+                    cx.ws.compiler_crate_mut("narxia-hir-typechk"),
+                    "// name-resolution-test:",
+                    &mut item,
+                )?;
+            }
+            Self::CollectSSATests => {
+                let mut item = cx.new_child("collect ssa tests");
+                collect_tests_from_source::<SsaTestSingleFolder<FsVfs>>(
+                    cx.ws.compiler_crate_mut("narxia-ssa-lower"),
+                    "// ssa-test:",
+                    &mut item,
+                )?;
+            }
+            Self::Lint { fix } => {
+                let bins = {
+                    let mut item = cx.new_child("Build");
+                    let bp = BuildCmdBuildingProgress::new(
+                        item.add_child("Build progress"),
+                        Instant::now(),
+                    );
+                    BuildI {
+                        targets: vec![Target::LLVM],
+                        profile: Profile::Dev,
+                        sys: SysTarget::Host,
+                        llvm_link_behavior: LLVMLinkBehavior::PreferDynamic,
                     }
-                    Self::CollectParserTests => {
-                        let mut item = cx.new_child("collect parser tests");
-                        collect_tests_from_source::<ParserTestSingleFolder<FsVfs>>(
-                            cx.ws.compiler_crate_mut("narxia-syn"),
-                            "// parser-test:",
-                            &mut item,
-                        )?;
-                    }
-                    Self::CollectNameResolutionTests => {
-                        let mut item = cx.new_child("collect name resolution tests");
-                        collect_tests_from_source::<NameResolutionTestSingleFolder<FsVfs>>(
-                            cx.ws.compiler_crate_mut("narxia-hir-typechk"),
-                            "// name-resolution-test:",
-                            &mut item,
-                        )?;
-                    }
-                    Self::CollectSSATests => {
-                        let mut item = cx.new_child("collect ssa tests");
-                        collect_tests_from_source::<SsaTestSingleFolder<FsVfs>>(
-                            cx.ws.compiler_crate_mut("narxia-ssa-lower"),
-                            "// ssa-test:",
-                            &mut item,
-                        )?;
-                    }
-                    Self::Lint { fix } => {
-                        let bins = {
-                            let mut item = cx.new_child("Build");
-                            let bp = BuildCmdBuildingProgress::new(
-                                item.add_child("Build progress"),
-                                Instant::now(),
-                            );
-                            BuildI {
-                                targets: vec![Target::LLVM],
-                                profile: Profile::Dev,
-                                sys: SysTarget::Host,
-                                llvm_link_behavior: LLVMLinkBehavior::PreferDynamic,
-                            }
-                            .run(
-                                &cx.llvm_manager,
-                                &mut item,
-                                Some(bp),
-                            )?
-                        };
-                        let (llvm_k, llvm_v) = bins.llvm.as_ref().unwrap().to_env();
-                        let mut item = cx.new_child("Lint");
-                        cargo_interface::Lint::new(LintConfig { use_ansi: true })
-                            .fix(fix)
-                            .env(llvm_k, llvm_v)
-                            .run(&mut item)?;
-                    }
-                    Self::Format { check } => {
-                        let mut item = cx.new_child("Format");
-                        cargo_interface::Format::new().check(check).run(&mut item)?;
-                    }
+                    .run(&cx.llvm_manager, &mut item, Some(bp))
+                    .await?
+                };
+                let (llvm_k, llvm_v) = bins.llvm.as_ref().unwrap().to_env();
+                let mut item = cx.new_child("Lint");
+                cargo_interface::Lint::new(LintConfig { use_ansi: true })
+                    .fix(fix)
+                    .env(llvm_k, llvm_v)
+                    .run(&mut item)?;
+            }
+            Self::Format { check } => {
+                let mut item = cx.new_child("Format");
+                cargo_interface::Format::new().check(check).run(&mut item)?;
+            }
 
-                    Self::BuildDocs { cname } => {
-                        let mut item = cx.new_child("Build docs");
-                        build_docs(&mut item, &cname)?;
-                    }
+            Self::BuildDocs { cname } => {
+                let mut item = cx.new_child("Build docs");
+                build_docs(&mut item, &cname)?;
+            }
 
-                    Self::DocPatchupRustdocs { check } => {
-                        let mut child = None;
-                        let session = create_doc_extract_session(&mut child).await?;
-                        let mut item = cx.new_child("Doc patchup");
-                        doc_patchup(check, cx, &mut item, &session).await?;
-                    }
+            Self::DocPatchupRustdocs { check } => {
+                let mut child = None;
+                let session = create_doc_extract_session(&mut child).await?;
+                let mut item = cx.new_child("Doc patchup");
+                doc_patchup(check, cx, &mut item, &session).await?;
+            }
 
-                    Self::PatchGuideStep { guide, step } => {
-                        let mut child = None;
-                        let session = create_doc_extract_session(&mut child).await?;
-                        let step = StepRef::new(step);
-                        let mut item = cx.new_child("Patch guide");
-                        patch_guide(&guide, &step, &mut item, &session).await?;
-                    }
+            Self::PatchGuideStep { guide, step } => {
+                let mut child = None;
+                let session = create_doc_extract_session(&mut child).await?;
+                let step = StepRef::new(step);
+                let mut item = cx.new_child("Patch guide");
+                patch_guide(&guide, &step, &mut item, &session).await?;
+            }
 
-                    Self::RenderGuide {
-                        guide,
-                        out: output,
-                        check,
-                    } => {
-                        let mut child = None;
-                        let session = create_doc_extract_session(&mut child).await?;
-                        let mut item = cx.new_child("Render guide");
-                        let g = Guide::read(&guide)
-                            .into_diagnostic()
-                            .wrap_err("Failed to read guide")?;
-                        render_guide(&g, &guide, output.as_deref(), check, &mut item, &session)
-                            .await?;
-                    }
+            Self::RenderGuide {
+                guide,
+                out: output,
+                check,
+            } => {
+                let mut child = None;
+                let session = create_doc_extract_session(&mut child).await?;
+                let mut item = cx.new_child("Render guide");
+                let g = Guide::read(&guide)
+                    .into_diagnostic()
+                    .wrap_err("Failed to read guide")?;
+                render_guide(&g, &guide, output.as_deref(), check, &mut item, &session).await?;
+            }
 
-                    Self::RunDocExtractDaemon => {
-                        SessionWrapper::run_server().await?;
-                    }
-                }
+            Self::RunDocExtractDaemon => {
+                SessionWrapper::run_server().await?;
+            }
+        }
 
-                Ok(())
-            })
+        Ok(())
     }
 }
 
@@ -597,7 +585,7 @@ impl ProfileDeterminer {
 }
 
 impl BuildCmd {
-    pub fn run(
+    pub async fn run(
         self,
         llvm_manager: &LLVMManager,
         item: &mut Item,
@@ -612,7 +600,8 @@ impl BuildCmd {
                 .llvm_link_behavior
                 .unwrap_or_else(|| profile.default_llvm_link_behavior()),
         }
-        .run(llvm_manager, item, build_progress)?;
+        .run(llvm_manager, item, build_progress)
+        .await?;
 
         Ok(())
     }
@@ -670,7 +659,7 @@ struct DownloadAndDecompressTarXz {
 }
 
 impl DownloadAndDecompressTarXz {
-    fn run(&mut self) -> NexusR {
+    async fn run(&mut self) -> NexusR {
         if self.destination_path.exists() {
             self.item.done("Already downloaded and unpacked");
             return Ok(());
@@ -691,7 +680,8 @@ impl DownloadAndDecompressTarXz {
 
         let mut download_item = self.item.add_child("Download");
         let mut decompress_item = self.item.add_child("Decompress");
-        let resp = blocking::get(&self.url)
+        let resp = reqwest::get(&self.url)
+            .await
             .into_diagnostic()?
             .error_for_status()
             .into_diagnostic()?;
@@ -727,7 +717,7 @@ impl DownloadAndDecompressTarXz {
             download_item: &'i Item,
             download_file: Option<&'i mut fs::File>,
             total: usize,
-            resp: blocking::Response,
+            resp: Cursor<Bytes>,
         }
 
         impl Read for Reader<'_> {
@@ -745,6 +735,8 @@ impl DownloadAndDecompressTarXz {
             }
         }
 
+        let response_body = resp.bytes().await.into_diagnostic()?;
+
         let mut a = tar::Archive::new(DecompressReader {
             decompress_item: &decompress_item,
             total: 0,
@@ -752,7 +744,7 @@ impl DownloadAndDecompressTarXz {
                 download_item: &download_item,
                 download_file: download_file.as_mut(),
                 total: 0,
-                resp,
+                resp: Cursor::new(response_body),
             }),
         });
 
@@ -852,7 +844,7 @@ impl LLVMManager {
             .join(format!("llvm-{version}.install"))
     }
 
-    fn download_llvm_src(&self, item: &mut Item, version: &LLVMVersion) -> NexusR<PathBuf> {
+    async fn download_llvm_src(&self, item: &mut Item, version: &LLVMVersion) -> NexusR<PathBuf> {
         let item = item.add_child("Download::LLVM");
         let download_path = self.download_path(version);
         let src_path = self.src_path(version);
@@ -879,7 +871,8 @@ impl LLVMManager {
             download_to: Some(download_path.clone()),
             destination_path: src_path.clone(),
         }
-        .run()?;
+        .run()
+        .await?;
 
         self.perform_renames(version)?;
 
@@ -1048,7 +1041,7 @@ impl LLVMManager {
     }
 }
 
-fn build_llvm(
+async fn build_llvm(
     llvm_manager: &LLVMManager,
     item: &mut Item,
     build_progress: Option<BuildCmdBuildingProgress>,
@@ -1059,9 +1052,9 @@ fn build_llvm(
         .map(|bp| bp.make_progress_lock("Build::LLVM".to_owned(), Instant::now()))
         .transpose()?;
     let version = LLVMVersion {
-        major: 20,
+        major: 21,
         minor: 1,
-        patch: 5,
+        patch: 1,
         extra: None,
     };
     if llvm_manager.check_install(&version) {
@@ -1069,7 +1062,7 @@ fn build_llvm(
         return Ok(llvm_manager.llvm_prefix_info(&version));
     }
 
-    let src_path = llvm_manager.download_llvm_src(&mut item, &version)?;
+    let src_path = llvm_manager.download_llvm_src(&mut item, &version).await?;
     let _ = llvm_manager.compile_llvm(&mut item, &version, &src_path)?;
     let llvm_prefix = llvm_manager.llvm_prefix_info(&version);
     drop(progress_lock);
@@ -1173,7 +1166,7 @@ pub struct BuildI {
 }
 
 impl BuildI {
-    pub fn run(
+    pub async fn run(
         mut self,
         llvm_manager: &LLVMManager,
         item: &mut Item,
@@ -1206,7 +1199,7 @@ impl BuildI {
         for target in self.targets {
             match target {
                 Target::LLVM => {
-                    bins.llvm = Some(build_llvm(llvm_manager, item, build_progress.clone())?);
+                    bins.llvm = Some(build_llvm(llvm_manager, item, build_progress.clone()).await?);
                 }
                 Target::Compiler => {
                     bins.compiler = Some(build_compiler(

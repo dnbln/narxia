@@ -55,6 +55,7 @@ git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
 bumpalo = "3.6.0"
+bytes = "1.4.0"
 cargo_metadata = "0.19.1"
 nextest-metadata = "0.12.1"
 clap = { version = "4.4.3", features = ["derive"] }
@@ -69,7 +70,7 @@ humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
 libtest-mimic = "0.8.1"
-llvm-sys = { version = "201.0.0", default-features = false }
+llvm-sys = { version = "211.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"

@@ -12,6 +12,7 @@ keywords.workspace = true
 workspace = true
 
 [dependencies]
+bytes.workspace = true
 cargo_metadata.workspace = true
 clap.workspace = true
 humantime.workspace = true
