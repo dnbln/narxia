@@ -11,6 +11,7 @@ env:
   COLOR: always
   NEXUS_GROUP_BEGIN: "::group::{group}"
   NEXUS_GROUP_END: "::endgroup::"
+  RUST_BACKTRACE: full
 
 jobs:
   # Build job

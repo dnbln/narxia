@@ -13,6 +13,7 @@ env:
   NEXUS_GROUP_END: "::endgroup::"
   CC: clang
   CXX: clang++
+  RUST_BACKTRACE: full
 
 jobs:
   build:
