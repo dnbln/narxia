@@ -15,7 +15,7 @@ use crate::traits::vfs::VfsCore;
 /// `async` version of [`ReadFrom`](crate::traits::sync::ReadFrom).
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
-pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized {
+pub trait ReadFromAsync<'a, Vfs: VfsAsync + ?Sized + 'a>: Sized + 'a {
     /// The future type returned by the async read function.
     type Future: Future<Output = VfsResult<Self, Vfs>> + Send + Unpin + 'a
     where

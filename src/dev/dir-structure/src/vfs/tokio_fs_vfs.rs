@@ -515,3 +515,68 @@ mod imp {
         }
     }
 }
+
+#[cfg(feature = "tools-atomic-dir")]
+mod atomic_dir_imp {
+    //! The [`VfsSupportsTemporaryDirectoriesAsync`] implementation for the [`TokioFsVfs`] file system.
+
+    use super::*;
+    use crate::atomic_dir::TempDirApiAsync;
+    use crate::atomic_dir::VfsSupportsTemporaryDirectoriesAsync;
+    use crate::error::Error;
+    use crate::error::VfsResult;
+    use crate::vfs::fs_vfs as std_fs_vfs;
+
+    /// A temporary directory in the real file system.
+    pub struct TempDir(PathBuf);
+
+    impl<'vfs> TempDirApiAsync<'vfs> for TempDir {
+        type Vfs = TokioFsVfs;
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+
+        type FuturePersistAt =
+            Pin<Box<dyn Future<Output = VfsResult<(), Self::Vfs>> + Send + 'vfs>>;
+
+        type FutureDelete = <TokioFsVfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'vfs>;
+
+        fn persist_at(
+            self,
+            vfs: Pin<&'vfs Self::Vfs>,
+            path: <<Self::Vfs as VfsCore>::Path as PathType>::OwnedPath,
+        ) -> Self::FuturePersistAt {
+            Box::pin(async move {
+                vfs.create_parent_dir(path.clone()).await?;
+                tokio::fs::rename(&self.0, &path)
+                    .await
+                    .map_err(|e| Error::Io(path.clone(), e))?;
+                Ok(())
+            })
+        }
+
+        fn delete(self, vfs: Pin<&'vfs Self::Vfs>) -> Self::FutureDelete {
+            vfs.remove_dir_all(self.0.clone())
+        }
+    }
+
+    impl<'vfs> VfsSupportsTemporaryDirectoriesAsync<'vfs> for TokioFsVfs {
+        type TemporaryDirectory = TempDir;
+
+        type TemporaryDirectoryFuture =
+            Pin<Box<dyn Future<Output = VfsResult<TempDir, Self>> + Send + 'vfs>>;
+
+        fn create_temporary_directory(self: Pin<&'vfs Self>) -> Self::TemporaryDirectoryFuture {
+            let temp_dir = std_fs_vfs::atomic_dir_imp::make_new_temp_dir_path();
+            let path = temp_dir.clone();
+            Box::pin(async move {
+                if self.exists(path.clone()).await? {
+                    self.remove_dir_all(path.clone()).await?;
+                }
+                self.create_dir(path.clone()).await?;
+                Ok(TempDir(temp_dir))
+            })
+        }
+    }
+}

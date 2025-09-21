@@ -6,7 +6,10 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::atomic::AtomicU64;
 
+use crate::atomic_dir::TempDirApi;
+use crate::atomic_dir::VfsSupportsTemporaryDirectories;
 use crate::error::Result;
 use crate::error::VfsResult;
 use crate::error::WrapIoError;
@@ -129,5 +132,79 @@ mod imp {
                 )
             })
         }
+    }
+}
+
+#[cfg(feature = "tools-atomic-dir")]
+pub(crate) mod atomic_dir_imp {
+    //! The [`VfsSupportsTemporaryDirectories`] implementation for the [`FsVfs`] file system.
+
+    use super::*;
+
+    /// A temporary directory in the real file system.
+    pub struct TempDir(PathBuf);
+
+    impl<'vfs> TempDirApi<'vfs> for TempDir {
+        type Vfs = FsVfs;
+
+        fn path(&self) -> &<Self::Vfs as VfsCore>::Path {
+            &self.0
+        }
+
+        fn persist_at(
+            self,
+            vfs: Pin<&'vfs Self::Vfs>,
+            path: &<Self::Vfs as VfsCore>::Path,
+        ) -> VfsResult<(), Self::Vfs> {
+            vfs.create_parent_dir(path)?;
+            std::fs::rename(&self.0, path).wrap_io_error_with(path)?;
+            // do not run the Drop impl, as we already moved the directory
+            std::mem::forget(self);
+            Ok(())
+        }
+
+        fn delete(self, vfs: Pin<&'vfs Self::Vfs>) -> VfsResult<(), Self::Vfs> {
+            vfs.remove_dir_all(&self.0)?;
+            // do not run the Drop impl, as we already deleted the directory
+            std::mem::forget(self);
+            Ok(())
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    pub(crate) static FS_TEMP_DIR_ID: AtomicU64 = AtomicU64::new(0);
+
+    impl<'vfs> VfsSupportsTemporaryDirectories<'vfs> for FsVfs {
+        type TemporaryDirectory = TempDir;
+
+        fn create_temporary_directory(
+            self: Pin<&'vfs Self>,
+        ) -> VfsResult<Self::TemporaryDirectory, Self> {
+            let temp_dir = make_new_temp_dir_path();
+            // if the temp dir already exists, remove it first
+            // this is safe, because the name contains the process id,
+            // so it's impossible for another process to be using it.
+            //
+            // unless the user manually created a directory with that name,
+            // which is highly highly unlikely.
+            if self.exists(&temp_dir)? {
+                self.remove_dir_all(&temp_dir)?;
+            }
+            self.create_dir(&temp_dir)?;
+            Ok(TempDir(temp_dir))
+        }
+    }
+
+    pub fn make_new_temp_dir_path() -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "__rust_dir_structure_temp_{}_{}",
+            std::process::id(),
+            FS_TEMP_DIR_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+        ))
     }
 }

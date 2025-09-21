@@ -156,6 +156,8 @@ pub mod prelude {
     pub use crate::traits::vfs::WriteSupportingVfsExt;
 }
 
+#[cfg(feature = "tools-atomic-dir")]
+pub mod atomic_dir;
 #[cfg(feature = "tools-clean-dir")]
 pub mod clean_dir;
 #[cfg(feature = "tools-data-formats")]
