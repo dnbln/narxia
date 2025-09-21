@@ -1,0 +1,14 @@
+name: Test dir structure
+description: Test the dir-structure crate with various feature combinations
+
+inputs:
+  feature-combos:
+    description: Feature combinations to test
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run tests
+      run: cargo test -p dir-structure ${{ inputs.feature-combos }} -- --test-threads=1
+      shell: bash

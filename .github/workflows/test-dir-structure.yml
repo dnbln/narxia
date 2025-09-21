@@ -36,43 +36,6 @@ jobs:
   test:
     name: Test dir-structure
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        feature-combos: [
-            "--no-default-features",
-            "--no-default-features --features assert_eq",
-            "--no-default-features --features git",
-            "--no-default-features --features async",
-            "--no-default-features --features tokio",
-            "--no-default-features --features image",
-            "--no-default-features --features image,image-format-png",
-            "--no-default-features --features image,image-format-jpeg",
-            "--no-default-features --features resolve-path",
-            "--no-default-features --features json",
-            "--no-default-features --features toml",
-            "--no-default-features --features yaml",
-            "--no-default-features --features ron",
-            "--no-default-features --features include_dir",
-            "--no-default-features --features derive",
-            "--no-default-features --features tools",
-            "--features assert_eq",
-            "--features assert_eq,git",
-            "--features assert_eq,async",
-            "--features assert_eq,tokio",
-            "--features assert_eq,image",
-            "--features assert_eq,image,image-format-png",
-            "--features assert_eq,async,image",
-            "--features assert_eq,tokio,image",
-            "--features assert_eq,tokio,image,image-format-png",
-            "--features assert_eq,resolve-path",
-            "--features assert_eq,tokio,resolve-path",
-            "--features assert_eq,json,toml,yaml,ron",
-            "--features assert_eq,async,json,toml,yaml,ron",
-            "--features assert_eq,tokio,json,toml,yaml,ron",
-            "--features assert_eq,include_dir",
-            "--all-features",
-        ]
-        cmd: [ "build", "test" ]
 
     steps:
       - uses: actions/checkout@v4
@@ -82,12 +45,101 @@ jobs:
         run: rustup install nightly && rustup default nightly
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          save-if: ${{ matrix.feature-combos == '--all-features' && matrix.cmd == 'test' }}
-      - name: Build dir-structure
-        run: cargo build -p dir-structure ${{ matrix.feature-combos }}
-        if: matrix.cmd == 'build'
 
       - name: Run tests
-        run: cargo test -p dir-structure ${{ matrix.feature-combos }} -- --test-threads=1
-        if: matrix.cmd == 'test'
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--all-features" }
+      - name: Run feature-combo tests (--no-default-features)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features" }
+      - name: Run feature-combo tests (--no-default-features --features assert_eq)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features assert_eq" }
+      - name: Run feature-combo tests (--no-default-features --features git)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features git" }
+      - name: Run feature-combo tests (--no-default-features --features async)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features async" }
+      - name: Run feature-combo tests (--no-default-features --features tokio)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tokio" }
+      - name: Run feature-combo tests (--no-default-features --features image)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image" }
+      - name: Run feature-combo tests (--no-default-features --features image,image-format-png)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image,image-format-png" }
+      - name: Run feature-combo tests (--no-default-features --features image,image-format-jpeg)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image,image-format-jpeg" }
+      - name: Run feature-combo tests (--no-default-features --features resolve-path)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features resolve-path" }
+      - name: Run feature-combo tests (--no-default-features --features json)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features json" }
+      - name: Run feature-combo tests (--no-default-features --features toml)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features toml" }
+      - name: Run feature-combo tests (--no-default-features --features yaml)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features yaml" }
+      - name: Run feature-combo tests (--no-default-features --features ron)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features ron" }
+      - name: Run feature-combo tests (--no-default-features --features include_dir)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features include_dir" }
+      - name: Run feature-combo tests (--no-default-features --features derive)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features derive" }
+      - name: Run feature-combo tests (--no-default-features --features tools)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tools" }
+      - name: Run feature-combo tests (--features assert_eq)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq" }
+      - name: Run feature-combo tests (--features assert_eq,git)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,git" }
+      - name: Run feature-combo tests (--features assert_eq,async)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async" }
+      - name: Run feature-combo tests (--features assert_eq,tokio)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio" }
+      - name: Run feature-combo tests (--features assert_eq,image)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,image" }
+      - name: Run feature-combo tests (--features assert_eq,image,image-format-png)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,image,image-format-png" }
+      - name: Run feature-combo tests (--features assert_eq,async,image)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async,image" }
+      - name: Run feature-combo tests (--features assert_eq,tokio,image)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,image" }
+      - name: Run feature-combo tests (--features assert_eq,tokio,image,image-format-png)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,image,image-format-png" }
+      - name: Run feature-combo tests (--features assert_eq,resolve-path)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,resolve-path" }
+      - name: Run feature-combo tests (--features assert_eq,tokio,resolve-path)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,resolve-path" }
+      - name: Run feature-combo tests (--features assert_eq,json,toml,yaml,ron)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,json,toml,yaml,ron" }
+      - name: Run feature-combo tests (--features assert_eq,async,json,toml,yaml,ron)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async,json,toml,yaml,ron" }
+      - name: Run feature-combo tests (--features assert_eq,tokio,json,toml,yaml,ron)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,json,toml,yaml,ron" }
+      - name: Run feature-combo tests (--features assert_eq,include_dir)
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,include_dir" }
+      
