@@ -6,10 +6,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::atomic::AtomicU64;
 
-use crate::atomic_dir::TempDirApi;
-use crate::atomic_dir::VfsSupportsTemporaryDirectories;
 use crate::error::Result;
 use crate::error::VfsResult;
 use crate::error::WrapIoError;
@@ -139,7 +136,11 @@ mod imp {
 pub(crate) mod atomic_dir_imp {
     //! The [`VfsSupportsTemporaryDirectories`] implementation for the [`FsVfs`] file system.
 
+    use std::sync::atomic::AtomicU64;
+
     use super::*;
+    use crate::atomic_dir::TempDirApi;
+    use crate::atomic_dir::VfsSupportsTemporaryDirectories;
 
     /// A temporary directory in the real file system.
     pub struct TempDir(PathBuf);
