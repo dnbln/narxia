@@ -1889,7 +1889,7 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildSingle<T, F, P> {
 
     /// Converts &mut [`DirChildSingle`]<T, F> to [`DirChildSingle`]<&mut T, F>.
     ///
-    /// This clones the [`OsString`] and [`PathBuf`] used for the name and path.
+    /// This clones the [`OsString`](std::ffi::OsString) and [`PathBuf`](std::path::PathBuf) used for the name and path.
     ///
     /// # Examples
     ///
@@ -2140,7 +2140,7 @@ impl<T, F: Filter<P>, P: PathType + ?Sized> DirChildSingleOpt<T, F, P> {
 
     /// Converts a &mut [`DirChildSingleOpt`]<T, F> into a [`DirChildSingleOpt`]<&mut T, F>.
     ///
-    /// This clones the internal [`OsString`] and [`PathBuf`]` used for the name and path.
+    /// This clones the internal [`OsString`](std::ffi::OsString) and [`PathBuf`](std::path::PathBuf) used for the name and path.
     ///
     /// # Examples
     ///

@@ -31,7 +31,7 @@ use crate::traits::vfs::VfsCore;
 /// You can use any hasher that implements [`std::hash::Hasher`] and [`std::default::Default`].
 /// By default, it uses [`std::collections::hash_map::DefaultHasher`].
 ///
-/// To access the inner value, you can use [`Deref`](std::ops::Deref) / [`DerefMut`](std::ops::DerefMut)
+/// To access the inner value, you can use [`Deref`] / [`DerefMut`]
 /// or the [`into_inner`](VersionedHash::into_inner) method.
 ///
 /// # Examples
@@ -57,7 +57,7 @@ pub struct VersionedHash<T: Hash, P: PathType + ?Sized = Path, H: Hasher + Defau
 }
 
 impl<T: Hash, P: PathType + ?Sized, H: Hasher + Default> VersionedHash<T, P, H> {
-    /// Get the inner value. You can also use [`Deref`](std::ops::Deref) / [`DerefMut`](std::ops::DerefMut)
+    /// Get the inner value. You can also use [`Deref`] / [`DerefMut`]
     /// to get references to the inner value.
     ///
     /// # Examples

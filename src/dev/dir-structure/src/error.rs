@@ -73,7 +73,7 @@ mod sealed {
     impl<T> Sealed for io::Result<T> {}
 }
 
-/// A trait for wrapping IO errors with the path where they happened, turning [`std::io::Result`]s into [`crate::Result`]s.
+/// A trait for wrapping IO errors with the path where they happened, turning [`std::io::Result`]s into [`crate::error::Result`]s.
 pub trait WrapIoError<PathType: vfs::PathType + ?Sized>: Sized + sealed::Sealed {
     /// The inner type.
     type Output;

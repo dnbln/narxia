@@ -206,7 +206,7 @@ pub(crate) mod atomic_dir_imp {
         }
     }
 
-    pub fn make_new_temp_dir_path() -> PathBuf {
+    pub(crate) fn make_new_temp_dir_path() -> PathBuf {
         env::temp_dir().join(format!(
             "__rust_dir_structure_temp_{}_{}",
             process::id(),

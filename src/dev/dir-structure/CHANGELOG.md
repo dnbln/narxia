@@ -1,5 +1,12 @@
 # Unreleased
 
+## New features
+
+`AtomicDir<T>`: A new wrapper type that allows for atomic writes of directory structures.
+When writing, it will first write the contents to a temporary directory, and then rename the
+temporary directory to the target directory. If writing the contents to the temporary directory
+fails, the original directory is left untouched, and the temporary directory is deleted.
+
 ## Other changes
 
 - Changed the image async pipeline to use the new traits `ReadImageFromAsync`, `WriteImageToAsync`, and `WriteImageToAsyncRef`.

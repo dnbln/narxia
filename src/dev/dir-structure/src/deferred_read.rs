@@ -43,6 +43,8 @@ use crate::vfs::fs_vfs;
 /// which will read the file and return the value.
 ///
 /// See the [`DeferredRead::perform_read`] method for more details.
+/// 
+/// For a version that also caches the read value, see [`DeferredReadOrOwn`](crate::deferred_read_or_own::DeferredReadOrOwn).
 #[derive(Clone)]
 #[cfg_attr(feature = "assert_eq", derive(assert_eq::AssertEq))]
 pub struct DeferredRead<'a, T, Vfs: VfsCore = fs_vfs::FsVfs, const CHECK_ON_READ: bool = false>(
@@ -133,7 +135,7 @@ where
     /// If the value changed on disk since the [`DeferredRead`] was created, then the
     /// new value will be read from disk and returned.
     ///
-    /// For a cached version see [`DeferredReadOrOwn`][crate::DeferredReadOrOwn].
+    /// For a cached version see [`DeferredReadOrOwn`](crate::deferred_read_or_own::DeferredReadOrOwn).
     ///
     /// # Examples
     ///

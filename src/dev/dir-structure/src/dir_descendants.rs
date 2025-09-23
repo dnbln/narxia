@@ -39,9 +39,9 @@ use crate::traits::vfs::VfsCore;
 
 /// A structure representing the descendants of a directory.
 ///
-/// This is different from [`DirChildren`](crate::DirChildren), as the descendants include all
+/// This is different from [`DirChildren`](crate::dir_children::DirChildren), as the descendants include all
 /// files and folders within the directory, not just the immediate children, as is the case with
-/// [`DirChildren`](crate::DirChildren).
+/// [`DirChildren`](crate::dir_children::DirChildren).
 ///
 /// The `F` type parameter allows for custom filtering of the descendants, as follows:
 ///

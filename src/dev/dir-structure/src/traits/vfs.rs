@@ -39,7 +39,8 @@
 //!
 //! The reason why the path type is an associated type in the [`VfsCore`] trait, instead of being
 //! an associated type in the [`Vfs`] trait directly, is to allow a clear common interface between
-//! the syncrhonous and asynchronous VFS traits. The asynchronous VFS trait, [`VfsAsync`], also has
+//! the syncrhonous and asynchronous VFS traits. The asynchronous VFS trait,
+//! [`VfsAsync`](crate::traits::async_vfs::VfsAsync), also has
 //! as a super-trait [`VfsCore`], and thus shares the same associated path type, but does not depend on
 //! the [`Vfs`] trait directly.
 //!
@@ -83,6 +84,23 @@
 //! as possible, to allow for a wide variety of path types. However, it does have
 //! some requirements, such as being able to join paths and to get the parent path.
 //! See the documentation for the [`PathType`] trait for more details.
+//!
+//! ## Tool-specific extensions of the VFS traits
+//!
+//! Some tools (wrappers) in the library provide their own extensions of the VFS traits, with
+//! extra functionality that is required by the tool. For example, the [`AtomicDir`](crate::atomic_dir::AtomicDir)
+//! tool requires the ability to create temporary directories, and thus provides its own traits
+//! required for working with temporary directories, but they need to be implemented by the VFS
+//! type.
+//!
+//! Here we list all such extensions, which implementers of VFS traits may want to be aware of,
+//! if they want to support these tools.
+//!
+//! ### [`AtomicDir<T>`](crate::atomic_dir::AtomicDir)
+//!
+//! For the [`AtomicDir`](crate::atomic_dir::AtomicDir) tool to work, the VFS type itself must implement
+//! the [`VfsSupportsTemporaryDirectories`](crate::atomic_dir::VfsSupportsTemporaryDirectories) trait.
+//! See its documentation for more details.
 
 use std::error::Error as StdError;
 use std::ffi::OsStr;
@@ -123,7 +141,7 @@ pub trait Vfs<'vfs>: VfsCore + 'vfs {
     /// The type of the file returned by the [`open_read` method](Vfs::open_read). This allows us to
     /// read a file in chunks, which might be required for some certain file formats.
     ///
-    /// In addtion, [`Vfs`] types whose [`RFile`](Self::RFile) implements [`Seek`](std::io::Seek) can be used in
+    /// In addtion, [`Vfs`] types whose [`RFile`](Self::RFile) implements [`Seek`] can be used in
     /// contexts that require seeking, such as image decoding. The [`VfsWithSeekRead`] trait encodes this property.
     ///
     /// See the [`VfsWithSeekRead`] trait for more details. Note that it is automatically implemented for all [`Vfs`]
@@ -192,7 +210,7 @@ pub trait VfsExt<'vfs>: Vfs<'vfs> {
     /// [`ReadFrom`] implementation.
     ///
     /// This method takes `self` as a regular reference, and pins it internally, calling
-    /// [`read_typed_pinned`][Vfs::read_typed_pinned] on the pinned reference.
+    /// [`read_typed_pinned`][VfsExt::read_typed_pinned] on the pinned reference.
     fn read_typed<T: ReadFrom<'vfs, Self>>(
         &'vfs self,
         path: impl AsRef<Self::Path>,
@@ -207,10 +225,10 @@ pub trait VfsExt<'vfs>: Vfs<'vfs> {
 // Blanket impl.
 impl<'vfs, V: Vfs<'vfs> + ?Sized> VfsExt<'vfs> for V {}
 
-/// Marks that the [`RFile`](Vfs::RFile) type of this [`Vfs`] also implements [`Seek`](std::io::Seek),
+/// Marks that the [`RFile`](Vfs::RFile) type of this [`Vfs`] also implements [`Seek`],
 /// allowing it to be used in contexts that require seeking, such as image decoding.
 ///
-/// This trait is automatically implemented for any [`Vfs`] whose [`RFile`](Vfs::RFile) implements [`Seek`](std::io::Seek).
+/// This trait is automatically implemented for any [`Vfs`] whose [`RFile`](Vfs::RFile) implements [`Seek`].
 pub trait VfsWithSeekRead<'vfs>: Vfs<'vfs>
 where
     Self::RFile: Seek,
@@ -230,7 +248,7 @@ pub trait WriteSupportingVfs<'vfs>: Vfs<'vfs> {
     ///
     /// This allows us to write a file in chunks, which might be required for some certain file formats.
     ///
-    /// If this type additionally implements [`Seek`](std::io::Seek), then, similarly to [`VfsWithSeekRead`],
+    /// If this type additionally implements [`Seek`], then, similarly to [`VfsWithSeekRead`],
     /// the [`VfsWithSeekWrite`] trait will be automatically implemented for this [`WriteSupportingVfs`].
     ///
     /// See [`VfsWithSeekWrite`] for more.
@@ -317,10 +335,10 @@ pub trait WriteSupportingVfsExt<'vfs>: WriteSupportingVfs<'vfs> {
 // Blanket impl.
 impl<'vfs, Vfs: WriteSupportingVfs<'vfs> + ?Sized> WriteSupportingVfsExt<'vfs> for Vfs {}
 
-/// Marks that the [`WFile`](WriteSupportingVfs::WFile) type of this [`WriteSupportingVfs`] also implements [`Seek`](std::io::Seek),
+/// Marks that the [`WFile`](WriteSupportingVfs::WFile) type of this [`WriteSupportingVfs`] also implements [`Seek`],
 /// allowing it to be used in contexts that require seeking.
 ///
-/// This trait is automatically implemented for any [`WriteSupportingVfs`] whose [`WFile`](WriteSupportingVfs::WFile) implements [`Seek`](std::io::Seek).
+/// This trait is automatically implemented for any [`WriteSupportingVfs`] whose [`WFile`](WriteSupportingVfs::WFile) implements [`Seek`].
 pub trait VfsWithSeekWrite<'vfs>: WriteSupportingVfs<'vfs>
 where
     Self::WFile: Seek,
@@ -337,7 +355,7 @@ impl<'vfs, T: WriteSupportingVfs<'vfs>> VfsWithSeekWrite<'vfs> for T where T::WF
 /// which is "linked" to the owned type via the associated type [`OwnedPath`][PathType::OwnedPath].
 ///
 /// Once you have a value of that owned type (e.g., `MyPathBuf`), you can get a reference to the path type
-/// (e.g., `&MyPath`) via the [`AsRef`][AsRef] trait, which is a super-trait of [`OwnedPathType`].
+/// (e.g., `&MyPath`) via the [`AsRef`] trait, which is a super-trait of [`OwnedPathType`].
 ///
 /// This trait is implemented for [`Path`], so if your VFS uses [`Path`] as its path type, you can just use that.
 ///
@@ -508,7 +526,7 @@ impl PathType for Path {
 /// which is "linked" to the reference type via the associated type [`RefType`][OwnedPathType::RefType].
 ///
 /// Once you have a value of that owned type (e.g., `MyPathBuf`), you can get a reference to the path type
-/// (e.g., `&MyPath`) via the [`AsRef`][AsRef] trait, which is a super-trait of [`OwnedPathType`].
+/// (e.g., `&MyPath`) via the [`AsRef`] trait, which is a super-trait of [`OwnedPathType`].
 ///
 /// A couple of methods are provided to manipulate the path in place, such as inserting a new fragment
 /// at the front of the path, or pushing a new segment at the end of the path.

@@ -17,12 +17,26 @@
 //! the async methods typically need to move the path into the future, and
 //! references would not be valid for the entire duration of the future.
 //!
-//! ## Note on images
+//! # Tool specific extensions of the async VFS traits
+//! 
+//! Similarly to the synchronous VFS traits, there are also tool-specific extensions
+//! of the async VFS traits, which are required to use certain tools with a specific
+//! [`VfsAsync`] implementation.
+//! 
+//! We list them here for convenience, but you should refer to the documentation of the
+//! individual tools for more details.
+//! 
+//! ## [`AtomicDir<T>`](crate::atomic_dir::AtomicDir)
+//! 
+//! To use the [`AtomicDir<T>`](crate::atomic_dir::AtomicDir) wrapper type with your async VFS implementation,
+//! the VFS type itself must implement the [`VfsSupportsTemporaryDirectories`](crate::atomic_dir::VfsSupportsTemporaryDirectories) trait.
+//! See its documentation for more details.
 //!
-//! Note that, in addition to the [`VfsAsync`] and [`WriteSupportingVfsAsync`] traits,
-//! you might also want to implement the following impls for your async VFS implementation,
-//! to allow reading and writing image files using the types and traits from the
-//! [`image`](crate::image) module:
+//! ## [Images](crate::image)
+//!
+//! To allow reading and writing image files using the types and traits from the
+//! [`image`](crate::image) module, the following traits need to be implemented for your
+//! async VFS type `YourVfsType`:
 //!
 //! - `impl<T: ImgFormat> ReadImageFromAsync<T> for YourVfsType`                                  to satisfy the bound `T: ReadFromAsync<'vfs, YourVfsType>`
 //! - `impl<'a> WriteImageToAsync<'a> for YourVfsType`                                            to satisfy the bound `T: WriteToAsync<'a, YourVfsType>`

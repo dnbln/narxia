@@ -187,9 +187,10 @@ pub mod versioned;
 pub mod versioned_hash;
 pub mod vfs;
 
-/// A [`Filter`], [`FileFilter`], [`FolderFilter`], and [`FolderRecurseFilter`] that allows all paths.
+/// A [`Filter`](dir_children::Filter), [`FileFilter`](dir_descendants::FileFilter),
+/// [`FolderFilter`](dir_descendants::FolderFilter), and [`FolderRecurseFilter`](dir_descendants::FolderRecurseFilter) that allows all paths.
 ///
-/// This can be passed as a filter to [`DirChildren`] and [`DirDescendants`] to read all paths; custom
+/// This can be passed as a filter to [`DirChildren`](dir_children::DirChildren) and [`DirDescendants`](dir_descendants::DirDescendants) to read all paths; custom
 /// filtering will require a new filter type.
 ///
 /// ```rust
