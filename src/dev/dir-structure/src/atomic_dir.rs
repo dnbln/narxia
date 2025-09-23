@@ -285,9 +285,12 @@ where
                 match fut.as_mut().poll(cx) {
                     Poll::Ready(result) => {
                         *self = Self::Done;
-                        return Poll::Ready(result);
+                        Poll::Ready(result)
                     }
-                    Poll::Pending => return Poll::Pending,
+                    Poll::Pending => {
+                        self.as_mut().project_replace(Self::PersistingTempDir(fut));
+                        Poll::Pending
+                    }
                 }
             }
             AtomicDirWriteToAsyncRefFutureProj::DeletingTempDir(mut fut, error) => {

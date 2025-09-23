@@ -136,7 +136,12 @@ mod imp {
 pub(crate) mod atomic_dir_imp {
     //! The [`VfsSupportsTemporaryDirectories`] implementation for the [`FsVfs`] file system.
 
+    use std::env;
+    use std::fs;
+    use std::mem;
+    use std::process;
     use std::sync::atomic::AtomicU64;
+    use std::sync::atomic::Ordering;
 
     use super::*;
     use crate::atomic_dir::TempDirApi;
@@ -158,23 +163,23 @@ pub(crate) mod atomic_dir_imp {
             path: &<Self::Vfs as VfsCore>::Path,
         ) -> VfsResult<(), Self::Vfs> {
             vfs.create_parent_dir(path)?;
-            std::fs::rename(&self.0, path).wrap_io_error_with(path)?;
+            fs::rename(&self.0, path).wrap_io_error_with(path)?;
             // do not run the Drop impl, as we already moved the directory
-            std::mem::forget(self);
+            mem::forget(self);
             Ok(())
         }
 
         fn delete(self, vfs: Pin<&'vfs Self::Vfs>) -> VfsResult<(), Self::Vfs> {
             vfs.remove_dir_all(&self.0)?;
             // do not run the Drop impl, as we already deleted the directory
-            std::mem::forget(self);
+            mem::forget(self);
             Ok(())
         }
     }
 
     impl Drop for TempDir {
         fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
+            let _ = fs::remove_dir_all(&self.0);
         }
     }
 
@@ -202,10 +207,10 @@ pub(crate) mod atomic_dir_imp {
     }
 
     pub fn make_new_temp_dir_path() -> PathBuf {
-        std::env::temp_dir().join(format!(
+        env::temp_dir().join(format!(
             "__rust_dir_structure_temp_{}_{}",
-            std::process::id(),
-            FS_TEMP_DIR_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            process::id(),
+            FS_TEMP_DIR_ID.fetch_add(1, Ordering::SeqCst)
         ))
     }
 }

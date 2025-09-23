@@ -520,6 +520,8 @@ mod imp {
 mod atomic_dir_imp {
     //! The [`VfsSupportsTemporaryDirectoriesAsync`] implementation for the [`TokioFsVfs`] file system.
 
+    use tokio::fs;
+
     use super::*;
     use crate::atomic_dir::TempDirApiAsync;
     use crate::atomic_dir::VfsSupportsTemporaryDirectoriesAsync;
@@ -549,7 +551,7 @@ mod atomic_dir_imp {
         ) -> Self::FuturePersistAt {
             Box::pin(async move {
                 vfs.create_parent_dir(path.clone()).await?;
-                tokio::fs::rename(&self.0, &path)
+                fs::rename(&self.0, &path)
                     .await
                     .map_err(|e| Error::Io(path.clone(), e))?;
                 Ok(())
