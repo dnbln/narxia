@@ -18,16 +18,16 @@
 //! references would not be valid for the entire duration of the future.
 //!
 //! # Tool specific extensions of the async VFS traits
-//! 
+//!
 //! Similarly to the synchronous VFS traits, there are also tool-specific extensions
 //! of the async VFS traits, which are required to use certain tools with a specific
 //! [`VfsAsync`] implementation.
-//! 
+//!
 //! We list them here for convenience, but you should refer to the documentation of the
 //! individual tools for more details.
-//! 
+//!
 //! ## [`AtomicDir<T>`](crate::atomic_dir::AtomicDir)
-//! 
+//!
 //! To use the [`AtomicDir<T>`](crate::atomic_dir::AtomicDir) wrapper type with your async VFS implementation,
 //! the VFS type itself must implement the [`VfsSupportsTemporaryDirectories`](crate::atomic_dir::VfsSupportsTemporaryDirectories) trait.
 //! See its documentation for more details.
