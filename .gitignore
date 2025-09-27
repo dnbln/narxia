@@ -9,4 +9,5 @@
 /.vscode
 
 *.before.mdx
+*.before.mdx.doctests
 rustc-ice-*.txt
