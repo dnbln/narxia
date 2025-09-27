@@ -1,4 +1,6 @@
-# Unreleased
+# `0.2.0`
+
+Released: 2025-09-27
 
 ## New features
 
@@ -6,6 +8,8 @@
 When writing, it will first write the contents to a temporary directory, and then rename the
 temporary directory to the target directory. If writing the contents to the temporary directory
 fails, the original directory is left untouched, and the temporary directory is deleted.
+
+\+ Everything in the `0.2.0-rc.3`, `0.2.0-rc.2`, `0.2.0-rc.1`, releases, if you're updating from `<0.2.0-rc.1`.
 
 ## Other changes
 
