@@ -30,8 +30,7 @@ fn test_dir(name: &str) -> PathBuf {
 
 macro_rules! read_test {
     ($name:ident, {$($it:item)*}, $(($setup_path:expr => $setup_expr:expr)),*; t: $read_ty:ty, $end_expr:expr) => {
-        #[tokio::test]
-        async fn $name() {
+        fn $name() {
             $($it)*
 
             let p = test_dir(stringify!($name));
@@ -52,8 +51,7 @@ macro_rules! read_test {
 
 macro_rules! write_test {
     ($name:ident, {$($it:item)*}, $(($check_path:expr => $check_expr:expr)),*; t: $write_ty:ty, $write_expr:expr) => {
-        #[tokio::test]
-        async fn $name() {
+        fn $name() {
             $($it)*
 
             let p = test_dir(stringify!($name));
