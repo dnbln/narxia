@@ -157,21 +157,29 @@ pub mod prelude {
 }
 
 #[cfg(feature = "tools-atomic-dir")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-atomic-dir")))]
 pub mod atomic_dir;
 #[cfg(feature = "tools-clean-dir")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-clean-dir")))]
 pub mod clean_dir;
 #[cfg(feature = "tools-data-formats")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-data-formats")))]
 pub mod data_formats;
 #[cfg(feature = "tools-deferred-read")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-deferred-read")))]
 pub mod deferred_read;
 #[cfg(feature = "tools-deferred-read-or-own")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-deferred-read-or-own")))]
 pub mod deferred_read_or_own;
 #[cfg(feature = "tools-dir-children")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-dir-children")))]
 pub mod dir_children;
 #[cfg(feature = "tools-dir-descendants")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-dir-descendants")))]
 pub mod dir_descendants;
 pub mod error;
 #[cfg(feature = "tools-fmt-wrapper")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-fmt-wrapper")))]
 pub mod fmt_wrapper;
 #[cfg(feature = "image")]
 #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
@@ -180,10 +188,13 @@ pub mod option;
 pub mod std_types;
 pub mod traits;
 #[cfg(feature = "tools-try-parse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-try-parse")))]
 pub mod try_parse;
 #[cfg(feature = "tools-versioned")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-versioned")))]
 pub mod versioned;
 #[cfg(feature = "tools-versioned-hash")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tools-versioned-hash")))]
 pub mod versioned_hash;
 pub mod vfs;
 
