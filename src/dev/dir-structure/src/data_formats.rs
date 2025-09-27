@@ -382,7 +382,7 @@ data_format_impl!(
     /// thus allowing us to parse and serialize it from / to json when we read / write a
     /// directory structure.
     ///
-    /// This is a pretty-printed version of [`Json`][crate::json::Json].
+    /// This is a pretty-printed version of [`Json`][crate::data_formats::json::Json].
     JsonPretty,
     |s| serde_json::from_str(s),
     serde_json::Error,
@@ -476,6 +476,8 @@ data_format_impl!(
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to ron when we read / write a
     /// directory structure.
+    ///
+    /// This is a pretty-printed version of [`Ron`][crate::data_formats::ron::Ron].
     RonPretty,
     |s| ron::de::from_str(s),
     ron::error::SpannedError,

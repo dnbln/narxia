@@ -40,7 +40,7 @@
 //! The reason why the path type is an associated type in the [`VfsCore`] trait, instead of being
 //! an associated type in the [`Vfs`] trait directly, is to allow a clear common interface between
 //! the syncrhonous and asynchronous VFS traits. The asynchronous VFS trait,
-//! [`VfsAsync`](crate::traits::async_vfs::VfsAsync), also has
+//! [`VfsAsync`], also has
 //! as a super-trait [`VfsCore`], and thus shares the same associated path type, but does not depend on
 //! the [`Vfs`] trait directly.
 //!

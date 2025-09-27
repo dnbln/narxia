@@ -48,7 +48,7 @@ where
 }
 
 /// A trait to declare that a type has fields with dynamic names,
-/// such as [`DirChildren`](crate::DirChildren), [`DirDescendants`](crate::DirDescendants), etc.
+/// such as [`DirChildren`](crate::dir_children::DirChildren), [`DirDescendants`](crate::dir_descendants::DirDescendants), etc.
 ///
 /// This is used to resolve paths with [`resolve_path`], particularly with the `"name"` and
 /// `${expr}` syntaxes.

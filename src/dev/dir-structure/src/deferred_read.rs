@@ -186,7 +186,7 @@ where
     /// If the value changed on disk since the [`DeferredRead`] was created, then the
     /// new value will be read from disk and returned.
     ///
-    /// For a cached version see [`DeferredReadOrOwn`].
+    /// For a cached version see [`DeferredReadOrOwn`](crate::deferred_read_or_own::DeferredReadOrOwn).
     ///
     /// Asynchronous version of [`DeferredRead::perform_read`].
     pub async fn perform_read_async(&self) -> VfsResult<T, Vfs> {

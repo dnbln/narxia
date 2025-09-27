@@ -392,6 +392,18 @@ pub enum DeferredReadOrOwnWriteFuture<
     },
 }
 
+// needed to avoid ICE in rustdoc, see https://github.com/rust-lang/rust/issues/144918
+#[cfg(all(feature = "async", doc))]
+impl<T, Vfs, const CHECK_ON_READ: bool> core::marker::Unpin
+    for DeferredReadOrOwnWriteFutureProj<'_, T, Vfs, CHECK_ON_READ>
+where
+    T: for<'b> ReadFromAsync<'b, Vfs> + for<'b> WriteToAsync<'b, Vfs> + Send + 'static,
+    for<'b> <T as ReadFromAsync<'b, Vfs>>::Future: Future<Output = VfsResult<T, Vfs>> + Unpin + 'b,
+    for<'b> <T as WriteToAsync<'b, Vfs>>::Future: Future<Output = VfsResult<(), Vfs>> + Unpin + 'b,
+    Vfs: WriteSupportingVfsAsync + 'static,
+{
+}
+
 #[cfg(feature = "async")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<

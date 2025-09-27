@@ -158,10 +158,10 @@ pub trait VfsAsync: VfsCore + Send + Sync + Unpin {
 }
 
 /// Marks that the [`RFile`](VfsAsync::RFile) type of this [`VfsAsync`] also implements
-/// [`AsyncSeek`](futures::io::AsyncSeek), allowing it to be used in contexts that require seeking, such as image decoding.
+/// [`AsyncSeek`], allowing it to be used in contexts that require seeking, such as image decoding.
 ///
 /// This trait is automatically implemented for any [`VfsAsync`] whose [`RFile`](VfsAsync::RFile) implements
-/// [`AsyncSeek`](futures::io::AsyncSeek).
+/// [`AsyncSeek`].
 pub trait VfsAsyncWithSeekRead: VfsAsync
 where
     Self::RFile: AsyncSeek + Send + Unpin,
@@ -268,7 +268,7 @@ pub trait WriteSupportingVfsAsync: VfsAsync {
 }
 
 /// Marks that the [`WFile`](WriteSupportingVfsAsync::WFile) type of this [`WriteSupportingVfsAsync`] also implements
-/// [`AsyncSeek`](futures::io::AsyncSeek), allowing it to be used in
+/// [`AsyncSeek`], allowing it to be used in
 /// contexts that require seeking.
 pub trait VfsAsyncWithSeekWrite: WriteSupportingVfsAsync
 where
