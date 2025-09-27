@@ -864,8 +864,8 @@ pub trait DirStructureItem
 
 ---
 
-Helper trait, implemented for all types that have a [`ReadFrom`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.ReadFrom.html)
-and [`WriteTo`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.WriteTo.html) implementation.
+Helper trait, implemented for all types that have a [`ReadFrom`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.ReadFrom.html)
+and [`WriteTo`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.WriteTo.html) implementation.
 </DocTooltip>
 
 ## !!doctooltips DirStructure
@@ -892,7 +892,7 @@ The main trait. This is implemented for
 all directory structures by the derive macro.
 
 This trait doesn't have any methods, just a supertype:
-[`DirStructureItem`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.DirStructureItem.html).
+[`DirStructureItem`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.DirStructureItem.html).
 </DocTooltip>
 
 ## !!doctooltips DirStructureItem::read#
@@ -912,7 +912,7 @@ where
 
 ---
 
-Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.ReadFrom.html) implementation to read the structure from
+Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.ReadFrom.html) implementation to read the structure from
 disk, from the specified path.
 </DocTooltip>
 
@@ -934,7 +934,7 @@ where
 
 ---
 
-Uses the [`WriteTo`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.WriteTo.html) implementation to write the structure
+Uses the [`WriteTo`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.WriteTo.html) implementation to write the structure
 to disk at the specified path.
 </DocTooltip>
 
@@ -1015,7 +1015,7 @@ type param may need Drop
 
 ---
 
-A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.225/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.225/serde_core/de/trait.Deserialize.html),
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.226/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.226/serde_core/de/trait.Deserialize.html),
 thus allowing us to parse and serialize it from / to json when we read / write a
 directory structure.
 
@@ -1033,7 +1033,7 @@ where
 
 ---
 
-A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.225/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.225/serde_core/de/trait.Deserialize.html),
+A wrapper around a type that implements [`serde::Serialize`](https://docs.rs/serde_core/1.0.226/serde_core/ser/trait.Serialize.html) and [`serde::Deserialize`](https://docs.rs/serde_core/1.0.226/serde_core/de/trait.Deserialize.html),
 thus allowing us to parse and serialize it from / to json when we read / write a
 directory structure.
 </DocTooltip>
@@ -1068,12 +1068,12 @@ and as such we cannot use the derive macro.
 
 Instead we know that all the entries in the directory are folders,
 and that they all have the same structure inside (defined by the `T` type parameter),
-or they are all files (which can be read with [`DirChildren`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/dir_children/struct.DirChildren.html)\<[`String`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html)\> for example).
+or they are all files (which can be read with [`DirChildren`](https://docs.rs/dir_structure/0.2.0/dir_structure/dir_children/struct.DirChildren.html)\<[`String`](https://doc.rust-lang.org/nightly/alloc/string/struct.String.html)\> for example).
 
-In either case, [`ReadFrom::read_from`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.ReadFrom.html#tymethod.read_from) must be able to read all the entries in
+In either case, [`ReadFrom::read_from`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.ReadFrom.html#tymethod.read_from) must be able to read all the entries in
 the directory.
 
-The [`WriteTo`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/traits/sync/trait.WriteTo.html) implementation will directly write the children to the directory it
+The [`WriteTo`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.WriteTo.html) implementation will directly write the children to the directory it
 is passed, with no regards to the path stored in `self_path`.
 </DocTooltip>
 
@@ -1097,7 +1097,7 @@ Is not dyn-compatible due to having a method `allows` that is not dispatchable d
 
 ---
 
-A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/dir_children/struct.DirChildren.html) structure.
+A filter for the children of a [`DirChildren`](https://docs.rs/dir_structure/0.2.0/dir_structure/dir_children/struct.DirChildren.html) structure.
 
 This is used to filter out children that we don't want to
 read into the structure. For example, if we have a directory
@@ -1106,7 +1106,7 @@ files we want, for example, that have just a certain extension.
 
 # Examples
 
-For example, for a [`Filter`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/dir_children/trait.Filter.html) that only allows `.txt` files:
+For example, for a [`Filter`](https://docs.rs/dir_structure/0.2.0/dir_structure/dir_children/trait.Filter.html) that only allows `.txt` files:
 
 ```rust ,ignore
  use std::path::Path;
@@ -1164,7 +1164,7 @@ macro_rules! ext_filter
 
 ---
 
-Creates a [`Filter`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/dir_children/trait.Filter.html) type that only allows files / folders with a specific [extension](https://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.extension).
+Creates a [`Filter`](https://docs.rs/dir_structure/0.2.0/dir_structure/dir_children/trait.Filter.html) type that only allows files / folders with a specific [extension](https://doc.rust-lang.org/nightly/std/path/struct.Path.html#method.extension).
 
 # Examples
 
@@ -1202,10 +1202,12 @@ size = 32 (0x20), align = 0x8, type param may need Drop
 
 A wrapper that defers the reading of a file until it is actually needed.
 
-The only thing you can do with a [`DeferredRead`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read/struct.DeferredRead.html) is to call [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read),
+The only thing you can do with a [`DeferredRead`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html) is to call [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read),
 which will read the file and return the value.
 
-See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read) method for more details.
+See the [`DeferredRead::perform_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html#method.perform_read) method for more details.
+
+For a version that also caches the read value, see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html).
 </DocTooltip>
 
 ## !!doctooltips DirChildren::iter-R
@@ -1335,10 +1337,10 @@ where
 
 Performs the read and returns the value.
 
-If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read/struct.DeferredRead.html) was created, then the
+If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html) was created, then the
 new value will be read from disk and returned.
 
-For a cached version see [`DeferredReadOrOwn`](crate::DeferredReadOrOwn).
+For a cached version see [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html).
 
 # Examples
 
@@ -1402,21 +1404,21 @@ but can also store the value.
 It allows us to read the value from disk, and then store it in memory,
 and if we ever need it again, we can just return the stored value.
 
-This type exposes 2 functions: [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) and
-[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read).
+This type exposes 2 functions: [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read).
 
 The table below summarizes the differences between the two functions:
 
-|State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
+|State|[`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get)|[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read)|
 |-----|------------------------|-------------------------------------------|
 |New, not cached|Reads the value, does not cache|Reads the value, and caches it, returns reference|
 |Cached|Clones the cached value|Returns a reference to the cached value|
 
-As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
-[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&mut T>`.
+As such, [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get) has the signature of `fn(&self) -> Result<T>` and
+[`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read) has the signature of `fn(&mut self) -> Result<&mut T>`.
 
-If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get),
-that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read/struct.DeferredRead.html), and that should be preferred instead.
+If you never call [`DeferredReadOrOwn::perform_and_store_read`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.perform_and_store_read), and only ever call [`DeferredReadOrOwn::get`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html#method.get),
+that would effectively be the same as using a [`DeferredRead`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html), and that should be preferred instead.
 </DocTooltip>
 
 ## !!doctooltips DeferredReadOrOwn::perform_and_store_read-R
@@ -1443,7 +1445,7 @@ where
 Performs the read and stores the value. If the value is already read, it will
 just return a reference to it.
 
-See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html) for more details.
+See [`DeferredReadOrOwn`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read_or_own/enum.DeferredReadOrOwn.html) for more details.
 
 # Examples
 
@@ -1506,7 +1508,7 @@ you can get a mutable reference to the value via its [`DerefMut`](https://doc.ru
 
 The version is incremented every time [`DerefMut::deref_mut`](https://doc.rust-lang.org/nightly/core/ops/deref/trait.DerefMut.html#tymethod.deref_mut) is called.
 
-Alternatively, for [`Eq`](https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html) types, you can use the [`Versioned::edit_eq_check`](https://docs.rs/dir_structure/0.2.0-rc.3/dir_structure/versioned/struct.Versioned.html#method.edit_eq_check)
+Alternatively, for [`Eq`](https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html) types, you can use the [`Versioned::edit_eq_check`](https://docs.rs/dir_structure/0.2.0/dir_structure/versioned/struct.Versioned.html#method.edit_eq_check)
 method to edit the value, and it will increment the version if the value has changed.
 
 # Example
