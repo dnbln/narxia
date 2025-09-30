@@ -29,7 +29,7 @@ export function ScrollyCoding(props: unknown) {
 
     return (
         <SelectionProvider className="flex gap-4">
-            <div className="flex-1 mt-32 mb-[90vh] ml-2 prose prose-invert">
+            <div className="flex-1 mt-32 mb-[90vh] ml-2 prose prose-invert max-w-2/5">
                 {steps.map((step, i) => (
                     <Selectable
                         key={i}
@@ -42,7 +42,7 @@ export function ScrollyCoding(props: unknown) {
                     </Selectable>
                 ))}
             </div>
-            <div className="w-[40vw] max-w-xl bg-zinc-900">
+            <div className="w-[60vw] max-w-3/5 bg-zinc-900">
                 <div className="top-16 sticky overflow-auto">
                     <Selection
                         from={steps.map((step) => (

@@ -24,6 +24,7 @@ export default async function Page(props: {
     return (
         <DocsPage toc={page.data.toc}
                   full={page.data.full}
+                  article={page.data.full ? {className: 'max-w-full'} : {}}
                   breadcrumb={{enabled: true}}
                   lastUpdate={page.data.lastModified}
                   tableOfContent={{style: 'clerk', single: false}}
