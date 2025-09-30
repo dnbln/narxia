@@ -3,7 +3,7 @@
 macro_rules! data_format_impl {
     (
         $(#[$mod_attr:meta])*
-        $mod_name:ident,
+        $mod_name:ident $core_name:ident,
         $(#[$main_ty_attrs:meta])*
         $main_ty:ident,
 
@@ -25,15 +25,15 @@ macro_rules! data_format_impl {
         $(#[$mod_attr])*
         pub mod $mod_name {
             #![doc = concat!(r##"
-With the `"##, stringify!($mod_name), r##"` feature, this module provides the [`"##, stringify!($main_ty), r##"`] type.
+With the `"##, stringify!($core_name), r##"` feature, this module provides the [`"##, stringify!($main_ty), r##"`] type.
 
-This allows us to read and parse `"##, stringify!($mod_name), r##"` files to some `serde::Deserialize` type,
+This allows us to read and parse `"##, stringify!($core_name), r##"` files to some `serde::Deserialize` type,
 and write them back to disk."##
             )]
             //!
             //! # Examples
             //!
-            #![doc = concat!(r##"## Reading a "##, stringify!($mod_name), r##" file"##)]
+            #![doc = concat!(r##"## Reading a "##, stringify!($core_name), r##" file"##)]
             //!
             #![cfg_attr(feature = "derive", doc = "```rust")]
             #![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
@@ -65,7 +65,7 @@ and write them back to disk."##
             //! }
             //! ```
             //!
-            #![doc = concat!(r##"## Writing a "##, stringify!($mod_name), r##" file"##)]
+            #![doc = concat!(r##"## Writing a "##, stringify!($core_name), r##" file"##)]
             //!
             #![cfg_attr(feature = "derive", doc = "```rust")]
             #![cfg_attr(not(feature = "derive"), doc = "```rust,compile_fail")]
@@ -357,7 +357,7 @@ data_format_impl!(
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     #[allow(clippy::absolute_paths)]
-    json,
+    json json,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
     /// directory structure.
@@ -377,7 +377,7 @@ data_format_impl!(
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     #[allow(clippy::absolute_paths)]
-    json_pretty,
+    json_pretty json,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to json when we read / write a
     /// directory structure.
@@ -402,7 +402,7 @@ data_format_impl!(
     #[cfg(feature = "toml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     #[allow(clippy::absolute_paths)]
-    toml,
+    toml toml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to toml when we read / write a
     /// directory structure.
@@ -429,7 +429,7 @@ data_format_impl!(
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[allow(clippy::absolute_paths)]
-    yaml,
+    yaml yaml,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to yaml when we read / write a
     /// directory structure.
@@ -452,7 +452,7 @@ data_format_impl!(
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[allow(clippy::absolute_paths)]
-    ron,
+    ron ron,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to ron when we read / write a
     /// directory structure.
@@ -472,7 +472,7 @@ data_format_impl!(
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[allow(clippy::absolute_paths)]
-    ron_pretty,
+    ron_pretty ron,
     /// A wrapper around a type that implements [`serde::Serialize`] and [`serde::Deserialize`],
     /// thus allowing us to parse and serialize it from / to ron when we read / write a
     /// directory structure.
