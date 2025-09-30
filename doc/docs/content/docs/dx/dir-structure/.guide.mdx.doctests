@@ -408,7 +408,7 @@
 ///     subdirs: DirChildren<SubDir, Filt, Vfs::Path>,
 /// }
 /// 
-/// // !mark(1:11)
+/// // !mark(1:7)
 /// struct Filt;
 /// 
 /// // !tooltip[/Filter/] Filter
@@ -846,23 +846,6 @@
 /// Ok::<_, dir_structure::error::Error<std::path::PathBuf>>(())
 /// 
 /// ```
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
 /// 
 /// 
 /// 
