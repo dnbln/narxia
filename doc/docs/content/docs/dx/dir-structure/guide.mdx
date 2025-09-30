@@ -912,6 +912,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 Uses the [`ReadFrom`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.ReadFrom.html) implementation to read the structure from
 disk, from the specified path.
 </DocTooltip>
@@ -934,6 +938,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 Uses the [`WriteTo`](https://docs.rs/dir_structure/0.2.0/dir_structure/traits/sync/trait.WriteTo.html) implementation to write the structure
 to disk at the specified path.
 </DocTooltip>
@@ -949,6 +957,10 @@ dir_structure::fmt_wrapper
 ```rust ,ignore
 pub struct FmtWrapper<T>(pub T)
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
@@ -1011,6 +1023,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 type param may need Drop
 
 ---
@@ -1056,6 +1072,10 @@ where
     filter: PhantomData<(F, P)>,
 }
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
@@ -1196,6 +1216,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 size = 32 (0x20), align = 0x8, type param may need Drop
 
 ---
@@ -1227,6 +1251,10 @@ where
     F: Filter<P>,
     P: PathType + ?Sized,
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
@@ -1272,6 +1300,10 @@ where
     F: Filter<P>,
     P: PathType + ?Sized,
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
@@ -1335,6 +1367,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 Performs the read and returns the value.
 
 If the value changed on disk since the [`DeferredRead`](https://docs.rs/dir_structure/0.2.0/dir_structure/deferred_read/struct.DeferredRead.html) was created, then the
@@ -1394,6 +1430,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 type param may need Drop
 
 ---
@@ -1439,6 +1479,10 @@ where
     P: PathType + ?Sized + 'a,
     T: ReadFrom<'a, Vfs>,
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
@@ -1495,6 +1539,10 @@ where
 
 ---
 
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
+
+---
+
 type param may need Drop
 
 ---
@@ -1543,6 +1591,10 @@ where
     // Bounds from impl:
     P: PathType + ?Sized,
 ```
+
+---
+
+Implements notable traits: `Future<Output = ?>`, `Iterator<Item = ?>`, `Read`, `Write`
 
 ---
 
