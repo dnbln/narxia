@@ -1320,15 +1320,15 @@ impl Format {
 
     pub fn run(&self, item: &mut Item) -> NexusR {
         let mut cmd = cargo_command();
-        cmd.arg("fmt")
-            .arg("--all")
-            .arg("--")
-            .arg("--config-path")
-            .arg(narxia_workspace::resolve_ws_path!(src.config.rustfmt));
+        cmd.arg("fmt").arg("--all");
 
         if self.check {
             cmd.arg("--check");
         }
+
+        cmd.arg("--")
+            .arg("--config-path")
+            .arg(narxia_workspace::resolve_ws_path!(src.config.rustfmt));
 
         let mut child = cmd.spawn().into_diagnostic()?;
         let status = child.wait().into_diagnostic()?;
