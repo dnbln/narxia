@@ -1,3 +1,9 @@
+# Next release
+
+## Other changes
+
+The `ext_filter`, `stem_filter` and `file_prefix_filter` macros now accept attributes.
+
 # `0.2.0`
 
 Released: 2025-09-27
