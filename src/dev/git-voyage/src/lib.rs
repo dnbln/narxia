@@ -619,7 +619,7 @@ fn perform_patchup<V: VfsCore<Path = Path>>(
 }
 
 /// Perform a patchup of a step in the guide, updating the guide's step identified by `step` with the new code provided in `new_code`.
-/// 
+///
 /// This function will then rebase all subsequent steps to ensure they are applied on top of the updated step.
 ///
 /// If any conflicts arise during the rebase, the provided `resolve_conflict` function will be called with the path to the code file,
@@ -627,9 +627,9 @@ fn perform_patchup<V: VfsCore<Path = Path>>(
 /// and return `Ok(())` if successful, or an `Err` if the conflict could not be resolved.
 ///
 /// After resolve_conflict returns, this function will add the resolved code file to the index and continue the rebase process.
-/// 
+///
 /// After everything is done, the guide's steps will be updated to reflect the new code state, but this will not be automatically saved to disk.
-/// 
+///
 /// `dir` is a temporary directory where a temporary git repository will be created. You should ensure this directory exists and is writable.
 pub fn patchup<V: VfsCore<Path = Path>>(
     guide: &mut Guide<V>,
