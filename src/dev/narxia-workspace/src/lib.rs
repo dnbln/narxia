@@ -69,9 +69,16 @@ pub struct NextestConfig<'vfs, Vfs: VfsCore<Path = Path>> {
 
 #[derive(DirStructure, HasField)]
 pub struct SrcDir<'vfs, Vfs: VfsCore<Path = Path>> {
+    pub config: SrcConfigDir<'vfs, Vfs>,
     pub compiler: DirChildren<Crate<'vfs, Vfs>, NoFilter, Vfs::Path>,
     // pub lib: dir_structure::DirChildren<Crate<'vfs, Vfs>>,
     pub dev: DirChildren<Crate<'vfs, Vfs>, NoFilter, Vfs::Path>,
+}
+
+#[derive(DirStructure, HasField)]
+pub struct SrcConfigDir<'vfs, Vfs: VfsCore<Path = Path>> {
+    #[dir_structure(path = "rustfmt.toml")]
+    pub rustfmt: DeferredReadOrOwn<'vfs, Versioned<String, Vfs::Path>, Vfs, true>,
 }
 
 #[derive(DirStructure, HasField)]

@@ -1320,7 +1320,11 @@ impl Format {
 
     pub fn run(&self, item: &mut Item) -> NexusR {
         let mut cmd = cargo_command();
-        cmd.arg("fmt").arg("--all");
+        cmd.arg("fmt")
+            .arg("--all")
+            .arg("--")
+            .arg("--config-path")
+            .arg(narxia_workspace::resolve_ws_path!(src.config.rustfmt));
 
         if self.check {
             cmd.arg("--check");
