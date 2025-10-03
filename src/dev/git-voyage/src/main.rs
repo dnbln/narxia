@@ -146,7 +146,7 @@ fn main() {
             let before_after_extension = before_after_extension.map(Extension::new);
 
             guide.add_step(
-                &step,
+                step.clone(),
                 after_step.as_ref(),
                 code_extension,
                 before_after_extension,

@@ -176,7 +176,8 @@ impl<P: PathType + ?Sized> Filter<P> for NoFilter {
 /// ```
 #[macro_export]
 macro_rules! ext_filter {
-    ($vis:vis $name:ident, $Ext:literal) => {
+    ($(#[$attrs:meta])* $vis:vis $name:ident, $Ext:literal) => {
+        $(#[$attrs])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
@@ -206,7 +207,8 @@ macro_rules! ext_filter {
 /// ```
 #[macro_export]
 macro_rules! stem_filter {
-    ($vis:vis $name:ident, $base_name:literal) => {
+    ($(#[$attrs:meta])* $vis:vis $name:ident, $base_name:literal) => {
+        $(#[$attrs])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 
@@ -238,7 +240,8 @@ macro_rules! stem_filter {
 /// ```
 #[macro_export]
 macro_rules! file_prefix_filter {
-    ($vis:vis $name:ident, $file_prefix:literal) => {
+    ($(#[$attrs:meta])* $vis:vis $name:ident, $file_prefix:literal) => {
+        $(#[$attrs])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         $vis struct $name;
 

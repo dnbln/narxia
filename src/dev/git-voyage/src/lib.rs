@@ -1,3 +1,9 @@
+//! A library for managing programming guides.
+//!
+//! See the docs for more information: https://nrx.dnbln.dev/docs/dx/git-voyage/
+
+#![deny(missing_docs)]
+
 pub extern crate git2;
 
 use std::collections::BTreeMap;
@@ -32,22 +38,27 @@ use git2::build::CheckoutBuilder;
 use serde::Deserialize;
 use serde::Serialize;
 
+/// The error type for this library.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Failed to read steps: {0}")]
-    ReadStepsError(#[from] serde_json::Error),
+    /// Git error.
     #[error("git error: {0}")]
     GitError(#[from] git2::Error),
+    /// Dir-structure error.
     #[error("dir-structure error: {0}")]
     DirStructureError(#[from] DirStructureError<PathBuf>),
+    /// IO error.
     #[error("IO error: {0}")]
     IO(#[from] io::Error),
+    /// Failed to parse step reference.
     #[error("Failed to parse step reference: {0}")]
     ParseStepReferenceError(String),
 }
 
+/// A specialized `Result` type for this library.
 pub type Result<T> = result::Result<T, Error>;
 
+/// The main structure representing a guide.
 #[derive(DirStructure, HasField)]
 pub struct Guide<Vfs: VfsCore<Path = Path>> {
     #[dir_structure(path = "steps.json")]
@@ -63,6 +74,7 @@ pub struct Guide<Vfs: VfsCore<Path = Path>> {
 }
 
 impl Guide<FsVfs> {
+    /// Create a new guide with default values.
     pub fn new_default(dir: PathBuf, template_extension: &str) -> Self {
         Self {
             steps: Versioned::new_dirty(
@@ -106,9 +118,10 @@ End of the guide.
         }
     }
 
+    /// Add a new step to the guide.
     pub fn add_step(
         &mut self,
-        step: &StepRef,
+        step: StepRef,
         after_step: Option<&StepRef>,
         code_extension: Option<Extension>,
         before_after_extension: Option<Extension>,
@@ -215,25 +228,30 @@ End of the guide.
             code_footer: None,
             self_path: resolve_path!([Guide<FsVfs> @ self.self_path.clone()].step_dirs.${&step.0}),
         };
-        self.step_dirs.push(step.0.clone(), step_dir);
+        self.step_dirs.push(step.0, step_dir);
     }
 
+    /// Get a step directory by its reference.
     pub fn get_step_dir(&self, step: &StepRef) -> Option<&StepDir<FsVfs>> {
         self.step_dirs.get_value_by_name(&step.0)
     }
 
+    /// Get an iterator over the steps and their directories.
     pub fn steps_iter(&self) -> StepsIter<'_> {
         StepsIter(self.steps.steps.iter(), &self.step_dirs)
     }
 
+    /// Get the template content.
     pub fn template(&self) -> &String {
         self.template.value()
     }
 
+    /// Render the template with the given steps content.
     pub fn render_template(&self, steps: String) -> String {
         self.template().replace("<__GitVoyageSteps />", &steps)
     }
 
+    /// Render the entire guide as a string.
     pub fn render_guide(&self) -> String {
         let mut steps = String::new();
         for (_step, step_dir) in self.steps_iter() {
@@ -243,6 +261,7 @@ End of the guide.
     }
 }
 
+/// A file extension, including the leading dot if any.
 #[derive(Debug)]
 pub struct Extension(String);
 
@@ -253,18 +272,24 @@ impl fmt::Display for Extension {
 }
 
 impl Extension {
+    /// Create a new extension from a string.
+    ///
+    /// The string should include the leading dot if any, or be empty if not.
     pub const fn new(ext: String) -> Self {
         Self(ext)
     }
 
+    /// Default code extension is empty (no extension).
     pub fn default_code_extension() -> Self {
         Self::new(String::new())
     }
 
+    /// Default before/after extension is `.mdx`.
     pub fn default_before_after_extension() -> Self {
         Self::new(String::from(".mdx"))
     }
 
+    /// Get the value of the extension.
     pub fn value(&self) -> &str {
         &self.0
     }
@@ -283,6 +308,7 @@ impl Extension {
     }
 }
 
+/// Iterator over steps and their directories.
 pub struct StepsIter<'a>(slice::Iter<'a, StepRef>, &'a DirChildren<StepDir<FsVfs>>);
 
 impl<'a> Iterator for StepsIter<'a> {
@@ -313,25 +339,33 @@ impl<'a> DoubleEndedIterator for StepsIter<'a> {
     }
 }
 
+/// A directory representing a single step in the guide.
 #[derive(DirStructure, HasField)]
 pub struct StepDir<Vfs: VfsCore<Path = Path>> {
+    /// The "before" file, optional.
     #[dir_structure(path = self)]
-    before: DirChildSingleOpt<Versioned<String, Vfs::Path>, BeforeFilter, Vfs::Path>,
+    pub before: DirChildSingleOpt<Versioned<String, Vfs::Path>, BeforeFilter, Vfs::Path>,
+    /// The "after" file, optional.
     #[dir_structure(path = self)]
-    after: DirChildSingleOpt<Versioned<String, Vfs::Path>, AfterFilter, Vfs::Path>,
+    pub after: DirChildSingleOpt<Versioned<String, Vfs::Path>, AfterFilter, Vfs::Path>,
+    /// The "code" file, required.
     #[dir_structure(path = self)]
     pub code: DirChildSingle<Versioned<String, Vfs::Path>, CodeFilter, Vfs::Path>,
 
-    code_header: Option<Versioned<String, Vfs::Path>>,
-    code_footer: Option<Versioned<String, Vfs::Path>>,
+    /// Optional code header, if not present, the guide's code header is used if any.
+    pub code_header: Option<Versioned<String, Vfs::Path>>,
+    /// Optional code footer, if not present, the guide's code footer is used if any.
+    pub code_footer: Option<Versioned<String, Vfs::Path>>,
     self_path: PathBuf,
 }
 
 impl StepDir<FsVfs> {
+    /// Get the path to the code file.
     pub fn code_path(&self) -> PathBuf {
         self.self_path.join(self.code.file_name())
     }
 
+    /// Render the step as a string. This uses the guide's code header and footer if any, if the step's code_header/footer are not present.
     pub fn render_step(&self, guide: &Guide<FsVfs>) -> String {
         let mut output = String::new();
         if let DirChildSingleOpt::Some(before) = &self.before {
@@ -351,6 +385,7 @@ impl StepDir<FsVfs> {
         output
     }
 
+    /// Guess the extension for the before/after files, if any.
     pub fn before_after_extension(&self) -> Option<Extension> {
         self.before
             .as_ref()
@@ -363,30 +398,43 @@ impl StepDir<FsVfs> {
             .map(|dir| Extension::guess_from(&dir))
     }
 
+    /// Guess the extension for the code file.
     pub fn code_extension(&self) -> Extension {
         Extension::guess_from(&self.code)
     }
 }
 
-file_prefix_filter!(pub TemplateFilter, "template");
-file_prefix_filter!(pub BeforeFilter, "before");
-file_prefix_filter!(pub AfterFilter, "after");
-file_prefix_filter!(pub CodeFilter, "code");
+file_prefix_filter!(
+    /// Filter for the template file.
+    pub TemplateFilter, "template");
+file_prefix_filter!(
+    /// Filter for the before file.
+    pub BeforeFilter, "before");
+file_prefix_filter!(
+    /// Filter for the after file.
+    pub AfterFilter, "after");
+file_prefix_filter!(
+    /// Filter for the code file.
+    pub CodeFilter, "code");
 
+/// The steps structure, containing a list of step references.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 pub struct Steps {
     steps: Vec<StepRef>,
 }
 
+/// A reference to a step.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct StepRef(String);
 
 impl StepRef {
+    /// Create a new step reference from a string.
     pub fn new(path: String) -> Self {
         Self(path)
     }
 
+    /// Get the path (name) of the step.
     pub fn path(&self) -> &str {
         &self.0
     }
@@ -411,8 +459,8 @@ impl<T> DbgGitErr for result::Result<T, git2::Error> {
     }
 }
 
-fn perform_patchup(
-    guide: &Guide<FsVfs>,
+fn perform_patchup<V: VfsCore<Path = Path>>(
+    guide: &Guide<V>,
     step: &StepRef,
     new_code: &str,
     repo_root: &Path,
@@ -570,8 +618,21 @@ fn perform_patchup(
     Ok(empty_steps)
 }
 
-pub fn patchup(
-    guide: &mut Guide<FsVfs>,
+/// Perform a patchup of a step in the guide, updating the guide's step identified by `step` with the new code provided in `new_code`.
+/// 
+/// This function will then rebase all subsequent steps to ensure they are applied on top of the updated step.
+///
+/// If any conflicts arise during the rebase, the provided `resolve_conflict` function will be called with the path to the code file,
+/// allowing the user to manually resolve the conflict. This function should open an editor or perform any necessary actions to resolve the conflict,
+/// and return `Ok(())` if successful, or an `Err` if the conflict could not be resolved.
+///
+/// After resolve_conflict returns, this function will add the resolved code file to the index and continue the rebase process.
+/// 
+/// After everything is done, the guide's steps will be updated to reflect the new code state, but this will not be automatically saved to disk.
+/// 
+/// `dir` is a temporary directory where a temporary git repository will be created. You should ensure this directory exists and is writable.
+pub fn patchup<V: VfsCore<Path = Path>>(
+    guide: &mut Guide<V>,
     dir: &Path,
     step: &StepRef,
     new_code: &str,
@@ -596,8 +657,8 @@ pub fn patchup(
     Ok(())
 }
 
-pub fn repatch(
-    guide: &mut Guide<FsVfs>,
+fn repatch<V: VfsCore<Path = Path>>(
+    guide: &mut Guide<V>,
     dir: &Path,
     empty_commits: &BTreeMap<String, String>,
 ) -> Result<()> {
