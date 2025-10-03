@@ -1,5 +1,6 @@
 ---
 title: Compiler Internals
+full: true
 ---
 
 <UnderConstruction/>
@@ -12,3 +13,41 @@ Below is a table of contents:
 - [Syntree](./syntree.mdx): Documentation regarding the syntax trees produced by the parser.
 - [HIR](./hir.mdx): Documentation regarding the High-level intermediate representation used by the compiler.
 - [Call graph analysis](./call-graph-analysis/problem-statement.mdx): documentation about the call graph analysis algorithm used in the compiler for functionality partitioning.
+
+# Architecture overview
+
+<Mermaid chart={`
+flowchart TD
+    subgraph early[Early stage compilation]
+        SRC[Source Code] --- Parsing[/Parsing/]
+        Parsing --> SYN[Syntax Tree]
+        SYN --- HIRL[/HIR Lowering/]
+        HIRL --> HIR[HIR]
+    end
+    subgraph middle[Middle stage compilation]
+        HIR --- Typeck[/Type checking/]
+        Typeck --> TypeckR[Type Check Results: name resolution, type info]
+        HIR --- SSAL[/SSA Lowering/]
+        TypeckR --- SSAL
+        SSAL --> SSA[SSA]
+    end
+    subgraph late[Late stage compilation]
+        SSA --- CGP[/Callgraph partitioning/]
+        CGP --> PSSA[Partitioned SSA]
+        PSSA -->|Codegen Node 1| LLVM1[LLVM IR Node 1]
+        PSSA -->|Codegen Node 2| LLVM2[LLVM IR Node 2]
+        PSSA -->|Codegen Node 3| LLVM3[LLVM IR Node 3]
+        PSSA -->|Codegen Node 4| LLVM4[LLVM IR Node 4]
+        
+        LLVM1 -->|Codegen and Optimization Node 1| Code1[Machine Code Node 1]
+        LLVM2 -->|Codegen and Optimization Node 2| Code2[Machine Code Node 2]
+        LLVM3 -->|Codegen and Optimization Node 3| Code3[Machine Code Node 3]
+        LLVM4 -->|Codegen and Optimization Node 4| Code4[Machine Code Node 4]
+    end
+
+    click Parsing "parsing" "Parsing"
+    click SYN "syntree" "Syntax Tree"
+    click HIR "hir" "HIR"
+    click Typeck "typeck" "Type Checked HIR"
+    click CGP "call-graph-analysis" "SSA Partitioning"
+`} />

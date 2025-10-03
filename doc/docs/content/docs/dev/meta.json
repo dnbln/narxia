@@ -4,10 +4,13 @@
   "root": true,
   "pages": [
     "index",
-    "--- Syntax ---",
+    "--- Early stage ---",
     "parsing",
     "syntree",
     "hir",
+    "--- Middle stage ---",
+    "typeck",
+    "--- Late stage ---",
     "call-graph-analysis"
   ]
 }
