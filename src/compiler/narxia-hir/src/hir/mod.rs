@@ -7,6 +7,8 @@ use std::fmt;
 use crate::DUMMY_SP;
 use crate::HirId;
 use crate::HirSpan;
+use crate::hir_map::HirElem;
+use crate::hir_map::HirTy;
 
 mod hir_debug;
 
@@ -108,6 +110,33 @@ pub struct ItemList {
     pub items: Vec<ItemId>,
 }
 
+pub enum ItemListHolder<'a> {
+    Mod(&'a ModDef, &'a ModBody),
+    Block(&'a Block),
+}
+
+impl<'a> ItemListHolder<'a> {
+    pub fn get_item_list(&self) -> &ItemList {
+        match self {
+            ItemListHolder::Mod(_, body) => &body.items,
+            ItemListHolder::Block(block) => &block.items,
+        }
+    }
+}
+
+impl<'a> HirTy<'a> for ItemListHolder<'a> {
+    fn from_hir_elem(elem: &'a HirElem) -> Option<Self> {
+        match elem {
+            HirElem::Mod(mod_def) => mod_def
+                .body
+                .as_ref()
+                .map(|body| ItemListHolder::Mod(mod_def, body)),
+            HirElem::Block(block) => Some(ItemListHolder::Block(block)),
+            _ => None,
+        }
+    }
+}
+
 hir_id_newtype!(ModId, ModDef);
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -131,6 +160,16 @@ pub struct Item {
     pub attrs: AttrList,
     pub kind: ItemKind,
     pub hir_id: ItemId,
+}
+
+impl Item {
+    pub fn as_stmt(&self) -> Option<StmtId> {
+        if let ItemKind::Stmt(stmt_id) = &self.kind {
+            Some(*stmt_id)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -883,6 +922,16 @@ pub struct Block {
     pub rbrace: RBrace,
 
     pub hir_id: BlockId,
+}
+
+impl<'a> HirTy<'a> for &'a Block {
+    fn from_hir_elem(elem: &'a HirElem) -> Option<Self> {
+        if let HirElem::Block(block) = elem {
+            Some(block)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone)]

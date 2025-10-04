@@ -115,7 +115,6 @@ pub struct StructTyAdt {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructTyAdtKind {
-    Zst,
     Struct { fields: FxHashMap<String, Ty> },
     TupleStruct { fields: Vec<Ty> },
 }
@@ -245,6 +244,7 @@ pub struct UserDefinedTyClass {
 }
 
 pub(crate) struct FTyBuilder {
+    self_ty: Option<Ty>,
     inputs: Vec<Ty>,
     output: Ty,
 }
@@ -252,9 +252,14 @@ pub(crate) struct FTyBuilder {
 impl FTyBuilder {
     pub fn new() -> Self {
         FTyBuilder {
+            self_ty: None,
             inputs: vec![],
             output: Ty::UNIT_TY,
         }
+    }
+
+    pub fn set_self_ty(&mut self, ty: Ty) {
+        self.self_ty = Some(ty);
     }
 
     pub fn add_input(&mut self, ty: Ty) {
@@ -265,7 +270,10 @@ impl FTyBuilder {
         self.output = ty;
     }
 
-    pub fn build(self) -> TyFun {
+    pub fn build(mut self) -> TyFun {
+        if let Some(self_ty) = self.self_ty {
+            self.inputs.insert(0, self_ty);
+        }
         TyFun {
             inputs: self.inputs,
             output: Box::new(self.output),

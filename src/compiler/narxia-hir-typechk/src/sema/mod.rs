@@ -519,7 +519,11 @@ fn attempt_to_resolve_expr_atom_ident(
     };
     loop {
         narxia_log::info!("{:?}", current_scope);
-        for name in &analysis_results.scope_names[current_scope.0].names {
+        for name in analysis_results.scope_names[current_scope.0]
+            .names
+            .iter()
+            .rev()
+        {
             narxia_log::info!("{:?}", name);
             if name.name == ident.ident.text {
                 let target = tcx.lookup_def_id(name.def_id);
@@ -564,6 +568,10 @@ fn attempt_to_resolve_expr_atom_ident(
 
                                 if !let_stmt_candidate_fit(hir_map, ident.hir_id.hir_id(), stmt_id)
                                 {
+                                    // name-resolution-test:resolve-to-let-stmt-multiple-in-same-scope
+                                    // let s = 1
+                                    // let s = 2
+                                    // let s = s
                                     continue;
                                 }
                                 candidates.push(name.def_id);
@@ -588,9 +596,6 @@ fn attempt_to_resolve_expr_atom_ident(
                                 // }
 
                                 candidates.push(name.def_id);
-                            }
-                            _ => {
-                                todo!()
                             }
                         }
                     }
@@ -642,13 +647,33 @@ fn let_stmt_candidate_fit(hir_map: &HirMap, ident_hir_id: HirId, let_stmt_id: hi
         return false;
     }
 
-    true
+    let common_parent = hir_map
+        .common_parent(ident_hir_id, let_stmt_id.hir_id())
+        .unwrap();
+    let items = hir_map.parent_of_type::<hir::ItemListHolder>(common_parent);
+
+    let item_stmts = items
+        .get_item_list()
+        .items
+        .iter()
+        .filter_map(|item_id| hir_map.get_item(*item_id).as_stmt())
+        .collect::<Vec<_>>();
+    let target_pos = item_stmts
+        .iter()
+        .position(|stmt_id| *stmt_id == let_stmt_id)
+        .unwrap_or(item_stmts.len());
+    let self_pos = item_stmts
+        .iter()
+        .position(|stmt_id| ancestors_contains(ident_hir_id, hir_map, stmt_id.hir_id()))
+        .unwrap_or(item_stmts.len());
+
+    target_pos < self_pos
 }
 
-fn ancestors_contains(s: HirId, hir_map: &HirMap, other: HirId) -> bool {
-    let mut current = s;
+fn ancestors_contains(starting: HirId, hir_map: &HirMap, ancestor: HirId) -> bool {
+    let mut current = starting;
     while !current.is_orphan_parent() {
-        if current == other {
+        if current == ancestor {
             return true;
         }
         current = hir_map.get_parent(current);

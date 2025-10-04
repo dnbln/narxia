@@ -303,6 +303,25 @@ impl HirMap {
         self.opt_parent_of_type(at).unwrap()
     }
 
+    pub fn common_parent(&self, a: HirId, b: HirId) -> Option<HirId> {
+        let mut ancestors_a = Vec::new();
+        let mut current_a = a;
+        while !current_a.is_orphan_parent() {
+            ancestors_a.push(current_a);
+            current_a = self.get_parent(current_a);
+        }
+
+        let mut current_b = b;
+        while !current_b.is_orphan_parent() {
+            if let Some(pos) = ancestors_a.iter().position(|&x| x == current_b) {
+                return Some(ancestors_a[pos]);
+            }
+            current_b = self.get_parent(current_b);
+        }
+
+        None
+    }
+
     fn update_parent(&mut self, at: HirId, parent: HirId) {
         self.parents[at.id] = parent;
     }
