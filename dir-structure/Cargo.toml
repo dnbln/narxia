@@ -1,0 +1,255 @@
+[package]
+name = "dir-structure"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description.workspace = true
+repository.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["derive", "tools", "_all"]
+json = ["dep:serde", "dep:serde_json", "tools-data-formats"]
+toml = ["dep:serde", "dep:toml", "tools-data-formats"]
+yaml = ["dep:serde", "dep:serde_yaml", "tools-data-formats"]
+ron = ["dep:serde", "dep:ron", "tools-data-formats"]
+async = ["dep:pin-project", "dep:futures", "dir-structure-macros?/async"]
+tokio = ["dep:tokio", "async"]
+include_dir = [
+    "dep:include_dir",
+    "dir-structure-macros/include_dir_vfs", # need workaround until https://github.com/Michael-F-Bryan/include_dir/pull/115 for the include_dir_vfs! macro
+]
+git = ["dep:git2"]
+resolve-path = ["derive", "dir-structure-macros/resolve-path"]
+assert_eq = ["dep:assert_eq"]
+derive = ["dep:dir-structure-macros"]
+
+image = ["dep:image", "tokio?/rt"]
+image-format-png = ["image", "image/png"]
+image-format-gif = ["image", "image/gif"]
+image-format-jpeg = ["image", "image/jpeg"]
+image-format-webp = ["image", "image/webp"]
+image-format-tiff = ["image", "image/tiff"]
+image-format-tga = ["image", "image/tga"]
+image-format-bmp = ["image", "image/bmp"]
+image-format-ico = ["image", "image/ico"]
+image-format-hdr = ["image", "image/hdr"]
+image-format-exr = ["image", "image/exr"]
+image-format-pnm = ["image", "image/pnm"]
+image-format-ff = ["image", "image/ff"]
+image-format-avif = ["image", "image/avif"]
+image-format-qoi = ["image", "image/qoi"]
+all-image-formats = [
+    "image-format-png",
+    "image-format-gif",
+    "image-format-jpeg",
+    "image-format-webp",
+    "image-format-tiff",
+    "image-format-tga",
+    "image-format-bmp",
+    "image-format-ico",
+    "image-format-hdr",
+    "image-format-exr",
+    "image-format-pnm",
+    "image-format-ff",
+    "image-format-avif",
+    "image-format-qoi",
+]
+
+tools-atomic-dir = []
+tools-clean-dir = []
+tools-data-formats = []
+tools-deferred-read = []
+tools-deferred-read-or-own = []
+tools-dir-children = []
+tools-dir-descendants = []
+tools-fmt-wrapper = []
+tools-try-parse = []
+tools-versioned = []
+tools-versioned-hash = []
+tools = [
+    "tools-atomic-dir",
+    "tools-clean-dir",
+    "tools-deferred-read",
+    "tools-deferred-read-or-own",
+    "tools-dir-children",
+    "tools-dir-descendants",
+    "tools-fmt-wrapper",
+    "tools-try-parse",
+    "tools-versioned",
+    "tools-versioned-hash",
+]
+
+_all = [
+    "json",
+    "toml",
+    "yaml",
+    "ron",
+    "async",
+    "tokio",
+    "include_dir",
+    "git",
+    "resolve-path",
+    "assert_eq",
+    "derive",
+    "image",
+    "all-image-formats",
+    "tools",
+]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[dependencies]
+dir-structure-macros = { workspace = true, optional = true }
+futures = { version = "0.3", optional = true, default-features = false, features = [
+    "io-compat",
+] }
+pin-project = { workspace = true, optional = true }
+ron = { version = "0.11", optional = true, default-features = false, features = [
+    "std",
+] }
+serde = { version = "1.0", optional = true, default-features = false, features = [
+    "derive",
+    "std",
+] }
+serde_json = { version = "1.0", optional = true, default-features = false, features = [
+    "std",
+] }
+serde_yaml = { version = "0.9", optional = true, default-features = false }
+toml = { version = "0.9", optional = true, default-features = false, features = [
+    "display",
+    "serde",
+    "parse",
+] }
+tokio = { version = "1", optional = true, default-features = false, features = [
+    "fs",
+    "io-util",
+] }
+include_dir = { version = "0.7", optional = true, default-features = false }
+image = { version = "0.25", optional = true, default-features = false }
+assert_eq = { workspace = true, optional = true }
+git2 = { workspace = true, optional = true }
+
+[[test]]
+name = "async_tests"
+path = "tests/async_tests.rs"
+required-features = ["async", "tokio", "assert_eq", "derive", "tools"]
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+required-features = ["assert_eq", "derive", "tools"]
+
+[[example]]
+name = "reading_from_include_dir_vfs"
+path = "examples/reading_from_include_dir_vfs.rs"
+required-features = ["include_dir", "derive"]
+
+[[example]]
+name = "reading_dir_children_from_include_dir_vfs"
+path = "examples/reading_dir_children_from_include_dir_vfs.rs"
+required-features = ["include_dir", "derive", "tools-dir-children"]
+
+[[example]]
+name = "reading_from_git_vfs"
+path = "examples/reading_from_git_vfs.rs"
+required-features = ["git", "derive"]
+
+[[example]]
+name = "reading_from_tokio_fs_vfs"
+path = "examples/reading_from_tokio_fs_vfs.rs"
+required-features = ["tokio", "async", "derive"]
+
+[[example]]
+name = "writing_to_tokio_fs_vfs"
+path = "examples/writing_to_tokio_fs_vfs.rs"
+required-features = ["tokio", "async", "derive"]
+
+[[example]]
+name = "resolve_path"
+path = "examples/resolve_path.rs"
+required-features = ["resolve-path", "derive"]
+
+[[example]]
+name = "load_path"
+path = "examples/load_path.rs"
+required-features = ["resolve-path", "derive"]
+
+[[example]]
+name = "std_fs_vfs"
+path = "examples/std_fs_vfs.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "deferred_read"
+path = "examples/deferred_read.rs"
+required-features = ["derive", "tools-deferred-read"]
+
+[[example]]
+name = "deferred_read_or_own"
+path = "examples/deferred_read_or_own.rs"
+required-features = ["derive", "tools-deferred-read-or-own"]
+
+[[example]]
+name = "reading"
+path = "examples/reading.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "writing"
+path = "examples/writing.rs"
+required-features = ["derive"]
+
+[[example]]
+name = "reading_dir_children"
+path = "examples/reading_dir_children.rs"
+required-features = ["derive", "tools-dir-children"]
+
+[[example]]
+name = "writing_dir_children"
+path = "examples/writing_dir_children.rs"
+required-features = ["derive", "tools-dir-children"]
+
+[[example]]
+name = "clean_dir"
+path = "examples/clean_dir.rs"
+required-features = ["derive", "tools-clean-dir"]
+
+[[example]]
+name = "json"
+path = "examples/json.rs"
+required-features = ["derive", "json"]
+
+[[example]]
+name = "json_pretty"
+path = "examples/json_pretty.rs"
+required-features = ["derive", "json"]
+
+[[example]]
+name = "toml"
+path = "examples/toml.rs"
+required-features = ["derive", "toml"]
+
+[[example]]
+name = "yaml"
+path = "examples/yaml.rs"
+required-features = ["derive", "yaml"]
+
+[[example]]
+name = "ron"
+path = "examples/ron.rs"
+required-features = ["derive", "ron"]
+
+[[example]]
+name = "ron_pretty"
+path = "examples/ron_pretty.rs"
+required-features = ["derive", "ron"]
+
+[lints]
+workspace = true
