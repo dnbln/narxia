@@ -138,3 +138,23 @@ git2 = { workspace = true, optional = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "reading_from_tokio_fs_vfs"
+path = "examples/reading_from_tokio_fs_vfs.rs"
+required-features = ["tokio", "async", "derive"]
+
+[[example]]
+name = "writing_to_tokio_fs_vfs"
+path = "examples/writing_to_tokio_fs_vfs.rs"
+required-features = ["tokio", "async", "derive"]
+
+[[example]]
+name = "resolve_path"
+path = "examples/resolve_path.rs"
+required-features = ["resolve-path", "derive"]
+
+[[example]]
+name = "load_path"
+path = "examples/load_path.rs"
+required-features = ["resolve-path", "derive"]

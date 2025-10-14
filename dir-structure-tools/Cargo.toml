@@ -159,16 +159,6 @@ path = "examples/writing_to_tokio_fs_vfs.rs"
 required-features = ["tokio", "async", "derive"]
 
 [[example]]
-name = "resolve_path"
-path = "examples/resolve_path.rs"
-required-features = ["resolve-path", "derive"]
-
-[[example]]
-name = "load_path"
-path = "examples/load_path.rs"
-required-features = ["resolve-path", "derive"]
-
-[[example]]
 name = "std_fs_vfs"
 path = "examples/std_fs_vfs.rs"
 required-features = ["derive"]

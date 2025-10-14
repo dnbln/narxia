@@ -121,12 +121,12 @@ jobs:
       - name: Run feature-combo tests (--features assert_eq,include_dir)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--features assert_eq,include_dir" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir)
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir,async)
+        with: { feature-combos: "--no-default-features --features atomic-dir" }
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir,async)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir,async,tokio)
+        with: { feature-combos: "--no-default-features --features atomic-dir,async" }
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir,async,tokio)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async,tokio" }
+        with: { feature-combos: "--no-default-features --features atomic-dir,async,tokio" }
