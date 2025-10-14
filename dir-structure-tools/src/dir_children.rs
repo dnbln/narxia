@@ -1689,12 +1689,12 @@ impl<'a, T, P: PathType + ?Sized, F: FnMut(&mut DirChild<T, P>) -> bool> Iterato
 #[macro_export]
 macro_rules! dir_children_wrapper_with_vfs {
     ($vis:vis $name:ident $ty:ident $(<Path=$p_ty:ty>)?) => {
-        $vis struct $name<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>)
+        $vis struct $name<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs>(pub $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>)
         where
-            Vfs: $crate::traits::vfs::VfsCore + 'vfs;
+            Vfs: $crate::dir_structure::traits::vfs::VfsCore + 'vfs;
 
-        impl<'vfs, Vfs: $crate::traits::vfs::Vfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
-            fn read_from(path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::VfsResult<Self, Vfs>
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::Vfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::dir_structure::traits::sync::ReadFrom<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn read_from(path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::dir_structure::error::VfsResult<Self, Vfs>
             where
                 Self: Sized,
             {
@@ -1702,13 +1702,13 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::WriteSupportingVfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs> {
-            fn write_to(&self, path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::error::VfsResult<(), Vfs> {
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::WriteSupportingVfs<'vfs $(, Path = $p_ty)?> + 'vfs> $crate::dir_structure::traits::sync::WriteTo<'vfs, Vfs> for $name<'vfs, Vfs> {
+            fn write_to(&self, path: &Vfs::Path, vfs: ::std::pin::Pin<&'vfs Vfs>) -> $crate::dir_structure::error::VfsResult<(), Vfs> {
                 self.0.write_to(path, vfs)
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::Deref for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::Deref for $name<'vfs, Vfs> {
             type Target = $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>;
 
             fn deref(&self) -> &Self::Target {
@@ -1716,13 +1716,13 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::DerefMut for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::ops::DerefMut for $name<'vfs, Vfs> {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)?+ 'vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> std::iter::IntoIterator for $name<'vfs, Vfs> {
             type Item = $crate::dir_children::DirChild<$ty<'vfs, Vfs>, Vfs::Path>;
             type IntoIter = $crate::dir_children::DirChildrenIntoIter<$ty<'vfs, Vfs>, Vfs::Path>;
 
@@ -1731,15 +1731,18 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::traits::resolve::DynamicHasField for $name<'vfs, Vfs> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>: $crate::traits::resolve::DynamicHasField {
-            type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::traits::resolve::DynamicHasField>::Inner;
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs>
+            $crate::dir_structure::traits::resolve::DynamicHasField for $name<'vfs, Vfs>
+        {
+            type Inner = $ty<'vfs, Vfs>;
 
-            fn resolve_path<P: $crate::traits::vfs::OwnedPathType>(p: P, field: &str) -> P {
-                <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::traits::resolve::DynamicHasField>::resolve_path(p, field)
+            fn resolve_path<P: $crate::dir_structure::traits::vfs::OwnedPathType>(mut p: P, field: &str) -> P {
+                p.push_segment_str(field);
+                p
             }
         }
 
-        impl<'vfs, Vfs: $crate::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
+        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::dir_structure::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
     };
 }
 

@@ -1,10 +1,12 @@
 [package]
 name = "dir-structure"
-version.workspace = true
-edition.workspace = true
-license.workspace = true
-description.workspace = true
-repository.workspace = true
+version = "0.3.0"
+edition = "2024"
+homepage = "https://nrx.dnbln.dev/docs/dx/dir-structure/"
+repository = "https://github.com/dnbln/dir-structure"
+description = "Model directory structures as plain Rust structs."
+keywords = ["file-system"]
+license = "MIT OR Apache-2.0"
 
 [package.metadata.docs.rs]
 all-features = true
