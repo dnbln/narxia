@@ -324,6 +324,11 @@ mod tests {
                     path: Path::new("dir-structure/Cargo.toml").into(),
                 },
                 vfs::DirEntryInfo {
+                    name: "README.md".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("dir-structure/README.md").into(),
+                },
+                vfs::DirEntryInfo {
                     name: "examples".into(),
                     kind: vfs::DirEntryKind::Directory,
                     path: Path::new("dir-structure/examples").into(),
