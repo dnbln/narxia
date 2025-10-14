@@ -1,8 +1,8 @@
 //! An example demonstrating the use of [`DirChildren`] to read dynamic directory contents.
 
+use dir_structure::prelude::*;
 use dir_structure_tools::NoFilter;
 use dir_structure_tools::dir_children::DirChildren;
-use dir_structure::prelude::*;
 
 mod example_dirs;
 

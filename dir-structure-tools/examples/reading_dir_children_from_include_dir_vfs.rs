@@ -6,9 +6,9 @@
 use std::path::Path;
 use std::pin::Pin;
 
+use dir_structure::prelude::*;
 use dir_structure_tools::NoFilter;
 use dir_structure_tools::dir_children::DirChildren;
-use dir_structure::prelude::*;
 
 #[derive(dir_structure::DirStructure)]
 pub struct Dir<Vfs: VfsCore> {

@@ -4,15 +4,15 @@ use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 
-use dir_structure::clean_dir::CleanDir;
-use dir_structure_tools::dir_children::DirChild;
-use dir_structure_tools::dir_children::DirChildren;
 use dir_structure::prelude::*;
 use dir_structure::traits::async_vfs::VfsAsync;
 use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
+use dir_structure::vfs::tokio_fs_vfs::TokioFsVfs;
+use dir_structure_tools::clean_dir::CleanDir;
+use dir_structure_tools::dir_children::DirChild;
+use dir_structure_tools::dir_children::DirChildren;
 use dir_structure_tools::versioned::Versioned;
 use dir_structure_tools::versioned::VersionedString;
-use dir_structure::vfs::tokio_fs_vfs::TokioFsVfs;
 
 fn test_dir(name: &str) -> PathBuf {
     let p = Path::new(env!("CARGO_TARGET_TMPDIR"))

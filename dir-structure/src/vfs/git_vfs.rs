@@ -276,7 +276,9 @@ mod tests {
             .expect("Failed to get tree");
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
-        let mut walker = vfs.walk_dir(Path::new("dir-structure-macros")).expect("Failed to walk dir");
+        let mut walker = vfs
+            .walk_dir(Path::new("dir-structure-macros"))
+            .expect("Failed to walk dir");
         let mut entries = Vec::new();
         while let Some(entry) = walker.next() {
             entries.push(entry.expect("error while walking dir"));

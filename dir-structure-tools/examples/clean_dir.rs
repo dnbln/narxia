@@ -5,8 +5,8 @@
 use std::error::Error;
 use std::fs;
 
-use dir_structure_tools::clean_dir::CleanDir;
 use dir_structure::prelude::*;
+use dir_structure_tools::clean_dir::CleanDir;
 
 mod example_dirs;
 

@@ -74,3 +74,8 @@ required-features = ["resolve-path", "derive"]
 name = "load_path"
 path = "examples/load_path.rs"
 required-features = ["resolve-path", "derive"]
+
+[[example]]
+name = "std_fs_vfs"
+path = "examples/std_fs_vfs.rs"
+required-features = ["derive"]

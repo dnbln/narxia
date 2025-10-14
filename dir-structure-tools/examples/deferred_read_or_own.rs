@@ -5,9 +5,9 @@
 
 use std::error::Error;
 
-use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 use dir_structure::prelude::*;
 use dir_structure::traits::vfs::VfsCore;
+use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 
 mod example_dirs;
 

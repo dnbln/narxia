@@ -5,8 +5,8 @@
 use std::error::Error;
 use std::fs;
 
-use dir_structure_tools::deferred_read::DeferredRead;
 use dir_structure::prelude::*;
+use dir_structure_tools::deferred_read::DeferredRead;
 
 mod example_dirs;
 

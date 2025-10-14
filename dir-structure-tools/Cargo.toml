@@ -91,6 +91,7 @@ _all = [
 
 [dev-dependencies]
 dir-structure = { workspace = true, features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
 
 [dependencies]
 dir-structure = { workspace = true, default-features = false }
@@ -126,107 +127,82 @@ git2 = { workspace = true, optional = true }
 [[test]]
 name = "async_tests"
 path = "tests/async_tests.rs"
-required-features = ["async", "tokio", "assert_eq", "derive", "tools"]
+required-features = ["async", "tokio", "assert_eq", "tools"]
 
 [[test]]
 name = "tests"
 path = "tests/tests.rs"
-required-features = ["assert_eq", "derive", "tools"]
+required-features = ["assert_eq", "tools"]
 
 [[example]]
 name = "reading_from_include_dir_vfs"
 path = "examples/reading_from_include_dir_vfs.rs"
-required-features = ["include_dir", "derive"]
+required-features = ["include_dir"]
 
 [[example]]
 name = "reading_dir_children_from_include_dir_vfs"
 path = "examples/reading_dir_children_from_include_dir_vfs.rs"
-required-features = ["include_dir", "derive", "tools-dir-children"]
+required-features = ["include_dir", "tools-dir-children"]
 
 [[example]]
 name = "reading_from_git_vfs"
 path = "examples/reading_from_git_vfs.rs"
-required-features = ["git", "derive"]
-
-[[example]]
-name = "reading_from_tokio_fs_vfs"
-path = "examples/reading_from_tokio_fs_vfs.rs"
-required-features = ["tokio", "async", "derive"]
-
-[[example]]
-name = "writing_to_tokio_fs_vfs"
-path = "examples/writing_to_tokio_fs_vfs.rs"
-required-features = ["tokio", "async", "derive"]
-
-[[example]]
-name = "std_fs_vfs"
-path = "examples/std_fs_vfs.rs"
-required-features = ["derive"]
+required-features = ["git"]
 
 [[example]]
 name = "deferred_read"
 path = "examples/deferred_read.rs"
-required-features = ["derive", "tools-deferred-read"]
+required-features = ["deferred-read"]
 
 [[example]]
 name = "deferred_read_or_own"
 path = "examples/deferred_read_or_own.rs"
-required-features = ["derive", "tools-deferred-read-or-own"]
-
-[[example]]
-name = "reading"
-path = "examples/reading.rs"
-required-features = ["derive"]
-
-[[example]]
-name = "writing"
-path = "examples/writing.rs"
-required-features = ["derive"]
+required-features = ["deferred-read-or-own"]
 
 [[example]]
 name = "reading_dir_children"
 path = "examples/reading_dir_children.rs"
-required-features = ["derive", "tools-dir-children"]
+required-features = ["dir-children"]
 
 [[example]]
 name = "writing_dir_children"
 path = "examples/writing_dir_children.rs"
-required-features = ["derive", "tools-dir-children"]
+required-features = ["dir-children"]
 
 [[example]]
 name = "clean_dir"
 path = "examples/clean_dir.rs"
-required-features = ["derive", "tools-clean-dir"]
+required-features = ["clean-dir"]
 
 [[example]]
 name = "json"
 path = "examples/json.rs"
-required-features = ["derive", "json"]
+required-features = ["json"]
 
 [[example]]
 name = "json_pretty"
 path = "examples/json_pretty.rs"
-required-features = ["derive", "json"]
+required-features = ["json"]
 
 [[example]]
 name = "toml"
 path = "examples/toml.rs"
-required-features = ["derive", "toml"]
+required-features = ["toml"]
 
 [[example]]
 name = "yaml"
 path = "examples/yaml.rs"
-required-features = ["derive", "yaml"]
+required-features = ["yaml"]
 
 [[example]]
 name = "ron"
 path = "examples/ron.rs"
-required-features = ["derive", "ron"]
+required-features = ["ron"]
 
 [[example]]
 name = "ron_pretty"
 path = "examples/ron_pretty.rs"
-required-features = ["derive", "ron"]
+required-features = ["ron"]
 
 [lints]
 workspace = true
