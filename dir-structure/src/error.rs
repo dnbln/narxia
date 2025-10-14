@@ -21,16 +21,6 @@ pub enum Error<P> {
     Write(P, Box<dyn error::Error + Send + Sync>),
     /// Serde error.
     Serde(P, Box<dyn error::Error + Send + Sync>),
-
-    /// An error related to the directory structure.
-    UnexpectedNumberOfChildren {
-        /// The expected number of children.
-        expected: &'static str,
-        /// How many children were found.
-        found: usize,
-        /// The path to the directory where this happened.
-        path: P,
-    },
 }
 
 impl<P: fmt::Debug> error::Error for Error<P> {
@@ -40,7 +30,6 @@ impl<P: fmt::Debug> error::Error for Error<P> {
             Self::Parse(_, e) => Some(e.as_ref()),
             Self::Write(_, e) => Some(e.as_ref()),
             Self::Serde(_, e) => Some(e.as_ref()),
-            Self::UnexpectedNumberOfChildren { .. } => None,
         }
     }
 }
@@ -52,15 +41,6 @@ impl<P: fmt::Debug> fmt::Display for Error<P> {
             Self::Parse(path, e) => write!(f, "Parse error at {:?}: {}", path, e),
             Self::Write(path, e) => write!(f, "Write error at {:?}: {}", path, e),
             Self::Serde(path, e) => write!(f, "Serde error at {:?}: {}", path, e),
-            Self::UnexpectedNumberOfChildren {
-                expected,
-                found,
-                path,
-            } => write!(
-                f,
-                "Unexpected number of children: expected {}, found {} at {:?}",
-                expected, found, path
-            ),
         }
     }
 }

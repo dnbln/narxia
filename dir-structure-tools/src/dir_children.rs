@@ -1758,6 +1758,28 @@ pub struct DirChildSingle<T, F: Filter<P>, P: PathType + ?Sized = Path> {
     _phantom: PhantomData<(F, P)>,
 }
 
+/// An error indicating that the number of children found in a directory
+/// does not match the expected number.
+#[derive(Debug)]
+pub struct UnexpectedNumberOfChildren {
+    /// The expected number of children.
+    expected: &'static str,
+    /// How many children were found.
+    found: usize,
+}
+
+impl std::error::Error for UnexpectedNumberOfChildren {}
+
+impl fmt::Display for UnexpectedNumberOfChildren {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Unexpected number of children: expected {}, found {}",
+            self.expected, self.found
+        )
+    }
+}
+
 impl<'a, T, F, Vfs: vfs::Vfs<'a>> ReadFrom<'a, Vfs> for DirChildSingle<T, F, Vfs::Path>
 where
     T: ReadFrom<'a, Vfs>,
@@ -1769,11 +1791,13 @@ where
     {
         let children = DirChildren::<T, F, Vfs::Path>::read_from(path, vfs)?;
         if children.len() != 1 {
-            return Err(Error::UnexpectedNumberOfChildren {
-                expected: "1",
-                found: children.len(),
-                path: path.owned(),
-            });
+            return Err(Error::Parse(
+                path.owned(),
+                Box::new(UnexpectedNumberOfChildren {
+                    expected: "1",
+                    found: children.len(),
+                }),
+            ));
         }
 
         let child = children.children.into_iter().next().unwrap();
@@ -2386,11 +2410,13 @@ where
         } else if children.is_empty() {
             Ok(DirChildSingleOpt::None)
         } else {
-            Err(Error::UnexpectedNumberOfChildren {
-                expected: "0 or 1",
-                found: children.len(),
-                path: path.owned(),
-            })
+            Err(Error::Parse(
+                path.owned(),
+                Box::new(UnexpectedNumberOfChildren {
+                    expected: "0 or 1",
+                    found: children.len(),
+                }),
+            ))
         }
     }
 }
