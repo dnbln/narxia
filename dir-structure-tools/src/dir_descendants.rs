@@ -17,12 +17,6 @@ use std::task::Context;
 use std::task::Poll;
 use std::vec;
 
-#[cfg(feature = "async")]
-use futures::future::BoxFuture;
-#[cfg(feature = "async")]
-use pin_project::pin_project;
-
-use crate::NoFilter;
 use dir_structure::error::VfsResult;
 use dir_structure::prelude::*;
 #[cfg(feature = "async")]
@@ -36,6 +30,12 @@ use dir_structure::traits::vfs::OwnedPathType;
 use dir_structure::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use dir_structure::traits::vfs::VfsCore;
+#[cfg(feature = "async")]
+use futures::future::BoxFuture;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
+
+use crate::NoFilter;
 
 /// A structure representing the descendants of a directory.
 ///

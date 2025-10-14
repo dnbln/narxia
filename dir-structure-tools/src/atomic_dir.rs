@@ -16,9 +16,6 @@ use std::task::Context;
 use std::task::Poll;
 
 #[cfg(feature = "async")]
-use pin_project::pin_project;
-
-#[cfg(feature = "async")]
 use dir_structure::error::Error;
 use dir_structure::error::VfsResult;
 use dir_structure::prelude::*;
@@ -26,6 +23,8 @@ use dir_structure::prelude::*;
 use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
 use dir_structure::traits::vfs;
 use dir_structure::traits::vfs::WriteSupportingVfs;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
 
 /// A wrapper type that enables atomic writes to directories.
 ///
@@ -343,8 +342,6 @@ where
 
 mod std_fs_impl {
     //! The [`VfsSupportsTemporaryDirectories`] implementation for the [`FsVfs`] file system.
-    use super::*;
-
     use std::env;
     use std::fs;
     use std::mem;
@@ -353,10 +350,12 @@ mod std_fs_impl {
     use std::sync::atomic::AtomicU64;
     use std::sync::atomic::Ordering;
 
-    use crate::atomic_dir::TempDirApi;
-    use crate::atomic_dir::VfsSupportsTemporaryDirectories;
     use dir_structure::error::WrapIoError;
     use dir_structure::vfs::fs_vfs::FsVfs;
+
+    use super::*;
+    use crate::atomic_dir::TempDirApi;
+    use crate::atomic_dir::VfsSupportsTemporaryDirectories;
 
     /// A temporary directory in the real file system.
     pub struct TempDir(PathBuf);
@@ -434,13 +433,13 @@ mod tokio_fs_impl {
     use std::path::Path;
     use std::path::PathBuf;
 
+    use dir_structure::error::Error;
+    use dir_structure::error::VfsResult;
     use dir_structure::vfs::tokio_fs_vfs::TokioFsVfs;
     use tokio::fs;
 
     use super::std_fs_impl;
     use super::*;
-    use dir_structure::error::Error;
-    use dir_structure::error::VfsResult;
 
     /// A temporary directory in the real file system.
     pub struct TempDir(PathBuf);

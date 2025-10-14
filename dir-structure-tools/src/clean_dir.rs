@@ -10,9 +10,6 @@ use std::task::Context;
 #[cfg(feature = "async")]
 use std::task::Poll;
 
-#[cfg(feature = "async")]
-use pin_project::pin_project;
-
 use dir_structure::error::VfsResult;
 use dir_structure::prelude::*;
 #[cfg(feature = "async")]
@@ -37,6 +34,8 @@ use dir_structure::traits::vfs::OwnedPathType;
 use dir_structure::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use dir_structure::traits::vfs::VfsCore;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
 
 /// A newtype that will clean the directory it is written to, before writing
 /// the value.
