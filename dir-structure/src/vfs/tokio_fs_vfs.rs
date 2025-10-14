@@ -345,28 +345,12 @@ mod imp {
     use std::task::Context;
 
     use futures::FutureExt;
-    #[cfg(feature = "image")]
-    use tokio::task;
 
     use super::*;
     use crate::error::Error;
     use crate::error::Result;
-    #[cfg(feature = "image")]
-    use crate::image::ImgFormat;
-    #[cfg(feature = "image")]
-    use crate::prelude::*;
-    #[cfg(feature = "image")]
-    use crate::traits::async_vfs::ReadImageFromAsync;
-    #[cfg(feature = "image")]
-    use crate::traits::async_vfs::WriteImageToAsync;
-    #[cfg(feature = "image")]
-    use crate::traits::async_vfs::WriteImageToAsyncRef;
     use crate::traits::vfs::DirEntryInfo;
     use crate::traits::vfs::DirEntryKind;
-    #[cfg(feature = "image")]
-    use crate::traits::vfs::WriteSupportingVfs as _;
-    #[cfg(feature = "image")]
-    use crate::vfs::fs_vfs::FsVfs;
 
     /// Directory walker for asynchronous file system operations on [`tokio::fs`].
     pub struct DirWalker {
@@ -418,167 +402,6 @@ mod imp {
                 Poll::Ready(Err(e)) => Poll::Ready(Some(Err(Error::Io(self.path.clone(), e)))),
                 Poll::Pending => Poll::Pending,
             }
-        }
-    }
-
-    #[cfg(feature = "image")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    impl<'vfs, T: ImgFormat> ReadImageFromAsync<T> for TokioFsVfs
-    where
-        T: Send + 'static,
-    {
-        type ReadImageFuture<'a>
-            = Pin<Box<dyn Future<Output = Result<T, PathBuf>> + Send + 'a>>
-        where
-            Self: 'a;
-
-        fn read_image_async<'a>(
-            self: Pin<&'a Self>,
-            path: <Self::Path as PathType>::OwnedPath,
-        ) -> Self::ReadImageFuture<'a> {
-            debug_assert!(
-                T::FORMAT.reading_enabled(),
-                "Image format {:?} does not support reading; enable the corresponding feature",
-                T::FORMAT
-            );
-            let std_vfs = Pin::new(&FsVfs);
-            Box::pin(async move {
-                let p_clone = path.clone();
-                match task::spawn_blocking(move || {
-                    let mut img_reader =
-                        image::ImageReader::new(io::BufReader::new(std_vfs.open_read(&p_clone)?));
-                    img_reader.set_format(T::FORMAT);
-                    let img = img_reader
-                        .decode()
-                        .map_err(|e| Error::Parse(p_clone.clone(), Box::new(e)))?;
-                    Ok(T::from_image(img))
-                })
-                .await
-                {
-                    Ok(res) => res,
-                    Err(e) => Err(Error::Parse(path, Box::new(e))),
-                }
-            })
-        }
-    }
-
-    #[cfg(feature = "image")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    impl<'vfs> WriteImageToAsync<'vfs> for TokioFsVfs {
-        type WriteImageFuture = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
-
-        fn write_image_async(
-            self: Pin<&'vfs Self>,
-            path: <Self::Path as PathType>::OwnedPath,
-            image: image::DynamicImage,
-            format: image::ImageFormat,
-        ) -> Self::WriteImageFuture {
-            Box::pin(async move {
-                use crate::traits::async_vfs::WriteSupportingVfsAsync;
-
-                self.create_parent_dir(path.clone()).await?;
-
-                let p_clone = path.clone();
-
-                let std_vfs = Pin::new(&FsVfs);
-                match task::spawn_blocking(move || {
-                    let mut f = std_vfs.open_write(&p_clone)?;
-                    image
-                        .write_to(&mut f, format)
-                        .map_err(|e| Error::Write(p_clone, Box::new(e)))
-                })
-                .await
-                {
-                    Ok(res) => res,
-                    Err(e) => Err(Error::Write(path, Box::new(e))),
-                }
-            })
-        }
-    }
-
-    #[cfg(feature = "image")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
-    impl<'vfs> WriteImageToAsyncRef<'vfs> for TokioFsVfs
-    where
-        'vfs: 'vfs,
-    {
-        type WriteImageRefFuture = Pin<Box<dyn Future<Output = Result<(), PathBuf>> + Send + 'vfs>>;
-
-        fn write_image_async_ref(
-            self: Pin<&'vfs Self>,
-            path: <Self::Path as PathType>::OwnedPath,
-            image: &'vfs image::DynamicImage,
-            format: image::ImageFormat,
-        ) -> Self::WriteImageRefFuture {
-            let img = image.clone();
-            (img, format).write_to_async(path, self)
-        }
-    }
-}
-
-#[cfg(feature = "tools-atomic-dir")]
-mod atomic_dir_imp {
-    //! The [`VfsSupportsTemporaryDirectoriesAsync`] implementation for the [`TokioFsVfs`] file system.
-
-    use tokio::fs;
-
-    use super::*;
-    use crate::atomic_dir::TempDirApiAsync;
-    use crate::atomic_dir::VfsSupportsTemporaryDirectoriesAsync;
-    use crate::error::Error;
-    use crate::error::VfsResult;
-    use crate::vfs::fs_vfs as std_fs_vfs;
-
-    /// A temporary directory in the real file system.
-    pub struct TempDir(PathBuf);
-
-    impl<'vfs> TempDirApiAsync<'vfs> for TempDir {
-        type Vfs = TokioFsVfs;
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-
-        type FuturePersistAt =
-            Pin<Box<dyn Future<Output = VfsResult<(), Self::Vfs>> + Send + 'vfs>>;
-
-        type FutureDelete = <TokioFsVfs as WriteSupportingVfsAsync>::RemoveDirAllFuture<'vfs>;
-
-        fn persist_at(
-            self,
-            vfs: Pin<&'vfs Self::Vfs>,
-            path: <<Self::Vfs as VfsCore>::Path as PathType>::OwnedPath,
-        ) -> Self::FuturePersistAt {
-            Box::pin(async move {
-                vfs.create_parent_dir(path.clone()).await?;
-                fs::rename(&self.0, &path)
-                    .await
-                    .map_err(|e| Error::Io(path.clone(), e))?;
-                Ok(())
-            })
-        }
-
-        fn delete(self, vfs: Pin<&'vfs Self::Vfs>) -> Self::FutureDelete {
-            vfs.remove_dir_all(self.0.clone())
-        }
-    }
-
-    impl<'vfs> VfsSupportsTemporaryDirectoriesAsync<'vfs> for TokioFsVfs {
-        type TemporaryDirectory = TempDir;
-
-        type TemporaryDirectoryFuture =
-            Pin<Box<dyn Future<Output = VfsResult<TempDir, Self>> + Send + 'vfs>>;
-
-        fn create_temporary_directory(self: Pin<&'vfs Self>) -> Self::TemporaryDirectoryFuture {
-            let temp_dir = std_fs_vfs::atomic_dir_imp::make_new_temp_dir_path();
-            let path = temp_dir.clone();
-            Box::pin(async move {
-                if self.exists(path.clone()).await? {
-                    self.remove_dir_all(path.clone()).await?;
-                }
-                self.create_dir(path.clone()).await?;
-                Ok(TempDir(temp_dir))
-            })
         }
     }
 }

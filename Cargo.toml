@@ -1,8 +1,5 @@
 [workspace]
-members = [
-    "dir-structure",
-    "dir-structure-macros",
-]
+members = ["dir-structure", "dir-structure-macros", "dir-structure-tools"]
 resolver = "2"
 
 [workspace.package]
@@ -18,8 +15,9 @@ license = "MIT OR Apache-2.0"
 [workspace.dependencies]
 assert_eq_macros = { version = "=0.2.0" }
 assert_eq = { version = "0.2.0" }
-dir-structure-macros = { path = "dir-structure-macros", version = "=0.2.0" }
-dir-structure = { path = "dir-structure", version = "0.2.0" }
+dir-structure-macros = { path = "dir-structure-macros", version = "=0.2.0", default-features = false }
+dir-structure-tools = { path = "dir-structure-tools", version = "=0.2.0", default-features = false }
+dir-structure = { path = "dir-structure", version = "=0.2.0", default-features = false }
 
 bumpalo = "3.6.0"
 bytes = "1.4.0"
@@ -37,6 +35,8 @@ humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
 libtest-mimic = "0.8.1"
+futures = { version = "0.3", default-features = false }
+image = "0.24"
 llvm-sys = { version = "211.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }

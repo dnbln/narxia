@@ -220,9 +220,9 @@ mod tests {
         let vfs = Pin::new(&vfs);
 
         let content = vfs
-            .read_string(Path::new("dir-structure/README.md"))
+            .read_string(Path::new("README.md"))
             .expect("Failed to read README.md");
-        assert_eq!(content, include_str!("../../README.md"));
+        assert_eq!(content, include_str!("../../../README.md"));
     }
 
     #[test]
@@ -237,7 +237,7 @@ mod tests {
         let vfs = Pin::new(&vfs);
 
         assert!(
-            vfs.exists(Path::new("dir-structure/README.md"))
+            vfs.exists(Path::new("README.md"))
                 .expect("Failed to check existence")
         );
         assert!(
@@ -258,12 +258,12 @@ mod tests {
         let vfs = Pin::new(&vfs);
 
         let mut file = vfs
-            .open_read(Path::new("dir-structure/README.md"))
+            .open_read(Path::new("README.md"))
             .expect("Failed to open README.md");
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read README.md");
-        assert_eq!(content, include_str!("../../README.md"));
+        assert_eq!(content, include_str!("../../../README.md"));
     }
 
     #[test]
