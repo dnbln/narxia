@@ -14,7 +14,8 @@ git2.workspace = true
 clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-dir-structure = {workspace = true, features = ["json", "resolve-path"]}
+dir-structure = { workspace = true, features = ["resolve-path"] }
+dir-structure-tools = { workspace = true, features = ["json"] }
 thiserror.workspace = true
 
 [lints]

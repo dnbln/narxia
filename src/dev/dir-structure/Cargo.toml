@@ -7,16 +7,6 @@ members = [
 ]
 resolver = "2"
 
-[workspace.package]
-version = "0.3.0"
-edition = "2024"
-homepage = "https://nrx.dnbln.dev/docs/dx/dir-structure/"
-repository = "https://github.com/dnbln/dir-structure"
-description = "Model directory structures as plain Rust structs."
-keywords = ["file-system"]
-license = "MIT OR Apache-2.0"
-
-
 [workspace.dependencies]
 assert_eq = { version = "0.2.0" }
 dir-structure-macros = { path = "dir-structure-macros", version = "=0.3.0", default-features = false }

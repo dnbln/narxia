@@ -1,3 +1,5 @@
+#![feature(trivial_bounds)]
+
 pub extern crate dir_structure;
 
 use std::path::Path;
@@ -5,15 +7,15 @@ use std::path::PathBuf;
 
 use dir_structure::DirStructure;
 use dir_structure::HasField;
-use dir_structure::NoFilter;
-use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
-use dir_structure::dir_children::DirChildren;
-use dir_structure::dir_descendants::DirDescendants;
-use dir_structure::dir_descendants::FileFilter;
-use dir_structure::dir_descendants::FolderFilter;
-use dir_structure::dir_descendants::FolderRecurseFilter;
 use dir_structure::prelude::*;
-use dir_structure::versioned::Versioned;
+use dir_structure_tools::NoFilter;
+use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
+use dir_structure_tools::dir_children::DirChildren;
+use dir_structure_tools::dir_descendants::DirDescendants;
+use dir_structure_tools::dir_descendants::FileFilter;
+use dir_structure_tools::dir_descendants::FolderFilter;
+use dir_structure_tools::dir_descendants::FolderRecurseFilter;
+use dir_structure_tools::versioned::Versioned;
 
 pub fn ws_root() -> &'static Path {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -181,7 +183,7 @@ pub mod parser_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::*;
     use dir_structure::std_types::FileString;
@@ -218,7 +220,7 @@ pub mod parser_tests {
         }
     }
 
-    dir_structure::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder <Path = Path>);
+    dir_structure_tools::dir_children_wrapper_with_vfs!(pub ParserTestsFolder ParserTestSingleFolder <Path = Path>);
 
     pub fn collect_parser_tests() -> VfsResult<ParserTestsFolder<'static, FsVfs>, FsVfs> {
         ParserTestsFolder::<FsVfs>::read(parser_tests_dir())
@@ -237,7 +239,7 @@ pub mod name_resolution_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::*;
     use dir_structure::std_types::FileString;
@@ -271,7 +273,7 @@ pub mod name_resolution_tests {
         }
     }
 
-    dir_structure::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder <Path = Path>);
+    dir_structure_tools::dir_children_wrapper_with_vfs!(pub NameResolutionTestsFolder NameResolutionTestSingleFolder <Path = Path>);
 
     pub fn collect_name_resolution_tests()
     -> VfsResult<NameResolutionTestsFolder<'static, FsVfs>, FsVfs> {
@@ -291,7 +293,7 @@ pub mod ssa_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::VfsCore;
     use dir_structure::std_types::FileString;
@@ -325,7 +327,7 @@ pub mod ssa_tests {
         }
     }
 
-    dir_structure::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder <Path = Path>);
+    dir_structure_tools::dir_children_wrapper_with_vfs!(pub SsaTestsFolder SsaTestSingleFolder <Path = Path>);
 
     pub fn collect_ssa_tests() -> VfsResult<SsaTestsFolder<'static, FsVfs>, FsVfs> {
         SsaTestsFolder::<FsVfs>::read(ssa_tests_dir())

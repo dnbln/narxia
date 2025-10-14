@@ -19,19 +19,19 @@ use std::slice;
 
 use dir_structure::DirStructure;
 use dir_structure::HasField;
-use dir_structure::data_formats::json_pretty::JsonPretty;
-use dir_structure::dir_children::DirChildSingle;
-use dir_structure::dir_children::DirChildSingleOpt;
-use dir_structure::dir_children::DirChildren;
-use dir_structure::dir_children::Filter;
-use dir_structure::dir_children::ForceCreateDirChildren;
 use dir_structure::error::Error as DirStructureError;
-use dir_structure::file_prefix_filter;
 use dir_structure::prelude::PathType;
 use dir_structure::prelude::VfsCore;
 use dir_structure::traits::resolve::resolve_path;
-use dir_structure::versioned::Versioned;
 use dir_structure::vfs::fs_vfs::FsVfs;
+use dir_structure_tools::data_formats::json_pretty::JsonPretty;
+use dir_structure_tools::dir_children::DirChildSingle;
+use dir_structure_tools::dir_children::DirChildSingleOpt;
+use dir_structure_tools::dir_children::DirChildren;
+use dir_structure_tools::dir_children::Filter;
+use dir_structure_tools::dir_children::ForceCreateDirChildren;
+use dir_structure_tools::file_prefix_filter;
+use dir_structure_tools::versioned::Versioned;
 use git2::RebaseOperationType;
 use git2::Repository;
 use git2::build::CheckoutBuilder;
@@ -64,7 +64,7 @@ pub struct Guide<Vfs: VfsCore<Path = Path>> {
     #[dir_structure(path = "steps.json")]
     steps: Versioned<JsonPretty<Steps>, Vfs::Path>,
     #[dir_structure(path = "steps")]
-    step_dirs: ForceCreateDirChildren<StepDir<Vfs>, dir_structure::NoFilter, Vfs::Path>,
+    step_dirs: ForceCreateDirChildren<StepDir<Vfs>, dir_structure_tools::NoFilter, Vfs::Path>,
     code_header: Option<Versioned<String, Vfs::Path>>,
     code_footer: Option<Versioned<String, Vfs::Path>>,
     #[dir_structure(path = self)]

@@ -30,6 +30,7 @@ tokio.workspace = true
 zip.workspace = true
 
 dir-structure.workspace = true
+dir-structure-tools.workspace = true
 doc-extract.workspace = true
 git-voyage.workspace = true
 narxia-log.workspace = true

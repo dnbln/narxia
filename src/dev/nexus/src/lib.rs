@@ -28,7 +28,7 @@ use cargo_interface::SysTarget;
 use clap::Parser;
 use clap::Subcommand;
 use clap::ValueEnum;
-use dir_structure::deferred_read_or_own::DeferredReadOrOwn;
+use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 use dir_structure::prelude::*;
 use dir_structure::std_types::FileString;
 use dir_structure::traits::sync::DirStructure;

@@ -794,10 +794,53 @@ dependencies = [
 
 [[package]]
 name = "dir-structure"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_eq",
  "dir-structure-macros",
+ "dir-structure-resolve-core",
+ "futures 0.3.31",
+ "pin-project",
+ "tokio",
+]
+
+[[package]]
+name = "dir-structure-git-vfs"
+version = "0.3.0"
+dependencies = [
+ "dir-structure",
+ "git2",
+]
+
+[[package]]
+name = "dir-structure-include-dir-vfs"
+version = "0.3.0"
+dependencies = [
+ "dir-structure",
+ "include_dir",
+]
+
+[[package]]
+name = "dir-structure-macros"
+version = "0.3.0"
+dependencies = [
+ "dir-structure-resolve-core",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "dir-structure-resolve-core"
+version = "0.3.0"
+
+[[package]]
+name = "dir-structure-tools"
+version = "0.3.0"
+dependencies = [
+ "assert_eq",
+ "dir-structure",
+ "dir-structure-include-dir-vfs",
  "futures 0.3.31",
  "git2",
  "image",
@@ -809,16 +852,6 @@ dependencies = [
  "serde_yaml",
  "tokio",
  "toml 0.9.7",
-]
-
-[[package]]
-name = "dir-structure-macros"
-version = "0.2.0"
-dependencies = [
- "include_dir_macros",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -1184,6 +1217,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dir-structure",
+ "dir-structure-tools",
  "git2",
  "serde",
  "serde_json",
@@ -2291,6 +2325,7 @@ name = "narxia-workspace"
 version = "0.0.0"
 dependencies = [
  "dir-structure",
+ "dir-structure-tools",
 ]
 
 [[package]]
@@ -2344,6 +2379,7 @@ dependencies = [
  "cargo_metadata",
  "clap",
  "dir-structure",
+ "dir-structure-tools",
  "doc-extract",
  "git-voyage",
  "humantime",

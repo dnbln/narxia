@@ -13,4 +13,5 @@ keywords.workspace = true
 workspace = true
 
 [dependencies]
-dir-structure = { workspace = true, features = ["derive", "resolve-path", "tools"] }
+dir-structure = { workspace = true, features = ["derive", "resolve-path"] }
+dir-structure-tools = { workspace = true, features = ["tools"] }

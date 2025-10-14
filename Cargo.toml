@@ -1,5 +1,14 @@
 [workspace]
-members = ["src/compiler/*", "src/dev/*"]
+members = [
+    "src/compiler/*", "src/dev/*",
+    "src/dev/dir-structure/dir-structure",
+    "src/dev/dir-structure/dir-structure-macros",
+    "src/dev/dir-structure/dir-structure-tools",
+    "src/dev/dir-structure/dir-structure-include-dir-vfs",
+    "src/dev/dir-structure/dir-structure-git-vfs",
+    "src/dev/dir-structure/dir-structure-resolve-core",
+]
+exclude = ["src/dev/dir-structure"]
 default-members = ["src/dev/cargo-guard"]
 resolver = "2"
 
@@ -49,8 +58,14 @@ narxia-syn-db = { path = "src/compiler/narxia-syn-db" }
 assert_eq_macros = { path = "src/dev/assert_eq_macros", version = "=0.2.0" }
 assert_eq = { path = "src/dev/assert_eq", version = "0.2.0" }
 doc-extract = { path = "src/dev/doc-extract" }
-dir-structure-macros = { path = "src/dev/dir-structure-macros", version = "=0.2.0" }
-dir-structure = { path = "src/dev/dir-structure", version = "0.2.0" }
+
+dir-structure-macros = { path = "src/dev/dir-structure/dir-structure-macros", version = "=0.3.0", default-features = false }
+dir-structure = { path = "src/dev/dir-structure/dir-structure", version = "=0.3.0", default-features = false }
+dir-structure-tools = { path = "src/dev/dir-structure/dir-structure-tools", version = "=0.3.0", default-features = false }
+dir-structure-include-dir-vfs = { path = "src/dev/dir-structure/dir-structure-include-dir-vfs", version = "=0.3.0", default-features = false }
+dir-structure-git-vfs = { path = "src/dev/dir-structure/dir-structure-git-vfs", version = "=0.3.0", default-features = false }
+dir-structure-resolve-core = { path = "src/dev/dir-structure/dir-structure-resolve-core", version = "=0.3.0", default-features = false }
+
 git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
@@ -65,6 +80,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
+futures = { version = "0.3", default-features = false }
 human-panic = "2.0.0"
 humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
