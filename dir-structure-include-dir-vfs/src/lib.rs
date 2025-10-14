@@ -44,11 +44,7 @@ impl IncludeDirVfs {
 /// [include_dir]: _include_dir
 #[macro_export]
 macro_rules! include_dir_vfs {
-    ($path:literal) => {{
-        $crate::IncludeDirVfs::new(
-            $crate::include_dir::include_dir!($path),
-        )
-    }};
+    ($path:literal) => {{ $crate::IncludeDirVfs::new($crate::include_dir::include_dir!($path)) }};
 }
 
 #[derive(Debug)]
