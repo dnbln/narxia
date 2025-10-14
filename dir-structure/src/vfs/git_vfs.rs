@@ -276,38 +276,7 @@ mod tests {
             .expect("Failed to get tree");
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
-        let mut walker = vfs.walk_dir(Path::new("src")).expect("Failed to walk dir");
-        let mut entries = Vec::new();
-        while let Some(entry) = walker.next() {
-            entries.push(entry.expect("error while walking dir"));
-        }
-
-        entries.sort_by_key(|e| e.name.clone());
-
-        assert_eq!(
-            entries,
-            vec![
-                vfs::DirEntryInfo {
-                    name: "compiler".into(),
-                    kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("src/compiler").into(),
-                },
-                vfs::DirEntryInfo {
-                    name: "dev".into(),
-                    kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("src/dev").into(),
-                },
-                vfs::DirEntryInfo {
-                    name: "lib".into(),
-                    kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("src/lib").into(),
-                },
-            ]
-        );
-
-        let mut walker = vfs
-            .walk_dir(Path::new("src/dev/narxia-workspace"))
-            .expect("Failed to walk dir");
+        let mut walker = vfs.walk_dir(Path::new("dir-structure-macros")).expect("Failed to walk dir");
         let mut entries = Vec::new();
         while let Some(entry) = walker.next() {
             entries.push(entry.expect("error while walking dir"));
@@ -321,12 +290,63 @@ mod tests {
                 vfs::DirEntryInfo {
                     name: "Cargo.toml".into(),
                     kind: vfs::DirEntryKind::File,
-                    path: Path::new("src/dev/narxia-workspace/Cargo.toml").into(),
+                    path: Path::new("dir-structure-macros/Cargo.toml").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "README.md".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("dir-structure-macros/README.md").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "src".into(),
                     kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("src/dev/narxia-workspace/src").into(),
+                    path: Path::new("dir-structure-macros/src").into(),
+                },
+            ]
+        );
+
+        let mut walker = vfs
+            .walk_dir(Path::new("dir-structure"))
+            .expect("Failed to walk dir");
+        let mut entries = Vec::new();
+        while let Some(entry) = walker.next() {
+            entries.push(entry.expect("error while walking dir"));
+        }
+
+        entries.sort_by_key(|e| e.name.clone());
+
+        assert_eq!(
+            entries,
+            vec![
+                vfs::DirEntryInfo {
+                    name: "CHANGELOG.md".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("dir-structure/CHANGELOG.md").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "Cargo.toml".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("dir-structure/Cargo.toml").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "README.md".into(),
+                    kind: vfs::DirEntryKind::File,
+                    path: Path::new("dir-structure/README.md").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "examples".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("dir-structure/examples").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "src".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("dir-structure/src").into(),
+                },
+                vfs::DirEntryInfo {
+                    name: "tests".into(),
+                    kind: vfs::DirEntryKind::Directory,
+                    path: Path::new("dir-structure/tests").into(),
                 },
             ]
         );
