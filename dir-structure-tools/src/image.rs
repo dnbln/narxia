@@ -1,4 +1,33 @@
 //! Implementations of [`ReadFrom`] and [`WriteTo`] for image files.
+//! 
+//! The [`image`] crate is used for image decoding and encoding.
+//! 
+//! Main wrapper type is the [`Img`] struct, which is generic over an image format.
+//! Specific image formats are provided as zero-sized types implementing the [`ImgFormat`] trait.
+//! 
+//! The following image formats are supported, behind feature flags:
+//!
+//! - PNG (`image-format-png`)
+//! - JPEG (`image-format-jpeg`)
+//! - GIF (`image-format-gif`)
+//! - WebP (`image-format-webp`)
+//! - PNM (`image-format-pnm`)
+//! - TIFF (`image-format-tiff`)
+//! - TGA (`image-format-tga`)
+//! - BMP (`image-format-bmp`)
+//! - ICO (`image-format-ico`)
+//! - HDR (`image-format-hdr`)
+//! - OpenEXR (`image-format-exr`)
+//! - Farbfeld (`image-format-ff`)
+//! - AVIF (`image-format-avif`)
+//! - QOI (`image-format-qoi`)
+//! 
+//! For an async VFS implementation to support reading and writing images using these types,
+//! the following impls are required for the VFS type:
+//! 
+//! - `impl<T: ImgFormat> ReadImageFromAsync<T> for NewVfsType`
+//! - `impl<'a> WriteImageToAsync<'a> for NewVfsType`
+//! - `impl<'a> WriteImageToAsyncRef<'a> for NewVfsType`
 
 #[cfg(all(
     feature = "assert_eq",
