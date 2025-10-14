@@ -1,8 +1,15 @@
 [workspace]
 members = [
-    "src/compiler/*", "src/dev/*"
+    "src/compiler/*",
+    "src/dev/dir-structure/dir-structure*",
+    "src/dev/git-journey",
+    "src/dev/git-voyage",
+    "src/dev/narxia-workspace",
+    "src/dev/nexus",
+    "src/dev/assert_eq*",
+    "src/dev/doc-extract",
+    "src/dev/cargo-guard",
 ]
-exclude = ["src/dev/dir-structure"]
 default-members = ["src/dev/cargo-guard"]
 resolver = "2"
 

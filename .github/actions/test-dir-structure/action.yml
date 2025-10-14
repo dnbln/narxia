@@ -10,5 +10,5 @@ runs:
   using: "composite"
   steps:
     - name: Run tests
-      run: cargo test -p dir-structure ${{ inputs.feature-combos }} -- --test-threads=1
+      run: cargo test -p dir-structure -p dir-structure-macros -p dir-structure-tools -p dir-structure-include-dir-vfs -p dir-structure-git-vfs -p dir-structure-resolve-core ${{ inputs.feature-combos }} -- --test-threads=1
       shell: bash

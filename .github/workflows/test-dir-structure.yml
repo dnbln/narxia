@@ -56,9 +56,6 @@ jobs:
       - name: Run feature-combo tests (--no-default-features --features assert_eq)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--no-default-features --features assert_eq" }
-      - name: Run feature-combo tests (--no-default-features --features git)
-        uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features git" }
       - name: Run feature-combo tests (--no-default-features --features async)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--no-default-features --features async" }
@@ -89,9 +86,6 @@ jobs:
       - name: Run feature-combo tests (--no-default-features --features ron)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--no-default-features --features ron" }
-      - name: Run feature-combo tests (--no-default-features --features include_dir)
-        uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features include_dir" }
       - name: Run feature-combo tests (--no-default-features --features derive)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--no-default-features --features derive" }
@@ -140,15 +134,12 @@ jobs:
       - name: Run feature-combo tests (--features assert_eq,tokio,json,toml,yaml,ron)
         uses: ./.github/actions/test-dir-structure
         with: { feature-combos: "--features assert_eq,tokio,json,toml,yaml,ron" }
-      - name: Run feature-combo tests (--features assert_eq,include_dir)
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--features assert_eq,include_dir" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir)
+        with: { feature-combos: "--no-default-features --features atomic-dir" }
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir,async)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir,async)
+        with: { feature-combos: "--no-default-features --features atomic-dir,async" }
+      - name: Run feature-combo tests (--no-default-features --features atomic-dir,async,tokio)
         uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async" }
-      - name: Run feature-combo tests (--no-default-features --features tools-atomic-dir,async,tokio)
-        uses: ./.github/actions/test-dir-structure
-        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async,tokio" }
+        with: { feature-combos: "--no-default-features --features atomic-dir,async,tokio" }
