@@ -1,0 +1,199 @@
+[package]
+name = "dir-structure-tools"
+version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[features]
+default = ["tools", "_all"]
+async = ["dep:pin-project", "dep:futures", "dir-structure/async"]
+json = ["dep:serde", "dep:serde_json", "data-formats"]
+toml = ["dep:serde", "dep:toml", "data-formats"]
+yaml = ["dep:serde", "dep:serde_yaml", "data-formats"]
+ron = ["dep:serde", "dep:ron", "data-formats"]
+resolve-path = ["dir-structure/resolve-path"]
+assert_eq = ["dep:assert_eq"]
+tokio = ["dep:tokio", "dir-structure/tokio", "async"]
+
+image = ["dep:image", "tokio?/rt"]
+image-format-png = ["image", "image/png"]
+image-format-gif = ["image", "image/gif"]
+image-format-jpeg = ["image", "image/jpeg"]
+image-format-webp = ["image", "image/webp"]
+image-format-tiff = ["image", "image/tiff"]
+image-format-tga = ["image", "image/tga"]
+image-format-bmp = ["image", "image/bmp"]
+image-format-ico = ["image", "image/ico"]
+image-format-hdr = ["image", "image/hdr"]
+image-format-exr = ["image", "image/exr"]
+image-format-pnm = ["image", "image/pnm"]
+image-format-ff = ["image", "image/ff"]
+image-format-avif = ["image", "image/avif"]
+image-format-qoi = ["image", "image/qoi"]
+all-image-formats = [
+    "image-format-png",
+    "image-format-gif",
+    "image-format-jpeg",
+    "image-format-webp",
+    "image-format-tiff",
+    "image-format-tga",
+    "image-format-bmp",
+    "image-format-ico",
+    "image-format-hdr",
+    "image-format-exr",
+    "image-format-pnm",
+    "image-format-ff",
+    "image-format-avif",
+    "image-format-qoi",
+]
+
+atomic-dir = []
+clean-dir = []
+data-formats = []
+deferred-read = []
+deferred-read-or-own = []
+dir-children = []
+dir-descendants = []
+fmt-wrapper = []
+try-parse = []
+versioned = []
+versioned-hash = []
+tools = [
+    "atomic-dir",
+    "clean-dir",
+    "deferred-read",
+    "deferred-read-or-own",
+    "dir-children",
+    "dir-descendants",
+    "fmt-wrapper",
+    "try-parse",
+    "versioned",
+    "versioned-hash",
+]
+
+_all = [
+    "json",
+    "toml",
+    "yaml",
+    "ron",
+    "async",
+    "tokio",
+    "resolve-path",
+    "assert_eq",
+    "image",
+    "all-image-formats",
+    "tools",
+]
+
+[dev-dependencies]
+dir-structure = { workspace = true, features = ["derive"] }
+dir-structure-include-dir-vfs = { workspace = true }
+tokio = { version = "1", features = ["full"] }
+
+[dependencies]
+dir-structure = { workspace = true, default-features = false }
+futures = { workspace = true, optional = true, default-features = false, features = [
+    "io-compat",
+] }
+pin-project = { workspace = true, optional = true }
+ron = { version = "0.11", optional = true, default-features = false, features = [
+    "std",
+] }
+serde = { version = "1.0", optional = true, default-features = false, features = [
+    "derive",
+    "std",
+] }
+serde_json = { version = "1.0", optional = true, default-features = false, features = [
+    "std",
+] }
+serde_yaml = { version = "0.9", optional = true, default-features = false }
+toml = { version = "0.9", optional = true, default-features = false, features = [
+    "display",
+    "serde",
+    "parse",
+] }
+tokio = { version = "1", optional = true, default-features = false, features = [
+    "fs",
+    "io-util",
+] }
+include_dir = { version = "0.7", optional = true, default-features = false }
+image = { version = "0.25", optional = true, default-features = false }
+assert_eq = { workspace = true, optional = true }
+git2 = { workspace = true, optional = true }
+
+[[test]]
+name = "async_tests"
+path = "tests/async_tests.rs"
+required-features = ["async", "tokio", "assert_eq", "tools"]
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+required-features = ["assert_eq", "tools"]
+
+[[example]]
+name = "reading_dir_children_from_include_dir_vfs"
+path = "examples/reading_dir_children_from_include_dir_vfs.rs"
+required-features = ["include_dir", "dir-children"]
+
+[[example]]
+name = "deferred_read"
+path = "examples/deferred_read.rs"
+required-features = ["deferred-read"]
+
+[[example]]
+name = "deferred_read_or_own"
+path = "examples/deferred_read_or_own.rs"
+required-features = ["deferred-read-or-own"]
+
+[[example]]
+name = "reading_dir_children"
+path = "examples/reading_dir_children.rs"
+required-features = ["dir-children"]
+
+[[example]]
+name = "writing_dir_children"
+path = "examples/writing_dir_children.rs"
+required-features = ["dir-children"]
+
+[[example]]
+name = "clean_dir"
+path = "examples/clean_dir.rs"
+required-features = ["clean-dir"]
+
+[[example]]
+name = "json"
+path = "examples/json.rs"
+required-features = ["json"]
+
+[[example]]
+name = "json_pretty"
+path = "examples/json_pretty.rs"
+required-features = ["json"]
+
+[[example]]
+name = "toml"
+path = "examples/toml.rs"
+required-features = ["toml"]
+
+[[example]]
+name = "yaml"
+path = "examples/yaml.rs"
+required-features = ["yaml"]
+
+[[example]]
+name = "ron"
+path = "examples/ron.rs"
+required-features = ["ron"]
+
+[[example]]
+name = "ron_pretty"
+path = "examples/ron_pretty.rs"
+required-features = ["ron"]
+
+[lints]
+workspace = true

@@ -1,0 +1,14 @@
+[package]
+name = "dir-structure-resolve-core"
+version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

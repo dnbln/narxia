@@ -1,0 +1,51 @@
+[workspace]
+members = [
+    "dir-structure", "dir-structure-git-vfs", "dir-structure-include-dir-vfs",
+    "dir-structure-macros",
+    "dir-structure-resolve-core",
+    "dir-structure-tools",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.3.0"
+edition = "2024"
+homepage = "https://nrx.dnbln.dev/docs/dx/dir-structure/"
+repository = "https://github.com/dnbln/dir-structure"
+description = "Model directory structures as plain Rust structs."
+keywords = ["file-system"]
+license = "MIT OR Apache-2.0"
+
+
+[workspace.dependencies]
+assert_eq = { version = "0.2.0" }
+dir-structure-macros = { path = "dir-structure-macros", version = "=0.3.0", default-features = false }
+dir-structure-tools = { path = "dir-structure-tools", version = "=0.3.0", default-features = false }
+dir-structure-resolve-core = { path = "dir-structure-resolve-core", version = "=0.3.0", default-features = false }
+dir-structure-git-vfs = { path = "dir-structure-git-vfs", version = "=0.3.0", default-features = false }
+dir-structure-include-dir-vfs = { path = "dir-structure-include-dir-vfs", version = "=0.3.0", default-features = false }
+dir-structure = { path = "dir-structure", version = "=0.3.0", default-features = false }
+
+git2 = { version = "0.20", default-features = false }
+futures = { version = "0.3", default-features = false }
+image = "0.24"
+pin-project = { version = "1", default-features = false }
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unused_imports = "deny"
+unused_unsafe = "deny"
+mismatched_lifetime_syntaxes = "deny"
+stable_features = "deny"
+
+
+[workspace.lints.clippy]
+absolute_paths = "deny"
+alloc_instead_of_core = "deny"
+allow_attributes = "deny"
+suspicious = { level = "deny", priority = -1 }
+style = "deny"
+useless_format = "deny"
