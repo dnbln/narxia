@@ -274,15 +274,9 @@ dependencies = [
  "dir-structure-macros",
  "futures 0.3.31",
  "git2",
- "image",
  "include_dir",
  "pin-project",
- "ron",
- "serde",
- "serde_json",
- "serde_yaml",
  "tokio",
- "toml 0.9.8",
 ]
 
 [[package]]
