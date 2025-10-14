@@ -54,21 +54,20 @@ use std::io::Seek;
 use std::marker;
 use std::pin::Pin;
 
-#[cfg(feature = "async")]
-use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
-#[cfg(feature = "async")]
-use futures::AsyncSeek;
-
 use dir_structure::error::Error;
 use dir_structure::error::VfsResult;
 use dir_structure::error::WrapIoError;
 use dir_structure::prelude::*;
 #[cfg(feature = "async")]
 use dir_structure::traits::async_vfs::VfsAsyncWithSeekWrite;
+#[cfg(feature = "async")]
+use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
 use dir_structure::traits::sync::FromRefForWriter;
 use dir_structure::traits::sync::NewtypeToInner;
 use dir_structure::traits::vfs;
 use dir_structure::traits::vfs::PathType;
+#[cfg(feature = "async")]
+use futures::AsyncSeek;
 
 /// A wrapper around `image::DynamicImage` to implement [`ReadFrom`].
 pub struct DynImage(image::DynamicImage);
@@ -582,15 +581,14 @@ where
 mod tokio_fs_impl {
     use std::path::PathBuf;
 
-    use super::*;
-
+    use dir_structure::error::Error;
+    use dir_structure::error::Result;
     use dir_structure::traits::vfs::WriteSupportingVfs as _;
+    use dir_structure::vfs::fs_vfs::FsVfs;
     use dir_structure::vfs::tokio_fs_vfs::TokioFsVfs;
     use tokio::task;
 
-    use dir_structure::error::Error;
-    use dir_structure::error::Result;
-    use dir_structure::vfs::fs_vfs::FsVfs;
+    use super::*;
 
     impl<'vfs, T: ImgFormat> ReadImageFromAsync<T> for TokioFsVfs
     where
@@ -684,6 +682,12 @@ mod tokio_fs_impl {
 mod tests {
     use std::io::Seek;
 
+    use dir_structure::prelude::*;
+    #[cfg(feature = "async")]
+    use dir_structure::traits::async_vfs::VfsAsyncWithSeekRead;
+    #[cfg(feature = "async")]
+    use dir_structure::traits::async_vfs::VfsAsyncWithSeekWrite;
+    use dir_structure::traits::vfs;
     #[cfg(feature = "async")]
     use futures::AsyncSeek;
 
@@ -704,12 +708,6 @@ mod tests {
         feature = "image-format-qoi",
     ))]
     use super::Img;
-    use dir_structure::prelude::*;
-    #[cfg(feature = "async")]
-    use dir_structure::traits::async_vfs::VfsAsyncWithSeekRead;
-    #[cfg(feature = "async")]
-    use dir_structure::traits::async_vfs::VfsAsyncWithSeekWrite;
-    use dir_structure::traits::vfs;
 
     fn assert_is_read_sync<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs> + 'vfs, T: ReadFrom<'vfs, Vfs>>()
     where

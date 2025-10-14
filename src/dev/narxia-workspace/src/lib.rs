@@ -74,7 +74,27 @@ pub struct SrcDir<'vfs, Vfs: VfsCore<Path = Path>> {
     pub config: SrcConfigDir<'vfs, Vfs>,
     pub compiler: DirChildren<Crate<'vfs, Vfs>, NoFilter, Vfs::Path>,
     // pub lib: dir_structure::DirChildren<Crate<'vfs, Vfs>>,
-    pub dev: DirChildren<Crate<'vfs, Vfs>, NoFilter, Vfs::Path>,
+    pub dev: DirDescendants<Crate<'vfs, Vfs>, CrateFilter, Vfs::Path>,
+}
+
+pub struct CrateFilter;
+
+impl FolderFilter for CrateFilter {
+    fn allows(_folder: &Path) -> bool {
+        _folder.join("Cargo.toml").exists() && _folder.join("src").is_dir()
+    }
+}
+
+impl FileFilter for CrateFilter {
+    fn allows(_file: &Path) -> bool {
+        false
+    }
+}
+
+impl FolderRecurseFilter for CrateFilter {
+    fn allows(_folder: &Path) -> bool {
+        _folder.file_name().is_some_and(|name| name != "src")
+    }
 }
 
 #[derive(DirStructure, HasField)]
@@ -183,7 +203,6 @@ pub mod parser_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::*;
     use dir_structure::std_types::FileString;
@@ -191,6 +210,7 @@ pub mod parser_tests {
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
     use dir_structure::vfs::fs_vfs::FsVfs;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 
     use crate::ws_root;
 
@@ -239,7 +259,6 @@ pub mod name_resolution_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::*;
     use dir_structure::std_types::FileString;
@@ -247,6 +266,7 @@ pub mod name_resolution_tests {
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
     use dir_structure::vfs::fs_vfs::FsVfs;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 
     use crate::ws_root;
 
@@ -293,7 +313,6 @@ pub mod ssa_tests {
 
     use dir_structure::DirStructure;
     use dir_structure::HasField;
-    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
     use dir_structure::error::VfsResult;
     use dir_structure::prelude::VfsCore;
     use dir_structure::std_types::FileString;
@@ -301,6 +320,7 @@ pub mod ssa_tests {
     use dir_structure::traits::resolve::resolve_path;
     use dir_structure::traits::sync::DirStructureItem;
     use dir_structure::vfs::fs_vfs::FsVfs;
+    use dir_structure_tools::deferred_read_or_own::DeferredReadOrOwn;
 
     use crate::ws_root;
 

@@ -13,9 +13,6 @@ use std::task::Context;
 #[cfg(feature = "async")]
 use std::task::Poll;
 
-#[cfg(feature = "async")]
-use pin_project::pin_project;
-
 use dir_structure::error::Error;
 use dir_structure::error::Result;
 use dir_structure::error::VfsResult;
@@ -36,6 +33,8 @@ use dir_structure::traits::vfs::OwnedPathType;
 use dir_structure::traits::vfs::PathType;
 use dir_structure::traits::vfs::VfsCore;
 use dir_structure::vfs::fs_vfs;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
 
 /// A wrapper that defers the reading of a file until it is actually needed.
 ///

@@ -29,7 +29,7 @@ thiserror.workspace = true
 tokio.workspace = true
 zip.workspace = true
 
-dir-structure.workspace = true
+dir-structure = { workspace = true, features = ["resolve-path"] }
 dir-structure-tools.workspace = true
 doc-extract.workspace = true
 git-voyage.workspace = true

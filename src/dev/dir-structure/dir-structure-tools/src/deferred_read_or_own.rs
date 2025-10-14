@@ -10,10 +10,6 @@ use std::task::Context;
 #[cfg(feature = "async")]
 use std::task::Poll;
 
-#[cfg(feature = "async")]
-use pin_project::pin_project;
-
-use crate::deferred_read::DeferredRead;
 use dir_structure::error::Result;
 use dir_structure::error::VfsResult;
 use dir_structure::prelude::*;
@@ -34,6 +30,10 @@ use dir_structure::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use dir_structure::traits::vfs::VfsCore;
 use dir_structure::vfs::fs_vfs;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
+
+use crate::deferred_read::DeferredRead;
 
 /// A wrapper that defers the reading of a file until it is actually needed,
 /// but can also store the value.

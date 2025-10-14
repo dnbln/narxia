@@ -14,4 +14,4 @@ workspace = true
 
 [dependencies]
 dir-structure = { workspace = true, features = ["derive", "resolve-path"] }
-dir-structure-tools = { workspace = true, features = ["tools"] }
+dir-structure-tools = { workspace = true, features = ["tools", "resolve-path"] }

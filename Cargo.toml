@@ -1,12 +1,6 @@
 [workspace]
 members = [
-    "src/compiler/*", "src/dev/*",
-    "src/dev/dir-structure/dir-structure",
-    "src/dev/dir-structure/dir-structure-macros",
-    "src/dev/dir-structure/dir-structure-tools",
-    "src/dev/dir-structure/dir-structure-include-dir-vfs",
-    "src/dev/dir-structure/dir-structure-git-vfs",
-    "src/dev/dir-structure/dir-structure-resolve-core",
+    "src/compiler/*", "src/dev/*"
 ]
 exclude = ["src/dev/dir-structure"]
 default-members = ["src/dev/cargo-guard"]

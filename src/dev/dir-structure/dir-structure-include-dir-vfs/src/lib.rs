@@ -12,11 +12,6 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::result::Result as StdResult;
 
-use include_dir::Dir;
-use include_dir::DirEntry;
-#[cfg(doc)]
-use include_dir::include_dir as _include_dir;
-
 use dir_structure::error::Error;
 use dir_structure::error::Result;
 use dir_structure::error::VfsResult;
@@ -26,6 +21,10 @@ use dir_structure::traits::vfs::DirWalker;
 use dir_structure::traits::vfs::PathType;
 use dir_structure::traits::vfs::Vfs;
 use dir_structure::traits::vfs::VfsCore;
+use include_dir::Dir;
+use include_dir::DirEntry;
+#[cfg(doc)]
+use include_dir::include_dir as _include_dir;
 
 /// A [`Vfs`] implementation with an [`include_dir::Dir`] directory.
 pub struct IncludeDirVfs {
