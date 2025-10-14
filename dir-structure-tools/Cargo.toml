@@ -91,6 +91,7 @@ _all = [
 
 [dev-dependencies]
 dir-structure = { workspace = true, features = ["derive"] }
+dir-structure-include-dir-vfs = { workspace = true }
 tokio = { version = "1", features = ["full"] }
 
 [dependencies]
