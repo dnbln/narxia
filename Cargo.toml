@@ -8,7 +8,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 homepage = "https://nrx.dnbln.dev/docs/dx/dir-structure/"
 repository = "https://github.com/dnbln/dir-structure"
@@ -19,12 +19,12 @@ license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
 assert_eq = { version = "0.2.0" }
-dir-structure-macros = { path = "dir-structure-macros", version = "=0.2.0", default-features = false }
-dir-structure-tools = { path = "dir-structure-tools", version = "=0.2.0", default-features = false }
-dir-structure-resolve-core = { path = "dir-structure-resolve-core", version = "=0.2.0", default-features = false }
-dir-structure-git-vfs = { path = "dir-structure-git-vfs", version = "=0.2.0", default-features = false }
-dir-structure-include-dir-vfs = { path = "dir-structure-include-dir-vfs", version = "=0.2.0", default-features = false }
-dir-structure = { path = "dir-structure", version = "=0.2.0", default-features = false }
+dir-structure-macros = { path = "dir-structure-macros", version = "=0.3.0", default-features = false }
+dir-structure-tools = { path = "dir-structure-tools", version = "=0.3.0", default-features = false }
+dir-structure-resolve-core = { path = "dir-structure-resolve-core", version = "=0.3.0", default-features = false }
+dir-structure-git-vfs = { path = "dir-structure-git-vfs", version = "=0.3.0", default-features = false }
+dir-structure-include-dir-vfs = { path = "dir-structure-include-dir-vfs", version = "=0.3.0", default-features = false }
+dir-structure = { path = "dir-structure", version = "=0.3.0", default-features = false }
 
 git2 = { version = "0.20", default-features = false }
 futures = { version = "0.3", default-features = false }

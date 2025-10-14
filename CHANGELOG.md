@@ -1,4 +1,6 @@
-# Next release
+# `0.3.0`
+
+Released: 2025-10-14
 
 ## `dir-structure-tools` crate
 

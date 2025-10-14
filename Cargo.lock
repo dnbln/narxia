@@ -268,7 +268,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "dir-structure"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_eq",
  "dir-structure-macros",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-git-vfs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dir-structure",
  "git2",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-include-dir-vfs"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dir-structure",
  "include_dir",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-macros"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "dir-structure-resolve-core",
  "proc-macro2",
@@ -306,11 +306,11 @@ dependencies = [
 
 [[package]]
 name = "dir-structure-resolve-core"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "dir-structure-tools"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "assert_eq",
  "dir-structure",
