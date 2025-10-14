@@ -22,25 +22,10 @@
 use std::fmt;
 use std::io;
 use std::io::Seek;
-#[cfg(any(
-    feature = "image-format-png",
-    feature = "image-format-jpeg",
-    feature = "image-format-gif",
-    feature = "image-format-webp",
-    feature = "image-format-pnm",
-    feature = "image-format-tiff",
-    feature = "image-format-tga",
-    feature = "image-format-bmp",
-    feature = "image-format-ico",
-    feature = "image-format-hdr",
-    feature = "image-format-exr",
-    feature = "image-format-ff",
-    feature = "image-format-avif",
-    feature = "image-format-qoi",
-))]
 use std::marker;
 use std::pin::Pin;
 
+#[cfg(feature = "async")]
 use dir_structure::traits::async_vfs::WriteSupportingVfsAsync;
 #[cfg(feature = "async")]
 use futures::AsyncSeek;
@@ -122,7 +107,7 @@ impl<T: ImgFormat> NewtypeToInner for Img<T> {
     type Inner = image::DynamicImage;
 
     fn into_inner(self) -> Self::Inner {
-        self.0 .0
+        self.0.0
     }
 }
 
@@ -459,6 +444,8 @@ img_format!(
 );
 
 /// A trait implemented by async vfs implementations that support reading images.
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait ReadImageFromAsync<T>: VfsAsync
 where
     T: ImgFormat,
@@ -475,6 +462,8 @@ where
     ) -> Self::ReadImageFuture<'a>;
 }
 
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'vfs, Vfs, T> ReadFromAsync<'vfs, Vfs> for Img<T>
 where
     Vfs: VfsAsync + ReadImageFromAsync<T> + 'vfs,
@@ -491,6 +480,8 @@ where
 }
 
 /// A trait implemented by async vfs implementations that support writing images.
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteImageToAsync<'a>: WriteSupportingVfsAsync {
     /// The future type returned by the [`write_image_async` method](WriteImageToAsync::write_image_async).
     type WriteImageFuture: Future<Output = VfsResult<(), Self>> + Send + Unpin + 'a;
@@ -505,6 +496,8 @@ pub trait WriteImageToAsync<'a>: WriteSupportingVfsAsync {
 }
 
 // impl for owned images
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs> WriteToAsync<'a, Vfs> for DynImageWithFormat
 where
     Vfs: WriteSupportingVfsAsync + WriteImageToAsync<'a> + 'a,
@@ -522,6 +515,8 @@ where
 }
 
 /// A trait implemented by async vfs implementations that support writing images from references.
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 pub trait WriteImageToAsyncRef<'a>: WriteSupportingVfsAsync {
     /// The future type returned by the [`write_image_async_ref` method](WriteImageToAsyncRef::write_image_async_ref).
     type WriteImageRefFuture: Future<Output = VfsResult<(), Self>> + Send + Unpin + 'a;
@@ -536,6 +531,8 @@ pub trait WriteImageToAsyncRef<'a>: WriteSupportingVfsAsync {
 }
 
 // impl for image references
+#[cfg(feature = "async")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async")))]
 impl<'a, Vfs: 'a> WriteToAsync<'a, Vfs> for DynImageRefWithFormat<'a>
 where
     Vfs: WriteSupportingVfsAsync + WriteImageToAsyncRef<'a>,
@@ -661,13 +658,29 @@ mod tests {
     #[cfg(feature = "async")]
     use futures::AsyncSeek;
 
+    #[cfg(any(
+        feature = "image-format-png",
+        feature = "image-format-jpeg",
+        feature = "image-format-gif",
+        feature = "image-format-webp",
+        feature = "image-format-pnm",
+        feature = "image-format-tiff",
+        feature = "image-format-tga",
+        feature = "image-format-bmp",
+        feature = "image-format-ico",
+        feature = "image-format-hdr",
+        feature = "image-format-exr",
+        feature = "image-format-ff",
+        feature = "image-format-avif",
+        feature = "image-format-qoi",
+    ))]
+    use super::Img;
     use dir_structure::prelude::*;
     #[cfg(feature = "async")]
     use dir_structure::traits::async_vfs::VfsAsyncWithSeekRead;
     #[cfg(feature = "async")]
     use dir_structure::traits::async_vfs::VfsAsyncWithSeekWrite;
     use dir_structure::traits::vfs;
-    use super::Img;
 
     fn assert_is_read_sync<'vfs, Vfs: vfs::VfsWithSeekRead<'vfs> + 'vfs, T: ReadFrom<'vfs, Vfs>>()
     where
