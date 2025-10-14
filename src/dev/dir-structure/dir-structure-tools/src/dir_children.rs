@@ -5,6 +5,7 @@
 //! Additionally, [`ForceCreateDirChildren`] is a variant that forces the creation of the directory
 //! structure, even without any children.
 
+use std::error::Error as StdError;
 use std::fmt;
 use std::hash;
 use std::marker;
@@ -1786,7 +1787,7 @@ pub struct UnexpectedNumberOfChildren {
     found: usize,
 }
 
-impl std::error::Error for UnexpectedNumberOfChildren {}
+impl StdError for UnexpectedNumberOfChildren {}
 
 impl fmt::Display for UnexpectedNumberOfChildren {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
