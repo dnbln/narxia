@@ -16,11 +16,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["derive", "_all"]
 async = ["dep:pin-project", "dep:futures", "dir-structure-macros?/async"]
 tokio = ["dep:tokio", "async"]
-include_dir = [
-    "dep:include_dir",
-    "dir-structure-macros/include_dir_vfs", # need workaround until https://github.com/Michael-F-Bryan/include_dir/pull/115 for the include_dir_vfs! macro
-]
-git = ["dep:git2"]
 resolve-path = ["dir-structure-macros?/resolve-path", "dep:dir-structure-resolve-core"]
 assert_eq = ["dep:assert_eq"]
 derive = ["dep:dir-structure-macros"]
@@ -28,8 +23,6 @@ derive = ["dep:dir-structure-macros"]
 _all = [
     "async",
     "tokio",
-    "include_dir",
-    "git",
     "resolve-path",
     "assert_eq",
     "derive",
@@ -49,9 +42,7 @@ tokio = { version = "1", optional = true, default-features = false, features = [
     "fs",
     "io-util",
 ] }
-include_dir = { version = "0.7", optional = true, default-features = false }
 assert_eq = { workspace = true, optional = true }
-git2 = { workspace = true, optional = true }
 
 [lints]
 workspace = true
@@ -80,13 +71,3 @@ required-features = ["resolve-path", "derive"]
 name = "std_fs_vfs"
 path = "examples/std_fs_vfs.rs"
 required-features = ["derive"]
-
-[[example]]
-name = "reading_from_include_dir_vfs"
-path = "examples/reading_from_include_dir_vfs.rs"
-required-features = ["include_dir"]
-
-[[example]]
-name = "reading_from_git_vfs"
-path = "examples/reading_from_git_vfs.rs"
-required-features = ["git"]

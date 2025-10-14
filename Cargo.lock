@@ -274,10 +274,24 @@ dependencies = [
  "dir-structure-macros",
  "dir-structure-resolve-core",
  "futures 0.3.31",
- "git2",
- "include_dir",
  "pin-project",
  "tokio",
+]
+
+[[package]]
+name = "dir-structure-git-vfs"
+version = "0.2.0"
+dependencies = [
+ "dir-structure",
+ "git2",
+]
+
+[[package]]
+name = "dir-structure-include-dir-vfs"
+version = "0.2.0"
+dependencies = [
+ "dir-structure",
+ "include_dir",
 ]
 
 [[package]]

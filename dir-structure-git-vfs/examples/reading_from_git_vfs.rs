@@ -13,7 +13,7 @@ use std::path::Path;
 use std::pin::Pin;
 
 use dir_structure::prelude::*;
-use dir_structure::vfs::git_vfs::GitVfs;
+use dir_structure_git_vfs::GitVfs;
 use git2::Index;
 
 mod example_dirs;

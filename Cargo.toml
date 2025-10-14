@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "dir-structure",
+    "dir-structure", "dir-structure-git-vfs", "dir-structure-include-dir-vfs",
     "dir-structure-macros",
     "dir-structure-resolve-core",
     "dir-structure-tools",

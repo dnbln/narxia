@@ -7,12 +7,12 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::pin::Pin;
 
-use crate::error::Error;
-use crate::error::Result;
-use crate::error::VfsResult;
-use crate::traits::vfs;
-use crate::traits::vfs::PathType;
-use crate::traits::vfs::VfsCore;
+use dir_structure::error::Error;
+use dir_structure::error::Result;
+use dir_structure::error::VfsResult;
+use dir_structure::traits::vfs;
+use dir_structure::traits::vfs::PathType;
+use dir_structure::traits::vfs::VfsCore;
 
 /// A virtual filesystem that reads from a git repository.
 pub struct GitVfs<'r> {
@@ -199,10 +199,10 @@ mod tests {
     use std::path::Path;
     use std::pin::Pin;
 
-    use crate::prelude::Vfs;
-    use crate::traits::vfs;
-    use crate::traits::vfs::DirWalker;
-    use crate::vfs::git_vfs::GitVfs;
+    use dir_structure::prelude::Vfs;
+    use dir_structure::traits::vfs;
+    use dir_structure::traits::vfs::DirWalker;
+    use super::GitVfs;
 
     fn open_repo() -> git2::Repository {
         git2::Repository::open_from_env().expect("Failed to open git repository")
@@ -222,7 +222,7 @@ mod tests {
         let content = vfs
             .read_string(Path::new("README.md"))
             .expect("Failed to read README.md");
-        assert_eq!(content, include_str!("../../../README.md"));
+        assert_eq!(content, include_str!("../../README.md"));
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("Failed to read README.md");
-        assert_eq!(content, include_str!("../../../README.md"));
+        assert_eq!(content, include_str!("../../README.md"));
     }
 
     #[test]
@@ -349,3 +349,4 @@ mod tests {
         );
     }
 }
+

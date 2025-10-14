@@ -1,0 +1,19 @@
+[package]
+name = "dir-structure-include-dir-vfs"
+version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description.workspace = true
+keywords.workspace = true
+license.workspace = true
+
+[dependencies]
+dir-structure.workspace = true
+include_dir = { version = "0.7", default-features = false }
+
+[dev-dependencies]
+dir-structure = { workspace = true, features = ["derive"] }
+
+[lints]
+workspace = true
