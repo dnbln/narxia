@@ -80,3 +80,13 @@ required-features = ["resolve-path", "derive"]
 name = "std_fs_vfs"
 path = "examples/std_fs_vfs.rs"
 required-features = ["derive"]
+
+[[example]]
+name = "reading_from_include_dir_vfs"
+path = "examples/reading_from_include_dir_vfs.rs"
+required-features = ["include_dir"]
+
+[[example]]
+name = "reading_from_git_vfs"
+path = "examples/reading_from_git_vfs.rs"
+required-features = ["git"]

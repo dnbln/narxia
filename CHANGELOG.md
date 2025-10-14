@@ -1,5 +1,10 @@
 # Next release
 
+## `dir-structure-tools` crate
+
+The `dir-structure-tools` crate has been split out of the main `dir-structure` crate, and is now a separate crate.
+It contains the various wrappers (`Json<T>`, `Toml<T>`, `Yaml<T>`, `Ron<T>`, `CleanDir<T>`, `DeferredRead<T>`, `DeferredReadOrOwn<T>`, `Versioned<T>`, `VersionedHash<T, H>`, `DirChildren<T, F>`, `DirDescendants<T, F>`) which are not strictly necessary for the core functionality of the `dir-structure` crate, but are useful tools for working with directory structures, simplifying the core crate and reducing the number of dependencies for users who don't need these features.
+
 ## Other changes
 
 The `ext_filter`, `stem_filter` and `file_prefix_filter` macros now accept attributes.

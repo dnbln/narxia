@@ -135,19 +135,9 @@ path = "tests/tests.rs"
 required-features = ["assert_eq", "tools"]
 
 [[example]]
-name = "reading_from_include_dir_vfs"
-path = "examples/reading_from_include_dir_vfs.rs"
-required-features = ["include_dir"]
-
-[[example]]
 name = "reading_dir_children_from_include_dir_vfs"
 path = "examples/reading_dir_children_from_include_dir_vfs.rs"
-required-features = ["include_dir", "tools-dir-children"]
-
-[[example]]
-name = "reading_from_git_vfs"
-path = "examples/reading_from_git_vfs.rs"
-required-features = ["git"]
+required-features = ["include_dir", "dir-children"]
 
 [[example]]
 name = "deferred_read"
