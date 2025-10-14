@@ -319,11 +319,6 @@ mod tests {
             entries,
             vec![
                 vfs::DirEntryInfo {
-                    name: "CHANGELOG.md".into(),
-                    kind: vfs::DirEntryKind::File,
-                    path: Path::new("dir-structure/CHANGELOG.md").into(),
-                },
-                vfs::DirEntryInfo {
                     name: "Cargo.toml".into(),
                     kind: vfs::DirEntryKind::File,
                     path: Path::new("dir-structure/Cargo.toml").into(),
