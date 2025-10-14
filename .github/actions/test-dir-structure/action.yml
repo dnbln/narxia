@@ -1,4 +1,4 @@
-name: Test dir structure (${{ inputs.feature-combos }})
+name: Test dir structure
 description: Test the dir-structure crate with various feature combinations
 
 inputs:
