@@ -1,0 +1,98 @@
+name: Dir-Structure Tests
+
+on:
+  push:
+    branches: ["trunk"]
+  pull_request:
+    branches: ["trunk"]
+
+env:
+  CARGO_TERM_COLOR: always
+  COLOR: always
+  RUST_BACKTRACE: full
+
+jobs:
+  test:
+    name: Test dir-structure
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+    #   - name: Install dependencies
+    #     run: sudo apt update && sudo apt install openssl libssl-dev
+      - name: Install rust
+        run: rustup install nightly && rustup default nightly
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--all-features" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features assert_eq" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features git" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features async" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tokio" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image,image-format-png" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features image,image-format-jpeg" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features resolve-path" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features json" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features toml" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features yaml" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features ron" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features include_dir" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features derive" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tools" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,git" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,image" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,image,image-format-png" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async,image" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,image" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,image,image-format-png" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,resolve-path" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,resolve-path" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,json,toml,yaml,ron" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,async,json,toml,yaml,ron" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,tokio,json,toml,yaml,ron" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--features assert_eq,include_dir" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tools-atomic-dir" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async" }
+      - uses: ./.github/actions/test-dir-structure
+        with: { feature-combos: "--no-default-features --features tools-atomic-dir,async,tokio" }
