@@ -199,10 +199,11 @@ mod tests {
     use std::path::Path;
     use std::pin::Pin;
 
-    use super::GitVfs;
     use dir_structure::prelude::Vfs;
     use dir_structure::traits::vfs;
     use dir_structure::traits::vfs::DirWalker;
+
+    use super::GitVfs;
 
     fn open_repo() -> git2::Repository {
         git2::Repository::open_from_env().expect("Failed to open git repository")

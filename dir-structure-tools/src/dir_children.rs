@@ -22,12 +22,6 @@ use std::task::Context;
 use std::task::Poll;
 use std::vec;
 
-#[cfg(feature = "async")]
-use futures::Stream;
-#[cfg(feature = "async")]
-use pin_project::pin_project;
-
-use crate::NoFilter;
 use dir_structure::error::Error;
 use dir_structure::error::VfsResult;
 use dir_structure::prelude::*;
@@ -48,6 +42,12 @@ use dir_structure::traits::vfs::OwnedPathType;
 use dir_structure::traits::vfs::PathType;
 #[cfg(feature = "async")]
 use dir_structure::traits::vfs::VfsCore;
+#[cfg(feature = "async")]
+use futures::Stream;
+#[cfg(feature = "async")]
+use pin_project::pin_project;
+
+use crate::NoFilter;
 
 /// A directory structure where we don't know the names of the folders at compile-time,
 /// and as such we cannot use the derive macro.
@@ -1731,19 +1731,34 @@ macro_rules! dir_children_wrapper_with_vfs {
             }
         }
 
-        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs>
-            $crate::dir_structure::traits::resolve::DynamicHasField for $name<'vfs, Vfs>
-        {
-            type Inner = $ty<'vfs, Vfs>;
+        $crate::dir_children_resolve_path_cfg! {
+            impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::dir_structure::traits::resolve::DynamicHasField for $name<'vfs, Vfs> where $crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path>: $crate::dir_structure::traits::resolve::DynamicHasField {
+                type Inner = <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::dir_structure::traits::resolve::DynamicHasField>::Inner;
 
-            fn resolve_path<P: $crate::dir_structure::traits::vfs::OwnedPathType>(mut p: P, field: &str) -> P {
-                p.push_segment_str(field);
-                p
+                fn resolve_path<P: $crate::dir_structure::traits::vfs::OwnedPathType>(p: P, field: &str) -> P {
+                    <$crate::dir_children::DirChildren<$ty<'vfs, Vfs>, $crate::NoFilter, Vfs::Path> as $crate::dir_structure::traits::resolve::DynamicHasField>::resolve_path(p, field)
+                }
             }
-        }
 
-        impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::dir_structure::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
+            impl<'vfs, Vfs: $crate::dir_structure::traits::vfs::VfsCore $(<Path = $p_ty>)? + 'vfs> $crate::dir_structure::traits::resolve::DynamicHasFieldNoNewtype for $name<'vfs, Vfs> {}
+        }
     };
+}
+
+/// If the "resolve-path" feature is enabled, this macro expands to its input.
+#[cfg(feature = "resolve-path")]
+#[macro_export]
+macro_rules! dir_children_resolve_path_cfg {
+    ($($i:item)*) => {
+        $($i)*
+    };
+}
+
+/// If the "resolve-path" feature is not enabled, this macro expands to nothing.
+#[cfg(not(feature = "resolve-path"))]
+#[macro_export]
+macro_rules! dir_children_resolve_path_cfg {
+    ($($i:item)*) => {};
 }
 
 /// A structure that represents a directory where only one of the children pass the filter `F`.
