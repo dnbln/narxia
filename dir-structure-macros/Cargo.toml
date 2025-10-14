@@ -13,14 +13,14 @@ proc-macro = true
 
 [features]
 async = []
-resolve-path = []
-include_dir_vfs = ["dep:include_dir_macros"]
+resolve-path = ["dep:dir-structure-resolve-core"]
+include_dir_vfs = []
 
 [dependencies]
 quote.workspace = true
 syn.workspace = true
 proc-macro2.workspace = true
-include_dir_macros = { package = "include_dir_macros", version = "0.7", optional = true }
+dir-structure-resolve-core = { workspace = true, optional = true }
 
 [lints]
 workspace = true

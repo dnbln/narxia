@@ -272,6 +272,7 @@ version = "0.2.0"
 dependencies = [
  "assert_eq",
  "dir-structure-macros",
+ "dir-structure-resolve-core",
  "futures 0.3.31",
  "git2",
  "include_dir",
@@ -283,11 +284,15 @@ dependencies = [
 name = "dir-structure-macros"
 version = "0.2.0"
 dependencies = [
- "include_dir_macros",
+ "dir-structure-resolve-core",
  "proc-macro2",
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "dir-structure-resolve-core"
+version = "0.2.0"
 
 [[package]]
 name = "dir-structure-tools"

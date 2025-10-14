@@ -1,0 +1,1 @@
+pub const MAX_LEN: usize = 32;

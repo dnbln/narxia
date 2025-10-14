@@ -1,5 +1,6 @@
 use std::iter;
 
+use dir_structure_resolve_core::MAX_LEN;
 use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
@@ -23,8 +24,6 @@ use crate::dir_structure_core::compile_attrs;
 // resolve_path!([T @ path_expr].a."b".c.d.${e});
 // or
 // resolve_path!(["path/to/dir" as T].a."b".c.d.${e});
-
-pub const MAX_LEN: usize = 32;
 
 struct CoreTyExpression {
     path: syn::Expr,

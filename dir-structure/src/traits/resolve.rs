@@ -6,7 +6,7 @@
 use crate::traits::vfs::OwnedPathType;
 
 #[doc(hidden)]
-pub const HAS_FIELD_MAX_LEN: usize = dir_structure_macros::__resolve_max_len!();
+pub const HAS_FIELD_MAX_LEN: usize = dir_structure_resolve_core::MAX_LEN;
 
 /// A trait to declare that a type has a field with a specific name,
 /// and the type of the field is [`HasField::Inner`].

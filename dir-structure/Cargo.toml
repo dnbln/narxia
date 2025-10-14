@@ -21,7 +21,7 @@ include_dir = [
     "dir-structure-macros/include_dir_vfs", # need workaround until https://github.com/Michael-F-Bryan/include_dir/pull/115 for the include_dir_vfs! macro
 ]
 git = ["dep:git2"]
-resolve-path = ["derive", "dir-structure-macros/resolve-path"]
+resolve-path = ["derive", "dir-structure-macros/resolve-path", "dep:dir-structure-resolve-core"]
 assert_eq = ["dep:assert_eq"]
 derive = ["dep:dir-structure-macros"]
 
@@ -40,6 +40,7 @@ tokio = { version = "1", features = ["full"] }
 
 [dependencies]
 dir-structure-macros = { workspace = true, optional = true }
+dir-structure-resolve-core = { workspace = true, optional = true }
 futures = { version = "0.3", optional = true, default-features = false, features = [
     "io-compat",
 ] }
