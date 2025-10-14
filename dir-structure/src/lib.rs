@@ -98,14 +98,10 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "resolve-path", feature(adt_const_params))]
-#![cfg_attr(feature = "include_dir", feature(normalize_lexically))]
 #![deny(missing_docs)]
 
 #[cfg(feature = "async")]
 pub extern crate pin_project;
-
-#[cfg(feature = "include_dir")]
-pub extern crate include_dir;
 
 #[cfg(doctest)]
 mod __doc_check {
