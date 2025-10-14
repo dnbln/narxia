@@ -32,6 +32,7 @@ env:
   CC: clang
   CXX: clang++
   RUST_BACKTRACE: full
+  DIR_STRUCTURE_REPO_IN_ROOT_REPO: src/dev/dir-structure
 
 jobs:
   test:

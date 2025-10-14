@@ -196,7 +196,7 @@ impl Read for GitRFile<'_> {
 #[cfg(test)]
 mod tests {
     use std::io::Read;
-    use std::path::Path;
+    use std::path::PathBuf;
     use std::pin::Pin;
 
     use dir_structure::prelude::Vfs;
@@ -207,6 +207,10 @@ mod tests {
 
     fn open_repo() -> git2::Repository {
         git2::Repository::open_from_env().expect("Failed to open git repository")
+    }
+
+    fn get_dir_structure_path() -> PathBuf {
+        PathBuf::from(std::env::var_os("DIR_STRUCTURE_REPO_IN_ROOT_REPO").unwrap_or_default())
     }
 
     #[test]
@@ -220,8 +224,10 @@ mod tests {
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
 
+        let ds_path = get_dir_structure_path();
+
         let content = vfs
-            .read_string(Path::new("README.md"))
+            .read_string(&ds_path.join("README.md"))
             .expect("Failed to read README.md");
         assert_eq!(content, include_str!("../../README.md"));
     }
@@ -237,12 +243,14 @@ mod tests {
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
 
+        let ds_path = get_dir_structure_path();
+
         assert!(
-            vfs.exists(Path::new("README.md"))
+            vfs.exists(&ds_path.join("README.md"))
                 .expect("Failed to check existence")
         );
         assert!(
-            !vfs.exists(Path::new("NON_EXISTENT_FILE"))
+            !vfs.exists(&ds_path.join("NON_EXISTENT_FILE"))
                 .expect("Failed to check existence")
         );
     }
@@ -258,8 +266,10 @@ mod tests {
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
 
+        let ds_path = get_dir_structure_path();
+
         let mut file = vfs
-            .open_read(Path::new("README.md"))
+            .open_read(&ds_path.join("README.md"))
             .expect("Failed to open README.md");
         let mut content = String::new();
         file.read_to_string(&mut content)
@@ -277,8 +287,9 @@ mod tests {
             .expect("Failed to get tree");
         let vfs = GitVfs { repo: &repo, tree };
         let vfs = Pin::new(&vfs);
+        let ds_path = get_dir_structure_path();
         let mut walker = vfs
-            .walk_dir(Path::new("dir-structure-macros"))
+            .walk_dir(&ds_path.join("dir-structure-macros"))
             .expect("Failed to walk dir");
         let mut entries = Vec::new();
         while let Some(entry) = walker.next() {
@@ -293,23 +304,23 @@ mod tests {
                 vfs::DirEntryInfo {
                     name: "Cargo.toml".into(),
                     kind: vfs::DirEntryKind::File,
-                    path: Path::new("dir-structure-macros/Cargo.toml").into(),
+                    path: ds_path.join("dir-structure-macros/Cargo.toml").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "README.md".into(),
                     kind: vfs::DirEntryKind::File,
-                    path: Path::new("dir-structure-macros/README.md").into(),
+                    path: ds_path.join("dir-structure-macros/README.md").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "src".into(),
                     kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("dir-structure-macros/src").into(),
+                    path: ds_path.join("dir-structure-macros/src").into(),
                 },
             ]
         );
 
         let mut walker = vfs
-            .walk_dir(Path::new("dir-structure"))
+            .walk_dir(&ds_path.join("dir-structure"))
             .expect("Failed to walk dir");
         let mut entries = Vec::new();
         while let Some(entry) = walker.next() {
@@ -324,27 +335,27 @@ mod tests {
                 vfs::DirEntryInfo {
                     name: "Cargo.toml".into(),
                     kind: vfs::DirEntryKind::File,
-                    path: Path::new("dir-structure/Cargo.toml").into(),
+                    path: ds_path.join("dir-structure/Cargo.toml").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "README.md".into(),
                     kind: vfs::DirEntryKind::File,
-                    path: Path::new("dir-structure/README.md").into(),
+                    path: ds_path.join("dir-structure/README.md").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "examples".into(),
                     kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("dir-structure/examples").into(),
+                    path: ds_path.join("dir-structure/examples").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "src".into(),
                     kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("dir-structure/src").into(),
+                    path: ds_path.join("dir-structure/src").into(),
                 },
                 vfs::DirEntryInfo {
                     name: "tests".into(),
                     kind: vfs::DirEntryKind::Directory,
-                    path: Path::new("dir-structure/tests").into(),
+                    path: ds_path.join("dir-structure/tests").into(),
                 },
             ]
         );
