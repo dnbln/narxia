@@ -74,9 +74,9 @@ bumpalo = "3.6.0"
 bytes = "1.4.0"
 cargo_metadata = "0.23.0"
 nextest-metadata = "0.12.1"
-clap = { version = "4.5.49", features = ["derive"] }
+clap = { version = "4.5.50", features = ["derive"] }
 clap_complete = "4.5.59"
-clap_mangen = "0.2.30"
+clap_mangen = "0.2.31"
 criterion = { version = "0.7", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
