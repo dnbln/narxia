@@ -73,16 +73,16 @@ git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 bumpalo = "3.6.0"
 bytes = "1.4.0"
 cargo_metadata = "0.23.0"
-nextest-metadata = "0.12.1"
-clap = { version = "4.5.50", features = ["derive"] }
-clap_complete = "4.5.59"
+nextest-metadata = "0.12.3"
+clap = { version = "4.5.51", features = ["derive"] }
+clap_complete = "4.5.60"
 clap_mangen = "0.2.31"
 criterion = { version = "0.7", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
 futures = { version = "0.3", default-features = false }
-human-panic = "2.0.0"
+human-panic = "2.0.4"
 humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
