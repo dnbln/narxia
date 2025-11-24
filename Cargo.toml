@@ -71,11 +71,11 @@ git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
 bumpalo = "3.6.0"
-bytes = "1.4.0"
-cargo_metadata = "0.23.0"
+bytes = "1.11.0"
+cargo_metadata = "0.23.1"
 nextest-metadata = "0.12.3"
-clap = { version = "4.5.51", features = ["derive"] }
-clap_complete = "4.5.60"
+clap = { version = "4.5.53", features = ["derive"] }
+clap_complete = "4.5.61"
 clap_mangen = "0.2.31"
 criterion = { version = "0.7", features = ["html_reports"] }
 bitflags = "2"
