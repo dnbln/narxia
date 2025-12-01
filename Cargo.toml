@@ -77,7 +77,7 @@ nextest-metadata = "0.12.3"
 clap = { version = "4.5.53", features = ["derive"] }
 clap_complete = "4.5.61"
 clap_mangen = "0.2.31"
-criterion = { version = "0.7", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
@@ -107,8 +107,8 @@ similar = "2.7"
 smallvec = "1.10.0"
 tar = "0.4"
 thiserror = "2.0.12"
-tracing = "0.1.37"
-tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing = "0.1.43"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tokio = { version = "1", features = ["full"] }
 liblzma = "0.4.0"
 zip = "6"
