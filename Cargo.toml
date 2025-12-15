@@ -98,7 +98,7 @@ prodash = { version = "30.0.1", default-features = false, features = [
     "render-line-autoconfigure",
     "progress-tree",
 ] }
-reqwest = { version = "0.12.15", features = ["blocking"] }
+reqwest = { version = "0.12.25", features = ["blocking"] }
 rowan = "0.16.1"
 salsa = { path = "src/compiler/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
