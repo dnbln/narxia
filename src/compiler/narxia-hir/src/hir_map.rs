@@ -93,7 +93,7 @@ impl HirElem {
             _ => panic!("Expected function, found {self:?}"),
         }
     }
-    
+
     #[track_caller]
     pub fn assert_is_pat_ident(&self) -> &PatIdent {
         match self {
@@ -112,7 +112,7 @@ impl HirElem {
             e => panic!("Expected let statement, found {e:?}"),
         }
     }
-    
+
     #[track_caller]
     pub fn assert_is_fn_param(&self) -> &FnParam {
         match self {

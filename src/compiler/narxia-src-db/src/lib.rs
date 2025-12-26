@@ -1,7 +1,8 @@
 use std::io;
 use std::path::PathBuf;
 
-use narxia_src_db_impl::{FilePathInfo, Span};
+use narxia_src_db_impl::FilePathInfo;
+use narxia_src_db_impl::Span;
 
 #[salsa::input]
 pub struct SrcFile {

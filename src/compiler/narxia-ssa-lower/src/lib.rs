@@ -3,8 +3,8 @@ use std::collections::BTreeSet;
 
 use hir::hir_map::HirMap;
 use narxia_hir as hir;
-use narxia_hir::hir_map::HirElem;
 use narxia_hir::HirIdNewtype;
+use narxia_hir::hir_map::HirElem;
 use narxia_hir_typechk::def_id::DefId;
 use narxia_hir_typechk::tyctxt::TyCtxt;
 use narxia_ssa::BinaryExpr;

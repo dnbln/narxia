@@ -204,17 +204,33 @@ impl GlobalTyCtxt {
                                 .to_string_lossy()
                                 .into_owned(),
                         )
-                        .annotation(AnnotationKind::Context.span(tgt_range).label("Definition here")),
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(tgt_range)
+                                .label("Definition here"),
+                        ),
                     Snippet::source(src_file_database.get_full_file_text(src_file))
                         .path(src_path.presentable().to_string_lossy().into_owned())
-                        .annotation(AnnotationKind::Primary.span(src_range).label("Reference here")),
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(src_range)
+                                .label("Reference here"),
+                        ),
                 ]
             } else {
                 vec![
                     Snippet::source(src_file_database.get_full_file_text(src_file))
                         .path(src_path.presentable().to_string_lossy().into_owned())
-                        .annotation(AnnotationKind::Primary.span(src_range).label("Reference here"))
-                        .annotation(AnnotationKind::Context.span(tgt_range).label("Definition here")),
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(src_range)
+                                .label("Reference here"),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(tgt_range)
+                                .label("Definition here"),
+                        ),
                 ]
             };
 

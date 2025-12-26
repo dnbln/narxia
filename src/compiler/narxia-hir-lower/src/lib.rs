@@ -1025,14 +1025,30 @@ fn lower_assignment_stmt_op(
 ) -> AssignmentOp {
     match &syntree::AssignmentOp::from_token(op.get_node().first_token().unwrap()).unwrap() {
         syntree::AssignmentOp::Eq(t) => AssignmentOp::Assign(Eq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::PlusEq(t) => AssignmentOp::AddAssign(PlusEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::MinusEq(t) => AssignmentOp::SubAssign(MinusEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::AsteriskEq(t) => AssignmentOp::MulAssign(AsteriskEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::SlashEq(t) => AssignmentOp::DivAssign(SlashEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::PercentEq(t) => AssignmentOp::ModAssign(PercentEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::AmpEq(t) => AssignmentOp::BitAndAssign(AmpEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::PipeEq(t) => AssignmentOp::BitOrAssign(PipeEq::from_token(t, hir_lower_ctxt)),
-        syntree::AssignmentOp::CaretEq(t) => AssignmentOp::BitXorAssign(CaretEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::PlusEq(t) => {
+            AssignmentOp::AddAssign(PlusEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::MinusEq(t) => {
+            AssignmentOp::SubAssign(MinusEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::AsteriskEq(t) => {
+            AssignmentOp::MulAssign(AsteriskEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::SlashEq(t) => {
+            AssignmentOp::DivAssign(SlashEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::PercentEq(t) => {
+            AssignmentOp::ModAssign(PercentEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::AmpEq(t) => {
+            AssignmentOp::BitAndAssign(AmpEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::PipeEq(t) => {
+            AssignmentOp::BitOrAssign(PipeEq::from_token(t, hir_lower_ctxt))
+        }
+        syntree::AssignmentOp::CaretEq(t) => {
+            AssignmentOp::BitXorAssign(CaretEq::from_token(t, hir_lower_ctxt))
+        }
     }
 }
 
@@ -1058,7 +1074,10 @@ fn lower_str_literal_fragment(
     match fragment {
         syntree::StringLiteralFragment::StringLiteralFragTextPart(t) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Text(StrLiteralTextFragment {
-                token: GenericToken::from_token(&t.get_string_literal_frag_text_part(), hir_lower_ctxt),
+                token: GenericToken::from_token(
+                    &t.get_string_literal_frag_text_part(),
+                    hir_lower_ctxt,
+                ),
             }),
             span: HirSpan::of_node(fragment, hir_lower_ctxt),
         },
@@ -1079,7 +1098,10 @@ fn lower_str_literal_fragment(
                 x => x,
             };
             StrLiteralFragment {
-                kind: StrLiteralFragmentKind::EscapedChar(GenericToken::from_token(&t, hir_lower_ctxt), c),
+                kind: StrLiteralFragmentKind::EscapedChar(
+                    GenericToken::from_token(&t, hir_lower_ctxt),
+                    c,
+                ),
                 span: HirSpan::of_node(fragment, hir_lower_ctxt),
             }
         }
