@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 
 use hir::hir_map::HirMap;
 use narxia_hir as hir;
+use narxia_hir::hir_map::HirElem;
 use narxia_hir::HirIdNewtype;
 use narxia_hir_typechk::def_id::DefId;
 use narxia_hir_typechk::tyctxt::TyCtxt;
@@ -277,11 +278,22 @@ impl<'tcx> LocalSsaBuilder<'tcx> {
                     // let value = value.unwrap();
                     // *value
                     let def_id = self.tcx.get_name_resolution(ident.hir_id());
-                    let place = self.def_id_to_place.get(&def_id).unwrap();
-                    let value = self.last_place_values[self.current_block_ref.id]
-                        .get(place)
-                        .unwrap();
-                    *value
+                    // if it is a function, we need to generate a function ref
+                    let hir_id = self.tcx.lookup_def_id(def_id);
+                    let hir_map = self.tcx.hir_map();
+                    let elem = hir_map.get(hir_id);
+                    match dbg!(elem) {
+                        HirElem::Fn(f) => {
+                            self.push_to_current_block(IValue::FunctionRef(FunctionRef { id: 0 }))
+                        }
+                        _ => {
+                            let place = self.def_id_to_place.get(&def_id).unwrap();
+                            let value = self.last_place_values[self.current_block_ref.id]
+                                .get(place)
+                                .unwrap();
+                            *value
+                        }
+                    }
                 }
                 hir::ExprAtomKind::Str(str_literal) => {
                     enum StrConcatElem {

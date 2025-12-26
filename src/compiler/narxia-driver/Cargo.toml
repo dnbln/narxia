@@ -38,6 +38,7 @@ narxia-codegen-llvm.workspace = true
 narxia-log.workspace = true
 narxia-log-impl.workspace = true
 narxia-src-db.workspace = true
+narxia-src-db-impl.workspace = true
 narxia-syn.workspace = true
 narxia-syn-db.workspace = true
 narxia-data-structures.workspace = true

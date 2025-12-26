@@ -16,3 +16,4 @@ workspace = true
 [dependencies]
 path-absolutize.workspace = true
 salsa.workspace = true
+narxia-src-db-impl.workspace = true

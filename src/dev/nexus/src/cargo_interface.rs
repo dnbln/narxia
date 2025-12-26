@@ -693,6 +693,7 @@ pub mod tests {
         profile: String,
         parser_tests_mode: SnapshotsTestMode,
         ssa_tests_mode: SnapshotsTestMode,
+        nr_mode: SnapshotsTestMode,
         envs: Vec<(OsString, OsString)>,
         debug_nextest_messages: bool,
         miri: bool,
@@ -730,6 +731,7 @@ pub mod tests {
                 profile: "dev".to_string(),
                 parser_tests_mode: SnapshotsTestMode::default(),
                 ssa_tests_mode: SnapshotsTestMode::default(),
+                nr_mode: SnapshotsTestMode::default(),
                 envs: Vec::new(),
                 debug_nextest_messages: false,
                 miri: false,
@@ -768,6 +770,11 @@ pub mod tests {
 
         pub fn ssa_tests(mut self, mode: SnapshotsTestMode) -> Self {
             self.ssa_tests_mode = mode;
+            self
+        }
+
+        pub fn nr_tests(mut self, mode: SnapshotsTestMode) -> Self {
+            self.nr_mode = mode;
             self
         }
 
@@ -814,7 +821,12 @@ pub mod tests {
                     "NARXIA_SSA_SNAPSHOTS_TEST_MODE",
                     self.ssa_tests_mode.as_str(),
                 )
+                .env(
+                    "NARXIA_NAME_RESOLUTION_SNAPSHOTS_TEST_MODE",
+                    self.nr_mode.as_str(),
+                )
                 .env("NARXIA_TEST_GUARD", "1")
+                .env("DIR_STRUCTURE_REPO_IN_ROOT_REPO", "src/dev/dir-structure")
                 .envs(self.envs);
 
             if let Some(filter) = &self.filter {

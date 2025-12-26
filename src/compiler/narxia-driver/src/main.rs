@@ -214,7 +214,7 @@ fn main() -> miette::Result<()> {
 
             sema::resolve_work(tcx, hir_mod, &analysis_results);
 
-            tcx.dump_resolutions();
+            tcx.dump_resolutions_diagnostics(&ctx.db.src_file_db);
         }
 
         NarxiaDriverCommand::Hiri(hiri_cmd) => {

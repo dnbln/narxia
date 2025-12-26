@@ -126,6 +126,7 @@ pub enum IValue {
     Param(usize),
     BinaryExpr(BinaryExpr),
     Call(CallExpr),
+    FunctionRef(FunctionRef),
     SConcat(Vec<LocalRef>),
     Debug(LocalRef),
     Display(LocalRef),
@@ -138,6 +139,7 @@ impl fmt::Debug for IValue {
             Self::Value(arg0) => arg0.fmt(f),
             Self::BinaryExpr(arg0) => arg0.fmt(f),
             Self::Call(arg0) => arg0.fmt(f),
+            Self::FunctionRef(arg0) => arg0.fmt(f),
             Self::DoNothing => write!(f, "__"),
             Self::Param(p) => {
                 write!(f, "param@{p}")

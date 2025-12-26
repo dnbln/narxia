@@ -25,7 +25,7 @@ pub fn lower_file<'db>(db: &'db dyn HirDb, file: narxia_syn_db::SynFile<'db>) ->
 
     let mod_id = lower::lower_mod_def(
         &mut lower::LowerCtxt {
-            src_file,
+            src_file_start_offset_in_db: src_file.db_span(db).get_start(),
             hir_map: &mut hir_map,
         },
         red.get_root(),

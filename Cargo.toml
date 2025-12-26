@@ -50,6 +50,7 @@ narxia-log = { path = "src/compiler/narxia-log" }
 narxia-log-impl = { path = "src/compiler/narxia-log-impl" }
 narxia-proc = { path = "src/compiler/narxia-proc" }
 narxia-src-db = { path = "src/compiler/narxia-src-db" }
+narxia-src-db-impl = { path = "src/compiler/narxia-src-db-impl" }
 narxia-ssa = { path = "src/compiler/narxia-ssa" }
 narxia-ssa-lower = { path = "src/compiler/narxia-ssa-lower" }
 narxia-ssa-validator = { path = "src/compiler/narxia-ssa-validator" }
@@ -115,6 +116,7 @@ zip = "7"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
+annotate-snippets = "0.12.10"
 
 [workspace.lints.rust]
 unsafe_code = "deny"

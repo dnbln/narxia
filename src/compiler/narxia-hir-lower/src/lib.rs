@@ -13,7 +13,6 @@ use hir::hir_map::HirElem;
 use hir::hir_map::HirMap;
 use hir::*;
 use narxia_hir as hir;
-use narxia_src_db::SrcFile;
 use narxia_syn::syntax_kind::SyntaxKind;
 use narxia_syn::syntree;
 use narxia_syn::syntree::Token;
@@ -21,28 +20,24 @@ use narxia_syn::syntree::TreeNode;
 use narxia_syn::text_span::TextSpan;
 
 struct HirLowerCtxt<'arena> {
-    src_file: SrcFile,
+    src_file_start_offset_in_db: usize,
     hir_ref_arena: &'arena mut HirMap,
 }
 
 trait HasHirSpan {
-    fn span(&self) -> HirSpan;
+    fn span(&self, hir_lower_ctxt: &HirLowerCtxt) -> HirSpan;
 }
 
 impl<T> HasHirSpan for T
 where
     T: TreeNode,
 {
-    fn span(&self) -> HirSpan {
-        HirSpan::of_node(self)
+    fn span(&self, hir_lower_ctxt: &HirLowerCtxt) -> HirSpan {
+        HirSpan::of_node(self, hir_lower_ctxt)
     }
 }
 
 impl HirLowerCtxt<'_> {
-    fn push_ref(&mut self, elem: HirElem, span: HirSpan) -> HirId {
-        self.hir_ref_arena.push_ref(elem, span)
-    }
-
     fn allocate_hir_id<T: HirIdNewtype>(&mut self, span: HirSpan) -> T {
         T::new(self.hir_ref_arena.allocate_hir_id(span))
     }
@@ -54,35 +49,35 @@ impl HirLowerCtxt<'_> {
     }
 }
 
-fn lower_binop(binop: &syntree::BinOp) -> BinOp {
+fn lower_binop(hir_lower_ctxt: &HirLowerCtxt, binop: &syntree::BinOp) -> BinOp {
     match binop {
-        syntree::BinOp::Add(t) => BinOp::Add(Plus::from_token(t)),
-        syntree::BinOp::Sub(t) => BinOp::Sub(Minus::from_token(t)),
-        syntree::BinOp::Mul(t) => BinOp::Mul(Asterisk::from_token(t)),
-        syntree::BinOp::Div(t) => BinOp::Div(Slash::from_token(t)),
-        syntree::BinOp::Mod(t) => BinOp::Mod(Percent::from_token(t)),
-        syntree::BinOp::Eq(t) => BinOp::Eq(Eq2::from_token(t)),
-        syntree::BinOp::Neq(t) => BinOp::Neq(Neq::from_token(t)),
-        syntree::BinOp::Lt(t) => BinOp::Lt(LAngle::from_token(t)),
-        syntree::BinOp::LtEq(t) => BinOp::LtEq(LEq::from_token(t)),
-        syntree::BinOp::Gt(t) => BinOp::Gt(RAngle::from_token(t)),
-        syntree::BinOp::GtEq(t) => BinOp::GtEq(GEq::from_token(t)),
-        syntree::BinOp::And(t) => BinOp::And(Amp2::from_token(t)),
-        syntree::BinOp::Or(t) => BinOp::Or(Pipe2::from_token(t)),
-        syntree::BinOp::BitAnd(t) => BinOp::BitAnd(Amp::from_token(t)),
-        syntree::BinOp::BitOr(t) => BinOp::BitOr(Pipe::from_token(t)),
-        syntree::BinOp::Xor(t) => BinOp::Xor(Caret::from_token(t)),
+        syntree::BinOp::Add(t) => BinOp::Add(Plus::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Sub(t) => BinOp::Sub(Minus::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Mul(t) => BinOp::Mul(Asterisk::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Div(t) => BinOp::Div(Slash::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Mod(t) => BinOp::Mod(Percent::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Eq(t) => BinOp::Eq(Eq2::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Neq(t) => BinOp::Neq(Neq::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Lt(t) => BinOp::Lt(LAngle::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::LtEq(t) => BinOp::LtEq(LEq::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Gt(t) => BinOp::Gt(RAngle::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::GtEq(t) => BinOp::GtEq(GEq::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::And(t) => BinOp::And(Amp2::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Or(t) => BinOp::Or(Pipe2::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::BitAnd(t) => BinOp::BitAnd(Amp::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::BitOr(t) => BinOp::BitOr(Pipe::from_token(t, hir_lower_ctxt)),
+        syntree::BinOp::Xor(t) => BinOp::Xor(Caret::from_token(t, hir_lower_ctxt)),
     }
 }
 
 pub struct LowerCtxt<'ctx> {
-    pub src_file: SrcFile,
+    pub src_file_start_offset_in_db: usize,
     pub hir_map: &'ctx mut HirMap,
 }
 
 pub fn lower_mod_def(lower_ctxt: &mut LowerCtxt, root: syntree::Root) -> ModId {
     let mut hir_lower_ctxt = HirLowerCtxt {
-        src_file: lower_ctxt.src_file,
+        src_file_start_offset_in_db: lower_ctxt.src_file_start_offset_in_db,
         hir_ref_arena: lower_ctxt.hir_map,
     };
     lower_mod_def_impl(&mut hir_lower_ctxt, root)
@@ -107,7 +102,7 @@ fn lower_mod_def_impl(hir_lower_ctxt: &mut HirLowerCtxt, root: syntree::Root) ->
         RBrace::make_virtual(),
         ModuleKw::make_virtual(),
         Ident::new_virtual(SpecialIdents::ROOT_MODULE),
-        root.span(),
+        root.span(hir_lower_ctxt),
     )
 }
 
@@ -156,14 +151,14 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<It
     let attrs = lower_attr_list(hir_lower_ctxt, item.get_attr_list().as_ref());
 
     let hir_items = if let Some(fn_def) = item.get_fn_def() {
-        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span(hir_lower_ctxt));
         vec![Item {
             attrs,
             kind: ItemKind::FnDef(lower_fn_def(hir_lower_ctxt, &fn_def)),
             hir_id,
         }]
     } else if let Some(stmt) = item.get_stmt() {
-        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span(hir_lower_ctxt));
         vec![Item {
             attrs,
             kind: ItemKind::Stmt(lower_stmt(hir_lower_ctxt, &stmt)),
@@ -173,7 +168,7 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<It
         lower_use_stmt(hir_lower_ctxt, &use_stmt)
             .into_iter()
             .map(|it| {
-                let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
+                let hir_id = hir_lower_ctxt.allocate_hir_id(item.span(hir_lower_ctxt));
                 Item {
                     attrs: AttrList::new(),
                     kind: ItemKind::UseStmt(it),
@@ -182,15 +177,15 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<It
             })
             .collect()
     } else if let Some(mod_def) = item.get_module() {
-        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span());
-        let mod_kw = ModuleKw::from_token(&mod_def.get_module_kw());
+        let hir_id = hir_lower_ctxt.allocate_hir_id(item.span(hir_lower_ctxt));
+        let mod_kw = ModuleKw::from_token(&mod_def.get_module_kw(), hir_lower_ctxt);
         let name = lower_ident(
             hir_lower_ctxt,
             &mod_def.get_module_name().unwrap().get_ident(),
         );
         let mod_id = if let Some(mod_body) = mod_def.get_module_body() {
-            let lbrace = LBrace::from_token(&mod_body.get_lbrace());
-            let rbrace = RBrace::from_token(&mod_body.get_rbrace().unwrap());
+            let lbrace = LBrace::from_token(&mod_body.get_lbrace(), hir_lower_ctxt);
+            let rbrace = RBrace::from_token(&mod_body.get_rbrace().unwrap(), hir_lower_ctxt);
             lower_mod_def_from_item_list(
                 hir_lower_ctxt,
                 lbrace,
@@ -198,14 +193,14 @@ fn lower_item(hir_lower_ctxt: &mut HirLowerCtxt, item: &syntree::Item) -> Vec<It
                 rbrace,
                 mod_kw,
                 name,
-                item.span(),
+                item.span(hir_lower_ctxt),
             )
         } else {
             lower_mod_def_to_include(
                 hir_lower_ctxt,
-                ModuleKw::from_token(&mod_def.get_module_kw()),
+                ModuleKw::from_token(&mod_def.get_module_kw(), hir_lower_ctxt),
                 name,
-                item.span(),
+                item.span(hir_lower_ctxt),
             )
         };
         vec![Item {
@@ -237,7 +232,7 @@ fn lower_attr_list(
 }
 
 fn lower_attr(hir_lower_ctxt: &mut HirLowerCtxt, attr: &syntree::Attr) -> Attr {
-    let hash = Hash::from_token(&attr.get_hash());
+    let hash = Hash::from_token(&attr.get_hash(), hir_lower_ctxt);
     let name = lower_ident(hir_lower_ctxt, &attr.get_attr_name().unwrap().get_ident());
     let meta = attr
         .get_attr_meta()
@@ -246,7 +241,7 @@ fn lower_attr(hir_lower_ctxt: &mut HirLowerCtxt, attr: &syntree::Attr) -> Attr {
         hash,
         name,
         meta,
-        span: attr.span(),
+        span: attr.span(hir_lower_ctxt),
     }
 }
 
@@ -260,9 +255,9 @@ fn lower_attr_meta_item_list(
 }
 
 fn lower_attr_meta(hir_lower_ctxt: &mut HirLowerCtxt, attr_meta: &syntree::AttrMeta) -> AttrMeta {
-    let lbrack = LBracket::from_token(&attr_meta.get_lbracket());
+    let lbrack = LBracket::from_token(&attr_meta.get_lbracket(), hir_lower_ctxt);
     let meta_list = lower_attr_meta_item_list(hir_lower_ctxt, attr_meta.get_attr_meta_item_list());
-    let rbrack = RBracket::from_token(&attr_meta.get_rbracket().unwrap());
+    let rbrack = RBracket::from_token(&attr_meta.get_rbracket().unwrap(), hir_lower_ctxt);
 
     AttrMeta {
         lbrack,
@@ -281,13 +276,13 @@ fn lower_attr_meta_item(
     );
 
     let kind = if let Some(m) = attr_meta_item.get_attr_meta_item_eq() {
-        let eq = Eq::from_token(&m.get_eq());
+        let eq = Eq::from_token(&m.get_eq(), hir_lower_ctxt);
         let expr = lower_expr_node(hir_lower_ctxt, &m.get_expr_node().unwrap());
         AttrMetaItemKind::Eq(AttrMetaItemEq { eq, expr })
     } else if let Some(call) = attr_meta_item.get_attr_meta_item_call() {
-        let lparen = LParen::from_token(&call.get_lparen());
+        let lparen = LParen::from_token(&call.get_lparen(), hir_lower_ctxt);
         let meta_list = lower_attr_meta_item_list(hir_lower_ctxt, call.get_attr_meta_item_list());
-        let rparen = RParen::from_token(&call.get_rparen().unwrap());
+        let rparen = RParen::from_token(&call.get_rparen().unwrap(), hir_lower_ctxt);
         AttrMetaItemKind::Call(AttrMetaItemCall {
             lparen,
             meta_list,
@@ -300,7 +295,7 @@ fn lower_attr_meta_item(
     AttrMetaItem {
         name,
         kind,
-        span: attr_meta_item.span(),
+        span: attr_meta_item.span(hir_lower_ctxt),
     }
 }
 
@@ -311,14 +306,14 @@ fn lower_use_stmt(
     lower_use_path(hir_lower_ctxt, &use_stmt.get_use_path().unwrap())
         .into_iter()
         .map(|path| {
-            let hir_id = hir_lower_ctxt.allocate_hir_id(use_stmt.span());
-            let use_kw = UseKw::from_token(&use_stmt.get_use_kw());
+            let hir_id = hir_lower_ctxt.allocate_hir_id(use_stmt.span(hir_lower_ctxt));
+            let use_kw = UseKw::from_token(&use_stmt.get_use_kw(), hir_lower_ctxt);
             hir_lower_ctxt.push_ref_at_allocation(
                 hir_id,
                 HirElem::UseStmt(UseStmt {
                     use_kw,
                     path,
-                    span: use_stmt.span(),
+                    span: use_stmt.span(hir_lower_ctxt),
                     hir_id,
                 }),
             )
@@ -349,7 +344,7 @@ fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath
                 }
                 paths
             } else if let Some(alias) = ext.get_use_alias() {
-                let as_kw = AsKw::from_token(&alias.get_as_kw());
+                let as_kw = AsKw::from_token(&alias.get_as_kw(), hir_lower_ctxt);
 
                 vec![UsePath {
                     segments: vec![segment],
@@ -377,9 +372,9 @@ fn lower_use_path(hir_lower_ctxt: &mut HirLowerCtxt, use_path: &syntree::UsePath
 }
 
 fn lower_fn_def(hir_lower_ctxt: &mut HirLowerCtxt, fn_def: &syntree::FnDef) -> FnId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_def.span());
+    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_def.span(hir_lower_ctxt));
     let head = fn_def.get_fn_head();
-    let fn_kw = FnKw::from_token(&head.get_fn_kw());
+    let fn_kw = FnKw::from_token(&head.get_fn_kw(), hir_lower_ctxt);
     let name = lower_ident(hir_lower_ctxt, &head.get_fn_name().unwrap().get_ident());
     let generics = head
         .get_generic_param_list()
@@ -410,18 +405,18 @@ fn lower_generic_param_list(
     hir_lower_ctxt: &mut HirLowerCtxt,
     gparams: &syntree::GenericParamList,
 ) -> GenericParams {
-    let langle = LAngle::from_token(&gparams.get_langle());
+    let langle = LAngle::from_token(&gparams.get_langle(), hir_lower_ctxt);
     let params = gparams
         .get_generic_param_list()
         .map(|it| lower_generic_param(hir_lower_ctxt, &it))
         .collect();
-    let rangle = RAngle::from_token(&gparams.get_rangle().unwrap());
+    let rangle = RAngle::from_token(&gparams.get_rangle().unwrap(), hir_lower_ctxt);
 
     GenericParams {
         langle,
         params,
         rangle,
-        span: HirSpan::of_node(gparams),
+        span: HirSpan::of_node(gparams, hir_lower_ctxt),
     }
 }
 
@@ -437,14 +432,14 @@ fn lower_generic_param(
         let bounds = ty_param.get_generic_ty_param_bound_list().map(|it| {
             lower_ty_param_bounds(
                 hir_lower_ctxt,
-                Colon::from_token(&ty_param.get_colon().unwrap()),
+                Colon::from_token(&ty_param.get_colon().unwrap(), hir_lower_ctxt),
                 &it,
             )
         });
 
         let default = ty_param.get_generic_ty_param_default().map(|it| {
             (
-                Eq::from_token(&it.get_eq()),
+                Eq::from_token(&it.get_eq(), hir_lower_ctxt),
                 lower_ty_ref(hir_lower_ctxt, &it.get_ty_ref().unwrap()),
             )
         });
@@ -455,10 +450,10 @@ fn lower_generic_param(
                 bounds,
                 default,
             }),
-            span: HirSpan::of_node(gparam),
+            span: HirSpan::of_node(gparam, hir_lower_ctxt),
         }
     } else if let Some(const_param) = gparam.get_generic_const_param() {
-        let const_kw = ConstKw::from_token(&const_param.get_const_kw());
+        let const_kw = ConstKw::from_token(&const_param.get_const_kw(), hir_lower_ctxt);
         let ident = lower_ident(
             hir_lower_ctxt,
             &const_param
@@ -466,7 +461,7 @@ fn lower_generic_param(
                 .unwrap()
                 .get_ident(),
         );
-        let colon = Colon::from_token(&const_param.get_colon().unwrap());
+        let colon = Colon::from_token(&const_param.get_colon().unwrap(), hir_lower_ctxt);
         let ty = lower_ty_ref(hir_lower_ctxt, &const_param.get_ty_ref().unwrap());
 
         GenericParam {
@@ -476,7 +471,7 @@ fn lower_generic_param(
                 colon,
                 ty,
             }),
-            span: HirSpan::of_node(gparam),
+            span: HirSpan::of_node(gparam, hir_lower_ctxt),
         }
     } else {
         todo!()
@@ -495,14 +490,14 @@ fn lower_ty_param_bounds(
     GenericParamTyBounds {
         colon,
         bounds,
-        span: colon.span().join(bound_list.span()),
+        span: colon.span().join(bound_list.span(hir_lower_ctxt)),
     }
 }
 
 fn lower_fn_ret_ty(hir_lower_ctxt: &mut HirLowerCtxt, ret_ty: &syntree::FnRetTy) -> FnRetTy {
     FnRetTy {
-        span: HirSpan::of_node(ret_ty),
-        arrow: ThinArrow::from_token(&ret_ty.get_arrow()),
+        span: HirSpan::of_node(ret_ty, hir_lower_ctxt),
+        arrow: ThinArrow::from_token(&ret_ty.get_arrow(), hir_lower_ctxt),
         ty: lower_ty_ref(hir_lower_ctxt, &ret_ty.get_ty_ref().unwrap()),
     }
 }
@@ -511,12 +506,12 @@ fn lower_fn_def_params(
     hir_lower_ctxt: &mut HirLowerCtxt,
     fn_param_list: &syntree::FnParamList,
 ) -> FnParamList {
-    let lparen = LParen::from_token(&fn_param_list.get_lparen());
+    let lparen = LParen::from_token(&fn_param_list.get_lparen(), hir_lower_ctxt);
     let params = fn_param_list
         .get_fn_param_list()
         .map(|it| lower_fn_def_param(hir_lower_ctxt, &it))
         .collect();
-    let rparen = RParen::from_token(&fn_param_list.get_rparen().unwrap());
+    let rparen = RParen::from_token(&fn_param_list.get_rparen().unwrap(), hir_lower_ctxt);
 
     FnParamList {
         lparen,
@@ -526,16 +521,16 @@ fn lower_fn_def_params(
 }
 
 fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnParam) -> FnParamId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_param.span());
+    let hir_id = hir_lower_ctxt.allocate_hir_id(fn_param.span(hir_lower_ctxt));
     let pat = lower_pat(hir_lower_ctxt, &fn_param.get_fn_param_name().get_pat());
-    let colon = Colon::from_token(&fn_param.get_colon().unwrap());
+    let colon = Colon::from_token(&fn_param.get_colon().unwrap(), hir_lower_ctxt);
     let ty = lower_ty_ref(
         hir_lower_ctxt,
         &fn_param.get_fn_param_ty().unwrap().get_ty_ref(),
     );
     let default = fn_param.get_fn_param_default().as_ref().map(|e| {
         (
-            Eq::from_token(&e.get_eq()),
+            Eq::from_token(&e.get_eq(), hir_lower_ctxt),
             lower_expr_node(hir_lower_ctxt, &e.get_expr_node().unwrap()),
         )
     });
@@ -546,14 +541,14 @@ fn lower_fn_def_param(hir_lower_ctxt: &mut HirLowerCtxt, fn_param: &syntree::FnP
             colon,
             ty,
             default,
-            param_span: HirSpan::of_node(fn_param),
+            param_span: HirSpan::of_node(fn_param, hir_lower_ctxt),
             hir_id,
         }),
     )
 }
 
 fn lower_expr(hir_lower_ctxt: &mut HirLowerCtxt, expr: &syntree::Expr) -> ExprId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(expr.span());
+    let hir_id = hir_lower_ctxt.allocate_hir_id(expr.span(hir_lower_ctxt));
     let hir_expr = match expr {
         syntree::Expr::ExprAtom(atom) => Expr {
             kind: ExprKind::Atom(lower_expr_atom(hir_lower_ctxt, atom)),
@@ -638,8 +633,8 @@ fn lower_call_expr_args(
         .as_ref()
         .map(|it| {
             (
-                LParen::from_token(&it.get_lparen()),
-                RParen::from_token(&it.get_rparen().unwrap()),
+                LParen::from_token(&it.get_lparen(), hir_lower_ctxt),
+                RParen::from_token(&it.get_rparen().unwrap(), hir_lower_ctxt),
             )
         })
         .unzip();
@@ -655,7 +650,7 @@ fn lower_call_expr_args(
         .collect::<Vec<_>>();
 
     args.extend(call_expr_args.get_call_expr_arg_lambda().map(|it| {
-        let hir_id = hir_lower_ctxt.allocate_hir_id(it.span());
+        let hir_id = hir_lower_ctxt.allocate_hir_id(it.span(hir_lower_ctxt));
         let expr = Expr {
             kind: ExprKind::Atom(ExprAtom {
                 kind: ExprAtomKind::LambdaExpr(lower_lambda_expr(
@@ -680,9 +675,9 @@ fn lower_index_expr(
 ) -> IndexExpr {
     let base = lower_expr(hir_lower_ctxt, &index_expr.get_expr());
     let i = index_expr.get_index_expr_index().unwrap();
-    let lbrack = LBracket::from_token(&i.get_lbracket());
+    let lbrack = LBracket::from_token(&i.get_lbracket(), hir_lower_ctxt);
     let index = lower_expr_node(hir_lower_ctxt, &i.get_expr_node().unwrap());
-    let rbrack = RBracket::from_token(&i.get_rbracket().unwrap());
+    let rbrack = RBracket::from_token(&i.get_rbracket().unwrap(), hir_lower_ctxt);
 
     IndexExpr {
         base,
@@ -697,7 +692,7 @@ fn lower_field_access(
     field_access: &syntree::FieldAccess,
 ) -> FieldAccess {
     let base = lower_expr(hir_lower_ctxt, &field_access.get_expr());
-    let dot = Dot::from_token(&field_access.get_dot().unwrap());
+    let dot = Dot::from_token(&field_access.get_dot().unwrap(), hir_lower_ctxt);
     let field = lower_ident(hir_lower_ctxt, &field_access.get_field_name().unwrap());
     FieldAccess { base, dot, field }
 }
@@ -707,7 +702,7 @@ fn lower_method_call(
     method_call: &syntree::MethodCall,
 ) -> MethodCall {
     let base = lower_expr(hir_lower_ctxt, &method_call.get_expr());
-    let dot = Dot::from_token(&method_call.get_dot().unwrap());
+    let dot = Dot::from_token(&method_call.get_dot().unwrap(), hir_lower_ctxt);
     let method = lower_ident(hir_lower_ctxt, &method_call.get_method_name().unwrap());
     let args = lower_call_expr_args(hir_lower_ctxt, &method_call.get_call_expr_args().unwrap());
 
@@ -723,13 +718,13 @@ fn lower_lambda_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     lambda_expr: &syntree::LambdaExpr,
 ) -> LambdaExpr {
-    let lbrace = LBrace::from_token(&lambda_expr.get_lbrace());
+    let lbrace = LBrace::from_token(&lambda_expr.get_lbrace(), hir_lower_ctxt);
     let lambda_param_list = lambda_expr
         .get_lambda_param_list()
         .as_ref()
         .map(|lpl| lower_lambda_param_list(hir_lower_ctxt, lpl));
     let body = lower_item_list(hir_lower_ctxt, lambda_expr.get_item_list());
-    let rbrace = RBrace::from_token(&lambda_expr.get_rbrace().unwrap());
+    let rbrace = RBrace::from_token(&lambda_expr.get_rbrace().unwrap(), hir_lower_ctxt);
     LambdaExpr {
         lbrace,
         lambda_param_list,
@@ -746,7 +741,7 @@ fn lower_lambda_param_list(
         .get_lambda_param_list()
         .map(|it| lower_lambda_param(hir_lower_ctxt, &it))
         .collect();
-    let arrow = ThinArrow::from_token(&lambda_param_list.get_arrow().unwrap());
+    let arrow = ThinArrow::from_token(&lambda_param_list.get_arrow().unwrap(), hir_lower_ctxt);
     LambdaParamList { params, arrow }
 }
 
@@ -757,7 +752,7 @@ fn lower_lambda_param(
     let pat = lower_pat(hir_lower_ctxt, &lambda_param.get_fn_param_name().get_pat());
     let ty = lambda_param.get_fn_param_ty().map(|ty_ref| {
         (
-            Colon::from_token(&lambda_param.get_colon().unwrap()),
+            Colon::from_token(&lambda_param.get_colon().unwrap(), hir_lower_ctxt),
             lower_ty_ref(hir_lower_ctxt, &ty_ref.get_ty_ref()),
         )
     });
@@ -770,7 +765,7 @@ fn lower_binary_op_expr(
 ) -> (ExprId, BinOp, ExprId) {
     let (left, op, right) = expr.lower_assume_complete();
     let left = lower_expr(hir_lower_ctxt, &left);
-    let op = lower_binop(&op);
+    let op = lower_binop(hir_lower_ctxt, &op);
     let right = lower_expr(hir_lower_ctxt, &right);
     (left, op, right)
 }
@@ -833,7 +828,7 @@ fn lower_expr_atom_ident(
     hir_lower_ctxt: &mut HirLowerCtxt,
     ident: &syntree::Token,
 ) -> ExprAtomIdentId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(ident));
+    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(ident, hir_lower_ctxt));
     let ident = lower_ident(hir_lower_ctxt, ident);
 
     hir_lower_ctxt.push_ref_at_allocation(
@@ -844,20 +839,20 @@ fn lower_expr_atom_ident(
 
 fn lower_num_literal(hir_lower_ctxt: &mut HirLowerCtxt, num_lit: &syntree::NumLit) -> NumLit {
     if let Some(num_bin) = num_lit.get_num_bin() {
-        NumLit::Bin(GenericToken::from_token(&num_bin))
+        NumLit::Bin(GenericToken::from_token(&num_bin, hir_lower_ctxt))
     } else if let Some(num_oct) = num_lit.get_num_oct() {
-        NumLit::Oct(GenericToken::from_token(&num_oct))
+        NumLit::Oct(GenericToken::from_token(&num_oct, hir_lower_ctxt))
     } else if let Some(num_dec) = num_lit.get_num_dec() {
-        NumLit::Dec(GenericToken::from_token(&num_dec))
+        NumLit::Dec(GenericToken::from_token(&num_dec, hir_lower_ctxt))
     } else if let Some(num_hex) = num_lit.get_num_hex() {
-        NumLit::Hex(GenericToken::from_token(&num_hex))
+        NumLit::Hex(GenericToken::from_token(&num_hex, hir_lower_ctxt))
     } else {
         todo!()
     }
 }
 
 fn lower_loop_expr(hir_lower_ctxt: &mut HirLowerCtxt, loop_expr: &syntree::LoopExpr) -> LoopExpr {
-    let loop_kw = LoopKw::from_token(&loop_expr.get_loop_kw());
+    let loop_kw = LoopKw::from_token(&loop_expr.get_loop_kw(), hir_lower_ctxt);
     let body = lower_block(hir_lower_ctxt, &loop_expr.get_block().unwrap());
     LoopExpr { loop_kw, body }
 }
@@ -866,12 +861,12 @@ fn lower_tuple_like_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     tuple_like_expr: &syntree::TupleLikeExpr,
 ) -> TupleExpr {
-    let lparen = LParen::from_token(&tuple_like_expr.get_lparen());
+    let lparen = LParen::from_token(&tuple_like_expr.get_lparen(), hir_lower_ctxt);
     let exprs = tuple_like_expr
         .get_expr_node_list()
         .map(|it| lower_expr_node(hir_lower_ctxt, &it))
         .collect();
-    let rparen = RParen::from_token(&tuple_like_expr.get_rparen().unwrap());
+    let rparen = RParen::from_token(&tuple_like_expr.get_rparen().unwrap(), hir_lower_ctxt);
     TupleExpr {
         lparen,
         exprs,
@@ -884,10 +879,10 @@ fn lower_block_extra_items(
     block: &syntree::Block,
     f: impl FnOnce(&mut HirLowerCtxt, &mut ItemList),
 ) -> BlockId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(block.span());
-    let lbrace = LBrace::from_token(&block.get_lbrace());
+    let hir_id = hir_lower_ctxt.allocate_hir_id(block.span(hir_lower_ctxt));
+    let lbrace = LBrace::from_token(&block.get_lbrace(), hir_lower_ctxt);
     let mut items = lower_item_list(hir_lower_ctxt, block.get_item_list());
-    let rbrace = RBrace::from_token(&block.get_rbrace().unwrap());
+    let rbrace = RBrace::from_token(&block.get_rbrace().unwrap(), hir_lower_ctxt);
 
     f(hir_lower_ctxt, &mut items);
 
@@ -906,7 +901,7 @@ fn lower_block(hir_lower_ctxt: &mut HirLowerCtxt, block: &syntree::Block) -> Blo
 }
 
 fn lower_stmt(hir_lower_ctxt: &mut HirLowerCtxt, stmt: &syntree::Stmt) -> StmtId {
-    let hir_id = hir_lower_ctxt.allocate_hir_id(stmt.span());
+    let hir_id = hir_lower_ctxt.allocate_hir_id(stmt.span(hir_lower_ctxt));
     let hir_stmt = if let Some(expr) = stmt.get_expr_node() {
         Stmt {
             kind: StmtKind::ExprStmt(lower_expr_node(hir_lower_ctxt, &expr)),
@@ -940,21 +935,21 @@ fn lower_stmt(hir_lower_ctxt: &mut HirLowerCtxt, stmt: &syntree::Stmt) -> StmtId
 }
 
 fn lower_let_stmt(hir_lower_ctxt: &mut HirLowerCtxt, let_stmt: &syntree::LetStmt) -> LetStmt {
-    let let_kw = LetKw::from_token(&let_stmt.get_let_kw());
+    let let_kw = LetKw::from_token(&let_stmt.get_let_kw(), hir_lower_ctxt);
     let mutability = match let_stmt.get_mut_kw() {
-        Some(t) => LetMutability::Mut(MutKw::from_token(&t)),
+        Some(t) => LetMutability::Mut(MutKw::from_token(&t, hir_lower_ctxt)),
         None => LetMutability::Imm,
     };
     let pat = lower_pat(hir_lower_ctxt, &let_stmt.get_pat().unwrap());
     let ty = let_stmt.get_ty_ref().as_ref().map(|ty_ref| {
         (
-            Colon::from_token(&let_stmt.get_colon().unwrap()),
+            Colon::from_token(&let_stmt.get_colon().unwrap(), hir_lower_ctxt),
             lower_ty_ref(hir_lower_ctxt, ty_ref),
         )
     });
     let init = let_stmt.get_expr_node().as_ref().map(|e| {
         (
-            Eq::from_token(&let_stmt.get_eq().unwrap()),
+            Eq::from_token(&let_stmt.get_eq().unwrap(), hir_lower_ctxt),
             lower_expr_node(hir_lower_ctxt, e),
         )
     });
@@ -968,15 +963,15 @@ fn lower_let_stmt(hir_lower_ctxt: &mut HirLowerCtxt, let_stmt: &syntree::LetStmt
 }
 
 fn lower_for_stmt(hir_lower_ctxt: &mut HirLowerCtxt, for_stmt: &syntree::ForStmt) -> ForStmt {
-    let for_kw = ForKw::from_token(&for_stmt.get_for_kw());
-    let lparen = LParen::from_token(&for_stmt.get_lparen().unwrap());
+    let for_kw = ForKw::from_token(&for_stmt.get_for_kw(), hir_lower_ctxt);
+    let lparen = LParen::from_token(&for_stmt.get_lparen().unwrap(), hir_lower_ctxt);
     let pat = lower_pat(hir_lower_ctxt, &for_stmt.get_for_pat().unwrap().get_pat());
-    let in_kw = InKw::from_token(&for_stmt.get_in_kw().unwrap());
+    let in_kw = InKw::from_token(&for_stmt.get_in_kw().unwrap(), hir_lower_ctxt);
     let iter = lower_expr_node(
         hir_lower_ctxt,
         &for_stmt.get_for_in_expr().unwrap().get_expr_node(),
     );
-    let rparen = RParen::from_token(&for_stmt.get_rparen().unwrap());
+    let rparen = RParen::from_token(&for_stmt.get_rparen().unwrap(), hir_lower_ctxt);
     let body = lower_block(hir_lower_ctxt, &for_stmt.get_block().unwrap());
 
     ForStmt {
@@ -994,11 +989,11 @@ fn lower_while_stmt(
     hir_lower_ctxt: &mut HirLowerCtxt,
     while_stmt: &syntree::WhileStmt,
 ) -> WhileStmt {
-    let while_kw = WhileKw::from_token(&while_stmt.get_while_kw());
+    let while_kw = WhileKw::from_token(&while_stmt.get_while_kw(), hir_lower_ctxt);
     let wcond = while_stmt.get_while_condition().unwrap();
-    let lparen = LParen::from_token(&wcond.get_lparen());
+    let lparen = LParen::from_token(&wcond.get_lparen(), hir_lower_ctxt);
     let expr = lower_expr_node(hir_lower_ctxt, &wcond.get_expr_node().unwrap());
-    let rparen = RParen::from_token(&wcond.get_rparen().unwrap());
+    let rparen = RParen::from_token(&wcond.get_rparen().unwrap(), hir_lower_ctxt);
     let body = lower_block(hir_lower_ctxt, &while_stmt.get_block().unwrap());
 
     WhileStmt {
@@ -1029,15 +1024,15 @@ fn lower_assignment_stmt_op(
     op: &syntree::AssignmentOpNode,
 ) -> AssignmentOp {
     match &syntree::AssignmentOp::from_token(op.get_node().first_token().unwrap()).unwrap() {
-        syntree::AssignmentOp::Eq(t) => AssignmentOp::Assign(Eq::from_token(t)),
-        syntree::AssignmentOp::PlusEq(t) => AssignmentOp::AddAssign(PlusEq::from_token(t)),
-        syntree::AssignmentOp::MinusEq(t) => AssignmentOp::SubAssign(MinusEq::from_token(t)),
-        syntree::AssignmentOp::AsteriskEq(t) => AssignmentOp::MulAssign(AsteriskEq::from_token(t)),
-        syntree::AssignmentOp::SlashEq(t) => AssignmentOp::DivAssign(SlashEq::from_token(t)),
-        syntree::AssignmentOp::PercentEq(t) => AssignmentOp::ModAssign(PercentEq::from_token(t)),
-        syntree::AssignmentOp::AmpEq(t) => AssignmentOp::BitAndAssign(AmpEq::from_token(t)),
-        syntree::AssignmentOp::PipeEq(t) => AssignmentOp::BitOrAssign(PipeEq::from_token(t)),
-        syntree::AssignmentOp::CaretEq(t) => AssignmentOp::BitXorAssign(CaretEq::from_token(t)),
+        syntree::AssignmentOp::Eq(t) => AssignmentOp::Assign(Eq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::PlusEq(t) => AssignmentOp::AddAssign(PlusEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::MinusEq(t) => AssignmentOp::SubAssign(MinusEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::AsteriskEq(t) => AssignmentOp::MulAssign(AsteriskEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::SlashEq(t) => AssignmentOp::DivAssign(SlashEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::PercentEq(t) => AssignmentOp::ModAssign(PercentEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::AmpEq(t) => AssignmentOp::BitAndAssign(AmpEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::PipeEq(t) => AssignmentOp::BitOrAssign(PipeEq::from_token(t, hir_lower_ctxt)),
+        syntree::AssignmentOp::CaretEq(t) => AssignmentOp::BitXorAssign(CaretEq::from_token(t, hir_lower_ctxt)),
     }
 }
 
@@ -1046,13 +1041,13 @@ fn lower_str_literal(
     str_literal: &syntree::StringLiteral,
 ) -> StrLiteral {
     StrLiteral {
-        lquote: LQuote::from_token(&str_literal.get_begin_string()),
-        span: HirSpan::of_node(str_literal),
+        lquote: LQuote::from_token(&str_literal.get_begin_string(), hir_lower_ctxt),
+        span: HirSpan::of_node(str_literal, hir_lower_ctxt),
         fragments: str_literal
             .get_string_literal_fragment_list()
             .map(|it| lower_str_literal_fragment(hir_lower_ctxt, &it))
             .collect(),
-        rquote: RQuote::from_token(&str_literal.get_end_string().unwrap()),
+        rquote: RQuote::from_token(&str_literal.get_end_string().unwrap(), hir_lower_ctxt),
     }
 }
 
@@ -1063,9 +1058,9 @@ fn lower_str_literal_fragment(
     match fragment {
         syntree::StringLiteralFragment::StringLiteralFragTextPart(t) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Text(StrLiteralTextFragment {
-                token: GenericToken::from_token(&t.get_string_literal_frag_text_part()),
+                token: GenericToken::from_token(&t.get_string_literal_frag_text_part(), hir_lower_ctxt),
             }),
-            span: HirSpan::of_node(fragment),
+            span: HirSpan::of_node(fragment, hir_lower_ctxt),
         },
         syntree::StringLiteralFragment::StringLiteralFragEscapedChar(e) => {
             let t = e.get_string_literal_frag_escaped_char();
@@ -1084,8 +1079,8 @@ fn lower_str_literal_fragment(
                 x => x,
             };
             StrLiteralFragment {
-                kind: StrLiteralFragmentKind::EscapedChar(GenericToken::from_token(&t), c),
-                span: HirSpan::of_node(fragment),
+                kind: StrLiteralFragmentKind::EscapedChar(GenericToken::from_token(&t, hir_lower_ctxt), c),
+                span: HirSpan::of_node(fragment, hir_lower_ctxt),
             }
         }
         syntree::StringLiteralFragment::StringLiteralFragEscapeSequence(e) => {
@@ -1093,25 +1088,25 @@ fn lower_str_literal_fragment(
         }
         syntree::StringLiteralFragment::StringLiteralFragDisplay(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Display(StrLiteralDisplayFragment {
-                display_token: GenericToken::from_token(&e.get_display_tok()),
-                span: HirSpan::of_node(fragment),
+                display_token: GenericToken::from_token(&e.get_display_tok(), hir_lower_ctxt),
+                span: HirSpan::of_node(fragment, hir_lower_ctxt),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
                     &e.get_string_literal_frag_displayable().unwrap(),
                 ),
             }),
-            span: HirSpan::of_node(fragment),
+            span: HirSpan::of_node(fragment, hir_lower_ctxt),
         },
         syntree::StringLiteralFragment::StringLiteralFragDebug(e) => StrLiteralFragment {
             kind: StrLiteralFragmentKind::Debug(StrLiteralDebugFragment {
-                debug_token: GenericToken::from_token(&e.get_debug_tok()),
-                span: HirSpan::of_node(fragment),
+                debug_token: GenericToken::from_token(&e.get_debug_tok(), hir_lower_ctxt),
+                span: HirSpan::of_node(fragment, hir_lower_ctxt),
                 expr: lower_displayable_to_expr(
                     hir_lower_ctxt,
                     &e.get_string_literal_frag_displayable().unwrap(),
                 ),
             }),
-            span: HirSpan::of_node(fragment),
+            span: HirSpan::of_node(fragment, hir_lower_ctxt),
         },
     }
 }
@@ -1122,7 +1117,7 @@ fn lower_displayable_to_expr(
 ) -> ExprId {
     let expr = match displayable {
         syntree::StringLiteralFragDisplayable::StringLiteralFragExpr(e) => {
-            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span());
+            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span(hir_lower_ctxt));
             Expr {
                 kind: ExprKind::Atom(ExprAtom {
                     kind: ExprAtomKind::BlockExpr(lower_block_expr(
@@ -1134,7 +1129,7 @@ fn lower_displayable_to_expr(
             }
         }
         syntree::StringLiteralFragDisplayable::StringLiteralFragIdent(e) => {
-            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span());
+            let hir_id = hir_lower_ctxt.allocate_hir_id(e.span(hir_lower_ctxt));
             Expr {
                 kind: ExprKind::Atom(ExprAtom {
                     kind: ExprAtomKind::Ident(lower_expr_atom_ident(
@@ -1173,7 +1168,7 @@ fn lower_pat_ident(
     pat_ident: &syntree::Token,
 ) -> (PatIdentId, IsWild) {
     let ident = lower_ident(hir_lower_ctxt, pat_ident);
-    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(pat_ident));
+    let hir_id = hir_lower_ctxt.allocate_hir_id(HirSpan::of(pat_ident, hir_lower_ctxt));
     let is_wild = match ident.text.as_str() {
         "_" => IsWild::Yes,
         _ => IsWild::No,
@@ -1186,7 +1181,7 @@ fn lower_pat_ident(
 }
 
 fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> TyRefId {
-    let span = HirSpan::of_node(ty_ref);
+    let span = HirSpan::of_node(ty_ref, hir_lower_ctxt);
     let hir_id = hir_lower_ctxt.allocate_hir_id(span);
     let ty_ref = if let Some(name) = ty_ref.get_ident() {
         let name = lower_ident(hir_lower_ctxt, &name);
@@ -1233,18 +1228,18 @@ fn lower_ty_ref(hir_lower_ctxt: &mut HirLowerCtxt, ty_ref: &syntree::TyRef) -> T
 }
 
 fn lower_fn_ty(hir_lower_ctxt: &mut HirLowerCtxt, fn_ty: &syntree::FnTy) -> FnTy {
-    let fn_kw = FnKw::from_token(&fn_ty.get_fn_kw());
+    let fn_kw = FnKw::from_token(&fn_ty.get_fn_kw(), hir_lower_ctxt);
     let (lparen, params, rparen) = fn_ty.get_fn_ty_param_tys().map_or_else(
         || (LParen::make_virtual(), Vec::new(), RParen::make_virtual()),
         |params| {
-            let lparen = LParen::from_token(&params.get_lparen());
-            let rparen = RParen::from_token(&params.get_rparen().unwrap());
+            let lparen = LParen::from_token(&params.get_lparen(), hir_lower_ctxt);
+            let rparen = RParen::from_token(&params.get_rparen().unwrap(), hir_lower_ctxt);
             (lparen, lower_fn_ty_params(hir_lower_ctxt, &params), rparen)
         },
     );
     let ret_ty = fn_ty.get_fn_ty_ret_ty().map(|r| {
         (
-            ThinArrow::from_token(&r.get_arrow()),
+            ThinArrow::from_token(&r.get_arrow(), hir_lower_ctxt),
             lower_ty_ref(hir_lower_ctxt, &r.get_ty_ref().unwrap()),
         )
     });
@@ -1278,10 +1273,10 @@ fn lower_if_expr(hir_lower_ctxt: &mut HirLowerCtxt, if_expr: &syntree::IfExpr) -
         .get_else_clause()
         .map(|it| lower_if_expr_else_clause(hir_lower_ctxt, &it));
     IfExpr {
-        if_kw: IfKw::from_token(&if_expr.get_if_kw()),
-        lparen: LParen::from_token(&icond.get_lparen()),
+        if_kw: IfKw::from_token(&if_expr.get_if_kw(), hir_lower_ctxt),
+        lparen: LParen::from_token(&icond.get_lparen(), hir_lower_ctxt),
         cond,
-        rparen: RParen::from_token(&icond.get_rparen().unwrap()),
+        rparen: RParen::from_token(&icond.get_rparen().unwrap(), hir_lower_ctxt),
         then,
         else_,
     }
@@ -1292,7 +1287,7 @@ fn lower_if_expr_else_clause(
     if_expr_else_clause: &syntree::ElseClause,
 ) -> IfExprElseClause {
     IfExprElseClause {
-        else_kw: ElseKw::from_token(&if_expr_else_clause.get_else_kw()),
+        else_kw: ElseKw::from_token(&if_expr_else_clause.get_else_kw(), hir_lower_ctxt),
         expr: lower_expr_node(
             hir_lower_ctxt,
             &if_expr_else_clause.get_expr_node().unwrap(),
@@ -1304,7 +1299,7 @@ fn lower_return_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     return_expr: &syntree::ReturnExpr,
 ) -> ReturnExpr {
-    let return_kw = ReturnKw::from_token(&return_expr.get_return_kw());
+    let return_kw = ReturnKw::from_token(&return_expr.get_return_kw(), hir_lower_ctxt);
     let expr = return_expr
         .get_expr_node()
         .map(|it| lower_expr_node(hir_lower_ctxt, &it));
@@ -1315,7 +1310,7 @@ fn lower_break_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     break_expr: &syntree::BreakExpr,
 ) -> BreakExpr {
-    let break_kw = BreakKw::from_token(&break_expr.get_break_kw());
+    let break_kw = BreakKw::from_token(&break_expr.get_break_kw(), hir_lower_ctxt);
     let expr = break_expr
         .get_expr_node()
         .map(|it| lower_expr_node(hir_lower_ctxt, &it));
@@ -1326,7 +1321,7 @@ fn lower_continue_expr(
     hir_lower_ctxt: &mut HirLowerCtxt,
     continue_expr: &syntree::ContinueExpr,
 ) -> ContinueExpr {
-    let continue_kw = ContinueKw::from_token(&continue_expr.get_continue_kw());
+    let continue_kw = ContinueKw::from_token(&continue_expr.get_continue_kw(), hir_lower_ctxt);
 
     ContinueExpr { continue_kw }
 }
@@ -1342,7 +1337,7 @@ fn lower_block_expr(
 fn lower_ident(hir_lower_ctxt: &mut HirLowerCtxt, ident: &Token) -> Ident {
     assert_eq!(ident.kind(), SyntaxKind::IDENT);
 
-    let span = HirSpan::of(ident);
+    let span = HirSpan::of(ident, hir_lower_ctxt);
     let text = ident.text().to_owned();
     Ident { span, text }
 }
@@ -1350,39 +1345,45 @@ fn lower_ident(hir_lower_ctxt: &mut HirLowerCtxt, ident: &Token) -> Ident {
 trait FromTokenConstToken: ConstToken + Sized {
     const SYNTAX_KIND: SyntaxKind;
 
-    fn from_token(token: &Token) -> Self {
+    fn from_token(token: &Token, hir_lower_ctxt: &HirLowerCtxt) -> Self {
         debug_assert_eq!(token.kind(), Self::SYNTAX_KIND);
         debug_assert_eq!(token.text(), Self::text());
 
-        Self::from_span(HirSpan::of(token))
+        Self::from_span(HirSpan::of(token, hir_lower_ctxt))
     }
 }
 
 trait HirSpanImpl {
-    fn of_node<T: syntree::TreeNode>(node: &T) -> Self;
-    fn of(token: &Token) -> Self;
+    fn of_node<T: syntree::TreeNode>(node: &T, hir_lower_ctxt: &HirLowerCtxt) -> Self;
+    fn of(token: &Token, hir_lower_ctxt: &HirLowerCtxt) -> Self;
 }
 
 impl HirSpanImpl for HirSpan {
-    fn of_node<T: syntree::TreeNode>(node: &T) -> Self {
+    fn of_node<T: syntree::TreeNode>(node: &T, hir_lower_ctxt: &HirLowerCtxt) -> Self {
         let span = TextSpan::of_node(node.get_node()).range_usize();
-        Self::new(span.start, span.end)
+        Self::new(
+            span.start + hir_lower_ctxt.src_file_start_offset_in_db,
+            span.end + hir_lower_ctxt.src_file_start_offset_in_db,
+        )
     }
 
-    fn of(token: &Token) -> Self {
+    fn of(token: &Token, hir_lower_ctxt: &HirLowerCtxt) -> Self {
         let span = TextSpan::of(token).range_usize();
-        Self::new(span.start, span.end)
+        Self::new(
+            span.start + hir_lower_ctxt.src_file_start_offset_in_db,
+            span.end + hir_lower_ctxt.src_file_start_offset_in_db,
+        )
     }
 }
 
 trait GenericTokenImpl {
-    fn from_token(token: &Token) -> Self;
+    fn from_token(token: &Token, hir_lower_ctxt: &HirLowerCtxt) -> Self;
 }
 
 impl GenericTokenImpl for GenericToken {
-    fn from_token(token: &Token) -> Self {
+    fn from_token(token: &Token, hir_lower_ctxt: &HirLowerCtxt) -> Self {
         Self {
-            span: HirSpan::of(token),
+            span: HirSpan::of(token, hir_lower_ctxt),
             text: token.text().to_string(),
         }
     }

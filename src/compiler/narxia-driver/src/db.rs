@@ -4,16 +4,16 @@ use std::sync;
 
 use narxia_hir::hir_map;
 use narxia_hir_typechk::tyctxt::GlobalTyCtxt;
-use narxia_src_db::FilePathInfo;
-use narxia_src_db::Span;
-use narxia_src_db::SrcFileDatabase;
+use narxia_src_db_impl::FilePathInfo;
+use narxia_src_db_impl::Span;
+use narxia_src_db_impl::SrcFileDatabase;
 
 #[salsa::db]
 #[derive(Default, Clone)]
 pub struct Database {
     storage: salsa::Storage<Self>,
 
-    src_file_db: SrcFileDatabase,
+    pub src_file_db: SrcFileDatabase,
     global_ty_ctxt: GlobalTyCtxt,
 }
 
@@ -37,8 +37,12 @@ impl Database {
 
 #[salsa::db]
 impl narxia_src_db::SrcDb for Database {
-    fn src_file_text(&self, span: narxia_src_db::Span) -> String {
+    fn src_file_text(&self, span: narxia_src_db_impl::Span) -> String {
         self.src_file_db.get_loaded_span(span)
+    }
+
+    fn full_src_file_text(&self, span: narxia_src_db_impl::Span) -> String {
+        self.src_file_db.full_file_containing_span(span)
     }
 
     fn src_file_path(&self, span: Span) -> FilePathInfo {

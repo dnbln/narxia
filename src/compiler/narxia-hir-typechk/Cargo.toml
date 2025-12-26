@@ -18,3 +18,7 @@ narxia-hir.workspace = true
 narxia-log.workspace = true
 narxia-data-structures.workspace = true
 narxia-src-db.workspace = true
+narxia-src-db-impl.workspace = true
+
+annotate-snippets.workspace = true
+anstream = "0.6.21"

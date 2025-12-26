@@ -4,13 +4,22 @@ use std::sync;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use annotate_snippets::AnnotationKind;
+use annotate_snippets::Level;
+use annotate_snippets::Renderer;
+use annotate_snippets::Snippet;
+use annotate_snippets::renderer::DecorStyle;
 use narxia_data_structures::FxBTreeMap;
 use narxia_hir::HirId;
+use narxia_hir::HirSpan;
 use narxia_hir::hir_map::FileMapEntry;
 use narxia_hir::hir_map::HirElem;
 use narxia_hir::hir_map::HirMap;
 use narxia_hir::visitor::HirMapQ;
+use narxia_src_db::SrcDb;
 use narxia_src_db::SrcFile;
+use narxia_src_db_impl::Span;
+use narxia_src_db_impl::SrcFileDatabaseFileInfoProvider;
 
 use crate::def_id::DefId;
 
@@ -20,6 +29,10 @@ struct DefMap {
 
 impl DefMap {
     fn add_def_id(&mut self, target_hir: HirId) -> DefId {
+        if let Some(p) = self.def_ids.iter().position(|&x| x == target_hir) {
+            return DefId { idx: p };
+        }
+
         let idx = self.def_ids.len();
         self.def_ids.push(target_hir);
         DefId { idx }
@@ -106,16 +119,12 @@ impl GlobalTyCtxt {
         self.make_ty_ctxt().hir_map().get_file(hir_id)
     }
 
-    pub fn get_presentable_path_of_file(
-        &self,
-        db: &dyn narxia_src_db::SrcDb,
-        file: FileMapEntry,
-    ) -> PathBuf {
+    pub fn get_presentable_path_of_file(&self, db: &dyn SrcDb, file: FileMapEntry) -> PathBuf {
         let f = self.inner.src_files.read().unwrap()[file.get_id()];
         f.get_presentable_path(db)
     }
 
-    pub fn get_file_text(&self, db: &dyn narxia_src_db::SrcDb, file: FileMapEntry) -> String {
+    pub fn get_file_text(&self, db: &dyn SrcDb, file: FileMapEntry) -> String {
         let f = self.inner.src_files.read().unwrap()[file.get_id()];
         f.get_text(db)
     }
@@ -162,6 +171,74 @@ impl GlobalTyCtxt {
         }
         narxia_log::info!("Name Resolutions:\n{s}");
     }
+
+    #[cfg(hir_id_span)]
+    fn dump_resolutions_diagnostics(
+        &self,
+        src_file_database: &dyn SrcFileDatabaseFileInfoProvider,
+    ) {
+        let mut report = Vec::new();
+
+        for resolution in self.inner.name_resolution.read().unwrap().name_map.iter() {
+            let source_span = resolution.0.span();
+            let def_id = resolution.1;
+            let def = self.lookup_def(*def_id);
+            let target_span = def.self_span();
+
+            let src_span = source_span.to_source_span();
+            let src_file = src_file_database.containing_file_span(src_span);
+            let src_range = src_file_database.span_to_file_range(src_span);
+            let tgt_span = target_span.to_source_span();
+            let tgt_range = src_file_database.span_to_file_range(tgt_span);
+            let tgt_file = src_file_database.containing_file_span(tgt_span);
+
+            let src_path = src_file_database.get_file_path(src_span);
+
+            let elements = if src_file != tgt_file {
+                vec![
+                    Snippet::source(src_file_database.get_full_file_text(src_file))
+                        .path(
+                            src_file_database
+                                .get_file_path(tgt_span)
+                                .presentable()
+                                .to_string_lossy()
+                                .into_owned(),
+                        )
+                        .annotation(AnnotationKind::Context.span(tgt_range).label("Definition here")),
+                    Snippet::source(src_file_database.get_full_file_text(src_file))
+                        .path(src_path.presentable().to_string_lossy().into_owned())
+                        .annotation(AnnotationKind::Primary.span(src_range).label("Reference here")),
+                ]
+            } else {
+                vec![
+                    Snippet::source(src_file_database.get_full_file_text(src_file))
+                        .path(src_path.presentable().to_string_lossy().into_owned())
+                        .annotation(AnnotationKind::Primary.span(src_range).label("Reference here"))
+                        .annotation(AnnotationKind::Context.span(tgt_range).label("Definition here")),
+                ]
+            };
+
+            report.push(
+                Level::INFO
+                    .with_name("info: resolved name")
+                    .primary_title("Resolved name")
+                    .elements(elements),
+            );
+        }
+
+        let renderer = Renderer::styled().decor_style(DecorStyle::Unicode);
+        anstream::println!("{}", renderer.render(&report));
+    }
+}
+
+trait ToSourceSpan {
+    fn to_source_span(self) -> Span;
+}
+
+impl ToSourceSpan for HirSpan {
+    fn to_source_span(self) -> Span {
+        Span::new(self.get_start(), self.get_end())
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -200,6 +277,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn dump_resolutions(self) {
         self.global_ctxt.dump_resolutions();
+    }
+
+    pub fn dump_resolutions_diagnostics(self, db: &dyn SrcFileDatabaseFileInfoProvider) {
+        self.global_ctxt.dump_resolutions_diagnostics(db);
     }
 
     pub fn __get_name_resolutions(self) -> FxBTreeMap<HirId, DefId> {

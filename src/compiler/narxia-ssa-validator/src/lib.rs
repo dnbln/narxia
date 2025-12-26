@@ -118,6 +118,7 @@ fn check_local_ref_links(f: &Function, validation_errors: &mut Vec<ValidationErr
                         check_lref(*l);
                     }
                 }
+                IValue::FunctionRef(_) => {}
             }
         }
 

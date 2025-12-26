@@ -1054,7 +1054,7 @@ async fn build_llvm(
     let version = LLVMVersion {
         major: 21,
         minor: 1,
-        patch: 1,
+        patch: 8,
         extra: None,
     };
     if llvm_manager.check_install(&version) {

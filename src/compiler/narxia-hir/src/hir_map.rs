@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::fmt;
 
 use narxia_data_structures::FxBTreeMap;
@@ -41,7 +42,7 @@ pub enum HirElem {
 }
 
 impl HirElem {
-    fn get_hir_id_in_self(&self) -> HirId {
+    pub fn get_hir_id_in_self(&self) -> HirId {
         match self {
             HirElem::Mod(mod_def) => mod_def.hir_id.hir_id(),
             HirElem::Item(item) => item.hir_id.hir_id(),
@@ -69,6 +70,54 @@ impl HirElem {
             HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
             HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => todo!(),
             HirElem::__Allocated(_) => unreachable!(),
+        }
+    }
+
+    #[cfg(hir_id_span)]
+    pub fn self_span(&self) -> HirSpan {
+        self.get_hir_id_in_self().span
+    }
+
+    #[track_caller]
+    pub fn assert_is_module(&self) -> &ModDef {
+        match self {
+            HirElem::Mod(mod_def) => mod_def,
+            _ => panic!("Expected module, found {self:?}"),
+        }
+    }
+
+    #[track_caller]
+    pub fn assert_is_function(&self) -> &FnDef {
+        match self {
+            HirElem::Fn(fn_def) => fn_def,
+            _ => panic!("Expected function, found {self:?}"),
+        }
+    }
+    
+    #[track_caller]
+    pub fn assert_is_pat_ident(&self) -> &PatIdent {
+        match self {
+            HirElem::PatIdent(pat_ident) => pat_ident,
+            _ => panic!("Expected pat ident, found {self:?}"),
+        }
+    }
+
+    #[track_caller]
+    pub fn assert_is_let_stmt(&self) -> (&LetStmt, &StmtId) {
+        match self {
+            HirElem::Stmt(Stmt {
+                kind: StmtKind::LetStmt(let_stmt),
+                hir_id,
+            }) => (let_stmt, hir_id),
+            e => panic!("Expected let statement, found {e:?}"),
+        }
+    }
+    
+    #[track_caller]
+    pub fn assert_is_fn_param(&self) -> &FnParam {
+        match self {
+            HirElem::FnParam(fn_param) => fn_param,
+            _ => panic!("Expected function parameter, found {self:?}"),
         }
     }
 
@@ -212,10 +261,7 @@ impl HirMap {
     }
 
     pub fn get_mod(&self, at: ModId) -> &ModDef {
-        match self.get(at.0) {
-            HirElem::Mod(m) => m,
-            x => panic!("Expected ModDef, found {x:?}"),
-        }
+        self.get(at.0).assert_is_module()
     }
 
     pub fn get_stmt(&self, at: StmtId) -> &Stmt {
@@ -304,17 +350,19 @@ impl HirMap {
     }
 
     pub fn common_parent(&self, a: HirId, b: HirId) -> Option<HirId> {
-        let mut ancestors_a = Vec::new();
-        let mut current_a = a;
-        while !current_a.is_orphan_parent() {
-            ancestors_a.push(current_a);
-            current_a = self.get_parent(current_a);
+        let mut ancestors_a = BTreeSet::new();
+        {
+            let mut current_a = a;
+            while !current_a.is_orphan_parent() {
+                ancestors_a.insert(current_a);
+                current_a = self.get_parent(current_a);
+            }
         }
 
         let mut current_b = b;
         while !current_b.is_orphan_parent() {
-            if let Some(pos) = ancestors_a.iter().position(|&x| x == current_b) {
-                return Some(ancestors_a[pos]);
+            if ancestors_a.contains(&current_b) {
+                return Some(current_b);
             }
             current_b = self.get_parent(current_b);
         }

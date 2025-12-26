@@ -3,11 +3,17 @@ use std::mem;
 
 use hir::HirId;
 use hir::HirIdNewtype;
-use hir::hir_map;
 use hir::hir_map::HirMap;
 use hir::visitor as vis;
 use hir::visitor::HirVisitor;
 use narxia_hir as hir;
+use narxia_hir::ExprAtomIdentId;
+use narxia_hir::FnParam;
+use narxia_hir::Ident;
+use narxia_hir::LetStmt;
+use narxia_hir::PatKind;
+use narxia_hir::Stmt;
+use narxia_hir::StmtId;
 
 use crate::def_id::DefId;
 use crate::tyctxt::TyCtxt;
@@ -18,18 +24,23 @@ pub struct ScopeId(usize);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ElemId(usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RefId(usize);
+
 #[derive(Debug)]
 struct ScopeRepr {
     parent: Option<ScopeId>,
     children: Vec<ScopeId>,
     self_elem: Option<ElemId>,
     child_elements: Vec<ElemId>,
+    child_refs: Vec<RefId>,
 }
 
 #[derive(Debug)]
 struct ScopeTree {
     scopes: Vec<ScopeRepr>,
     elements: Vec<ScopeElement>,
+    refs: Vec<ExprRef>,
 }
 
 impl ScopeTree {
@@ -45,6 +56,7 @@ impl ScopeTree {
             children: Vec::new(),
             self_elem,
             child_elements: Vec::new(),
+            child_refs: Vec::new(),
         });
 
         id
@@ -59,6 +71,26 @@ impl ScopeTree {
         }
 
         id
+    }
+
+    fn last_scope_element(&self, scope: ScopeId) -> Option<ElemId> {
+        self.scopes[scope.0].child_elements.last().copied()
+    }
+
+    fn push_expr_ref(
+        &mut self,
+        scope: ScopeId,
+        hir_id: ExprAtomIdentId,
+        last_elem_in_scope: Option<ElemId>,
+    ) {
+        let expr_ref = ExprRef {
+            hir_id,
+            last_elem_in_scope,
+        };
+        let expr_id = RefId(self.refs.len());
+        self.refs.push(expr_ref);
+
+        self.scopes[scope.0].child_refs.push(expr_id);
     }
 }
 
@@ -78,14 +110,73 @@ impl ops::Index<ElemId> for ScopeTree {
     }
 }
 
+impl ops::Index<RefId> for ScopeTree {
+    type Output = ExprRef;
+
+    fn index(&self, index: RefId) -> &Self::Output {
+        &self.refs[index.0]
+    }
+}
+
+#[derive(Debug)]
+struct ExprRef {
+    hir_id: ExprAtomIdentId,
+    last_elem_in_scope: Option<ElemId>,
+}
+
 #[derive(Debug)]
 struct ScopeElement {
     hir_id: HirId,
+    kind: ScopeElementKind,
 }
 
-fn scope_elem<T: HirIdNewtype>(hir_id: T) -> ScopeElement {
+#[derive(Debug)]
+enum ScopeElementKind {
+    /// A module definition, such as the following:
+    ///
+    /// ```nrx
+    /// module my_module {}
+    /// ```
+    ModuleDeclaration,
+    /// A function definition, such as the following:
+    ///
+    /// ```nrx
+    /// fn f() {}
+    /// ```
+    FunctionDeclaration,
+    /// A local variable declaration, such as the x in the following statement:
+    ///
+    /// ```nrx
+    /// let x = 4;
+    /// ```
+    LocalDeclaration,
+    /// A local parameter declaration, such as the x in the following function declaration:
+    ///
+    /// ```nrx
+    /// fn f(x: i32) {}
+    /// ```
+    LocalParam,
+    LocalBlockScope,
+    UseStmt,
+}
+
+impl ScopeElementKind {
+    fn scope_element_allows_frefs(&self) -> bool {
+        match self {
+            ScopeElementKind::ModuleDeclaration => true,
+            ScopeElementKind::FunctionDeclaration => true,
+            ScopeElementKind::LocalDeclaration => false,
+            ScopeElementKind::LocalParam => true,
+            ScopeElementKind::LocalBlockScope => true,
+            ScopeElementKind::UseStmt => true,
+        }
+    }
+}
+
+fn scope_elem<T: HirIdNewtype>(hir_id: T, kind: ScopeElementKind) -> ScopeElement {
     ScopeElement {
         hir_id: hir_id.hir_id(),
+        kind,
     }
 }
 
@@ -172,6 +263,15 @@ impl ProgramStructure {
             current = parent;
         }
     }
+
+    fn children_expr_ref_ids(&self, scope_id: ScopeId) -> impl Iterator<Item = RefId> + '_ {
+        self.scope_tree[scope_id].child_refs.iter().copied()
+    }
+
+    fn children_expr_refs(&self, scope_id: ScopeId) -> impl Iterator<Item = &ExprRef> + '_ {
+        self.children_expr_ref_ids(scope_id)
+            .map(|r| &self.scope_tree[r])
+    }
 }
 
 struct ProgramStructureVisitor<'hir> {
@@ -179,14 +279,15 @@ struct ProgramStructureVisitor<'hir> {
     program_structure: ProgramStructure,
 
     stack: Vec<ScopeId>,
+    expr_last_elem_in_scope: Option<ElemId>,
 }
 
 macro_rules! scope_creating_elements {
-    ($($vis_name:ident ($t:ty) => $walk_name:ident;)*) => {
+    ($($vis_name:ident ($t:ty, $scope_elem_kind:expr) => $walk_name:ident;)*) => {
         $(
             fn $vis_name(&mut self, t: &'hir $t) {
                 let last_scope = self.stack.last().copied();
-                let self_elem = self.program_structure.scope_tree.push_scope_element(None, scope_elem(t.hir_id));
+                let self_elem = self.program_structure.scope_tree.push_scope_element(None, scope_elem(t.hir_id, $scope_elem_kind));
                 let scope = self.program_structure.scope_tree.push_scope(last_scope, Some(self_elem));
                 self.stack.push(scope);
 
@@ -200,34 +301,82 @@ macro_rules! scope_creating_elements {
     };
 }
 
-macro_rules! scope_adding_elements {
-    ($($vis_name:ident ($t:ty) => $walk_name:ident;)*) => {
-        $(
-            fn $vis_name(&mut self, t: &'hir $t) {
-                let last_scope = self.stack.last().copied();
-                let _self_elem = self.program_structure.scope_tree.push_scope_element(last_scope, scope_elem(t.hir_id));
-
-                vis::$walk_name(self, t);
-            }
-        )*
-    };
-}
-
-impl<'hir> vis::HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
+impl<'hir> HirVisitor<'hir> for ProgramStructureVisitor<'hir> {
     fn q_id_strategy<Q: FnOnce(&mut Self, &'hir HirMap)>(&mut self, q: Q) {
         q(self, self.hir_map);
     }
 
     scope_creating_elements! {
-        visit_mod_def(hir::ModDef) => walk_mod_def;
-        visit_fn_def(hir::FnDef) => walk_fn_def;
-        visit_block(hir::Block) => walk_block;
+        visit_mod_def(hir::ModDef, ScopeElementKind::ModuleDeclaration) => walk_mod_def;
+        visit_fn_def(hir::FnDef, ScopeElementKind::FunctionDeclaration) => walk_fn_def;
+        visit_block(hir::Block, ScopeElementKind::LocalBlockScope) => walk_block;
     }
 
-    scope_adding_elements! {
-        visit_use_stmt(hir::UseStmt) => walk_use_stmt;
-        visit_pat_ident(hir::PatIdent) => walk_pat_ident;
-        visit_expr_atom_ident(hir::ExprAtomIdent) => walk_expr_atom_ident;
+    fn visit_use_stmt(&mut self, t: &'hir hir::UseStmt) {
+        let last_scope = self.stack.last().copied();
+        let _self_elem = self
+            .program_structure
+            .scope_tree
+            .push_scope_element(last_scope, scope_elem(t.hir_id, ScopeElementKind::UseStmt));
+
+        vis::walk_use_stmt(self, t);
+    }
+
+    fn visit_let_stmt(&mut self, id: StmtId, hir: &'hir LetStmt) {
+        let last_scope = *self.stack.last().unwrap();
+        vis::walk_let_stmt(self, id, hir);
+
+        // push element only after processing the expression
+        match &hir.pat.kind {
+            PatKind::Ident(ident) => {
+                let _self_elem = self.program_structure.scope_tree.push_scope_element(
+                    Some(last_scope),
+                    scope_elem(*ident, ScopeElementKind::LocalDeclaration),
+                );
+            }
+            k => panic!("Unsupported pattern in let statement: {k:?}"),
+        }
+    }
+
+    fn visit_stmt(&mut self, hir: &'hir Stmt) {
+        if let Some(mut scope) = self.stack.last().copied() {
+            self.expr_last_elem_in_scope = None;
+            loop {
+                let last_scope_element =
+                    self.program_structure.scope_tree.last_scope_element(scope);
+                if let Some(elem) = last_scope_element {
+                    self.expr_last_elem_in_scope = Some(elem);
+                    break;
+                }
+                let Some(p) = self.program_structure.parent(scope) else {
+                    break;
+                };
+                scope = p;
+            }
+        }
+
+        vis::walk_stmt(self, hir);
+    }
+
+    fn visit_fn_param(&mut self, hir: &'hir FnParam) {
+        let last_scope = self.stack.last().copied();
+        let _self_elem = self.program_structure.scope_tree.push_scope_element(
+            last_scope,
+            scope_elem(hir.hir_id, ScopeElementKind::LocalParam),
+        );
+
+        vis::walk_fn_param(self, hir);
+    }
+
+    fn visit_expr_atom_ident(&mut self, t: &'hir hir::ExprAtomIdent) {
+        let last_scope = self.stack.last().copied().unwrap();
+        let last_scope_element = self.expr_last_elem_in_scope;
+
+        self.program_structure
+            .scope_tree
+            .push_expr_ref(last_scope, t.hir_id, last_scope_element);
+
+        vis::walk_expr_atom_ident(self, t);
     }
 }
 
@@ -239,9 +388,11 @@ pub fn build_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> ProgramSt
             scope_tree: ScopeTree {
                 scopes: Vec::new(),
                 elements: Vec::new(),
+                refs: Vec::new(),
             },
         },
         stack: Vec::new(),
+        expr_last_elem_in_scope: None,
     };
 
     visitor.visit_mod_id(mod_id);
@@ -264,6 +415,7 @@ struct ScopeDefinedNamesBuffer {
 struct ScopeDefinedName {
     name: String,
     def_id: DefId,
+    elem_id: ElemId,
 }
 
 #[derive(Debug)]
@@ -295,49 +447,81 @@ pub fn analyze_program_structure(tcx: TyCtxt<'_>, mod_id: hir::ModId) -> Semanti
 
                 let hir_map = tcx.hir_map();
                 let hir_elem = hir_map.get(hir_id);
+                let elem_kind = &program_structure.scope_tree[elem].kind;
 
-                match hir_elem {
-                    hir_map::HirElem::Mod(mod_def) => {
+                match elem_kind {
+                    ScopeElementKind::ModuleDeclaration => {
+                        let mod_def = hir_elem.assert_is_module();
                         let def_id = tcx.add_def_id(hir_id);
                         names.push(ScopeDefinedName {
                             name: mod_def.name.text.clone(),
                             def_id,
+                            elem_id: elem,
                         });
                     }
-                    hir_map::HirElem::Fn(fn_def) => {
+                    ScopeElementKind::FunctionDeclaration => {
+                        let fn_def = hir_elem.assert_is_function();
                         let def_id = tcx.add_def_id(hir_id);
                         names.push(ScopeDefinedName {
                             name: fn_def.name.text.clone(),
                             def_id,
+                            elem_id: elem,
                         });
                     }
-                    hir_map::HirElem::UseStmt(use_stmt) => {
-                        let def_id = tcx.add_def_id(hir_id);
-                        let path = &use_stmt.path;
-
-                        let imported_name = use_path_imported_name(&hir_map, path);
-
+                    ScopeElementKind::LocalDeclaration => {
+                        let name = hir_elem.assert_is_pat_ident();
+                        let def_id = tcx.add_def_id(name.hir_id.hir_id());
                         names.push(ScopeDefinedName {
-                            name: imported_name,
+                            name: name.ident.text.clone(),
                             def_id,
+                            elem_id: elem,
                         });
                     }
-                    hir_map::HirElem::Block(block) => {}
-                    hir_map::HirElem::PatIdent(pat_ident) => {
-                        let def_id = tcx.add_def_id(hir_id);
+                    ScopeElementKind::LocalParam => {
+                        let param = hir_elem.assert_is_fn_param();
+                        let name = match &param.pat.kind {
+                            PatKind::Ident(name) => hir_map.get_pat_ident(*name).clone(),
+                            p => panic!("Unsupported pattern in function parameter: {p:?}"),
+                        };
+                        let def_id = tcx.add_def_id(name.hir_id.hir_id());
                         names.push(ScopeDefinedName {
-                            name: pat_ident.ident.text.clone(),
+                            name: name.ident.text.clone(),
                             def_id,
+                            elem_id: elem,
                         });
                     }
-                    hir_map::HirElem::ExprAtomIdent(ident) => {
-                        references.push(ScopeUsedReference {
-                            name: ident.ident.text.clone(),
-                            hir_id,
-                        });
-                    }
-                    _ => todo!(),
+                    ScopeElementKind::LocalBlockScope => {}
+                    ScopeElementKind::UseStmt => {}
                 }
+
+                // match hir_elem {
+                //     hir_map::HirElem::UseStmt(use_stmt) => {
+                //         let def_id = tcx.add_def_id(hir_id);
+                //         let path = &use_stmt.path;
+                //
+                //         let imported_name = use_path_imported_name(&hir_map, path);
+                //
+                //         names.push(ScopeDefinedName {
+                //             name: imported_name,
+                //             def_id,
+                //         });
+                //     }
+                //     hir_map::HirElem::Block(block) => {}
+                //     hir_map::HirElem::PatIdent(pat_ident) => {
+                //         let def_id = tcx.add_def_id(hir_id);
+                //         names.push(ScopeDefinedName {
+                //             name: pat_ident.ident.text.clone(),
+                //             def_id,
+                //         });
+                //     }
+                //     hir_map::HirElem::ExprAtomIdent(ident) => {
+                //         references.push(ScopeUsedReference {
+                //             name: ident.ident.text.clone(),
+                //             hir_id,
+                //         });
+                //     }
+                //     _ => todo!(),
+                // }
             }
 
             (
@@ -368,8 +552,8 @@ fn use_path_imported_name(hir_map: &HirMap, path: &hir::UsePath) -> String {
 }
 
 struct ResolveWorkQueue {
-    work_queue: Vec<HirId>,
-    push_back: Vec<HirId>,
+    work_queue: Vec<(ScopeId, RefId)>,
+    push_back: Vec<(ScopeId, RefId)>,
 }
 
 pub fn resolve_work(
@@ -388,13 +572,9 @@ pub fn resolve_work(
     for scope in analysis_results.program_structure.scopes() {
         for elem in analysis_results
             .program_structure
-            .children(scope)
-            .filter_map(|scope| analysis_results.program_structure.self_element(scope))
-            .chain(analysis_results.program_structure.elements(scope))
+            .children_expr_ref_ids(scope)
         {
-            let hir_id = analysis_results.program_structure.element(elem);
-
-            work_queue.work_queue.push(hir_id);
+            work_queue.work_queue.push((scope, elem));
         }
     }
 
@@ -405,11 +585,17 @@ pub fn resolve_work(
             push_back,
         } = &mut work_queue;
         narxia_log::info!("{:?}", work_queue);
-        for hir_id in work_queue.drain(..) {
-            match attempt_to_resolve(tcx, hir_id, &hir_map, analysis_results) {
+        for (scope, ref_id) in work_queue.drain(..) {
+            match attempt_to_resolve(
+                tcx,
+                scope,
+                &analysis_results.program_structure.scope_tree[ref_id],
+                &hir_map,
+                analysis_results,
+            ) {
                 Ok(()) => {}
                 Err(()) => {
-                    push_back.push(hir_id);
+                    push_back.push((scope, ref_id));
                 }
             }
         }
@@ -427,256 +613,148 @@ pub fn resolve_work(
 
 fn attempt_to_resolve(
     tcx: TyCtxt<'_>,
-    hir_id: HirId,
+    scope_id: ScopeId,
+    expr_ref: &ExprRef,
     hir_map: &HirMap,
     analysis_results: &SemanticAnalysisResult,
 ) -> Result<(), ()> {
-    match hir_map.get(hir_id) {
-        hir_map::HirElem::Mod(mod_def) => {
-            return Ok(());
-        }
-        hir_map::HirElem::Item(item) => {
-            return Ok(());
-        }
-        hir_map::HirElem::ExprAtomIdent(ident) => {
-            let mut candidates = Vec::new();
-            attempt_to_resolve_expr_atom_ident(
-                tcx,
-                ident,
-                hir_map,
-                analysis_results,
-                &mut candidates,
-            );
-            if candidates.is_empty() {
-                return Err(());
-            }
-
-            if candidates.len() > 1 {
-                narxia_log::warn!(
-                    "Multiple candidates for {}: {:?}",
-                    ident.ident.text,
-                    candidates
-                );
-            }
-
-            let def_id = candidates[0];
-            tcx.resolved_name(ident.hir_id.hir_id(), def_id);
-            return Ok(());
-        }
-        hir_map::HirElem::PatIdent(pat_ident) => {
-            return Ok(());
-        }
-        hir_map::HirElem::Fn(fn_def) => {
-            return Ok(());
-        }
-        hir_map::HirElem::FnParam(fn_param) => {
-            return Ok(());
-        }
-        hir_map::HirElem::FnRetTy(fn_ret_ty) => {
-            return Ok(());
-        }
-        hir_map::HirElem::Expr(expr) => {
-            return Ok(());
-        }
-        hir_map::HirElem::LoopExpr(loop_expr) => todo!(),
-        hir_map::HirElem::BreakExpr(break_expr) => todo!(),
-        hir_map::HirElem::ContinueExpr(continue_expr) => todo!(),
-        hir_map::HirElem::ReturnExpr(return_expr) => todo!(),
-        hir_map::HirElem::Pat(pat) => todo!(),
-        hir_map::HirElem::Stmt(stmt) => todo!(),
-        hir_map::HirElem::ForStmt(for_stmt) => todo!(),
-        hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
-        hir_map::HirElem::UseStmt(use_stmt) => todo!(),
-        hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
-        hir_map::HirElem::Block(block) => {
-            return Ok(());
-        }
-        hir_map::HirElem::TyRef(ty_ref) => todo!(),
-        hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
-        hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
-        hir_map::HirElem::StrLiteral(str_literal) => todo!(),
-        hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => todo!(),
-        hir_map::HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => todo!(),
-        x => todo!("{:?}", x),
+    let ident = hir_map.get_expr_atom_ident(expr_ref.hir_id);
+    let mut candidates = Vec::new();
+    attempt_to_resolve_expr_atom_ident(
+        tcx,
+        scope_id,
+        expr_ref,
+        &ident.ident,
+        hir_map,
+        analysis_results,
+        &mut candidates,
+    );
+    if candidates.is_empty() {
+        return Err(());
     }
-    Err(())
+
+    if candidates.len() > 1 {
+        narxia_log::warn!(
+            "Multiple candidates for {}: {:?}",
+            ident.ident.text,
+            candidates
+        );
+    }
+
+    let def_id = select_candidate_for_expr(&candidates, tcx, hir_map);
+    tcx.resolved_name(ident.hir_id.hir_id(), def_id);
+    narxia_log::info!(
+        "Resolved {}@{} to {}",
+        ident.ident.text,
+        ident.hir_id,
+        def_id
+    );
+    Ok(())
 }
 
 fn attempt_to_resolve_expr_atom_ident(
     tcx: TyCtxt<'_>,
-    ident: &hir::ExprAtomIdent,
+    scope_id: ScopeId,
+    expr_ref: &ExprRef,
+    ident: &Ident,
     hir_map: &HirMap,
     analysis_results: &SemanticAnalysisResult,
     candidates: &mut Vec<DefId>,
 ) {
-    let mut current_scope = if let Some(s) = analysis_results
-        .program_structure
-        .parent_scope_of_hir_node(hir_map, ident.hir_id.hir_id())
-    {
-        s
-    } else {
-        return;
-    };
+    // name-resolution-test:resolve-to-let-stmt
+    // let s = 1
+    // println(s)
+    // fn println(s: str) {return}
+
+    // name-resolution-test:resolve-to-let-stmt-shadowing
+    // let s = 1
+    // let s = 2
+    // println(s)
+    // fn println(s: str) {return}
+
+    // name-resolution-test:resolve-to-let-stmt-shadowing-2
+    // let s = 1
+    // {
+    //     let s = 2
+    //     println(s)
+    // }
+    // fn println(s: str) {return}
+
+    // name-resolution-test:resolve-to-let-stmt-shadowing-3
+    // let s = 1
+    // {
+    //     let s = 2
+    //     {
+    //         let s = 3
+    //         println(s)
+    //     }
+    //     println(s)
+    // }
+    // println(s)
+    // fn println(s: str) {return}
+
+    // name-resolution-test:resolve-to-let-stmt-multiple-in-same-scope
+    // let s = 1
+    // let s = 2
+    // let s = s
+
+    // name-resolution-test:resolve-to-fn-param
+    // fn foo(s: str) {return s}
+
+    // name-resolution-test:resolve-to-fn-param-shadowing
+    // fn foo(s: str) {
+    //     let s = 1
+    //     return s
+    // }
+
+    // name-resolution-test:resolve-to-fn-param-shadowing-2
+    // fn foo(s: str) {
+    //     {
+    //         let s = 1
+    //         return s
+    //     }
+    //     return s
+    // }
+
+    let mut current = scope_id;
     loop {
-        narxia_log::info!("{:?}", current_scope);
-        for name in analysis_results.scope_names[current_scope.0]
+        let scope_candidates = analysis_results.scope_names[current.0]
             .names
             .iter()
-            .rev()
-        {
-            narxia_log::info!("{:?}", name);
-            if name.name == ident.ident.text {
-                let target = tcx.lookup_def_id(name.def_id);
-                match hir_map.get(target) {
-                    hir_map::HirElem::PatIdent(pat_ident) => {
-                        let parent = hir_map.get_parent(pat_ident.hir_id.hir_id());
-                        match hir_map.parent_of_type::<hir_map::PatIdentParent>(pat_ident.hir_id) {
-                            hir_map::PatIdentParent::LetStmt(stmt_id, let_stmt) => {
-                                // name-resolution-test:resolve-to-let-stmt
-                                // let s = 1
-                                // println(s)
-                                // fn println(s: str) {return}
+            .filter(|a| a.name == ident.text)
+            .filter(|a| {
+                let declared_before_used = match expr_ref.last_elem_in_scope {
+                    Some(last) => a.elem_id <= last,
+                    None => false,
+                };
 
-                                // name-resolution-test:resolve-to-let-stmt-shadowing
-                                // let s = 1
-                                // let s = 2
-                                // println(s)
-                                // fn println(s: str) {return}
-
-                                // name-resolution-test:resolve-to-let-stmt-shadowing-2
-                                // let s = 1
-                                // {
-                                //     let s = 2
-                                //     println(s)
-                                // }
-                                // fn println(s: str) {return}
-
-                                // name-resolution-test:resolve-to-let-stmt-shadowing-3
-                                // let s = 1
-                                // {
-                                //     let s = 2
-                                //     {
-                                //         let s = 3
-                                //         println(s)
-                                //     }
-                                //     println(s)
-                                // }
-                                // println(s)
-                                // fn println(s: str) {return}
-
-                                narxia_log::info!("let_stmt: {:?}", let_stmt);
-
-                                if !let_stmt_candidate_fit(hir_map, ident.hir_id.hir_id(), stmt_id)
-                                {
-                                    // name-resolution-test:resolve-to-let-stmt-multiple-in-same-scope
-                                    // let s = 1
-                                    // let s = 2
-                                    // let s = s
-                                    continue;
-                                }
-                                candidates.push(name.def_id);
-                            }
-                            hir_map::PatIdentParent::FnParam(fn_param) => {
-                                // name-resolution-test:resolve-to-fn-param
-                                // fn foo(s: str) {return s}
-
-                                // name-resolution-test:resolve-to-fn-param-shadowing
-                                // fn foo(s: str) {
-                                //     let s = 1
-                                //     return s
-                                // }
-
-                                // name-resolution-test:resolve-to-fn-param-shadowing-2
-                                // fn foo(s: str) {
-                                //     {
-                                //         let s = 1
-                                //         return s
-                                //     }
-                                //     return s
-                                // }
-
-                                candidates.push(name.def_id);
-                            }
-                        }
-                    }
-                    hir_map::HirElem::Fn(fn_def) => {
-                        candidates.push(name.def_id);
-                    }
-                    hir_map::HirElem::FnParam(fn_param) => todo!(),
-                    hir_map::HirElem::FnRetTy(fn_ret_ty) => todo!(),
-                    hir_map::HirElem::Expr(expr) => todo!(),
-                    hir_map::HirElem::ExprAtomIdent(expr_atom_ident) => todo!(),
-                    hir_map::HirElem::LoopExpr(loop_expr) => todo!(),
-                    hir_map::HirElem::BreakExpr(break_expr) => todo!(),
-                    hir_map::HirElem::ContinueExpr(continue_expr) => todo!(),
-                    hir_map::HirElem::ReturnExpr(return_expr) => todo!(),
-                    hir_map::HirElem::Pat(pat) => todo!(),
-                    hir_map::HirElem::Stmt(stmt) => todo!(),
-                    hir_map::HirElem::ForStmt(for_stmt) => todo!(),
-                    hir_map::HirElem::WhileStmt(while_stmt) => todo!(),
-                    hir_map::HirElem::UseStmt(use_stmt) => {
-                        candidates.push(name.def_id);
-                    }
-                    hir_map::HirElem::UsePathSegment(use_path_segment) => todo!(),
-                    hir_map::HirElem::Block(block) => todo!(),
-                    hir_map::HirElem::TyRef(ty_ref) => todo!(),
-                    hir_map::HirElem::TyGenericArg(ty_generic_arg) => todo!(),
-                    hir_map::HirElem::AssignmentStmt(assignment_stmt) => todo!(),
-                    hir_map::HirElem::StrLiteral(str_literal) => todo!(),
-                    hir_map::HirElem::StrLiteralDisplayFragment(str_literal_display_fragment) => {
-                        todo!()
-                    }
-                    hir_map::HirElem::StrLiteralDebugFragment(str_literal_debug_fragment) => {
-                        todo!()
-                    }
-                    _ => todo!(),
+                if declared_before_used {
+                    return true;
                 }
-            }
+
+                // here we are referring to something that was declared after the current use
+                analysis_results.program_structure.scope_tree[a.elem_id]
+                    .kind
+                    .scope_element_allows_frefs()
+            })
+            .map(|a| analysis_results.program_structure.element(a.elem_id))
+            .map(|a| tcx.add_def_id(a))
+            .collect::<Vec<_>>();
+
+        candidates.extend(scope_candidates);
+
+        if !candidates.is_empty() {
+            break;
         }
-        current_scope = if let Some(s) = analysis_results.program_structure.parent(current_scope) {
-            s
-        } else {
+
+        let Some(c) = analysis_results.program_structure.parent(current) else {
             break;
         };
+
+        current = c;
     }
 }
 
-fn let_stmt_candidate_fit(hir_map: &HirMap, ident_hir_id: HirId, let_stmt_id: hir::StmtId) -> bool {
-    if ancestors_contains(ident_hir_id, hir_map, let_stmt_id.hir_id()) {
-        // The ident is in the scope of the let statement, so it cannot be resolved to it.
-        return false;
-    }
-
-    let common_parent = hir_map
-        .common_parent(ident_hir_id, let_stmt_id.hir_id())
-        .unwrap();
-    let items = hir_map.parent_of_type::<hir::ItemListHolder>(common_parent);
-
-    let item_stmts = items
-        .get_item_list()
-        .items
-        .iter()
-        .filter_map(|item_id| hir_map.get_item(*item_id).as_stmt())
-        .collect::<Vec<_>>();
-    let target_pos = item_stmts
-        .iter()
-        .position(|stmt_id| *stmt_id == let_stmt_id)
-        .unwrap_or(item_stmts.len());
-    let self_pos = item_stmts
-        .iter()
-        .position(|stmt_id| ancestors_contains(ident_hir_id, hir_map, stmt_id.hir_id()))
-        .unwrap_or(item_stmts.len());
-
-    target_pos < self_pos
-}
-
-fn ancestors_contains(starting: HirId, hir_map: &HirMap, ancestor: HirId) -> bool {
-    let mut current = starting;
-    while !current.is_orphan_parent() {
-        if current == ancestor {
-            return true;
-        }
-        current = hir_map.get_parent(current);
-    }
-    false
+fn select_candidate_for_expr(candidates: &[DefId], tcx: TyCtxt<'_>, hir_map: &HirMap) -> DefId {
+    *candidates.last().unwrap()
 }
