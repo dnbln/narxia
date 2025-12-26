@@ -23,6 +23,10 @@ runs:
       if: steps.llvm-cache.outputs.cache-hit != 'true'
       run: cargo nexus build-sys build --targets llvm
       shell: bash
+    - name: Delete build artifacts
+      if: steps.llvm-cache.outputs.cache-hit != 'true'
+      run: rm -rf nexusbuild/llvm/{*.build,*.src*}
+      shell: bash
     - name: Save llvm
       if: steps.llvm-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
