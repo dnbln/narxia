@@ -83,7 +83,7 @@ bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
 futures = { version = "0.3", default-features = false }
-human-panic = "2.0.4"
+human-panic = "2.0.5"
 humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
@@ -99,7 +99,7 @@ prodash = { version = "30.0.1", default-features = false, features = [
     "render-line-autoconfigure",
     "progress-tree",
 ] }
-reqwest = { version = "0.12.26", features = ["blocking"] }
+reqwest = { version = "0.12.28", features = ["blocking"] }
 rowan = "0.16.1"
 salsa = { path = "src/compiler/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
