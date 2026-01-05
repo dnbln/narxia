@@ -74,16 +74,16 @@ git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 bumpalo = "3.19.1"
 bytes = "1.11.0"
 cargo_metadata = "0.23.1"
-nextest-metadata = "0.12.3"
-clap = { version = "4.5.53", features = ["derive"] }
-clap_complete = "4.5.62"
+nextest-metadata = "0.13.0"
+clap = { version = "4.5.54", features = ["derive"] }
+clap_complete = "4.5.64"
 clap_mangen = "0.2.31"
 criterion = { version = "0.8", features = ["html_reports"] }
 bitflags = "2"
 dashmap = "6.1.0"
 drop_bomb = "0.1.5"
 futures = { version = "0.3", default-features = false }
-human-panic = "2.0.4"
+human-panic = "2.0.6"
 humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
@@ -99,7 +99,7 @@ prodash = { version = "30.0.1", default-features = false, features = [
     "render-line-autoconfigure",
     "progress-tree",
 ] }
-reqwest = { version = "0.12.26", features = ["blocking"] }
+reqwest = { version = "0.13.1", features = ["blocking"] }
 rowan = "0.16.1"
 salsa = { path = "src/compiler/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
