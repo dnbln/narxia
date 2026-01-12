@@ -76,7 +76,7 @@ bytes = "1.11.0"
 cargo_metadata = "0.23.1"
 nextest-metadata = "0.13.0"
 clap = { version = "4.5.54", features = ["derive"] }
-clap_complete = "4.5.64"
+clap_complete = "4.5.65"
 clap_mangen = "0.2.31"
 criterion = { version = "0.8", features = ["html_reports"] }
 bitflags = "2"
@@ -93,7 +93,7 @@ miette = { version = "7.2.0", features = ["fancy"] }
 owo-colors = { version = "4.0.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"
 pin-project = { version = "1", default-features = false }
-prodash = { version = "30.0.1", default-features = false, features = [
+prodash = { version = "31.0.0", default-features = false, features = [
     "render-line",
     "render-line-crossterm",
     "render-line-autoconfigure",
