@@ -75,7 +75,7 @@ bumpalo = "3.19.1"
 bytes = "1.11.0"
 cargo_metadata = "0.23.1"
 nextest-metadata = "0.13.3"
-clap = { version = "4.5.54", features = ["derive"] }
+clap = { version = "4.5.56", features = ["derive"] }
 clap_complete = "4.5.65"
 clap_mangen = "0.2.31"
 criterion = { version = "0.8", features = ["html_reports"] }
@@ -116,7 +116,7 @@ zip = "7"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
-annotate-snippets = "0.12.10"
+annotate-snippets = "0.12.11"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
