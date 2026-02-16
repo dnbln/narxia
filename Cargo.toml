@@ -72,11 +72,11 @@ git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
 bumpalo = "3.19.1"
-bytes = "1.11.0"
+bytes = "1.11.1"
 cargo_metadata = "0.23.1"
 nextest-metadata = "0.13.3"
-clap = { version = "4.5.54", features = ["derive"] }
-clap_complete = "4.5.65"
+clap = { version = "4.5.58", features = ["derive"] }
+clap_complete = "4.5.66"
 clap_mangen = "0.2.31"
 criterion = { version = "0.8", features = ["html_reports"] }
 bitflags = "2"
@@ -99,7 +99,7 @@ prodash = { version = "31.0.0", default-features = false, features = [
     "render-line-autoconfigure",
     "progress-tree",
 ] }
-reqwest = { version = "0.13.1", features = ["blocking"] }
+reqwest = { version = "0.13.2", features = ["blocking"] }
 rowan = "0.16.1"
 salsa = { path = "src/compiler/narxia-salsa" }
 serde = { version = "1", features = ["derive"] }
@@ -112,11 +112,11 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tokio = { version = "1", features = ["full"] }
 liblzma = "0.4.0"
-zip = "7"
+zip = "8"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
-annotate-snippets = "0.12.10"
+annotate-snippets = "0.12.11"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
