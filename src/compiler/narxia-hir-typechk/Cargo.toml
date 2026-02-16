@@ -21,4 +21,4 @@ narxia-src-db.workspace = true
 narxia-src-db-impl.workspace = true
 
 annotate-snippets.workspace = true
-anstream = "0.6.21"
+anstream = "1.0.0"
