@@ -71,11 +71,11 @@ dir-structure-resolve-core = { path = "src/dev/dir-structure/dir-structure-resol
 git-journey = { path = "src/dev/git-journey", version = "0.1.0" }
 git-voyage = { path = "src/dev/git-voyage", version = "0.1.0" }
 
-bumpalo = "3.19.1"
+bumpalo = "3.20.2"
 bytes = "1.11.1"
 cargo_metadata = "0.23.1"
 nextest-metadata = "0.13.3"
-clap = { version = "4.5.58", features = ["derive"] }
+clap = { version = "4.5.60", features = ["derive"] }
 clap_complete = "4.5.66"
 clap_mangen = "0.2.31"
 criterion = { version = "0.8", features = ["html_reports"] }
@@ -88,9 +88,9 @@ humantime = "2.3.0"
 git2 = { version = "0.20", default-features = false }
 libc = "0.2"
 libtest-mimic = "0.8.1"
-llvm-sys = { version = "211.0.0", default-features = false }
+llvm-sys = { version = "221.0.0", default-features = false }
 miette = { version = "7.2.0", features = ["fancy"] }
-owo-colors = { version = "4.0.0", features = ["supports-colors"] }
+owo-colors = { version = "4.3.0", features = ["supports-colors"] }
 path-absolutize = "3.1.1"
 pin-project = { version = "1", default-features = false }
 prodash = { version = "31.0.0", default-features = false, features = [
@@ -111,12 +111,12 @@ thiserror = "2.0.18"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 tokio = { version = "1", features = ["full"] }
-liblzma = "0.4.0"
+liblzma = "0.4.6"
 zip = "8"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 proc-macro2 = "1"
-annotate-snippets = "0.12.11"
+annotate-snippets = "0.12.12"
 
 [workspace.lints.rust]
 unsafe_code = "deny"
