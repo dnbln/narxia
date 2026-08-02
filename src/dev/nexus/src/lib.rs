@@ -1,4 +1,3 @@
-#![feature(string_from_utf8_lossy_owned)]
 #![feature(decl_macro)]
 
 use std::borrow::Cow;

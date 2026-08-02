@@ -135,6 +135,7 @@ pub fn parse_fn(
     input_fn.block.stmts.insert(
         0,
         parse_quote! {
+            #[cfg(debug_assertions)]
             let _guard = p.guard(#fn_name, &[#(SyntaxKind::#can_recover,)*]);
         },
     );
