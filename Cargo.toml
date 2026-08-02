@@ -131,5 +131,6 @@ absolute_paths = "deny"
 alloc_instead_of_core = "deny"
 allow_attributes = "deny"
 suspicious = { level = "deny", priority = -1 }
-style = "deny"
+style = { level = "deny", priority = -1 }
 useless_format = "deny"
+single-range-in-vec-init = "allow"
